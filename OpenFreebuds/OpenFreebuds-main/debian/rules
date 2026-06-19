@@ -1,0 +1,16 @@
+#!/usr/bin/make -f
+
+%:
+	dh $@
+
+override_dh_auto_build:
+	# Only installs precompiled wheel binary
+	true
+
+override_dh_auto_install:
+	DESTDIR=${PWD}/debian/openfreebuds/usr \
+	PYTHONLIBDIR=${PWD}/debian/openfreebuds/usr/lib/python3/dist-packages \
+	just install
+
+override_dh_clean:
+	true

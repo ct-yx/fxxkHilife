@@ -1,0 +1,48 @@
+name: Build & Test
+on: push
+
+jobs:
+  build_exe:
+    name: Windows portable build
+    runs-on: windows-latest
+    steps:
+      - uses: pdm-project/setup-pdm@v4
+        with:
+            python-version: 3.12.8
+      - name: Install Just
+        run: choco install -y just
+      - uses: actions/checkout@v4
+      - run: just prepare
+      - run: just --evaluate
+      - run: just bump_version_git build win32_portable
+      - name: Upload portable
+        uses: actions/upload-artifact@v4
+        with:
+          name: openfreebuds_win32
+          path: .\dist\*
+          if-no-files-found: error
+
+  build_deb:
+    name: Run PyTest and build Debian package
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pdm-project/setup-pdm@v4
+        with:
+            python-version: 3.13
+            cache: true
+      - name: Install Just
+        run: curl -s https://just.systems/install.sh | sudo bash -s -- --to /usr/local/bin
+      - name: Do APT update
+        run: sudo apt update
+      - name: Install project dependencies
+        run: just deps_debian prepare
+      - run: just --evaluate
+      - run: just test
+      - run: just bump_version_git build debian
+      - name: Upload bundle
+        uses: actions/upload-artifact@v4
+        with:
+          name: openfreebuds_debian
+          path: ./dist/*
+          if-no-files-found: error
