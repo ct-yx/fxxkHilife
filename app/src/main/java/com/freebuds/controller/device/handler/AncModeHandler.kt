@@ -1,6 +1,6 @@
 package com.freebuds.controller.device.handler
 
-import com.freebuds.controller.bluetooth.SppClient
+import com.freebuds.controller.bluetooth.ISppClient
 import com.freebuds.controller.bluetooth.SppCommand
 import com.freebuds.controller.bluetooth.SppPackage
 import com.freebuds.controller.device.AncMode
@@ -9,17 +9,17 @@ import com.freebuds.controller.device.DeviceState
 class AncModeHandler : Handler {
     override val id = "anc"
 
-    override suspend fun init(client: SppClient) {
+    override suspend fun init(client: ISppClient) {
         client.registerHandler(SppCommand.ANC_MODE_READ) { pkg -> handleAnc(pkg) }
     }
 
-    override suspend fun applyToState(client: SppClient, state: DeviceState): DeviceState {
+    override suspend fun applyToState(client: ISppClient, state: DeviceState): DeviceState {
         val resp = client.send(SppPackage.readRequest(SppCommand.ANC_MODE_READ, listOf(1)))
             ?: return state
         return state.copy(ancMode = parseAncMode(resp.findParam(1)))
     }
 
-    override suspend fun setProperty(client: SppClient, prop: String, value: String) {
+    override suspend fun setProperty(client: ISppClient, prop: String, value: String) {
         if (prop == "anc_mode") {
             val modeByte = when (value) {
                 "cancellation" -> byteArrayOf(0x01)

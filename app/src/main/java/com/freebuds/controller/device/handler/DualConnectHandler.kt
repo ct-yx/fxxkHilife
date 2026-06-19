@@ -1,6 +1,6 @@
 package com.freebuds.controller.device.handler
 
-import com.freebuds.controller.bluetooth.SppClient
+import com.freebuds.controller.bluetooth.ISppClient
 import com.freebuds.controller.bluetooth.SppPackage
 import com.freebuds.controller.device.DeviceState
 
@@ -17,9 +17,9 @@ class DualConnectHandler : Handler {
         private val CMD_WRITE = byteArrayOf(0x2B, 0x2E)
     }
 
-    override suspend fun init(client: SppClient) {}
+    override suspend fun init(client: ISppClient) {}
 
-    override suspend fun applyToState(client: SppClient, state: DeviceState): DeviceState {
+    override suspend fun applyToState(client: ISppClient, state: DeviceState): DeviceState {
         val resp = client.send(SppPackage.readRequest(CMD_READ, listOf(1)))
             ?: return state
 
@@ -29,7 +29,7 @@ class DualConnectHandler : Handler {
         } else state
     }
 
-    override suspend fun setProperty(client: SppClient, prop: String, value: String) {
+    override suspend fun setProperty(client: ISppClient, prop: String, value: String) {
         if (prop != "dual_connect_enabled") return
         val byteVal = if (value == "true") byteArrayOf(0x01) else byteArrayOf(0x00)
         client.send(SppPackage.writeRequest(CMD_WRITE, listOf(1 to byteVal)))

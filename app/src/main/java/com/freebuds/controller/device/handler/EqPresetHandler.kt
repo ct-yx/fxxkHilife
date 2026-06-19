@@ -1,6 +1,6 @@
 package com.freebuds.controller.device.handler
 
-import com.freebuds.controller.bluetooth.SppClient
+import com.freebuds.controller.bluetooth.ISppClient
 import com.freebuds.controller.bluetooth.SppPackage
 import com.freebuds.controller.device.DeviceState
 
@@ -25,9 +25,9 @@ class EqPresetHandler : Handler {
         )
     }
 
-    override suspend fun init(client: SppClient) {}
+    override suspend fun init(client: ISppClient) {}
 
-    override suspend fun applyToState(client: SppClient, state: DeviceState): DeviceState {
+    override suspend fun applyToState(client: ISppClient, state: DeviceState): DeviceState {
         val resp = client.send(SppPackage.readRequest(CMD_READ, listOf(1, 2, 3, 4, 5, 6, 7, 8)))
             ?: return state
 
@@ -50,7 +50,7 @@ class EqPresetHandler : Handler {
         return state.copy(eqPreset = current, eqPresetOptions = options.ifEmpty { state.eqPresetOptions })
     }
 
-    override suspend fun setProperty(client: SppClient, prop: String, value: String) {
+    override suspend fun setProperty(client: ISppClient, prop: String, value: String) {
         if (prop != "eq_preset") return
         // value is preset name like "Default"/"Hardbass"/etc
         val modeId = KNOWN_PRESETS.entries.find { it.value == value }?.key ?: 1

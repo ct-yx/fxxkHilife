@@ -1,6 +1,6 @@
 package com.freebuds.controller.device.handler
 
-import com.freebuds.controller.bluetooth.SppClient
+import com.freebuds.controller.bluetooth.ISppClient
 import com.freebuds.controller.bluetooth.SppCommand
 import com.freebuds.controller.bluetooth.SppPackage
 import com.freebuds.controller.device.DeviceState
@@ -8,17 +8,17 @@ import com.freebuds.controller.device.DeviceState
 class BatteryHandler : Handler {
     override val id = "battery"
 
-    override suspend fun init(client: SppClient) {
+    override suspend fun init(client: ISppClient) {
         client.registerHandler(SppCommand.BATTERY_NOTIFY) { pkg -> handleBattery(pkg) }
     }
 
-    override suspend fun applyToState(client: SppClient, state: DeviceState): DeviceState {
+    override suspend fun applyToState(client: ISppClient, state: DeviceState): DeviceState {
         val resp = client.send(SppPackage.readRequest(SppCommand.BATTERY_READ, listOf(1)))
             ?: return state
         return handleBattery(resp, state)
     }
 
-    override suspend fun setProperty(client: SppClient, prop: String, value: String) {}
+    override suspend fun setProperty(client: ISppClient, prop: String, value: String) {}
 
     private fun handleBattery(pkg: SppPackage, state: DeviceState = DeviceState()): DeviceState {
         val data = pkg.findParam(1)

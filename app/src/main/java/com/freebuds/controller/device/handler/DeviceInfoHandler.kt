@@ -1,6 +1,6 @@
 package com.freebuds.controller.device.handler
 
-import com.freebuds.controller.bluetooth.SppClient
+import com.freebuds.controller.bluetooth.ISppClient
 import com.freebuds.controller.bluetooth.SppPackage
 import com.freebuds.controller.device.DeviceState
 
@@ -23,9 +23,9 @@ class DeviceInfoHandler : Handler {
         )
     }
 
-    override suspend fun init(client: SppClient) {}
+    override suspend fun init(client: ISppClient) {}
 
-    override suspend fun applyToState(client: SppClient, state: DeviceState): DeviceState {
+    override suspend fun applyToState(client: ISppClient, state: DeviceState): DeviceState {
         val resp = client.send(SppPackage.readRequest(CMD_READ, (0..31).toList()))
             ?: return state
 
@@ -49,5 +49,5 @@ class DeviceInfoHandler : Handler {
         return state.copy(firmwareVersion = firmware, serialNumber = serial, hardwareVersion = hardware)
     }
 
-    override suspend fun setProperty(client: SppClient, prop: String, value: String) {}
+    override suspend fun setProperty(client: ISppClient, prop: String, value: String) {}
 }

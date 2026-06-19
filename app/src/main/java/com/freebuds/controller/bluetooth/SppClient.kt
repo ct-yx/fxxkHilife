@@ -23,7 +23,7 @@ sealed class ConnectionEvent {
     data class Error(val error: Throwable) : ConnectionEvent()
 }
 
-class SppClient(private val device: BluetoothDevice) {
+class SppClient(private val device: BluetoothDevice) : ISppClient {
     private var socket: BluetoothSocket? = null
     private var inputStream: InputStream? = null
     private var outputStream: OutputStream? = null
@@ -69,7 +69,7 @@ class SppClient(private val device: BluetoothDevice) {
         }
     }
 
-    suspend fun send(pkg: SppPackage, timeoutMs: Long = 5000): SppPackage? {
+    override suspend fun send(pkg: SppPackage, timeoutMs: Long): SppPackage? {
         val key = pkg.commandId.joinToString("") { "%02x".format(it) }
         if (pkg.responseId.isNotEmpty()) {
             pending[key]?.cancel()
@@ -89,7 +89,7 @@ class SppClient(private val device: BluetoothDevice) {
         }
     }
 
-    fun registerHandler(cmdId: ByteArray, handler: suspend (SppPackage) -> Unit) {
+    override fun registerHandler(cmdId: ByteArray, handler: suspend (SppPackage) -> Unit) {
         val key = cmdId.joinToString("") { "%02x".format(it) }
         handlerCommands[key] = handler
     }
