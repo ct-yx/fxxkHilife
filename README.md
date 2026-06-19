@@ -40,15 +40,20 @@
 | 调试日志 | ✅ | Logcat + 文件双路日志，支持分享 |
 | ANC 快速设置磁贴 | ✅ | 下拉快速切换 ANC 模式 |
 | 状态通知 | ✅ | 前台服务显示连接状态、电量、聆听时长 |
-| 按钮防抖 | ✅ | 防止多次点击导致闪退/并发连接 |
+| 自动暂停 | ✅ | AutoPause 开关控制 |
+| 语音语言选择 | ✅ | 耳机语音语言切换（ExposedDropdownMenu） |
+| 电池充电状态 | ✅ | 左/右/充电盒充电态指示灯 |
+| ANC 级别控制 | ✅ | 降噪深度级别选择（支持 cancel_level/awareness_level） |
+| 按钮防抖修复 | ✅ | 移除 btnLock 全局死锁，改用局部防抖 |
 
 ### 🔄 待完善
 | 功能 | 说明 |
 |------|------|
-| Handler 协议实现 | 8 个 Handler 框架已搭好，需补充华为 SPP 写命令的协议字节 |
 | 开机自启 | 目前仅基于 DataStore 的 Auto Connect 配置 |
 | 通知持久化 | StatusNotificationService 需优化监听时间计算 |
 | 主题自定义 | 支持 Frosted / Liquid Glass 毛玻璃效果（Haze 库已集成但不稳定已移除） |
+| 三击手势 | 协议层未完全对齐上游，GestureHandler 需扩展 tripleTap |
+| 双设备连接增强 | DualConnect 支持已实现，需更多设备型号测试验证 |
 
 ---
 
@@ -139,7 +144,7 @@ fxxkHilife/
 | MINOR | 小功能增删改 | +1 当添加/改进小功能（如新控件、新设置项） |
 | fixN | 第 N 次修复 | fix1 / fix2 / fix3 … 每完成一轮 Bug 修复 |
 
-**当前版本：** `1.0.0-fix3`
+**当前版本：** `1.0-2-2` (v1.2.2)
 
 ---
 
@@ -171,15 +176,17 @@ fxxkHilife/
 - [x] 前台服务 + 状态通知
 - [x] 权限管理
 
-### 🔧 Stage 5 — 协议补完（待完成）
-- [ ] `BatteryHandler` — 补全电池订阅 + 读取写命令
-- [ ] `AncModeHandler` — 补全模式切换写命令
-- [ ] `LowLatencyHandler` — 补全低延迟开关写命令
-- [ ] `SoundQualityHandler` — 补全音质偏好写命令
-- [ ] `EqPresetHandler` — 补全 EQ 预设读写命令
-- [ ] `GestureHandler` — 补全手势配置读写命令
-- [ ] `DeviceInfoHandler` — 补全设备信息读命令
-- [ ] `DualConnectHandler` — 补全双设备连接写命令
+### 🔧 Stage 5 — 协议补完（基本完成）
+- [x] `BatteryHandler` — 三通道电量 + 充电状态解析
+- [x] `AncModeHandler` — 模式切换写入 + cancel_level/awareness_level 级别控制
+- [x] `LowLatencyHandler` — 低延迟三态开关 + 写后刷新（对齐上游）
+- [x] `SoundQualityHandler` — 音质偏好读写（对齐上游，读[1]写param1 + 刷新）
+- [x] `EqPresetHandler` — EQ 预设选择（Symphony/Hi-Fi Live/Pro 3映射）
+- [x] `GestureHandler` — 双击/三击/长按/滑动手势配置
+- [x] `DeviceInfoHandler` — 多编码回退解析 + per-earphone SN 解析
+- [x] `DualConnectHandler` — 双设备连接枚举/管理（CompletableDeferred+5s超时）
+- [x] `AutoPauseHandler` — 自动暂停读写
+- [x] `VoiceLanguageHandler` — 语音语言读写
 
 ---
 

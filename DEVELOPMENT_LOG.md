@@ -87,6 +87,13 @@
 - Files changed: DeviceState.kt (lastDeviceName/Address fields), DeviceManager.kt (connect save + disconnect preserve + resetState), MainScreen.kt (ConnectionCard gray fallback + reconnect button)
 - Status: completed — compiled successfully
 
+## 2026-06-20 — v1.2.2 Release: 4残留问题修复 + 版本号更新
+- Step: 修复4个残留问题（AutoPauseHandler未注册、VoiceLanguageHandler未注册、MainScreen缺失AutoPauseCard/VoiceLanguageCard、DeviceState缺少voiceLanguage字段）
+- Files changed: DeviceManager.kt（注册AutoPauseHandler + VoiceLanguageHandler）、DeviceState.kt（新增voiceLanguage/voiceLanguageOptions）、MainScreen.kt（新增AutoPauseCard + VoiceLanguageCard）
+- Step: 版本号更新 versionCode=1→2, versionName="1.0-2-1"→"1.0-2-2"
+- Step: README.md全面更新（版本号、功能表、开发进度）
+- Status: completed — v1.2.2 ready for push and release
+
 ## 2026-06-19 12:10 — Bug Fix: Connect Drops Immediately + Reconnect No-Op + Button Bounce + Desktop Label + Docs
 - Step: Fix multiple P0 crashes and UX issues after compiled APK testing
 
