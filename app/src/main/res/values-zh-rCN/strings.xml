@@ -132,7 +132,7 @@
     <string name="software_details">软件详情</string>
     <string name="contributors">贡献者</string>
     <string name="contributor_list">MelianMiko (OpenFreebuds 原作者), ct-yx (Android 移植)</string>
-    <string name="version_name">v1.6.6</string>
+    <string name="version_name">v1.6.7</string>
     <string name="disclaimer">免责声明</string>
     <string name="disclaimer_text">本软件仅供学习与个人研究使用，禁止商业用途。协议实现参考 melianmiko/OpenFreebuds 项目。</string>
     <string name="open_source_licenses">开源许可证</string>

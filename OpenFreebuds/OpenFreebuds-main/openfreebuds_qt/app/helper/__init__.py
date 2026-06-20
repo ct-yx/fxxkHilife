@@ -1,1 +1,0 @@
-from .setting_tab_helper import OfbQtSettingsTabHelper
