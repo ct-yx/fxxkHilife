@@ -282,7 +282,7 @@ private fun ConnectionCard(
                     text = when {
                         isConnecting -> state.deviceName.ifEmpty { "SPP…" }
                         state.connected -> state.deviceAddress.ifEmpty { stringResource(R.string.status_ready) }
-                        state.lastDeviceAddress != null && !state.connected -> state.lastDeviceAddress!!
+                        !state.connected && state.lastDeviceAddress != null -> state.lastDeviceAddress!!
                         !isBluetoothOn -> stringResource(R.string.bluetooth_off)
                         else -> stringResource(R.string.tap_to_connect)
                     },
