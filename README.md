@@ -1,4 +1,3 @@
-
 # fxxkHilife
 
 **HUAWEI FreeBuds / HONOR Earbuds 的轻量离线控制 App**
@@ -94,6 +93,7 @@ cd fxxkHilife
 
 ## 项目状态
 
+当前版本：**v1.2.3**（维护版本）
 
 核心功能已基本完成，重点做了以下改进：
 - 连接健壮性（Mutex + 重试 + 状态修正）
@@ -123,7 +123,3 @@ cd fxxkHilife
 ---
 
 如果有功能建议、bug 反馈或者想支持新机型，欢迎提 Issue 或 PR。
-```
-
----
-
