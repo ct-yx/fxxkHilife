@@ -121,3 +121,62 @@ echo "⚠️  别忘了手动追加 DEVELOPMENT_LOG.md 记录！"
 - **`DEVELOPMENT_LOG.md`** 使用 `sed` 替换容易错乱，建议手动追加
 - 如果想用自动化脚本，请先 `chmod +x scripts/update_version.sh`
 - 如果以后添加了新文件（如 `CHANGELOG.md`、`about_screen.xml` 等）包含版本号，请务必追加到上述清单中
+
+---
+
+## Rust 原生守护进程分支 (`feat/rust-native-daemon-proto`)
+
+> `feat/rust-native-daemon-proto` 分支独立维护 Rust 守护进程原型，与 `main` 分支保持 CI 配置同步但拥有独立的版本演进。
+
+### 分支定位
+- **目标**: 在 Kotlin App 之外部署一个 Rust 本地守护进程，提供激进的保活、蓝牙健康监控、通知转发和进程 watchdog
+- **基础**: 基于 `main` 分支的 `v1.5.2` 代码，新增 `native-daemon/` 目录
+- **CI**: 复用 `main` 的 `android-build.yml`（已合并 CI 修复），构建 APK（不含 Rust binary，后续集成）
+
+### 文件结构
+
+| 路径 | 说明 |
+|------|------|
+| `native-daemon/Cargo.toml` | Rust 项目配置（tokio full, serde, libc, ctrlc, futures） |
+| `native-daemon/src/main.rs` | 入口：DaemonConfig（环境变量）、DaemonState、tokio 主循环 |
+| `native-daemon/src/ipc.rs` | Unix Domain Socket JSON-RPC 服务器（10 种 IPC 方法） |
+| `native-daemon/src/bluetooth.rs` | HCI sysfs 蓝牙健康监控（非 root，/sys/class/bluetooth） |
+| `native-daemon/src/keepalive.rs` | 进程 watchdog（pidof + /proc 回退 + am start 重启） |
+| `native-daemon/src/notify.rs` | cmd notification post 通知派发（需 root/shell） |
+| `native-daemon/src/daemon.rs` | PID 文件管理 + signal 0 进程存活检查 |
+| `.gitignore` | 忽略 `native-daemon/target/` |
+
+### 版本策略
+
+Rust daemon 版本独立于 App 版本，仅在 `native-daemon/Cargo.toml` 中维护：
+
+```toml
+[package]
+name = "fxxkhilife_daemon"
+version = "0.1.0"          # ← 在此修改 Rust daemon 版本
+```
+
+| 版本 | 说明 |
+|------|------|
+| `0.1.0` | 原型阶段：5 模块 + IPC 通信验证通过 |
+| `0.2.0`（计划） | Android 端集成：NativeDaemonClient + Launcher |
+| `0.3.0`（计划） | cargo ndk 交叉编译 + APK 嵌入 |
+
+### 与 main 分支的差异
+
+| 维度 | main | feat/rust-native-daemon-proto |
+|------|------|-------------------------------|
+| App 代码 | 完整 v1.5.2 | 同 main（通过 merge 同步） |
+| CI 配置 | actions @v5，完整修复 | 同 main ✅ |
+| Rust 项目 | ❌ 无 | ✅ native-daemon/ |
+| CI 触发 | push/PR → 构建 APK | push/PR → 构建 APK（同上） |
+
+### 同步策略
+- **CI 配置**：每次 main 修改 `.github/workflows/` 后，按需 cherry-pick 或 merge 到 rust 分支
+- **App 代码**：rust 分支的 App 代码与 main 同步，通过定期 merge main 保持
+- **Rust 代码**：rust 分支独有，不反向合并到 main
+
+### 注意事项
+- `native-daemon/target/` 已被 `.gitignore` 排除，Rust 编译产物不入库
+- Rust daemon 需要 root/shell 权限运行，依赖 `pidof`、`am`、`cmd notification` 等 Android 系统命令
+- 跨编译需使用 `cargo ndk` 或 Android NDK 工具链
