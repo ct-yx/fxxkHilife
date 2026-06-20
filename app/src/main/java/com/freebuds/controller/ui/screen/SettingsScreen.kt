@@ -1,11 +1,17 @@
 package com.freebuds.controller.ui.screen
+import android.content.Intent
 
+import android.Manifest
+import android.content.pm.PackageManager
+import android.os.Build
+import android.os.PowerManager
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
+import androidx.compose.material.icons.filled.BatteryChargingFull
 import androidx.compose.material.icons.filled.Share
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
@@ -14,9 +20,11 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
+import androidx.core.content.ContextCompat
 import com.freebuds.controller.FreeBudsApp
 import com.freebuds.controller.device.DeviceManager
 import com.freebuds.controller.util.DebugLogger
+import com.freebuds.controller.util.PermissionHelper
 import kotlinx.coroutines.launch
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -34,6 +42,12 @@ fun SettingsScreen(
     val debugLog by prefs.debugLog.collectAsState(initial = false)
     val scope = rememberCoroutineScope()
     val context = LocalContext.current
+
+    // Battery optimization check
+    val pm = context.getSystemService(android.content.Context.POWER_SERVICE) as PowerManager
+    val isBatteryOptIgnored = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
+        pm.isIgnoringBatteryOptimizations(context.packageName)
+    } else true
 
     Scaffold(
         topBar = {
@@ -60,7 +74,7 @@ fun SettingsScreen(
         ) {
             Spacer(Modifier.height(8.dp))
 
-            // Appearance section
+            // === Appearance ===
             Text(
                 text = "Appearance",
                 style = MaterialTheme.typography.titleSmall,
@@ -68,7 +82,6 @@ fun SettingsScreen(
                 modifier = Modifier.padding(horizontal = 4.dp)
             )
 
-            // Blur style
             SettingsCard(title = "Visual Effect") {
                 BlurStyleOption(
                     label = "Frosted Glass",
@@ -92,7 +105,6 @@ fun SettingsScreen(
                 )
             }
 
-            // Dark mode
             SettingsCard(title = "Theme") {
                 BlurStyleOption(
                     label = "System Default",
@@ -118,7 +130,7 @@ fun SettingsScreen(
 
             Spacer(Modifier.height(8.dp))
 
-            // Connection section
+            // === Connection ===
             Text(
                 text = "Connection",
                 style = MaterialTheme.typography.titleSmall,
@@ -126,7 +138,6 @@ fun SettingsScreen(
                 modifier = Modifier.padding(horizontal = 4.dp)
             )
 
-            // Auto connect
             SettingsCard(title = "Auto Connect") {
                 Row(
                     modifier = Modifier
@@ -146,6 +157,53 @@ fun SettingsScreen(
                         checked = autoConnect,
                         onCheckedChange = { scope.launch { prefs.setAutoConnect(it) } }
                     )
+                }
+            }
+
+            // Battery Optimization — guide to ignore
+            if (!isBatteryOptIgnored) {
+                SettingsCard(title = "Background Keep-Alive") {
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(horizontal = 16.dp, vertical = 12.dp),
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Icon(
+                            Icons.Filled.BatteryChargingFull,
+                            contentDescription = null,
+                            tint = MaterialTheme.colorScheme.error,
+                            modifier = Modifier.size(24.dp)
+                        )
+                        Spacer(Modifier.width(12.dp))
+                        Column(modifier = Modifier.weight(1f)) {
+                            Text(
+                                "Battery Optimization Active",
+                                style = MaterialTheme.typography.bodyLarge,
+                                color = MaterialTheme.colorScheme.error
+                            )
+                            Text(
+                                "System may kill the app in background. Allow \"No restrictions\" to keep connection alive.",
+                                style = MaterialTheme.typography.bodySmall,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant
+                            )
+                        }
+                    }
+                    HorizontalDivider(modifier = Modifier.padding(horizontal = 16.dp))
+                    Button(
+                        onClick = {
+                            PermissionHelper.showToastAndOpenBatteryOptimizationSettings(context)
+                        },
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(horizontal = 16.dp, vertical = 8.dp),
+                        colors = ButtonDefaults.buttonColors(
+                            containerColor = MaterialTheme.colorScheme.errorContainer,
+                            contentColor = MaterialTheme.colorScheme.onErrorContainer
+                        )
+                    ) {
+                        Text("Disable Battery Optimization")
+                    }
                 }
             }
 
@@ -198,10 +256,10 @@ fun SettingsScreen(
                                 prefs.setAncNotificationEnabled(enabled)
                                 val ctx = FreeBudsApp.instance
                                 if (enabled) {
-                                    val intent = android.content.Intent(ctx, com.freebuds.controller.service.StatusNotificationService::class.java)
+                                    val intent = Intent(ctx, com.freebuds.controller.service.StatusNotificationService::class.java)
                                     ctx.startForegroundService(intent)
                                 } else {
-                                    val intent = android.content.Intent(ctx, com.freebuds.controller.service.StatusNotificationService::class.java).apply {
+                                    val intent = Intent(ctx, com.freebuds.controller.service.StatusNotificationService::class.java).apply {
                                         action = com.freebuds.controller.service.StatusNotificationService.ACTION_STOP
                                     }
                                     ctx.startService(intent)
@@ -251,7 +309,7 @@ fun SettingsScreen(
                     IconButton(
                         onClick = {
                             DebugLogger.createShareLogIntent(context)?.let { intent ->
-                                context.startActivity(android.content.Intent.createChooser(intent, "Share Debug Logs"))
+                                context.startActivity(Intent.createChooser(intent, "Share Debug Logs"))
                             }
                         }
                     ) {
@@ -266,7 +324,7 @@ fun SettingsScreen(
 
             Spacer(Modifier.height(8.dp))
 
-            // About section
+            // === About ===
             Text(
                 text = "About",
                 style = MaterialTheme.typography.titleSmall,

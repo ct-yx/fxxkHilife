@@ -34,6 +34,7 @@ import com.freebuds.controller.device.DeviceManager
 import com.freebuds.controller.device.DeviceProfile
 import com.freebuds.controller.device.DeviceState
 import com.freebuds.controller.ui.component.BatteryCard
+import com.freebuds.controller.util.PermissionHelper
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 

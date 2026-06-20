@@ -6,6 +6,7 @@ import android.app.NotificationManager
 import android.bluetooth.BluetoothAdapter
 import android.bluetooth.BluetoothManager
 import android.os.Build
+import com.freebuds.controller.bluetooth.CompanionDeviceHelper
 import com.freebuds.controller.bluetooth.SppClient
 import com.freebuds.controller.data.PreferencesRepository
 import com.freebuds.controller.device.DeviceManager
@@ -26,6 +27,9 @@ class FreeBudsApp : Application() {
     lateinit var deviceManager: DeviceManager
         private set
 
+    lateinit var companionDeviceHelper: CompanionDeviceHelper
+        private set
+
     override fun onCreate() {
         super.onCreate()
         instance = this
@@ -34,6 +38,7 @@ class FreeBudsApp : Application() {
         bluetoothAdapter = bm.adapter
 
         preferences = PreferencesRepository(this)
+        companionDeviceHelper = CompanionDeviceHelper(this)
         deviceManager = DeviceManager(bluetoothAdapter)
 
         // Initialize dual-path debug logger

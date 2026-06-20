@@ -21,6 +21,8 @@ sealed class ConnectionEvent {
     data class Disconnected(val reason: String) : ConnectionEvent()
     data class PackageReceived(val pkg: SppPackage) : ConnectionEvent()
     data class Error(val error: Throwable) : ConnectionEvent()
+    /** Emitted when the heartbeat ping fails after HEARTBEAT_MAX_RETRIES consecutive failures */
+    data class HeartbeatLost(val attempt: Int) : ConnectionEvent()
 }
 
 class SppClient(private val device: BluetoothDevice) : ISppClient {
@@ -28,6 +30,7 @@ class SppClient(private val device: BluetoothDevice) : ISppClient {
     private var inputStream: InputStream? = null
     private var outputStream: OutputStream? = null
     private var job: Job? = null
+    private var heartbeatJob: Job? = null
     private val scope = CoroutineScope(Dispatchers.IO + SupervisorJob())
 
     private val _state = MutableStateFlow(ConnectionState.DISCONNECTED)
@@ -42,6 +45,9 @@ class SppClient(private val device: BluetoothDevice) : ISppClient {
     companion object {
         const val TAG = "SppClient"
         var logEnabled = false  // toggled by PreferencesRepository.debugLog
+        const val HEARTBEAT_INTERVAL_MS = 30_000L       // 30s between heartbeat pings
+        const val HEARTBEAT_TIMEOUT_MS = 5_000L         // 5s timeout per ping
+        const val HEARTBEAT_MAX_RETRIES = 2              // 2 consecutive failures → HeartbeatLost
     }
 
     suspend fun connect(timeoutMs: Long = 10000): Boolean {
@@ -60,6 +66,7 @@ class SppClient(private val device: BluetoothDevice) : ISppClient {
             DebugLogger.i(TAG, "✅ SPP connected to ${device.name}")
             _events.tryEmit(ConnectionEvent.Connected)
             startReceiveLoop()
+            startHeartbeat()
             true
         } catch (e: Exception) {
             _state.value = ConnectionState.DISCONNECTED
@@ -79,12 +86,21 @@ class SppClient(private val device: BluetoothDevice) : ISppClient {
                 outputStream?.write(pkg.toBytes())
                 outputStream?.flush()
                 return withTimeout(timeoutMs) { deferred.await() }
+            } catch (e: CancellationException) {
+                throw e
+            } catch (e: Exception) {
+                DebugLogger.w(TAG, "send() failed for cmd=${pkg.commandId.contentToString()}: ${e.message}")
+                return null
             } finally {
                 pending.remove(key)
             }
         } else {
-            outputStream?.write(pkg.toBytes())
-            outputStream?.flush()
+            try {
+                outputStream?.write(pkg.toBytes())
+                outputStream?.flush()
+            } catch (e: Exception) {
+                DebugLogger.w(TAG, "send(fire-and-forget) failed: ${e.message}")
+            }
             return null
         }
     }
@@ -92,6 +108,68 @@ class SppClient(private val device: BluetoothDevice) : ISppClient {
     override fun registerHandler(cmdId: ByteArray, handler: suspend (SppPackage) -> Unit) {
         val key = cmdId.joinToString("") { "%02x".format(it) }
         handlerCommands[key] = handler
+    }
+
+    /**
+     * Starts connection health heartbeat: sends a BATTERY_READ ping every
+     * HEARTBEAT_INTERVAL_MS.  After HEARTBEAT_MAX_RETRIES consecutive failures
+     * (timeout or exception), emits [ConnectionEvent.HeartbeatLost].
+     */
+    private fun startHeartbeat() {
+        heartbeatJob?.cancel()
+        heartbeatJob = scope.launch {
+            var consecutiveFailures = 0
+            while (isActive && _state.value == ConnectionState.CONNECTED) {
+                delay(HEARTBEAT_INTERVAL_MS)
+                if (_state.value != ConnectionState.CONNECTED) break
+
+                val ok = try {
+                    withTimeout(HEARTBEAT_TIMEOUT_MS) {
+                        sendBatteryPing() != null
+                    }
+                } catch (_: TimeoutCancellationException) {
+                    DebugLogger.w(TAG, "Heartbeat ping timeout (attempt ${consecutiveFailures + 1})")
+                    false
+                } catch (e: Exception) {
+                    DebugLogger.w(TAG, "Heartbeat ping error: ${e.message}")
+                    false
+                }
+
+                if (ok) {
+                    consecutiveFailures = 0
+                } else {
+                    consecutiveFailures++
+                    DebugLogger.w(TAG, "Heartbeat failure $consecutiveFailures/$HEARTBEAT_MAX_RETRIES")
+                    if (consecutiveFailures >= HEARTBEAT_MAX_RETRIES) {
+                        DebugLogger.e(TAG, "Heartbeat lost — $consecutiveFailures consecutive failures")
+                        _events.tryEmit(ConnectionEvent.HeartbeatLost(consecutiveFailures))
+                        break
+                    }
+                }
+            }
+        }
+    }
+
+    /**
+     * Sends a lightweight battery-read ping and waits for the matching response.
+     */
+    private suspend fun sendBatteryPing(): SppPackage? {
+        val pkg = SppPackage.readRequest(SppCommand.BATTERY_READ, listOf(1))
+        val key = pkg.commandId.joinToString("") { "%02x".format(it) }
+        val deferred = CompletableDeferred<SppPackage>()
+        pending[key]?.cancel()
+        pending[key] = deferred
+        return try {
+            outputStream?.write(pkg.toBytes())
+            outputStream?.flush()
+            deferred.await()
+        } catch (_: CancellationException) {
+            throw CancellationException("Heartbeat cancelled")
+        } catch (_: Exception) {
+            null
+        } finally {
+            pending.remove(key)
+        }
     }
 
     private fun startReceiveLoop() {
@@ -118,6 +196,8 @@ class SppClient(private val device: BluetoothDevice) : ISppClient {
             } catch (e: Exception) {
                 _events.tryEmit(ConnectionEvent.Error(e))
             } finally {
+                heartbeatJob?.cancel()
+                heartbeatJob = null
                 disconnect("Receive loop ended")
             }
         }
@@ -155,6 +235,8 @@ class SppClient(private val device: BluetoothDevice) : ISppClient {
 
     fun disconnect(reason: String = "User requested") {
         _state.value = ConnectionState.DISCONNECTING
+        heartbeatJob?.cancel()
+        heartbeatJob = null
         job?.cancel()
         try { socket?.close() } catch (_: Exception) { }
         _state.value = ConnectionState.DISCONNECTED

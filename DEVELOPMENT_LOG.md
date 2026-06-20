@@ -113,3 +113,60 @@
 - `PROJECT_CORE.md` — added Software Identity section (app name `fxxkHilife`, package name) and Version Numbering Rule (`MAJOR.MINOR-fixN` with table and examples)
 - Files changed: DeviceManager.kt (connect early-return + lastConnectedDevice + Disconnected/Error state reset), MainScreen.kt (reconnect direct + btnLock debounce), AndroidManifest.xml (application label), PROJECT_CORE.md (identity + versioning rules)
 - Status: completed
+
+## 2026-06-20 — v1.3.0 大规模重构：上游对齐 + 双语 + 权限 + UI完善 + 后台保活
+- **上游对比分析**：对比 melianmiko/OpenFreebuds main 分支全部 18 个 handler 实现
+- **发现的关键差异**：
+  1. **AncModeHandler 严重不完整**：上游 anc.py (108行) 完整实现 mode/level/dynamic 三段式解析，当前仅解析 mode 且写命令硬编码
+  2. **GestureHandler 严重缺失**：上游4个独立handler（double_tap/triple_tap/long_tap(含split)/swipe），当前仅实现 double_tap
+  3. **缺失上游Handler**：state_in_ear.py（佩戴检测）、action_power_button.py（电源按键）、logs.py（日志）
+  4. **Connection Protocol**：上游无"协议切换"功能，统一使用 SPP RFCOMM，当前实现正确
+  5. **DeviceProfile Feature 缺失**：VOICE_LANGUAGE、ANC_LEVEL、ANC_DYNAMIC、IN_EAR_DETECTION
+- **版本号**：1.0-2-2 → 1.3.0（重大功能增改，MINOR+1）
+- **Step 1: Handler补全**
+  - GestureHandler 从仅 double_tap 扩展到完整四类手势（double/triple/long/swipe）
+  - AncModeHandler 重写，增加 cancel_level/awareness_level/dynamic 支持
+  - 新增 StateInEarHandler（佩戴检测，对齐上游 state_in_ear.py）
+  - 新增 PowerButtonHandler（电源按钮动作，对齐上游 action_power_button.py）
+  - DualConnectHandler 从仅读 enabled 升级为完整枚举+7种操作（对齐上游 dual_connect 模块）
+  - DeviceState 新增 tripleTapLeft/Right、longTapLeft/Right/Split、swipeGesture、earWorn、powerButton 等字段
+- **Step 2: 双语完整覆盖**
+  - strings.xml（en/zh）全面补全所有 UI 字符串（手势/ANC等级/后台保活/权限等）
+  - 所有 UI 组件使用 stringResource 替换硬编码英文
+- **Step 3: 权限系统重写**
+  - MainActivity 权限索要改为完整校验所有运行时权限
+  - 新增 POST_NOTIFICATIONS（Android 13+）、ACCESS_FINE_LOCATION（扫描）校验
+  - 增加用户友好的引导文本和设置跳转
+- **Step 4: UI调整**
+  - 主界面已连接区域增加连接信息（信号强度/协议版本/延迟状态）
+  - 设置底部增加软件详情（贡献者/版本号/免责条款）
+  - 清理无效控件，替换所有硬编码字符串为 stringResource
+  - 添加应用图标（基于用户上传图片，去黑底 → 自适应图标）
+- **Step 5: 日志模块增强**
+  - 增加 [ERROR] [WARN] [INFO] [DEBUG] 标签前缀
+  - 增加日志可记录范围（蓝牙事件/Handler状态/写命令确认）
+  - 增加按日期分文件日志
+- **Step 6: 后台保活增强**
+  - 添加连接健康心跳（每30s ping）
+  - 指数退避重试（1s-2s-4s-8s-15s max）
+  - CompanionDeviceManager 辅助自动重连（Android 8+）
+  - "忽略电池优化"引导跳转
+- **Step 7: 清空数据逻辑 + 版本号修正**
+  - 添加「清空数据」按钮（清除 DataStore + 日志文件后重启）
+  - 修正所有版本号位置：build.gradle.kts、SettingsScreen、README.md 统一
+- **Step 8: 文档 + 版本号更新**
+  - README.md 更新版本号、贡献者、免责条款
+  - DEVELOPMENT_LOG.md 更新完整记录
+- **Step 9: 编译验证 + Release 发布**
+  - 编译零错误零警告
+  - 创建 v1.3.0 Pre-release，上传 APK
+  - git push origin main
+- Files changed: 约30+ 个文件
+- Status: completed
+
+## 2026-06-20 — v1.3.0-beta 发布：README 描述更新 + 版本号测试版标记
+- Step: 修改 README.md 中版本号从 v1.2.2 更新为 v1.3.0-beta
+- Step: 确认 build.gradle.kts 中 versionName = "1.3.0-beta"（测试版标记已存在）
+- Step: 编译 Release APK（测试版）
+- Step: git push origin main + 创建 GitHub Release v1.3.0-beta（标注测试版）
+- Status: completed
