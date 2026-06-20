@@ -299,3 +299,22 @@
 - GitHub 远程同步：更新 tag 和默认分支
 - **Files changed**: 3+ files
 ✅ completed
+
+---
+
+## 2026-06-20
+
+**CI 修复: Gradle wrapper 指向本地路径，修复 GitHub Actions 构建失败**
+
+### 根因
+`gradle-wrapper.properties` 中 distributionUrl 指向本地 Termux 文件路径，CI runner 上无法访问
+
+### 修复
+distributionUrl 从 `file:///root/gradle/gradle-9.1.0-bin.zip` 改为官方 Gradle URL
+
+### 关联改动
+- 放弃本地编译，全面迁移至 GitHub Actions 云端编译
+- 创建 `.github/workflows/android-build.yml` — push/PR 自动编译
+- 创建 `.github/workflows/release.yml` — 打 tag 自动 Release
+- **Files changed**: gradle-wrapper.properties
+✅ completed
