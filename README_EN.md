@@ -98,7 +98,7 @@ After installation, grant Bluetooth permissions (Android 12+ requires `BLUETOOTH
 
 ## Project Status
 
-Current version: **v1.6.5** (stable release)
+Current version: **v1.6.5** (testing release)
 
 Core functionality is largely complete. Key improvements include:
 
@@ -114,6 +114,26 @@ Core functionality is largely complete. Key improvements include:
 - **Background keep-alive enhancement**: WorkManager periodic keep-alive + CompanionDeviceManager auto-reconnect + battery optimization guidance
 - **Permission error UX improved**: Chinese/English Toast on permission denial, AlertDialog redirecting to system settings after repeated denials
 - **App icon**: Black background removed, full mipmap density set generated
+
+### ⚠️ Known Issues (v1.6.5)
+
+This release is in **feature validation stage**. The following features have code implementation but **may not work correctly on all devices**. Testing feedback is welcome:
+
+| Feature | Status | Notes |
+|---------|--------|-------|
+| ANC mode switching (in-app) | ✅ **Working** | Off / Noise Cancel / Awareness |
+| **ANC Quick Tile** | ❌ **Broken** | Only switches to Noise Cancel mode |
+| **Low Latency mode** | ❌ **Broken** | In-app toggle may not take effect |
+| **EQ Presets** | ❌ **Broken** | No response after switching presets |
+| **Gesture settings** | ❌ **Broken** | Double/triple/long press/swipe not working |
+| **Sound Quality preference** | ❌ **Broken** | Stable/Quality toggle has no effect |
+| **Dual Device Connect** | ❌ **Broken** | Toggle may not sync to earbuds |
+| Battery display | ✅ **Working** | Left / Right / Case |
+| Device info | ✅ **Working** | Firmware, serial number etc. |
+| Log export | ✅ **Working** | One-tap share debug logs |
+| Theme switching | ✅ **Working** | Light / Dark / System |
+
+> These issues are most likely **protocol command parameter or timing problems**. Issues and PRs are welcome.
 
 Detailed development log: [DEVELOPMENT_LOG.md](./DEVELOPMENT_LOG.md)
 
