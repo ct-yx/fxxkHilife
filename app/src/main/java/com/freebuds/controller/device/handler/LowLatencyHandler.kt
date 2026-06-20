@@ -20,10 +20,10 @@ class LowLatencyHandler : Handler {
     override suspend fun setProperty(client: ISppClient, prop: String, value: String) {
         if (prop == "low_latency") {
             val on = value == "true"
-            // Fire-and-forget — device doesn't ACK write commands
+            // Device ACKs write commands (upstream uses change_rq which waits for response)
             client.send(SppPackage.writeRequest(SppCommand.LOW_LATENCY,
                 listOf(1 to if (on) byteArrayOf(0x01) else byteArrayOf(0x00)),
-                expectResponse = false))
+                expectResponse = true), timeoutMs = 2000)
         }
     }
 }

@@ -98,7 +98,7 @@ After installation, grant Bluetooth permissions (Android 12+ requires `BLUETOOTH
 
 ## Project Status
 
-Current version: **v1.5.3** (stable release)
+Current version: **v1.6.4** (stable release)
 
 Core functionality is largely complete. Key improvements include:
 

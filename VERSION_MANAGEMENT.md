@@ -10,12 +10,12 @@
 
 | # | 文件 | 字段 | 当前值 | 更新方式 |
 |---|------|------|--------|----------|
-| 1 | `app/build.gradle.kts` | `versionCode` | `5` | 直接修改数字 |
-| 2 | `app/build.gradle.kts` | `versionName` | `"v1.5.2"` | 直接修改字符串 |
-| 3 | `app/src/main/res/values/strings.xml` | `<string name="version_name">` | `"v1.3.0-beta"` | 直接修改字符串 |
-| 4 | `app/src/main/res/values-zh-rCN/strings.xml` | `<string name="version_name">` | `"v1.3.0-beta"` | 直接修改字符串 |
-| 5 | `README.md` | "当前版本：\*\*v1.5.2\*\*" | `v1.5.2` | 直接修改文本 |
-| 6 | `README_EN.md` | "Current version: \*\*v1.5.2\*\*" | `v1.5.2` | 直接修改文本 |
+| 1 | `app/build.gradle.kts` | `versionCode` | `7` | 直接修改数字 |
+| 2 | `app/build.gradle.kts` | `versionName` | `"v1.6.4"` | 直接修改字符串 |
+| 3 | `app/src/main/res/values/strings.xml` | `<string name="version_name">` | `"v1.6.4"` | 直接修改字符串 |
+| 4 | `app/src/main/res/values-zh-rCN/strings.xml` | `<string name="version_name">` | `"v1.6.4"` | 直接修改字符串 |
+| 5 | `README.md` | "当前版本：\*\*v1.6.4\*\*" | `v1.6.4` | 直接修改文本 |
+| 6 | `README_EN.md` | "Current version: \*\*v1.6.4\*\*" | `v1.6.4` | 直接修改文本 |
 | 7 | `DEVELOPMENT_LOG.md` | 末尾新增变更记录 | — | 按模板追加 |
 | — | `SettingsScreen.kt` | `BuildConfig.VERSION_NAME` | 自动读取 | **无需手动修改** |
 
@@ -130,7 +130,7 @@ echo "⚠️  别忘了手动追加 DEVELOPMENT_LOG.md 记录！"
 
 ### 分支定位
 - **目标**: 在 Kotlin App 之外部署一个 Rust 本地守护进程，提供激进的保活、蓝牙健康监控、通知转发和进程 watchdog
-- **基础**: 基于 `main` 分支的 `v1.5.2` 代码，新增 `native-daemon/` 目录
+- **基础**: 基于 `main` 分支的 `v1.6.4` 代码，新增 `native-daemon/` 目录
 - **CI**: 复用 `main` 的 `android-build.yml`（已合并 CI 修复），构建 APK（不含 Rust binary，后续集成）
 
 ### 文件结构
@@ -166,7 +166,7 @@ version = "0.1.0"          # ← 在此修改 Rust daemon 版本
 
 | 维度 | main | feat/rust-native-daemon-proto |
 |------|------|-------------------------------|
-| App 代码 | 完整 v1.5.2 | 同 main（通过 merge 同步） |
+| App 代码 | 完整 v1.6.4 | 同 main（通过 merge 同步） |
 | CI 配置 | actions @v5，完整修复 | 同 main ✅ |
 | Rust 项目 | ❌ 无 | ✅ native-daemon/ |
 | CI 触发 | push/PR → 构建 APK | push/PR → 构建 APK（同上） |

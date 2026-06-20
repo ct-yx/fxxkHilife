@@ -54,7 +54,7 @@ class EqPresetHandler : Handler {
         if (prop != "eq_preset") return
         // value is preset name like "Default"/"Hardbass"/etc
         val modeId = KNOWN_PRESETS.entries.find { it.value == value }?.key ?: 1
-        // Fire-and-forget — device doesn't ACK write commands
-        client.send(SppPackage.writeRequest(CMD_WRITE, listOf(1 to byteArrayOf(modeId.toByte())), expectResponse = false))
+        // Device ACKs write commands
+        client.send(SppPackage.writeRequest(CMD_WRITE, listOf(1 to byteArrayOf(modeId.toByte())), expectResponse = true), timeoutMs = 2000)
     }
 }

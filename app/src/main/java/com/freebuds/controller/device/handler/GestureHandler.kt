@@ -132,29 +132,29 @@ class GestureHandler : Handler {
     private suspend fun writeTapAction(client: ISppClient, cmd: ByteArray, paramType: Int, value: String, actions: Map<Int, String>) {
         val byteVal = actions.entries.find { it.value == value }?.key ?: -1
         val payloadByte = if (byteVal < 0) (byteVal + 256).toByte() else byteVal.toByte()
-        // Fire-and-forget — device doesn't ACK write commands
-        client.send(SppPackage.writeRequest(cmd, listOf(paramType to byteArrayOf(payloadByte)), expectResponse = false))
+        // Device ACKs write commands
+        client.send(SppPackage.writeRequest(cmd, listOf(paramType to byteArrayOf(payloadByte)), expectResponse = true), timeoutMs = 2000)
         DebugLogger.i(TAG, "Written tap action: cmd=${cmd.contentToString()}, param=$paramType, value=$value(byte=$byteVal)")
     }
 
     private suspend fun writeLongTap(client: ISppClient, value: String) {
         val byteVal = LONG_TAP_ACTIONS.entries.find { it.value == value }?.key ?: -1
         val payloadByte = if (byteVal < 0) (byteVal + 256).toByte() else byteVal.toByte()
-        // Fire-and-forget — device doesn't ACK write commands
+        // Device ACKs write commands
         client.send(SppPackage.writeRequest(SppCommand.LONG_TAP_BASE_WRITE, listOf(
             1 to byteArrayOf(payloadByte),
             2 to byteArrayOf(payloadByte)
-        ), expectResponse = false))
+        ), expectResponse = true), timeoutMs = 2000)
     }
 
     private suspend fun writeSwipe(client: ISppClient, value: String) {
         val byteVal = SWIPE_ACTIONS.entries.find { it.value == value }?.key ?: -1
         val payloadByte = if (byteVal < 0) (byteVal + 256).toByte() else byteVal.toByte()
-        // Fire-and-forget — device doesn't ACK write commands
+        // Device ACKs write commands
         client.send(SppPackage.writeRequest(SppCommand.SWIPE_WRITE, listOf(
             1 to byteArrayOf(payloadByte),
             2 to byteArrayOf(payloadByte)
-        ), expectResponse = false))
+        ), expectResponse = true), timeoutMs = 2000)
     }
 
     private fun actionName(actions: Map<Int, String>, byteVal: Int): String {
