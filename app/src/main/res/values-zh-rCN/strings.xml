@@ -132,7 +132,7 @@
     <string name="software_details">软件详情</string>
     <string name="contributors">贡献者</string>
     <string name="contributor_list">MelianMiko (OpenFreebuds 原作者), ct-yx (Android 移植)</string>
-    <string name="version_name">v1.6.7</string>
+    <string name="version_name">v1.6.8</string>
     <string name="disclaimer">免责声明</string>
     <string name="disclaimer_text">本软件仅供学习与个人研究使用，禁止商业用途。协议实现参考 melianmiko/OpenFreebuds 项目。</string>
     <string name="open_source_licenses">开源许可证</string>
@@ -141,9 +141,9 @@
     <string name="clear_data_desc">重置应用偏好、断开设备、清除缓存</string>
     <string name="clear_data_confirm">确定要清空所有数据吗？将清除所有偏好设置和日志。</string>
     <string name="clear_data_done">数据已清空，应用即将重启。</string>
-    <string name="tile_label">ANC 控制</string>
+    <string name="tile_nc_label">降噪</string>
+    <string name="tile_aw_label">透传</string>
     <string name="tile_subtitle_disconnected">未连接</string>
-    <string name="tile_subtitle_tap_to_switch">点击切换</string>
     <string name="anc_off">ANC 关闭</string>
     <string name="anc_noise_cancel">降噪</string>
     <string name="anc_awareness">透传</string>

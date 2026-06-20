@@ -156,7 +156,7 @@
     <string name="software_details">Software Details</string>
     <string name="contributors">Contributors</string>
     <string name="contributor_list">MelianMiko (original OpenFreebuds), ct-yx (Android port)</string>
-    <string name="version_name">v1.6.7</string>
+    <string name="version_name">v1.6.8</string>
     <string name="disclaimer">Disclaimer</string>
     <string name="disclaimer_text">This software is provided for learning and personal research purposes only. Commercial use is prohibited. Protocol implementation references melianmiko/OpenFreebuds project.</string>
     <string name="open_source_licenses">Open Source Licenses</string>
@@ -169,9 +169,9 @@
     <string name="clear_data_done">Data cleared. App will restart.</string>
 
     <!-- Tile -->
-    <string name="tile_label">ANC Control</string>
+    <string name="tile_nc_label">Noise Cancel</string>
+    <string name="tile_aw_label">Awareness</string>
     <string name="tile_subtitle_disconnected">Not connected</string>
-    <string name="tile_subtitle_tap_to_switch">Tap to switch</string>
     <string name="anc_off">ANC Off</string>
     <string name="anc_noise_cancel">Noise Cancel</string>
     <string name="anc_awareness">Awareness</string>

@@ -38,12 +38,24 @@
             </intent-filter>
         </activity>
 
-        <!-- Quick Settings Tile for ANC mode switching -->
+        <!-- Quick Settings Tile: Noise Cancel ON/OFF -->
         <service
-            android:name=".service.AncQuickTileService"
+            android:name=".service.NoiseCancelTileService"
             android:exported="true"
             android:icon="@drawable/ic_tile_anc"
-            android:label="ANC Control"
+            android:label="Noise Cancel"
+            android:permission="android.permission.BIND_QUICK_SETTINGS_TILE">
+            <intent-filter>
+                <action android:name="android.service.quicksettings.action.QS_TILE" />
+            </intent-filter>
+        </service>
+
+        <!-- Quick Settings Tile: Awareness ON/OFF -->
+        <service
+            android:name=".service.AwarenessTileService"
+            android:exported="true"
+            android:icon="@drawable/ic_tile_anc"
+            android:label="Awareness"
             android:permission="android.permission.BIND_QUICK_SETTINGS_TILE">
             <intent-filter>
                 <action android:name="android.service.quicksettings.action.QS_TILE" />

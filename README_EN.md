@@ -98,7 +98,7 @@ After installation, grant Bluetooth permissions (Android 12+ requires `BLUETOOTH
 
 ## Project Status
 
-Current version: **v1.6.7** (testing release)
+Current version: **v1.6.8** (testing release)
 
 Core functionality is largely complete. Key improvements include:
 
@@ -115,14 +115,14 @@ Core functionality is largely complete. Key improvements include:
 - **Permission error UX improved**: Chinese/English Toast on permission denial, AlertDialog redirecting to system settings after repeated denials
 - **App icon**: Black background removed, full mipmap density set generated
 
-### ⚠️ Known Issues (v1.6.7)
+### ⚠️ Known Issues (v1.6.8)
 
 This release is in **feature validation stage**. The following features have code implementation but **may not work correctly on all devices**. Testing feedback is welcome:
 
 | Feature | Status | Notes |
 |---------|--------|-------|
 | ANC mode switching (in-app) | ✅ **Working** | Off / Noise Cancel / Awareness |
-| ANC Quick Tile | ✅ **Fixed v1.6.7** | Cycles Off / Noise Cancel / Awareness |
+| Noise Cancel Tile | ✅ **Rewritten v1.6.8** | Split into 2 independent Tiles: Noise Cancel + Awareness, each is two-state (on/off) |
 | **Low Latency mode** | ❌ **Broken** | In-app toggle may not take effect |
 | **EQ Presets** | ❌ **Broken** | No response after switching presets |
 | **Gesture settings** | ❌ **Broken** | Double/triple/long press/swipe not working |
