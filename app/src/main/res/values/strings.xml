@@ -156,7 +156,7 @@
     <string name="software_details">Software Details</string>
     <string name="contributors">Contributors</string>
     <string name="contributor_list">MelianMiko (original OpenFreebuds), ct-yx (Android port)</string>
-    <string name="version_name">v1.6.4</string>
+    <string name="version_name">v1.6.5</string>
     <string name="disclaimer">Disclaimer</string>
     <string name="disclaimer_text">This software is provided for learning and personal research purposes only. Commercial use is prohibited. Protocol implementation references melianmiko/OpenFreebuds project.</string>
     <string name="open_source_licenses">Open Source Licenses</string>
