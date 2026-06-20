@@ -349,22 +349,22 @@ private fun QuickControlsCard(
             )
             Spacer(Modifier.height(16.dp))
 
-            // ANC Mode
+            // ANC Mode — compare with AncMode enum, not displayName string
             Text("Noise Control", style = MaterialTheme.typography.labelLarge)
             Spacer(Modifier.height(8.dp))
             SingleChoiceSegmentedButtonRow(modifier = Modifier.fillMaxWidth()) {
                 SegmentedButton(
-                    selected = state.ancMode.displayName == "Off",
+                    selected = state.ancMode == com.freebuds.controller.device.AncMode.OFF,
                     onClick = { onSetAncMode("off") },
                     shape = SegmentedButtonDefaults.itemShape(index = 0, count = 3)
                 ) { Text("Off") }
                 SegmentedButton(
-                    selected = state.ancMode.displayName == "Noise Cancellation",
+                    selected = state.ancMode == com.freebuds.controller.device.AncMode.CANCELLATION,
                     onClick = { onSetAncMode("cancellation") },
                     shape = SegmentedButtonDefaults.itemShape(index = 1, count = 3)
                 ) { Text("Noise Cancel") }
                 SegmentedButton(
-                    selected = state.ancMode.displayName == "Awareness",
+                    selected = state.ancMode == com.freebuds.controller.device.AncMode.AWARENESS,
                     onClick = { onSetAncMode("awareness") },
                     shape = SegmentedButtonDefaults.itemShape(index = 2, count = 3)
                 ) { Text("Awareness") }

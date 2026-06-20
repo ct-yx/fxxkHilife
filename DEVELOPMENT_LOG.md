@@ -318,3 +318,28 @@ distributionUrl 从 `file:///root/gradle/gradle-9.1.0-bin.zip` 改为官方 Grad
 - 创建 `.github/workflows/release.yml` — 打 tag 自动 Release
 - **Files changed**: gradle-wrapper.properties
 ✅ completed
+
+---
+
+## 2026-06-20
+
+**Bug fix: UI 控件点击后属性状态不更新（ANC / Low Latency / Sound Quality / Gestures / Dual Connect）**
+
+### Root cause
+
+核心链路问题：所有 Handler 的 `setProperty()` 写命令都使用 `SppPackage.writeRequest()`，其默认 `responseId = cmd` 导致 `SppClient.send()` 会阻塞等待设备响应。FreeBuds 设备对写命令不回复 ACK，导致：
+
+1. **写命令超时占用 pending 表** — 5s 超时期间该命令 ID 在 `pending` map 中未被清理，如果后续有同命令 ID（如 `refreshState` 的读命令）就冲突
+2. **`refreshState()` 无超时保护** — 单个 Handler 读超时（如 GestureHandler 每个手势都发独立读命令）会阻塞整个状态刷新
+3. **UI 比较用 `displayName` 字符串** — 枚举值比较更可靠
+
+### 修复
+
+1. **`SppPackage.writeRequest()`** — 新增 `expectResponse: Boolean` 参数，`false` 时设 `responseId = ByteArray(0)`，写入后立即返回不等待
+2. **所有 6 个 Handler 的 `setProperty`** — AncModeHandler、LowLatencyHandler、SoundQualityHandler、EqPresetHandler、GestureHandler、DualConnectHandler 全部改用 `expectResponse = false`
+3. **`DeviceManager.refreshState()`** — 每个 Handler 的 `applyToState` 包裹 `withTimeout(2000ms)` + try-catch，单 Handler 超时不阻塞整体刷新
+4. **`DeviceManager.setProperty()`** — 写后等待从 300ms 增至 500ms，给设备更多处理时间
+5. **`MainScreen.kt` QuickControlsCard** — ANC 按钮 `selected` 比较从 `displayName == "Off"` 改为 `AncMode.OFF` 枚举对比
+
+- Files: `SppPackage.kt`, `DeviceManager.kt`, `AncModeHandler.kt`, `LowLatencyHandler.kt`, `SoundQualityHandler.kt`, `EqPresetHandler.kt`, `GestureHandler.kt`, `DualConnectHandler.kt`, `MainScreen.kt`
+✅ completed

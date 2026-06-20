@@ -20,8 +20,8 @@ class SppPackage(
         fun readRequest(cmd: ByteArray, paramTypes: List<Int>): SppPackage =
             SppPackage(cmd, cmd, paramTypes.map { it to ByteArray(0) })
 
-        fun writeRequest(cmd: ByteArray, params: List<Pair<Int, ByteArray>>): SppPackage =
-            SppPackage(cmd, cmd, params)
+        fun writeRequest(cmd: ByteArray, params: List<Pair<Int, ByteArray>>, expectResponse: Boolean = true): SppPackage =
+            SppPackage(cmd, if (expectResponse) cmd else ByteArray(0), params)
     }
 
     fun toBytes(): ByteArray {

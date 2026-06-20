@@ -32,6 +32,7 @@ class DualConnectHandler : Handler {
     override suspend fun setProperty(client: ISppClient, prop: String, value: String) {
         if (prop != "dual_connect_enabled") return
         val byteVal = if (value == "true") byteArrayOf(0x01) else byteArrayOf(0x00)
-        client.send(SppPackage.writeRequest(CMD_WRITE, listOf(1 to byteVal)))
+        // Fire-and-forget — device doesn't ACK write commands
+        client.send(SppPackage.writeRequest(CMD_WRITE, listOf(1 to byteVal), expectResponse = false))
     }
 }

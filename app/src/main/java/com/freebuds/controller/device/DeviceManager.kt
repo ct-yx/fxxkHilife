@@ -299,24 +299,43 @@ class DeviceManager(private val bluetoothAdapter: BluetoothAdapter?) {
         }
     }
 
+    /**
+     * Re-read all handler states from device and update [_state].
+     * Each handler read is wrapped in a per-handler try-catch with a
+     * configurable timeout, so a single slow handler doesn't block the
+     * entire refresh (and consequently the UI).
+     */
     private fun refreshState() {
         refreshJob?.cancel()
         refreshJob = scope.launch {
             val c = client ?: return@launch
             var s = _state.value
             for (handler in handlers) {
-                s = handler.applyToState(c, s)
+                try {
+                    s = withTimeout(2000) { handler.applyToState(c, s) }
+                } catch (e: Exception) {
+                    DebugLogger.w(TAG, "Handler ${handler.id} applyToState timeout/fail: ${e.message}")
+                    // Keep previous state for this handler, continue with others
+                }
             }
             _state.value = s.copy(connected = true)
         }
     }
 
+    /**
+     * Set a device property. Writes via handler, then reads back after a short delay.
+     * If the write command expects a response (has [responseId]), `send()` will wait
+     * for device ACK; otherwise it fire-and-forgets.
+     *
+     * After the write, [refreshState] re-reads all handler states to sync the UI.
+     */
     suspend fun setProperty(prop: String, value: String) {
         val c = client ?: return
         for (handler in handlers) {
             handler.setProperty(c, prop, value)
         }
-        delay(300)
+        // Give the device time to process before re-reading
+        delay(500)
         refreshState()
     }
 

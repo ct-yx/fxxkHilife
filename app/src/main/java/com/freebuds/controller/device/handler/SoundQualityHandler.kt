@@ -22,7 +22,8 @@ class SoundQualityHandler : Handler {
     override suspend fun setProperty(client: ISppClient, prop: String, value: String) {
         if (prop == "sound_quality") {
             val byteVal = if (value == "sqp_quality") byteArrayOf(0x01) else byteArrayOf(0x00)
-            client.send(SppPackage.writeRequest(SppCommand.SOUND_QUALITY_WRITE, listOf(1 to byteVal)))
+            // Fire-and-forget — device doesn't ACK write commands
+            client.send(SppPackage.writeRequest(SppCommand.SOUND_QUALITY_WRITE, listOf(1 to byteVal), expectResponse = false))
         }
     }
 }

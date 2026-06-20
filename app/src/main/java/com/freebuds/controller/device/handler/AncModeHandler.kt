@@ -75,7 +75,8 @@ class AncModeHandler : Handler {
                 val valueByte = options[value] ?: 0
                 val payload = if (valueByte == 0) byteArrayOf(valueByte.toByte(), 0x00)
                               else byteArrayOf(valueByte.toByte(), 0xFF.toByte())
-                val pkg = SppPackage.writeRequest(SppCommand.ANC_MODE_WRITE, listOf(1 to payload))
+                // Fire-and-forget: most devices don't ACK write commands
+                val pkg = SppPackage.writeRequest(SppCommand.ANC_MODE_WRITE, listOf(1 to payload), expectResponse = false)
                 client.send(pkg)
                 DebugLogger.i(TAG, "Written ANC mode: $value (byte=$valueByte)")
             }
@@ -89,7 +90,8 @@ class AncModeHandler : Handler {
                 }
                 val valueByte = options[value] ?: 0
                 val payload = byteArrayOf(activeModeValue, valueByte.toByte())
-                val pkg = SppPackage.writeRequest(SppCommand.ANC_MODE_WRITE, listOf(1 to payload))
+                // Fire-and-forget
+                val pkg = SppPackage.writeRequest(SppCommand.ANC_MODE_WRITE, listOf(1 to payload), expectResponse = false)
                 client.send(pkg)
                 DebugLogger.i(TAG, "Written ANC level: $value (byte=$valueByte, active_mode=$activeModeByte)")
             }
