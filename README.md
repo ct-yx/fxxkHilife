@@ -5,6 +5,8 @@
 
 > 通过经典蓝牙 SPP 直接控制耳机，无需登录华为账号、无广告、完全离线。
 
+> **[English](./README_EN.md)** | 中文
+
 本项目是 [OpenFreebuds](https://github.com/melianmiko/OpenFreebuds)（MelianMiko）的 Android 实现，感谢原作者出色的协议逆向工作。
 
 ---
