@@ -7,6 +7,7 @@ import androidx.datastore.preferences.core.booleanPreferencesKey
 import androidx.datastore.preferences.core.edit
 import androidx.datastore.preferences.core.stringPreferencesKey
 import androidx.datastore.preferences.preferencesDataStore
+import com.freebuds.controller.FreeBudsApp
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.map
 
@@ -54,6 +55,11 @@ class PreferencesRepository(private val context: Context) {
 
     suspend fun setLanguage(lang: String) {
         context.dataStore.edit { it[LANGUAGE] = lang }
+        // Sync to SharedPreferences so attachBaseContext can read it before DataStore is ready
+        val syncPrefs = context.getSharedPreferences(
+            FreeBudsApp.LANG_PREFS_NAME, Context.MODE_PRIVATE
+        )
+        syncPrefs.edit().putString(FreeBudsApp.LANG_PREFS_KEY, lang).apply()
     }
 
     suspend fun setDarkMode(mode: String) {

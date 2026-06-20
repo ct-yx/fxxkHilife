@@ -121,7 +121,7 @@ fun MainScreen(
                                         deviceManager.connect(last)
                                     } catch (e: Exception) {
                                         Log.e("MainScreen", "Reconnect failed", e)
-                                        snackbarHostState.showSnackbar("Reconnect failed")
+                                        snackbarHostState.showSnackbar("${stringResource(R.string.btn_reconnect)} failed")
                                     }
                                     delay(500); btnLock = false
                                 }
@@ -246,7 +246,7 @@ fun MainScreen(
                         } catch (e: Exception) {
                             Log.e("MainScreen", "connect() failed", e)
                             snackbarHostState.showSnackbar(
-                                "Connection failed: ${e.message ?: "Unknown error"}"
+                                "${stringResource(R.string.status_connected)} failed: ${e.message ?: "Unknown error"}"
                             )
                         }
                         delay(500); btnLock = false
@@ -292,7 +292,7 @@ private fun ConnectionCard(
                     text = when {
                         isConnecting -> stringResource(R.string.status_connecting)
                         state.connected -> state.deviceName.ifEmpty { stringResource(R.string.status_connected) }
-                        state.lastDeviceName != null -> "Disconnected: ${state.lastDeviceName}"
+                        state.lastDeviceName != null -> "${stringResource(R.string.status_not_connected)}: ${state.lastDeviceName}"
                         else -> stringResource(R.string.status_not_connected)
                     },
                     style = MaterialTheme.typography.titleMedium,
@@ -303,7 +303,7 @@ private fun ConnectionCard(
                 )
                 Text(
                     text = when {
-                        isConnecting -> state.deviceName.ifEmpty { "SPP…" }
+                        isConnecting -> state.deviceName.ifEmpty { stringResource(R.string.status_connecting) }
                         state.connected -> state.deviceAddress.ifEmpty { stringResource(R.string.status_ready) }
                         !state.connected && state.lastDeviceAddress != null -> state.lastDeviceAddress!!
                         !isBluetoothOn -> stringResource(R.string.bluetooth_off)
@@ -329,7 +329,7 @@ private fun ConnectionCard(
                     FilledTonalButton(onClick = onConnectClick) {
                         Icon(Icons.Filled.Bluetooth, contentDescription = null, modifier = Modifier.size(18.dp))
                         Spacer(Modifier.width(4.dp))
-                        Text("Reconnect")
+                        Text(stringResource(R.string.btn_reconnect))
                     }
                 }
                 isBluetoothOn -> {
@@ -366,38 +366,38 @@ private fun QuickControlsCard(
                 .padding(20.dp)
         ) {
             Text(
-                text = "Quick Controls",
+                text = stringResource(R.string.section_quick_controls),
                 style = MaterialTheme.typography.titleSmall,
                 color = MaterialTheme.colorScheme.onSurfaceVariant
             )
             Spacer(Modifier.height(16.dp))
 
             // ANC Mode — compare with AncMode enum, not displayName string
-            Text("Noise Control", style = MaterialTheme.typography.labelLarge)
+            Text(stringResource(R.string.label_noise_control), style = MaterialTheme.typography.labelLarge)
             Spacer(Modifier.height(8.dp))
             SingleChoiceSegmentedButtonRow(modifier = Modifier.fillMaxWidth()) {
                 SegmentedButton(
                     selected = state.ancMode == com.freebuds.controller.device.AncMode.OFF,
                     onClick = { onSetAncMode("off") },
                     shape = SegmentedButtonDefaults.itemShape(index = 0, count = 3)
-                ) { Text("Off") }
+                ) { Text(stringResource(R.string.label_normal)) }
                 SegmentedButton(
                     selected = state.ancMode == com.freebuds.controller.device.AncMode.CANCELLATION,
                     onClick = { onSetAncMode("cancellation") },
                     shape = SegmentedButtonDefaults.itemShape(index = 1, count = 3)
-                ) { Text("Noise Cancel") }
+                ) { Text(stringResource(R.string.label_noise_cancel)) }
                 SegmentedButton(
                     selected = state.ancMode == com.freebuds.controller.device.AncMode.AWARENESS,
                     onClick = { onSetAncMode("awareness") },
                     shape = SegmentedButtonDefaults.itemShape(index = 2, count = 3)
-                ) { Text("Awareness") }
+                ) { Text(stringResource(R.string.label_awareness)) }
             }
             Spacer(Modifier.height(16.dp))
 
             // Low Latency — tri-state Manual / Off / Auto-Fixed
-            Text("Game / Low Latency Mode", style = MaterialTheme.typography.labelLarge)
+            Text(stringResource(R.string.label_game_mode), style = MaterialTheme.typography.labelLarge)
             Text(
-                "Reduces audio delay for gaming",
+                stringResource(R.string.label_game_desc),
                 style = MaterialTheme.typography.bodySmall,
                 color = MaterialTheme.colorScheme.onSurfaceVariant
             )
@@ -407,34 +407,33 @@ private fun QuickControlsCard(
                     selected = state.lowLatency == false,
                     onClick = { onToggleLowLatency(false) },
                     shape = SegmentedButtonDefaults.itemShape(index = 0, count = 3)
-                ) { Text("Off") }
+                ) { Text(stringResource(R.string.btn_off)) }
                 SegmentedButton(
                     selected = state.lowLatency == true,
                     onClick = { onToggleLowLatency(true) },
                     shape = SegmentedButtonDefaults.itemShape(index = 1, count = 3)
-                ) { Text("On") }
+                ) { Text(stringResource(R.string.btn_on)) }
                 SegmentedButton(
                     selected = isLowLatencyFixed,
                     onClick = onSetLowLatencyFixed,
                     shape = SegmentedButtonDefaults.itemShape(index = 2, count = 3)
-                ) { Text("Fixed On") }
-            }
+                ) { Text(stringResource(R.string.btn_fixed_on)) }
             Spacer(Modifier.height(12.dp))
 
             // Sound Quality
-            Text("Sound Quality Preference", style = MaterialTheme.typography.labelLarge)
+            Text(stringResource(R.string.label_sound_quality), style = MaterialTheme.typography.labelLarge)
             Spacer(Modifier.height(8.dp))
             SingleChoiceSegmentedButtonRow(modifier = Modifier.fillMaxWidth()) {
                 SegmentedButton(
                     selected = state.soundQuality != "sqp_quality",
                     onClick = { onSetSoundQuality("sqp_connectivity") },
                     shape = SegmentedButtonDefaults.itemShape(index = 0, count = 2)
-                ) { Text("Stable") }
+                ) { Text(stringResource(R.string.btn_stable)) }
                 SegmentedButton(
                     selected = state.soundQuality == "sqp_quality",
                     onClick = { onSetSoundQuality("sqp_quality") },
                     shape = SegmentedButtonDefaults.itemShape(index = 1, count = 2)
-                ) { Text("Quality") }
+                ) { Text(stringResource(R.string.btn_quality)) }
             }
         }
     }
@@ -494,7 +493,7 @@ private fun DevicePickerDialog(
                                 Icon(Icons.Filled.Bluetooth, contentDescription = null, tint = MaterialTheme.colorScheme.primary, modifier = Modifier.size(24.dp))
                                 Spacer(Modifier.width(12.dp))
                                 Column {
-                                    Text(device.name ?: "Unknown Device", style = MaterialTheme.typography.bodyLarge)
+                                    Text(device.name ?: stringResource(R.string.dlg_no_devices), style = MaterialTheme.typography.bodyLarge)
                                     Text(device.address, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
                                 }
                             }
@@ -524,17 +523,17 @@ private fun EqPresetCard(
                 .fillMaxWidth()
                 .padding(20.dp)
         ) {
-            Text("Equalizer Preset", style = MaterialTheme.typography.titleSmall,
+            Text(stringResource(R.string.section_eq), style = MaterialTheme.typography.titleSmall,
                 color = MaterialTheme.colorScheme.onSurfaceVariant)
             Spacer(Modifier.height(12.dp))
             if (presetOptions.isEmpty()) {
                 Text(
-                    if (currentPreset.isNotEmpty()) currentPreset else "Loading…",
+                    if (currentPreset.isNotEmpty()) currentPreset else stringResource(R.string.label_loading),
                     style = MaterialTheme.typography.bodyMedium
                 )
             } else {
                 // Show current preset as label
-                Text("Current: $currentPreset", style = MaterialTheme.typography.bodyMedium,
+                Text(stringResource(R.string.label_current, currentPreset), style = MaterialTheme.typography.bodyMedium,
                     color = MaterialTheme.colorScheme.primary)
                 Spacer(Modifier.height(8.dp))
                 // Wrap buttons in a flow-like row
@@ -587,7 +586,13 @@ private fun GestureSettingsCard(
     onSetLeft: (String) -> Unit,
     onSetRight: (String) -> Unit
 ) {
-    val actions = listOf("Off", "Play/Pause", "Next Track", "Prev Track", "Assistant")
+    val actions = listOf(
+        stringResource(R.string.gesture_off),
+        stringResource(R.string.gesture_play_pause),
+        stringResource(R.string.gesture_next_track),
+        stringResource(R.string.gesture_prev_track),
+        stringResource(R.string.gesture_assistant)
+    )
     var showLeftPicker by remember { mutableStateOf(false) }
     var showRightPicker by remember { mutableStateOf(false) }
 
@@ -603,7 +608,7 @@ private fun GestureSettingsCard(
                 .fillMaxWidth()
                 .padding(20.dp)
         ) {
-            Text("Double-Tap Gestures", style = MaterialTheme.typography.titleSmall,
+            Text(stringResource(R.string.section_gestures), style = MaterialTheme.typography.titleSmall,
                 color = MaterialTheme.colorScheme.onSurfaceVariant)
             Spacer(Modifier.height(12.dp))
 
@@ -614,9 +619,9 @@ private fun GestureSettingsCard(
                     .clickable { showLeftPicker = true },
                 verticalAlignment = Alignment.CenterVertically
             ) {
-                Text("Left", style = MaterialTheme.typography.bodyLarge,
+                Text(stringResource(R.string.label_left), style = MaterialTheme.typography.bodyLarge,
                     modifier = Modifier.weight(1f))
-                Text(doubleTapLeft.ifEmpty { "—" },
+                Text(doubleTapLeft.ifEmpty { stringResource(R.string.gesture_off) },
                     style = MaterialTheme.typography.bodyMedium,
                     color = MaterialTheme.colorScheme.primary)
             }
@@ -629,9 +634,9 @@ private fun GestureSettingsCard(
                     .clickable { showRightPicker = true },
                 verticalAlignment = Alignment.CenterVertically
             ) {
-                Text("Right", style = MaterialTheme.typography.bodyLarge,
+                Text(stringResource(R.string.label_right), style = MaterialTheme.typography.bodyLarge,
                     modifier = Modifier.weight(1f))
-                Text(doubleTapRight.ifEmpty { "—" },
+                Text(doubleTapRight.ifEmpty { stringResource(R.string.gesture_off) },
                     style = MaterialTheme.typography.bodyMedium,
                     color = MaterialTheme.colorScheme.primary)
             }
@@ -641,7 +646,7 @@ private fun GestureSettingsCard(
     // Picker dialogs
     if (showLeftPicker) {
         GesturePickerDialog(
-            title = "Left Double-Tap",
+            title = stringResource(R.string.dlg_left_double_tap),
             actions = actions,
             current = doubleTapLeft,
             onSelect = { onSetLeft(it); showLeftPicker = false },
@@ -650,7 +655,7 @@ private fun GestureSettingsCard(
     }
     if (showRightPicker) {
         GesturePickerDialog(
-            title = "Right Double-Tap",
+            title = stringResource(R.string.dlg_right_double_tap),
             actions = actions,
             current = doubleTapRight,
             onSelect = { onSetRight(it); showRightPicker = false },
@@ -670,7 +675,7 @@ private fun GesturePickerDialog(
     AlertDialog(
         onDismissRequest = onDismiss,
         confirmButton = { },
-        dismissButton = { TextButton(onClick = onDismiss) { Text("Cancel") } },
+        dismissButton = { TextButton(onClick = onDismiss) { Text(stringResource(R.string.dlg_cancel)) } },
         title = { Text(title) },
         text = {
             LazyColumn {
@@ -723,10 +728,10 @@ private fun DualConnectCard(
             verticalAlignment = Alignment.CenterVertically
         ) {
             Column(modifier = Modifier.weight(1f)) {
-                Text("Dual Device Connect", style = MaterialTheme.typography.titleSmall)
+                Text(stringResource(R.string.section_dual_connect), style = MaterialTheme.typography.titleSmall)
                 Text(
-                    if (enabled) "Connected to two devices simultaneously"
-                    else "Connect to one device at a time",
+                    if (enabled) stringResource(R.string.dual_enabled)
+                    else stringResource(R.string.dual_disabled),
                     style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
@@ -754,20 +759,20 @@ private fun DeviceInfoCard(
                 .fillMaxWidth()
                 .padding(20.dp)
         ) {
-            Text("Device Info", style = MaterialTheme.typography.titleSmall,
+            Text(stringResource(R.string.section_device_info), style = MaterialTheme.typography.titleSmall,
                 color = MaterialTheme.colorScheme.onSurfaceVariant)
             Spacer(Modifier.height(12.dp))
             if (firmwareVersion.isNotEmpty()) {
-                InfoRow("Firmware", firmwareVersion)
+                InfoRow(stringResource(R.string.info_firmware), firmwareVersion)
             }
             if (serialNumber.isNotEmpty()) {
-                InfoRow("Serial No.", serialNumber)
+                InfoRow(stringResource(R.string.info_serial), serialNumber)
             }
             if (hardwareVersion.isNotEmpty()) {
-                InfoRow("Hardware Ver.", hardwareVersion)
+                InfoRow(stringResource(R.string.info_hardware), hardwareVersion)
             }
             if (firmwareVersion.isEmpty() && serialNumber.isEmpty() && hardwareVersion.isEmpty()) {
-                Text("Not available", style = MaterialTheme.typography.bodySmall,
+                Text(stringResource(R.string.info_not_available), style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant)
             }
         }
