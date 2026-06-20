@@ -14,3 +14,13 @@ local.properties
 .kotlin/
 *.apk
 *.log
+
+# Local environment
+debug.keystore
+tools/aapt2/
+tools/
+
+# Temp / generated files (root-level only)
+/icon_original.png
+/icon_processed.png
+/de4f02f5d3e72cb208766a04de7fc9d522f6d106d4ae53c45c87d9e9ad76ed02.png
