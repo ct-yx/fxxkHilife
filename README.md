@@ -92,13 +92,14 @@ cd fxxkHilife
 
 ## 项目状态
 
-当前版本：**v1.2.1**（维护版本）
 
 核心功能已基本完成，重点做了以下改进：
 - 连接健壮性（Mutex + 重试 + 状态修正）
 - 日志系统（Logcat + 文件轮转 + 一键分享）
 - 代码质量（消除大量 `!!` 和静默异常捕获）
 - 后台保活与通知体验
+- **中英双语全覆盖**：MainScreen、SettingsScreen、BatteryCard 等所有 UI 界面已全部改用 stringResource，无硬编码英文残留
+- **权限校验重写**：运行时动态检查 BLUETOOTH_CONNECT + BLUETOOTH_SCAN + ACCESS_FINE_LOCATION + POST_NOTIFICATIONS（Android 13+），权限提示界面完整展示所有权限说明
 
 详细开发记录见 [DEVELOPMENT_LOG.md](./DEVELOPMENT_LOG.md)
 
