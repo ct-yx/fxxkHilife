@@ -323,6 +323,35 @@ distributionUrl 从 `file:///root/gradle/gradle-9.1.0-bin.zip` 改为官方 Grad
 
 ## 2026-06-20
 
+**Rust 原生守护进程原型 — `feat/rust-native-daemon-proto` 分支**
+
+### 背景
+App 保活依赖 WorkManager (15min) + Kotlin 层心跳 (30s)，进程被系统强杀后 WorkManager 也被停用。Rust daemon 作为独立进程提供激进的保活和系统级监控。
+
+### Rust daemon 架构（6 模块）
+- **`main.rs`** — 入口：DaemonConfig（环境变量配置）、DaemonState（共享状态）、tokio 主循环启动 IPC/BT/Watchdog 三个子系统
+- **`ipc.rs`** — Unix Domain Socket JSON-RPC 服务器（`/tmp/fh_daemon.sock`），支持 10 种 IPC 方法
+- **`bluetooth.rs`** — HCI sysfs 蓝牙健康监控（非 root，读取 `/sys/class/bluetooth/hci*/uevent`）
+- **`keepalive.rs`** — 进程 watchdog（pidof + /proc 回退 + am start 重启）
+- **`notify.rs`** — cmd notification post 通知派发（需 root/shell 权限）
+- **`daemon.rs`** — PID 文件管理 + signal 0 进程存活检查
+
+### 编译验证
+- Cargo.toml 依赖：tokio(full), serde+serde_json, libc, ctrlc, futures（共 48 个依赖包）
+- 编译 0 error, 3 warnings（未使用的 import/变量）
+- **新文件**：`native-daemon/Cargo.toml` + 6 个 .rs 源文件 + Cargo.lock + `.gitignore` 忽略规则
+- **分支**: `feat/rust-native-daemon-proto` — 已与 main 的 CI 配置同步
+
+### 待完成
+- Android 端集成：`NativeDaemonClient.kt`（IPC 客户端）、`NativeDaemonLauncher.kt`（进程管理）
+- cargo ndk 交叉编译到 `aarch64-linux-android`
+- 嵌入 APK `jniLibs/arm64-v8a/`，App 启动时释放到 data 目录
+✅ completed
+
+---
+
+## 2026-06-20
+
 **Bug fix: UI 控件点击后属性状态不更新（ANC / Low Latency / Sound Quality / Gestures / Dual Connect）**
 
 ### Root cause
