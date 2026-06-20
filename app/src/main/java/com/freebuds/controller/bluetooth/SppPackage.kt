@@ -5,9 +5,9 @@ import com.freebuds.controller.util.Crc16
 class SppPackage(
     val commandId: ByteArray,
     val responseId: ByteArray = commandId,
-    parameters: List<Pair<Int, ByteArray>> = emptyList()
+    params: List<Pair<Int, ByteArray>> = emptyList()
 ) {
-    val parameters: MutableMap<Int, ByteArray> = parameters.toMap().toMutableMap()
+    val parameters: MutableMap<Int, ByteArray> = params.toMap().toMutableMap()
 
     init {
         require(commandId.size == 2) { "commandId must be 2 bytes" }

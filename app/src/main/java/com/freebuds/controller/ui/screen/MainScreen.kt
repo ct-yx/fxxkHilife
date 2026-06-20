@@ -121,10 +121,13 @@ fun MainScreen(
             // Battery card (only when connected)
             if (state.connected) {
                 item {
-                    BatteryCard(
-                        batteryLeft = state.batteryLeft,
-                        batteryRight = state.batteryRight,
-                        batteryCase = state.batteryCase
+                        BatteryCard(
+                            batteryLeft = state.batteryLeft,
+                            batteryRight = state.batteryRight,
+                            batteryCase = state.batteryCase,
+                            batteryChargingLeft = state.batteryChargingLeft,
+                            batteryChargingRight = state.batteryChargingRight,
+                            batteryChargingCase = state.batteryChargingCase
                     )
                 }
             }

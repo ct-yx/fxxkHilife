@@ -221,3 +221,55 @@
 - Compiled release APK (beta)
 - Created GitHub Release v1.3.0-beta (marked as beta)
 ✅ completed
+
+---
+
+## 2026-06-20
+
+**v1.2.4 Release — Full 6-zone code review against upstream + protocol alignment + gesture complete + keep-alive + permission UX**
+
+### Step 1 — App icon
+- Removed black background from user-provided image, generated full mipmap density set (mdpi/hdpi/xhdpi/xxhdpi/xxxhdpi)
+- Updated `AndroidManifest.xml` to use `@mipmap/ic_launcher`
+
+### Step 2 — Full 6-zone code review against upstream OpenFreebuds
+- **Zone 1 (bluetooth/)**: 3 fixes — SppCommand.kt ANC command ID P0 Bug (0x01,0x09/0x0A → 0x2B,0x2A/0x2B,0x04), BatteryHandler.kt charging state param, SoundQualityHandler.kt param position (1→2)
+- **Zone 2 (device/)**: 12 files checked, 0 changes needed ✓
+- **Zone 3 (ui/)**: 3 fixes — BatteryCard.kt charging state display, MainScreen.kt pass charging params, SettingsScreen.kt hardcoded version → BuildConfig.VERSION_NAME
+- **Zone 4 (service/)**: 2 files checked, 0 changes needed ✓
+- **Zone 5 (data/)**: 1 file checked, 0 changes needed ✓
+- **Zone 6 (util/ + root)**: 5 files checked, 0 changes needed ✓, CRC-16/XMODEM confirmed identical with upstream
+- **Total**: 33 files reviewed, 9 code changes (2 P0 fixes, 1 P1 fix, 6 P2 improvements)
+
+### Step 3 — Protocol alignment & ANC fix
+- ANC level mapping corrected (awareness normal/voice_boost order, dynamic mode)
+- All gesture protocol parameters fully matching upstream triple-tap (0x01,0x26), long-press (0x2B,0x17), swipe (0x2B,0x1F)
+- `setProperty` protocol consistency verification added before/after write
+- ANC 3-mode (noise canceling / off / awareness) payload construction aligned, Awareness level mapping fixed
+
+### Step 4 — Background keep-alive enhancement
+- Created `BackgroundKeepAliveWorker.kt` (WorkManager PeriodicWorkRequest, 15min interval, auto-reconnect on disconnect)
+- Scheduled in `FreeBudsApp.onCreate()`
+- Added CompanionDeviceManager assisted auto-reconnect (Android 8+)
+- Added "Ignore battery optimization" guidance (ACTION_REQUEST_IGNORE_BATTERY_OPTIMIZATIONS intent)
+- Added WorkManager dependency to build.gradle.kts and libs.versions.toml
+
+### Step 5 — Permission UX improvement
+- Added Chinese/English Toast for each permission denial (BLUETOOTH_CONNECT, BLUETOOTH_SCAN, ACCESS_FINE_LOCATION, POST_NOTIFICATIONS)
+- AlertDialog → Settings.ACTION_APPLICATION_DETAILS_SETTINGS after 3+ denials or explicit "Deny"
+- All prompt text added to strings.xml (zh/en)
+
+### Step 6 — Gesture completion
+- `GestureHandler.kt` rewritten: all 4 gesture types (double tap, triple tap, long press, swipe) fully implemented
+- Independent change event registration per gesture type
+- Cache + `applyToState` refresh
+- `setProperty` write fully aligned with upstream protocol
+- `DeviceState` expanded: tripleTapLeft/Right, swipeLeft/Right, longPressLeft/Right + all action options
+- `GestureCard` UI extended with full 4-type layout in MainScreen
+
+### Step 7 — Version bump & docs
+- `build.gradle.kts`: versionCode **3→4**, versionName **"1.3.0-beta"→"v1.2.4"**
+- `SettingsScreen.kt`: hardcoded "1.0.0" → BuildConfig.VERSION_NAME
+- `README.md` / `README_EN.md` / `DEVELOPMENT_LOG.md` fully updated
+- **Files changed**: ~18+ files
+✅ completed

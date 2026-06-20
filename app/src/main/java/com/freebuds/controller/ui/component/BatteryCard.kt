@@ -19,6 +19,9 @@ fun BatteryCard(
     batteryLeft: Int?,
     batteryRight: Int?,
     batteryCase: Int?,
+    batteryChargingLeft: Boolean = false,
+    batteryChargingRight: Boolean = false,
+    batteryChargingCase: Boolean = false,
     modifier: Modifier = Modifier
 ) {
     Card(
@@ -43,20 +46,21 @@ fun BatteryCard(
                 modifier = Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.SpaceEvenly
             ) {
-                BatteryDot("L", batteryLeft, Modifier.weight(1f))
+                BatteryDot("L", batteryLeft, batteryChargingLeft, Modifier.weight(1f))
                 Spacer(Modifier.width(8.dp))
-                BatteryDot("R", batteryRight, Modifier.weight(1f))
+                BatteryDot("R", batteryRight, batteryChargingRight, Modifier.weight(1f))
                 Spacer(Modifier.width(8.dp))
-                BatteryDot("Case", batteryCase, Modifier.weight(1f))
+                BatteryDot("Case", batteryCase, batteryChargingCase, Modifier.weight(1f))
             }
         }
     }
 }
 
 @Composable
-private fun BatteryDot(label: String, level: Int?, modifier: Modifier = Modifier) {
+private fun BatteryDot(label: String, level: Int?, charging: Boolean = false, modifier: Modifier = Modifier) {
     val color by animateColorAsState(
         targetValue = when {
+            charging -> Color(0xFF4CAF50)
             level == null -> MaterialTheme.colorScheme.surfaceVariant
             level < 20 -> Color(0xFFE53935)
             level < 50 -> Color(0xFFFB8C00)
@@ -71,7 +75,8 @@ private fun BatteryDot(label: String, level: Int?, modifier: Modifier = Modifier
             contentAlignment = Alignment.Center
         ) {
             if (level != null) {
-                Text("$level%", style = MaterialTheme.typography.titleMedium,
+                val prefix = if (charging) "⚡" else ""
+                Text("$prefix$level%", style = MaterialTheme.typography.titleMedium,
                     fontWeight = FontWeight.Bold, color = color)
             } else {
                 Text("--", style = MaterialTheme.typography.titleMedium,

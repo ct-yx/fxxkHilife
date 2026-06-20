@@ -180,7 +180,7 @@ class SppClient(private val device: BluetoothDevice) : ISppClient {
                     val b = inputStream?.read() ?: break
                     if (b == -1) break
                     buffer.add(b.toByte())
-                    if (buffer.size >= 4 && buffer[0] == 0x5A.toByte()) {
+                    if (buffer.size >= 4 && buffer[0] == SppPackage.MAGIC) {
                         val len = ((buffer[1].toInt() and 0xFF) shl 8) or (buffer[2].toInt() and 0xFF)
                         val totalSize = len + 4
                         if (buffer.size >= totalSize) {
@@ -214,7 +214,9 @@ class SppClient(private val device: BluetoothDevice) : ISppClient {
                 handlerCommands[key]?.invoke(pkg)
                 _events.tryEmit(ConnectionEvent.PackageReceived(pkg))
             }
-        } catch (_: Exception) { }
+        } catch (e: Exception) {
+                DebugLogger.w(TAG, "handlePackage failed for ${data.take(6).joinToString("") { "%02x".format(it) }}: ${e.message}")
+            }
     }
 
     private fun parseFromBytes(data: ByteArray): SppPackage {

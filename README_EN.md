@@ -92,7 +92,7 @@ After installation, grant Bluetooth permissions (Android 12+ requires `BLUETOOTH
 
 ## Project Status
 
-Current version: **v1.2.3** (maintenance release)
+Current version: **v1.2.4** (maintenance release)
 
 Core functionality is largely complete. Key improvements include:
 
@@ -102,6 +102,12 @@ Core functionality is largely complete. Key improvements include:
 - Background keep-alive & notification UX
 - **Full bilingual UI (Chinese & English)**: All screens (MainScreen, SettingsScreen, BatteryCard etc.) use `stringResource` — zero hardcoded English strings
 - **Rewritten permission handling**: Runtime checks for `BLUETOOTH_CONNECT`, `BLUETOOTH_SCAN`, `ACCESS_FINE_LOCATION`, and `POST_NOTIFICATIONS` (Android 13+), with a dedicated permission info screen
+- **Protocol layer aligned with upstream OpenFreebuds**: Full 6-zone code review complete, 2 P0 protocol bugs fixed (ANC command IDs, missing charging state), SoundQuality param position corrected, 9 code issues resolved
+- **Gestures fully completed**: All 4 gesture types (double tap, triple tap, long press, swipe) finalized, protocol parameters fully matching upstream
+- **ANC 3-mode fix**: Noise canceling / off / awareness mode payload construction aligned with upstream, Awareness level mapping corrected
+- **Background keep-alive enhancement**: WorkManager periodic keep-alive + CompanionDeviceManager auto-reconnect + battery optimization guidance
+- **Permission error UX improved**: Chinese/English Toast on permission denial, AlertDialog redirecting to system settings after repeated denials
+- **App icon**: Black background removed, full mipmap density set generated
 
 Detailed development log: [DEVELOPMENT_LOG.md](./DEVELOPMENT_LOG.md)
 

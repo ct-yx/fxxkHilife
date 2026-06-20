@@ -21,6 +21,7 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.core.content.ContextCompat
+import com.freebuds.controller.BuildConfig
 import com.freebuds.controller.FreeBudsApp
 import com.freebuds.controller.device.DeviceManager
 import com.freebuds.controller.util.DebugLogger
@@ -341,7 +342,7 @@ fun SettingsScreen(
                 ) {
                     Text("Version", style = MaterialTheme.typography.bodyLarge)
                     Text(
-                        "1.0.0",
+                        BuildConfig.VERSION_NAME,
                         style = MaterialTheme.typography.bodyLarge,
                         color = MaterialTheme.colorScheme.onSurfaceVariant
                     )

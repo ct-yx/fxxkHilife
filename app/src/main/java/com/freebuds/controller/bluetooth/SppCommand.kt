@@ -11,9 +11,9 @@ object SppCommand {
     val BATTERY_READ = byteArrayOf(0x01, 0x08)
     val BATTERY_NOTIFY = byteArrayOf(0x01, 0x27)
 
-    // ANC / Noise control
-    val ANC_MODE_READ = byteArrayOf(0x01, 0x09)
-    val ANC_MODE_WRITE = byteArrayOf(0x01, 0x0A)
+    // ANC / Noise control (aligned with OpenFreebuds anc.py)
+    val ANC_MODE_READ = byteArrayOf(0x2B, 0x2A)
+    val ANC_MODE_WRITE = byteArrayOf(0x2B, 0x04)
 
     // Auto pause
     val AUTO_PAUSE_READ = byteArrayOf(0x2B, 0x11)

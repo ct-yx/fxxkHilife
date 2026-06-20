@@ -93,7 +93,7 @@ cd fxxkHilife
 
 ## 项目状态
 
-当前版本：**v1.2.3**（维护版本）
+当前版本：**v1.2.4**（维护版本）
 
 核心功能已基本完成，重点做了以下改进：
 - 连接健壮性（Mutex + 重试 + 状态修正）
@@ -102,6 +102,12 @@ cd fxxkHilife
 - 后台保活与通知体验
 - **中英双语全覆盖**：MainScreen、SettingsScreen、BatteryCard 等所有 UI 界面已全部改用 stringResource，无硬编码英文残留
 - **权限校验重写**：运行时动态检查 BLUETOOTH_CONNECT + BLUETOOTH_SCAN + ACCESS_FINE_LOCATION + POST_NOTIFICATIONS（Android 13+），权限提示界面完整展示所有权限说明
+- **协议层对齐上游 OpenFreebuds**：全量 6 区代码审查完成，修复 2 项 P0 协议 Bug（ANC 命令 ID、充电状态缺失）、修正 SoundQuality param 位置、消除 9 项代码问题
+- **手势全面完成**：四种手势（双击、三击、长按、滑动）全部完善，协议参数与上游完全对齐
+- **ANC 三模式修复**：降噪/关闭/通透模式命令 payload 构造与上游对齐，Awareness 等级映射修正
+- **后台保活增强**：WorkManager 定时保活 + CompanionDeviceManager 辅助自动重连 + 电量优化引导
+- **权限错误提示优化**：权限拒绝时弹出中文/英文 Toast，连续拒绝后引导跳转系统设置
+- **应用图标**：去除黑底，生成完整 mipmap 密度适配
 
 详细开发记录见 [DEVELOPMENT_LOG.md](./DEVELOPMENT_LOG.md)
 

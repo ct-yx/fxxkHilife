@@ -13,7 +13,7 @@ class SoundQualityHandler : Handler {
     override suspend fun applyToState(client: ISppClient, state: DeviceState): DeviceState {
         val resp = client.send(SppPackage.readRequest(SppCommand.SOUND_QUALITY_READ, listOf(1)))
             ?: return state
-        val data = resp.findParam(1)
+        val data = resp.findParam(2)
         return if (data.isNotEmpty()) {
             state.copy(soundQuality = if (data[0].toInt() == 1) "sqp_quality" else "sqp_connectivity")
         } else state
