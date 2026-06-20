@@ -4,6 +4,7 @@ import com.freebuds.controller.bluetooth.ISppClient
 import com.freebuds.controller.bluetooth.SppCommand
 import com.freebuds.controller.bluetooth.SppPackage
 import com.freebuds.controller.device.DeviceState
+import com.freebuds.controller.util.DebugLogger
 
 class LowLatencyHandler : Handler {
     override val id = "low_latency"
@@ -20,12 +21,17 @@ class LowLatencyHandler : Handler {
     override suspend fun setProperty(client: ISppClient, prop: String, value: String) {
         if (prop == "low_latency") {
             val on = value == "true"
-            // Match upstream: write with ACK, then sleep(1), then re-read
             client.send(SppPackage.writeRequest(SppCommand.LOW_LATENCY,
                 listOf(1 to if (on) byteArrayOf(0x01) else byteArrayOf(0x00)),
                 expectResponse = true), timeoutMs = 2000)
-            // Upstream asyncio.sleep(1) — give device time to apply
+            // Upstream low_latency.py: write → sleep(1) → on_init (re-read)
             kotlinx.coroutines.delay(1000)
+            val reRead = client.send(SppPackage.readRequest(SppCommand.LOW_LATENCY, listOf(2)))
+            if (reRead != null) {
+                val data = reRead.findParam(2)
+                val readBack = data.isNotEmpty() && data[0].toInt() == 1
+                DebugLogger.i(TAG, "Post-write low_latency: wrote=$on, read back=$readBack")
+            }
         }
     }
 }

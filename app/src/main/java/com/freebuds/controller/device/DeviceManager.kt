@@ -324,19 +324,17 @@ class DeviceManager(private val bluetoothAdapter: BluetoothAdapter?) {
 
     /**
      * Set a device property. Writes via handler, then reads back after a short delay.
-     * If the write command expects a response (has [responseId]), `send()` will wait
-     * for device ACK; otherwise it fire-and-forgets.
-     *
-     * After the write, [refreshState] re-reads all handler states to sync the UI.
+     * Each handler now performs its own post-write re-read (matching upstream pattern:
+     * write → on_init → re-parse). After all handlers are done, a unified [refreshState]
+     * ensures all UI state is consistent.
      */
     suspend fun setProperty(prop: String, value: String) {
         val c = client ?: return
         for (handler in handlers) {
             handler.setProperty(c, prop, value)
         }
-        // Give the device time to process before re-reading
-        // Upstream uses asyncio.sleep(1) — match for reliability
-        delay(1000)
+        // Short delay then full state sync via refreshState
+        delay(300)
         refreshState()
     }
 

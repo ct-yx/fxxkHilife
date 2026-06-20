@@ -70,19 +70,16 @@ class AncModeHandler : Handler {
 
         when (prop) {
             "anc_mode" -> {
-                // Write mode with proper payload: value_byte + (0x00 if off else 0xff)
                 val options = reverseMap(MODE_MAP)
                 val valueByte = options[value] ?: 0
                 val payload = if (valueByte == 0) byteArrayOf(valueByte.toByte(), 0x00)
                               else byteArrayOf(valueByte.toByte(), 0xFF.toByte())
-                // Device typically ACKs write commands; wait up to 2s
                 val pkg = SppPackage.writeRequest(SppCommand.ANC_MODE_WRITE, listOf(1 to payload), expectResponse = true)
                 client.send(pkg, timeoutMs = 2000)
                 DebugLogger.i(TAG, "Written ANC mode: $value (byte=$valueByte)")
             }
 
             "anc_level" -> {
-                // Write level: active_mode + value_byte
                 val activeModeValue = activeModeByte.toByte()
                 val options = when {
                     activeModeByte == 2 -> reverseMap(AWARENESS_LEVEL_MAP)
@@ -94,6 +91,14 @@ class AncModeHandler : Handler {
                 client.send(pkg, timeoutMs = 2000)
                 DebugLogger.i(TAG, "Written ANC level: $value (byte=$valueByte, active_mode=$activeModeByte)")
             }
+        }
+        // Upstream anc.py: write → on_init (re-read after write to confirm)
+        kotlinx.coroutines.delay(500)
+        val reRead = client.send(SppPackage.readRequest(SppCommand.ANC_MODE_READ, listOf(1, 2)))
+        if (reRead != null) {
+            // Re-parse to update activeModeByte, actual state update via refreshState
+            handleAncResponse(reRead, DeviceState())
+            DebugLogger.i(TAG, "Post-write ANC re-read done (activeMode=$activeModeByte)")
         }
     }
 
