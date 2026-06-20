@@ -69,7 +69,14 @@ class MainActivity : ComponentActivity() {
         enableEdgeToEdge()
 
         setContent {
-            FreeBudsTheme(darkTheme = isSystemInDarkTheme()) {
+            val prefs = (application as FreeBudsApp).preferences
+            val darkMode by prefs.darkMode.collectAsState(initial = "system")
+            val isDark = when (darkMode) {
+                "dark" -> true
+                "light" -> false
+                else -> isSystemInDarkTheme()
+            }
+            FreeBudsTheme(darkTheme = isDark) {
                 Surface(
                     modifier = Modifier.fillMaxSize(),
                     color = MaterialTheme.colorScheme.background
