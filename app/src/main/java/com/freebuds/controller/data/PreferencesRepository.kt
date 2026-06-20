@@ -15,17 +15,12 @@ private val Context.dataStore: DataStore<Preferences> by preferencesDataStore(na
 class PreferencesRepository(private val context: Context) {
 
     companion object {
-        val BLUR_STYLE = stringPreferencesKey("blur_style")          // "frosted" | "liquid" | "none"
         val DARK_MODE = stringPreferencesKey("dark_mode")            // "system" | "light" | "dark"
         val LAST_DEVICE_ADDRESS = stringPreferencesKey("last_device_address")
         val AUTO_CONNECT = booleanPreferencesKey("auto_connect")
         val LOW_LATENCY_AUTO_ON = booleanPreferencesKey("low_latency_auto_on")
         val ANC_NOTIFICATION_ENABLED = booleanPreferencesKey("anc_notification_enabled")
         val DEBUG_LOG = booleanPreferencesKey("debug_log")
-    }
-
-    val blurStyle: Flow<String> = context.dataStore.data.map { prefs ->
-        prefs[BLUR_STYLE] ?: "frosted"
     }
 
     val darkMode: Flow<String> = context.dataStore.data.map { prefs ->
@@ -50,10 +45,6 @@ class PreferencesRepository(private val context: Context) {
 
     val debugLog: Flow<Boolean> = context.dataStore.data.map { prefs ->
         prefs[DEBUG_LOG] ?: true  // enable by default during development
-    }
-
-    suspend fun setBlurStyle(style: String) {
-        context.dataStore.edit { it[BLUR_STYLE] = style }
     }
 
     suspend fun setDarkMode(mode: String) {

@@ -35,7 +35,6 @@ fun SettingsScreen(
     onNavigateBack: () -> Unit
 ) {
     val prefs = FreeBudsApp.instance.preferences
-    val blurStyle by prefs.blurStyle.collectAsState(initial = "frosted")
     val darkMode by prefs.darkMode.collectAsState(initial = "system")
     val autoConnect by prefs.autoConnect.collectAsState(initial = true)
     val lowLatencyFixed by prefs.lowLatencyAutoOn.collectAsState(initial = false)
@@ -82,29 +81,6 @@ fun SettingsScreen(
                 color = MaterialTheme.colorScheme.primary,
                 modifier = Modifier.padding(horizontal = 4.dp)
             )
-
-            SettingsCard(title = "Visual Effect") {
-                BlurStyleOption(
-                    label = "Frosted Glass",
-                    description = "Classic blur effect",
-                    selected = blurStyle == "frosted",
-                    onClick = { scope.launch { prefs.setBlurStyle("frosted") } }
-                )
-                HorizontalDivider(modifier = Modifier.padding(vertical = 4.dp))
-                BlurStyleOption(
-                    label = "Liquid Glass",
-                    description = "Dynamic chromatic ripple effect",
-                    selected = blurStyle == "liquid",
-                    onClick = { scope.launch { prefs.setBlurStyle("liquid") } }
-                )
-                HorizontalDivider(modifier = Modifier.padding(vertical = 4.dp))
-                BlurStyleOption(
-                    label = "None",
-                    description = "Solid background, no blur",
-                    selected = blurStyle == "none",
-                    onClick = { scope.launch { prefs.setBlurStyle("none") } }
-                )
-            }
 
             SettingsCard(title = "Theme") {
                 BlurStyleOption(
