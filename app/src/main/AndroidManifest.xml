@@ -13,6 +13,9 @@
     <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
     <uses-permission android:name="android.permission.REQUEST_IGNORE_BATTERY_OPTIMIZATIONS" />
 
+    <!-- Companion device manager feature requirement -->
+    <uses-feature android:name="android.software.companion_device_setup" android:required="false" />
+
     <application
         android:name=".FreeBudsApp"
         android:label="@string/app_name"
