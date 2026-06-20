@@ -1,6 +1,12 @@
-# fxxkHilife
+<p align="center">
+  <img src="./docs/icon.png" alt="fxxkHilife Icon" width="128" height="128">
+</p>
 
-**HUAWEI FreeBuds / HONOR Earbuds 的轻量离线控制 App**
+<h1 align="center">fxxkHilife</h1>
+
+<p align="center">
+  <b>HUAWEI FreeBuds / HONOR Earbuds 的轻量离线控制 App</b>
+</p>
 
 > 通过经典蓝牙 SPP 直接控制耳机，无需登录华为账号、无广告、完全离线。
 

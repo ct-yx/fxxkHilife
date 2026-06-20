@@ -1,6 +1,12 @@
-# fxxkHilife
+<p align="center">
+  <img src="./docs/icon.png" alt="fxxkHilife Icon" width="128" height="128">
+</p>
 
-**A lightweight offline controller for HUAWEI FreeBuds / HONOR Earbuds**
+<h1 align="center">fxxkHilife</h1>
+
+<p align="center">
+  <b>A lightweight offline controller for HUAWEI FreeBuds / HONOR Earbuds</b>
+</p>
 
 > Controls your earbuds directly via classic Bluetooth SPP — no login, no ads, fully offline.
 
