@@ -58,6 +58,28 @@ fun MainScreen(
             TopAppBar(
                 title = { Text(stringResource(R.string.app_name), fontWeight = FontWeight.SemiBold) },
                 actions = {
+                    // Language toggle
+                    val lang by FreeBudsApp.instance.preferences.language.collectAsState(initial = "en")
+                    IconButton(onClick = {
+                        if (!btnLock) {
+                            btnLock = true
+                            scope.launch {
+                                val newLang = if (lang == "en") "zh" else "en"
+                                FreeBudsApp.instance.preferences.setLanguage(newLang)
+                                FreeBudsApp.instance.updateLocale(newLang)
+                                // Force activity recreate to re-inflate all string resources
+                                (LocalContext.current as? android.app.Activity)?.recreate()
+                                delay(500); btnLock = false
+                            }
+                        }
+                    }) {
+                        Text(
+                            text = if (lang == "en") "中" else "EN",
+                            style = MaterialTheme.typography.labelLarge,
+                            fontWeight = FontWeight.Bold,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                    }
                     IconButton(onClick = {
                         if (!btnLock) {
                             btnLock = true

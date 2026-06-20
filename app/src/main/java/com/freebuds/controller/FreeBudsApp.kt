@@ -5,6 +5,7 @@ import android.app.NotificationChannel
 import android.app.NotificationManager
 import android.bluetooth.BluetoothAdapter
 import android.bluetooth.BluetoothManager
+import android.content.res.Configuration
 import android.os.Build
 import com.freebuds.controller.bluetooth.CompanionDeviceHelper
 import com.freebuds.controller.bluetooth.SppClient
@@ -15,6 +16,7 @@ import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.launch
+import java.util.Locale
 
 class FreeBudsApp : Application() {
 
@@ -53,7 +55,39 @@ class FreeBudsApp : Application() {
             }
         }
 
+        // Apply saved language on startup
+        applySavedLocale()
+
         createNotificationChannels()
+    }
+
+    /**
+     * Apply the saved language setting to the application context.
+     * This updates the base context's locale so that string resources
+     * reflect the chosen language immediately.
+     */
+    fun applySavedLocale() {
+        val langCode = try {
+            kotlinx.coroutines.runBlocking {
+                preferences.language.first()
+            }
+        } catch (_: Exception) { "en" }
+        updateLocale(langCode)
+    }
+
+    /**
+     * Update the locale for the application context and all subsequent
+     * resource lookups.  Call this when the user toggles language.
+     */
+    fun updateLocale(langCode: String) {
+        val locale = when (langCode) {
+            "zh" -> Locale.CHINESE
+            else -> Locale.ENGLISH
+        }
+        Locale.setDefault(locale)
+        val config = Configuration(resources.configuration)
+        config.setLocale(locale)
+        resources.updateConfiguration(config, resources.displayMetrics)
     }
 
     private fun createNotificationChannels() {
