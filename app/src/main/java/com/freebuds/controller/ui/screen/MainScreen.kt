@@ -51,6 +51,7 @@ fun MainScreen(
     val isConnecting = connState == ConnectionState.CONNECTING
     var btnLock by remember { mutableStateOf(false) }
     val snackbarHostState = remember { SnackbarHostState() }
+    val context = LocalContext.current
 
     Scaffold(
         snackbarHost = { SnackbarHost(snackbarHostState) },
@@ -68,7 +69,7 @@ fun MainScreen(
                                 FreeBudsApp.instance.preferences.setLanguage(newLang)
                                 FreeBudsApp.instance.updateLocale(newLang)
                                 // Force activity recreate to re-inflate all string resources
-                                (LocalContext.current as? android.app.Activity)?.recreate()
+                                (context as? android.app.Activity)?.recreate()
                                 delay(500); btnLock = false
                             }
                         }
