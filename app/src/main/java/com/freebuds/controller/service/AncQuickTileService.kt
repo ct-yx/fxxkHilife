@@ -38,7 +38,13 @@ class AncQuickTileService : TileService() {
                 AncMode.UNKNOWN -> AncMode.OFF
             }
             scope.launch {
-                dm.setProperty("anc_mode", next.name.lowercase())
+                val modeStr = when (next) {
+                    AncMode.OFF -> "normal"
+                    AncMode.CANCELLATION -> "cancellation"
+                    AncMode.AWARENESS -> "awareness"
+                    AncMode.UNKNOWN -> "normal"
+                }
+                dm.setProperty("anc_mode", modeStr)
                 delay(500)
                 updateTile()
             }
