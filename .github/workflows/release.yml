@@ -30,6 +30,14 @@ jobs:
     - name: Grant execute permission
       run: chmod +x gradlew
 
+    # Generate debug keystore (ignored by .gitignore, needed for Release signing)
+    - name: Generate debug keystore for Release signing
+      run: |
+        keytool -genkey -v -keystore debug.keystore \
+          -alias androiddebugkey -keyalg RSA -keysize 2048 \
+          -validity 10000 -storepass android -keypass android \
+          -dname "CN=Android Debug,O=Android,C=US"
+
     - name: Build Release APK
       run: ./gradlew :app:assembleRelease --stacktrace --no-daemon
 
