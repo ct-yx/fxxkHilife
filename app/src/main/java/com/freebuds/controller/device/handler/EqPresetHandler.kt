@@ -27,6 +27,25 @@ class EqPresetHandler : Handler {
 
     override suspend fun init(client: ISppClient) {}
 
+    override suspend fun onInit(client: ISppClient, state: DeviceState): DeviceState? {
+        val resp = client.send(SppPackage.readRequest(CMD_READ, listOf(1, 2, 3, 4, 5, 6, 7, 8)))
+            ?: return null
+        val options = mutableListOf<String>()
+        val avail = resp.findParam(3)
+        if (avail.isNotEmpty()) {
+            for (id in avail) {
+                val idInt = id.toInt() and 0xFF
+                options.add(KNOWN_PRESETS[idInt] ?: "preset_$idInt")
+            }
+        }
+        val cur = resp.findParam(2)
+        val current = if (cur.size == 1) {
+            val idInt = cur[0].toInt() and 0xFF
+            KNOWN_PRESETS[idInt] ?: "unknown_$idInt"
+        } else ""
+        return state.copy(eqPreset = current, eqPresetOptions = options)
+    }
+
     override suspend fun applyToState(client: ISppClient, state: DeviceState): DeviceState {
         val resp = client.send(SppPackage.readRequest(CMD_READ, listOf(1, 2, 3, 4, 5, 6, 7, 8)))
             ?: return state

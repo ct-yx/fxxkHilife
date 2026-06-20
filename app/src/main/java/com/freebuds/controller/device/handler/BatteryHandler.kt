@@ -21,6 +21,12 @@ class BatteryHandler : Handler {
         client.registerHandler(SppCommand.BATTERY_NOTIFY) { pkg -> handleBattery(pkg) }
     }
 
+    override suspend fun onInit(client: ISppClient, state: DeviceState): DeviceState? {
+        val resp = client.send(SppPackage.readRequest(SppCommand.BATTERY_READ, listOf(1, 2, 3)))
+            ?: return null
+        return handleBattery(resp, state)
+    }
+
     override suspend fun applyToState(client: ISppClient, state: DeviceState): DeviceState {
         val resp = client.send(SppPackage.readRequest(SppCommand.BATTERY_READ, listOf(1, 2, 3)))
             ?: return state

@@ -25,6 +25,27 @@ class DeviceInfoHandler : Handler {
 
     override suspend fun init(client: ISppClient) {}
 
+    override suspend fun onInit(client: ISppClient, state: DeviceState): DeviceState? {
+        val resp = client.send(SppPackage.readRequest(CMD_READ, (0..31).toList()))
+            ?: return null
+        var firmware = ""
+        var serial = ""
+        var hardware = ""
+        for ((key, value) in resp.parameters) {
+            val str = try {
+                String(value, Charsets.UTF_8).trim().trimEnd('\u0000')
+            } catch (_: Exception) {
+                value.joinToString("") { "%02x".format(it) }
+            }
+            when (key) {
+                7 -> firmware = str
+                9 -> serial = str
+                3 -> hardware = str
+            }
+        }
+        return state.copy(firmwareVersion = firmware, serialNumber = serial, hardwareVersion = hardware)
+    }
+
     override suspend fun applyToState(client: ISppClient, state: DeviceState): DeviceState {
         val resp = client.send(SppPackage.readRequest(CMD_READ, (0..31).toList()))
             ?: return state

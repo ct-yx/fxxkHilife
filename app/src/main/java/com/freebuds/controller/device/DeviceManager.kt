@@ -115,6 +115,7 @@ class DeviceManager(private val bluetoothAdapter: BluetoothAdapter?) {
                                     FreeBudsApp.instance.companionDeviceHelper.register(device)
                                 } catch (_: Exception) { }
 
+                                // Phase 1: Register event handlers (always succeeds)
                                 for (handler in handlers) {
                                     try {
                                         handler.init(c)
@@ -122,6 +123,33 @@ class DeviceManager(private val bluetoothAdapter: BluetoothAdapter?) {
                                         DebugLogger.e(TAG, "Handler ${handler::class.simpleName}.init() failed", e)
                                     }
                                 }
+
+                                // Phase 2: Actively query initial state for each handler (upstream on_init pattern)
+                                // Each handler sends its read command, parses response, and returns state delta.
+                                // Retry up to 3 times with 2s timeout, skip failures (matching generic.py init logic)
+                                var initialState = _state.value.copy(connected = true)
+                                for (handler in handlers) {
+                                    var success = false
+                                    for (attempt in 1..3) {
+                                        try {
+                                            val delta = withTimeout(2000) { handler.onInit(c, initialState) }
+                                            if (delta != null) {
+                                                initialState = delta
+                                                success = true
+                                                DebugLogger.i(TAG, "Handler ${handler.id} onInit: OK (attempt=$attempt)")
+                                            }
+                                            break
+                                        } catch (e: Exception) {
+                                            DebugLogger.w(TAG, "Handler ${handler.id} onInit attempt $attempt/3 failed: ${e.message}")
+                                        }
+                                    }
+                                    if (!success) {
+                                        DebugLogger.w(TAG, "Handler ${handler.id} onInit: all attempts failed, using fallback")
+                                    }
+                                }
+                                _state.value = initialState
+
+                                // Phase 3: Full state refresh to catch any missed updates
                                 refreshState()
                                 scope.launch {
                                     val autoLatency = FreeBudsApp.instance.preferences.lowLatencyAutoOn.first()
@@ -276,11 +304,33 @@ class DeviceManager(private val bluetoothAdapter: BluetoothAdapter?) {
                 DebugLogger.i(TAG, "✅ Reconnected! Initializing ${handlers.size} handlers...")
                 val c = client ?: return
                 scope.launch {
+                    // Phase 1: Register event handlers
                     for (handler in handlers) {
                         try { handler.init(c) } catch (e: Exception) {
                             DebugLogger.e(TAG, "Handler ${handler::class.simpleName}.init() failed", e)
                         }
                     }
+                    // Phase 2: Actively query initial state (upstream on_init pattern)
+                    var initialState = _state.value.copy(connected = true)
+                    for (handler in handlers) {
+                        var success = false
+                        for (attempt in 1..3) {
+                            try {
+                                val delta = withTimeout(2000) { handler.onInit(c, initialState) }
+                                if (delta != null) {
+                                    initialState = delta
+                                    success = true
+                                }
+                                break
+                            } catch (e: Exception) {
+                                DebugLogger.w(TAG, "Handler ${handler.id} onInit attempt $attempt/3 failed: ${e.message}")
+                            }
+                        }
+                        if (!success) {
+                            DebugLogger.w(TAG, "Handler ${handler.id} onInit: all attempts failed")
+                        }
+                    }
+                    _state.value = initialState
                     refreshState()
                 }
             }

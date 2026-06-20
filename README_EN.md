@@ -115,7 +115,7 @@ Core functionality is largely complete. Key improvements include:
 - **Permission error UX improved**: Chinese/English Toast on permission denial, AlertDialog redirecting to system settings after repeated denials
 - **App icon**: Black background removed, full mipmap density set generated
 
-### ⚠️ Known Issues (v1.7.1)
+### ⚠️ Known Issues (v1.7.2)
 
 This release is in **feature validation stage**. The following features have code implementation but **may not work correctly on all devices**. Testing feedback is welcome:
 

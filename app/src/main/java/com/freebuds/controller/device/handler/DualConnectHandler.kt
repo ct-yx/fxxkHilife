@@ -19,6 +19,15 @@ class DualConnectHandler : Handler {
 
     override suspend fun init(client: ISppClient) {}
 
+    override suspend fun onInit(client: ISppClient, state: DeviceState): DeviceState? {
+        val resp = client.send(SppPackage.readRequest(CMD_READ, listOf(1)))
+            ?: return null
+        val value = resp.findParam(1)
+        return if (value.size == 1) {
+            state.copy(dualConnectEnabled = value[0].toInt() == 1)
+        } else null
+    }
+
     override suspend fun applyToState(client: ISppClient, state: DeviceState): DeviceState {
         val resp = client.send(SppPackage.readRequest(CMD_READ, listOf(1)))
             ?: return state

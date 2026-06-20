@@ -11,6 +11,13 @@ class LowLatencyHandler : Handler {
 
     override suspend fun init(client: ISppClient) {}
 
+    override suspend fun onInit(client: ISppClient, state: DeviceState): DeviceState? {
+        val resp = client.send(SppPackage.readRequest(SppCommand.LOW_LATENCY, listOf(2)))
+            ?: return null
+        val data = resp.findParam(2)
+        return state.copy(lowLatency = data.isNotEmpty() && data[0].toInt() == 1)
+    }
+
     override suspend fun applyToState(client: ISppClient, state: DeviceState): DeviceState {
         val resp = client.send(SppPackage.readRequest(SppCommand.LOW_LATENCY, listOf(2)))
             ?: return state

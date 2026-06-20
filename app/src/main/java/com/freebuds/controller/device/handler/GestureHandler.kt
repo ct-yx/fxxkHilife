@@ -57,6 +57,10 @@ class GestureHandler : Handler {
         DebugLogger.i(TAG, "GestureHandler initialized — covers double/triple/long/swipe")
     }
 
+    override suspend fun onInit(client: ISppClient, state: DeviceState): DeviceState? {
+        return applyToState(client, state)
+    }
+
     override suspend fun applyToState(client: ISppClient, state: DeviceState): DeviceState {
         var s = state
 

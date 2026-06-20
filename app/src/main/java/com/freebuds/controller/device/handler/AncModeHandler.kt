@@ -57,6 +57,13 @@ class AncModeHandler : Handler {
         DebugLogger.i(TAG, "AncModeHandler initialized (w_cancel_lvl=$wCancelLevel, w_dynamic=$wCancelDynamic, w_voice=$wVoiceBoost)")
     }
 
+    override suspend fun onInit(client: ISppClient, state: DeviceState): DeviceState? {
+        // Upstream anc.py on_init: send read_rq then on_package
+        val resp = client.send(SppPackage.readRequest(SppCommand.ANC_MODE_READ, listOf(1, 2)))
+            ?: return null
+        return handleAncResponse(resp, state)
+    }
+
     override suspend fun applyToState(client: ISppClient, state: DeviceState): DeviceState {
         // Read cmd 0x2B,0x2A with params [1,2] — matches anc.py on_init
         val resp = client.send(SppPackage.readRequest(SppCommand.ANC_MODE_READ, listOf(1, 2)))
