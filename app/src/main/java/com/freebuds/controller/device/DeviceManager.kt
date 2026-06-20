@@ -335,7 +335,8 @@ class DeviceManager(private val bluetoothAdapter: BluetoothAdapter?) {
             handler.setProperty(c, prop, value)
         }
         // Give the device time to process before re-reading
-        delay(500)
+        // Upstream uses asyncio.sleep(1) — match for reliability
+        delay(1000)
         refreshState()
     }
 

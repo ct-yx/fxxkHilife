@@ -20,10 +20,12 @@ class LowLatencyHandler : Handler {
     override suspend fun setProperty(client: ISppClient, prop: String, value: String) {
         if (prop == "low_latency") {
             val on = value == "true"
-            // Device ACKs write commands (upstream uses change_rq which waits for response)
+            // Match upstream: write with ACK, then sleep(1), then re-read
             client.send(SppPackage.writeRequest(SppCommand.LOW_LATENCY,
                 listOf(1 to if (on) byteArrayOf(0x01) else byteArrayOf(0x00)),
                 expectResponse = true), timeoutMs = 2000)
+            // Upstream asyncio.sleep(1) — give device time to apply
+            kotlinx.coroutines.delay(1000)
         }
     }
 }
