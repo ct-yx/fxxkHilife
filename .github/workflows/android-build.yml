@@ -27,8 +27,10 @@ jobs:
     - name: Grant execute permission
       run: chmod +x gradlew
 
+    # --no-build-cache: Workaround for potential Gradle build cache corruption
+    # that caused Android CI Build (#30-#33) to fail while Release workflow succeeded.
     - name: Build Debug APK
-      run: ./gradlew :app:assembleDebug --stacktrace --no-daemon
+      run: ./gradlew :app:assembleDebug --stacktrace --no-daemon --no-build-cache
 
     - name: Upload Debug APK
       uses: actions/upload-artifact@v5

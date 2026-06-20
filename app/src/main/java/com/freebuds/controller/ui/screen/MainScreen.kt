@@ -121,7 +121,7 @@ fun MainScreen(
                                         deviceManager.connect(last)
                                     } catch (e: Exception) {
                                         Log.e("MainScreen", "Reconnect failed", e)
-                                        snackbarHostState.showSnackbar("${stringResource(R.string.btn_reconnect)} failed")
+                                        snackbarHostState.showSnackbar("${context.getString(R.string.btn_reconnect)} failed")
                                     }
                                     delay(500); btnLock = false
                                 }
@@ -246,7 +246,7 @@ fun MainScreen(
                         } catch (e: Exception) {
                             Log.e("MainScreen", "connect() failed", e)
                             snackbarHostState.showSnackbar(
-                                "${stringResource(R.string.status_connected)} failed: ${e.message ?: "Unknown error"}"
+                                "${context.getString(R.string.status_connected)} failed: ${e.message ?: "Unknown error"}"
                             )
                         }
                         delay(500); btnLock = false
@@ -418,6 +418,7 @@ private fun QuickControlsCard(
                     onClick = onSetLowLatencyFixed,
                     shape = SegmentedButtonDefaults.itemShape(index = 2, count = 3)
                 ) { Text(stringResource(R.string.btn_fixed_on)) }
+                }
             Spacer(Modifier.height(12.dp))
 
             // Sound Quality

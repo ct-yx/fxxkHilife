@@ -9,6 +9,10 @@ import com.freebuds.controller.util.DebugLogger
 class LowLatencyHandler : Handler {
     override val id = "low_latency"
 
+    companion object {
+        private const val TAG = "LowLatencyHandler"
+    }
+
     override suspend fun init(client: ISppClient) {}
 
     override suspend fun onInit(client: ISppClient, state: DeviceState): DeviceState? {

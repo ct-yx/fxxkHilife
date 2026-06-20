@@ -10,12 +10,12 @@
 
 | # | 文件 | 字段 | 当前值 | 更新方式 |
 |---|------|------|--------|----------|
-| 1 | `app/build.gradle.kts` | `versionCode` | `15` | 直接修改数字 |
-| 2 | `app/build.gradle.kts` | `versionName` | `"v1.7.2"` | 直接修改文本 |
-| 3 | `app/src/main/res/values/strings.xml` | `<string name="version_name">` | `"v1.7.2"` | 直接修改字符串 |
-| 4 | `app/src/main/res/values-zh-rCN/strings.xml` | `<string name="version_name">` | `"v1.7.2"` | 直接修改字符串 |
-| 5 | `README.md` | "当前版本：\*\*v1.7.2\*\*" | `v1.7.2` | 直接修改文本 |
-| 6 | `README_EN.md` | "Current version: \*\*v1.7.2\*\*" | `v1.7.2` | 直接修改文本 |
+| 1 | `app/build.gradle.kts` | `versionCode` | `16` | 直接修改数字 |
+| 2 | `app/build.gradle.kts` | `versionName` | `"v1.7.3"` | 直接修改文本 |
+| 3 | `app/src/main/res/values/strings.xml` | `<string name="version_name">` | `"v1.7.3"` | 直接修改字符串 |
+| 4 | `app/src/main/res/values-zh-rCN/strings.xml` | `<string name="version_name">` | `"v1.7.3"` | 直接修改字符串 |
+| 5 | `README.md` | "当前版本：\*\*v1.7.3\*\*" | `v1.7.3` | 直接修改文本 |
+| 6 | `README_EN.md` | "Current version: \*\*v1.7.3\*\*" | `v1.7.3` | 直接修改文本 |
 | 7 | `DEVELOPMENT_LOG.md` | 末尾新增变更记录 | — | 按模板追加 |
 | — | `SettingsScreen.kt` | `BuildConfig.VERSION_NAME` | 自动读取 | **无需手动修改** |
 
