@@ -65,7 +65,9 @@ class CompanionDeviceHelper(private val context: Context) {
                 .build()
 
             if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
+                @Suppress("DEPRECATION")
                 val associationCallback = object : CompanionDeviceManager.Callback() {
+                    @Suppress("DEPRECATION")
                     override fun onDeviceFound(discoveryResult: android.content.IntentSender) {
                         DebugLogger.i(TAG, "Companion device discovery result received")
                     }
@@ -89,6 +91,7 @@ class CompanionDeviceHelper(private val context: Context) {
      * Check if the given device MAC is already known to the system as a companion.
      */
     @SuppressLint("MissingPermission")
+    @Suppress("DEPRECATION")
     fun isAssociated(address: String): Boolean {
         if (Build.VERSION.SDK_INT < Build.VERSION_CODES.O) return false
         val mgr = manager ?: return false
@@ -108,6 +111,7 @@ class CompanionDeviceHelper(private val context: Context) {
      * Unregister companion association for the given device.
      */
     @SuppressLint("MissingPermission")
+    @Suppress("DEPRECATION")
     fun unregister(device: BluetoothDevice) {
         if (Build.VERSION.SDK_INT < Build.VERSION_CODES.O) return
         val mgr = manager ?: return
