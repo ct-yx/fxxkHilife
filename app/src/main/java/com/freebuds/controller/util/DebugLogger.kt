@@ -13,7 +13,7 @@ object DebugLogger {
 
     private var logDir: File? = null
     private var logFile: File? = null
-    private var enabled = false
+    private var debugEnabled = false   // controls d() level only
 
     private const val MAX_LOG_SIZE = 1024 * 1024 // 1MB before rotation
     private const val TAG = "DebugLogger"
@@ -25,34 +25,52 @@ object DebugLogger {
         Log.i(TAG, "DebugLogger initialized: ${logDir?.absolutePath}")
     }
 
+    /**
+     * Toggle verbose debug logging.
+     * When disabled, only info/warn/error are output (always recorded).
+     * When enabled, debug-level details are also emitted.
+     */
     fun setEnabled(on: Boolean) {
-        enabled = on
+        debugEnabled = on
         if (on && logFile == null) rotateLog()
         Log.i(TAG, "Debug logging ${if (on) "enabled" else "disabled"}")
     }
 
-    fun isEnabled(): Boolean = enabled
+    fun isEnabled(): Boolean = debugEnabled
 
+    /**
+     * Debug: verbose details — only when debug logging is enabled.
+     * Use for fine-grained SPP traffic, handler step traces, etc.
+     */
     fun d(tag: String, msg: String) {
-        if (!enabled) return
+        if (!debugEnabled) return
         Log.d(tag, msg)
         writeToFile("D/$tag: $msg")
     }
 
+    /**
+     * Info: notable lifecycle / state changes — always recorded.
+     * Use for connect/disconnect, property changes, mode switches.
+     */
     fun i(tag: String, msg: String) {
-        if (!enabled) return
         Log.i(tag, msg)
         writeToFile("I/$tag: $msg")
     }
 
+    /**
+     * Warn: recoverable issues — always recorded.
+     * Use for timeouts, retries, unexpected but non-fatal conditions.
+     */
     fun w(tag: String, msg: String) {
-        if (!enabled) return
         Log.w(tag, msg)
         writeToFile("W/$tag: $msg")
     }
 
+    /**
+     * Error: failures — always recorded, including full stack trace.
+     * Use for exceptions, protocol errors, connection drops.
+     */
     fun e(tag: String, msg: String, tr: Throwable? = null) {
-        if (!enabled) return
         if (tr != null) {
             Log.e(tag, msg, tr)
             writeToFile("E/$tag: $msg\n${Log.getStackTraceString(tr)}")
