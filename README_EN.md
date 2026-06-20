@@ -98,7 +98,7 @@ After installation, grant Bluetooth permissions (Android 12+ requires `BLUETOOTH
 
 ## Project Status
 
-Current version: **v1.6.9** (testing release)
+Current version: **v1.7.0** (testing release)
 
 Core functionality is largely complete. Key improvements include:
 
@@ -115,7 +115,7 @@ Core functionality is largely complete. Key improvements include:
 - **Permission error UX improved**: Chinese/English Toast on permission denial, AlertDialog redirecting to system settings after repeated denials
 - **App icon**: Black background removed, full mipmap density set generated
 
-### ⚠️ Known Issues (v1.6.9)
+### ⚠️ Known Issues (v1.7.0)
 
 This release is in **feature validation stage**. The following features have code implementation but **may not work correctly on all devices**. Testing feedback is welcome:
 

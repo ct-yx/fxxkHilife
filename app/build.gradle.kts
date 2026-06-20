@@ -11,8 +11,8 @@ android {
         applicationId = "com.freebuds.controller"
         minSdk = 26
         targetSdk = 35
-        versionCode = 12
-    versionName = "v1.6.9"
+        versionCode = 13
+    versionName = "v1.7.0"
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
         vectorDrawables {
