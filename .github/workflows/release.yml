@@ -22,6 +22,11 @@ jobs:
         distribution: 'temurin'
         java-version: '17'
 
+    # Fix: Remove China mirror Maven repos for CI (non-China region)
+    - name: Patch settings.gradle.kts for CI environment
+      run: |
+        sed -i '/maven.*aliyun/d; /maven.*huaweicloud/d' settings.gradle.kts
+
     - name: Grant execute permission
       run: chmod +x gradlew
 
