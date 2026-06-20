@@ -273,3 +273,29 @@
 - `README.md` / `README_EN.md` / `DEVELOPMENT_LOG.md` fully updated
 - **Files changed**: ~18+ files
 ✅ completed
+
+---
+
+## 2026-06-20
+
+**v1.5.2 Release — 版本统一合并: 整合 v1.2.4 (代码) + v1.3.0-beta (功能) 历史，统一升级为 v1.5.2**
+
+### 版本混乱背景
+- GitHub 上存在 v1.2.4 和 v1.3.0-beta 两个版本，但 git 历史为线性关系（无分叉）
+- **v1.3.0-beta (348b73c)** 是 **v1.2.4 (1521469)** 的祖先提交
+- v1.2.4 的代码实际更全（6 区上游对齐、手势完善、保活增强、权限 UX 优化）
+- 版本号混乱源于维护过程中版本命名不一致
+
+### 版本合并策略
+- **保留 v1.2.4 代码**（功能最完整的版本）作为基础
+- **统一版本号升级至 v1.5.2**（跳过冲突版本号，全新里程碑）
+- 删除远程 Git tag: `v1.3.0-beta`，保留 `v1.2.2` / `v1.2.3` / `v1.2.4` 作为历史记录
+
+### 更改内容
+- `app/build.gradle.kts`: versionCode **4→5**, versionName **"v1.2.4"→"v1.5.2"**
+- `README.md`: 当前版本 **v1.2.4** → **v1.5.2**（维护版本 → 稳定版本）
+- `README_EN.md`: Current version **v1.2.4** → **v1.5.2**（maintenance → stable）
+- `DEVELOPMENT_LOG.md`: 添加本条记录
+- GitHub 远程同步：更新 tag 和默认分支
+- **Files changed**: 3+ files
+✅ completed
