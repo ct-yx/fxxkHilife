@@ -241,6 +241,15 @@ class TerminalActivity : AppCompatActivity(), OnLogUpdateListener {
     }
 
     private fun scanDevices() {
+        val missing = requiredPermissions.filter {
+            checkSelfPermission(it) != PackageManager.PERMISSION_GRANTED
+        }
+        if (missing.isNotEmpty()) {
+            LogBuffer.w("Perm", "Missing permissions for BT scan: ${missing.joinToString(", ")}")
+            LogBuffer.i("Perm", "Requesting permissions...")
+            permissionLauncher.launch(missing.toTypedArray())
+            return
+        }
         bluetoothScanner = BluetoothScanner(this)
         bluetoothScanner?.startScan { devices ->
             scannedDevices = devices
@@ -261,6 +270,15 @@ class TerminalActivity : AppCompatActivity(), OnLogUpdateListener {
     }
 
     private fun connectDevice(indexStr: String) {
+        val missing = requiredPermissions.filter {
+            checkSelfPermission(it) != PackageManager.PERMISSION_GRANTED
+        }
+        if (missing.isNotEmpty()) {
+            LogBuffer.w("Perm", "Missing permissions for BT connect: ${missing.joinToString(", ")}")
+            LogBuffer.i("Perm", "Requesting permissions...")
+            permissionLauncher.launch(missing.toTypedArray())
+            return
+        }
         val index = indexStr.toIntOrNull()
         if (index == null || index !in scannedDevices.indices) {
             LogBuffer.w("BT", "Invalid index. Type 'list' to see devices")
