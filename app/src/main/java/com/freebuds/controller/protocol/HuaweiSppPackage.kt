@@ -5,7 +5,7 @@ package com.freebuds.controller.protocol
  * 对照 OpenFreebuds package.py
  *
  * 协议格式：
- *   [0x5A] [length:2] [0x00] [command_id:2] [param...] [crc16:2]
+ *   `[0x5A]` `[length:2]` `[0x00]` `[command_id:2]` `[param...]` `[crc16:2]`
  *   每个参数: [type:1] [len:1] [value:N]
  */
 class HuaweiSppPackage(
@@ -38,7 +38,7 @@ class HuaweiSppPackage(
         ): HuaweiSppPackage {
             val params = mutableMapOf<Int, ByteArray>()
             for ((k, v) in pairs) params[k] = v
-            return HuaweiSppPackage(cmd, params = params)
+            return HuaweiSppPackage(cmd, parameters = params)
         }
 
         /** 从字节流解析包 */
