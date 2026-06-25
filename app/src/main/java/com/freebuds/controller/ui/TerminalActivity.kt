@@ -7,6 +7,7 @@ import android.text.SpannableString
 import android.text.Spanned
 import android.text.style.ForegroundColorSpan
 import android.view.inputmethod.EditorInfo
+import android.widget.Button
 import android.widget.ScrollView
 import android.widget.TextView
 import androidx.appcompat.app.AppCompatActivity
@@ -45,6 +46,13 @@ class TerminalActivity : AppCompatActivity(), OnLogUpdateListener {
                 true
             } else false
         }
+
+        findViewById<Button>(R.id.btn_clear).setOnClickListener { handleCommand("clear") }
+        findViewById<Button>(R.id.btn_filter).setOnClickListener { handleCommand("filter") }
+        findViewById<Button>(R.id.btn_share).setOnClickListener { handleCommand("share") }
+        findViewById<Button>(R.id.btn_check).setOnClickListener { handleCommand("check") }
+        findViewById<Button>(R.id.btn_download).setOnClickListener { handleCommand("download") }
+        findViewById<Button>(R.id.btn_help).setOnClickListener { handleCommand("help") }
 
         LogBuffer.registerListener(this)
         printBanner()

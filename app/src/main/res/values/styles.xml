@@ -1,0 +1,16 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <style name="TerminalShortcut" parent="Widget.AppCompat.Button.Borderless">
+        <item name="android:layout_width">wrap_content</item>
+        <item name="android:layout_height">wrap_content</item>
+        <item name="android:paddingHorizontal">8dp</item>
+        <item name="android:paddingVertical">4dp</item>
+        <item name="android:textSize">10sp</item>
+        <item name="android:textColor">#FF00FF00</item>
+        <item name="android:background">#FF2A2A3E</item>
+        <item name="android:layout_marginHorizontal">3dp</item>
+        <item name="android:minWidth">0dp</item>
+        <item name="android:minHeight">0dp</item>
+        <item name="android:letterSpacing">0</item>
+    </style>
+</resources>
