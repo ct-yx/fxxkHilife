@@ -1,7 +1,10 @@
 package com.freebuds.controller.ui
 
+import android.Manifest
 import android.content.Intent
+import android.content.pm.PackageManager
 import android.net.Uri
+import android.os.Build
 import android.os.Bundle
 import android.text.SpannableString
 import android.text.Spanned
@@ -10,6 +13,7 @@ import android.view.inputmethod.EditorInfo
 import android.widget.Button
 import android.widget.ScrollView
 import android.widget.TextView
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.appcompat.app.AppCompatActivity
 import androidx.core.content.FileProvider
 import com.freebuds.controller.BuildConfig
@@ -29,6 +33,33 @@ class TerminalActivity : AppCompatActivity(), OnLogUpdateListener {
     private lateinit var scrollView: ScrollView
     private var currentFilter: String? = null
     private val scope = CoroutineScope(Dispatchers.Main)
+
+    // 收集所有需要运行时申请的权限
+    private val requiredPermissions: List<String> by lazy {
+        val list = mutableListOf<String>()
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
+            list.add(Manifest.permission.BLUETOOTH_CONNECT)
+            list.add(Manifest.permission.BLUETOOTH_SCAN)
+        }
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+            list.add(Manifest.permission.POST_NOTIFICATIONS)
+        }
+        list
+    }
+
+    private val permissionLauncher = registerForActivityResult(
+        ActivityResultContracts.RequestMultiplePermissions()
+    ) { result ->
+        val granted = result.filter { it.value }.keys
+        val denied = result.filter { !it.value }.keys
+        if (granted.isNotEmpty()) {
+            LogBuffer.i("Perm", "Granted: ${granted.joinToString(", ")}")
+        }
+        if (denied.isNotEmpty()) {
+            LogBuffer.w("Perm", "Denied: ${denied.joinToString(", ")}")
+            LogBuffer.w("Perm", "Some features may not work without these permissions")
+        }
+    }
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -56,6 +87,7 @@ class TerminalActivity : AppCompatActivity(), OnLogUpdateListener {
 
         LogBuffer.registerListener(this)
         printBanner()
+        checkPermissions()
         renderAll()
     }
 
@@ -63,6 +95,18 @@ class TerminalActivity : AppCompatActivity(), OnLogUpdateListener {
         LogBuffer.i("Terminal", "fxxkHilife v2 Terminal — ${BuildConfig.VERSION_NAME}")
         LogBuffer.i("Terminal", "Commands: clear | filter [I/W/E/D] | share | check | download | help")
         LogBuffer.i("Terminal", "---")
+    }
+
+    private fun checkPermissions() {
+        val missing = requiredPermissions.filter {
+            checkSelfPermission(it) != PackageManager.PERMISSION_GRANTED
+        }
+        if (missing.isEmpty()) {
+            LogBuffer.i("Perm", "All required permissions already granted")
+            return
+        }
+        LogBuffer.i("Perm", "Requesting permissions: ${missing.joinToString(", ")}")
+        permissionLauncher.launch(missing.toTypedArray())
     }
 
     private fun handleCommand(cmd: String) {
@@ -85,6 +129,7 @@ class TerminalActivity : AppCompatActivity(), OnLogUpdateListener {
             trimmed.equals("share", ignoreCase = true) -> shareLog()
             trimmed.equals("check", ignoreCase = true) -> checkUpdate()
             trimmed.equals("download", ignoreCase = true) -> downloadLatest()
+            trimmed.equals("perm", ignoreCase = true) -> checkPermissions()
             trimmed.equals("help", ignoreCase = true) -> {
                 LogBuffer.i("Terminal", "Available commands:")
                 LogBuffer.i("Terminal", "  clear        — clear screen")
@@ -96,6 +141,7 @@ class TerminalActivity : AppCompatActivity(), OnLogUpdateListener {
                 LogBuffer.i("Terminal", "  share        — export log as text file")
                 LogBuffer.i("Terminal", "  check        — check for updates")
                 LogBuffer.i("Terminal", "  download     — download & open latest APK")
+                LogBuffer.i("Terminal", "  perm         — re-check permissions")
                 LogBuffer.i("Terminal", "  help         — this message")
             }
             else -> LogBuffer.w("Terminal", "Unknown command: $trimmed — type help")
