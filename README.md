@@ -8,7 +8,7 @@
   <b>HUAWEI FreeBuds / HONOR Earbuds 的轻量离线控制 App</b>
 </p>
 
-> 🚧 **项目重构中** — 代码已全部清理，正在重新搭建。
+> **v2.0.0-alpha.2** — 协议命令词典已完成，终端界面就绪。
 >
 > 通过蓝牙 SPP 直接控制耳机，无需登录、无广告、完全离线。
 
@@ -30,9 +30,10 @@ cd fxxkHilife
 
 ## 项目状态
 
-当前版本：**重构中**
+当前版本：**v2.0.0-alpha.2**
 
 - 旧 v1.7.3 版本已归档（分支 `main-archived`）
+- 已完成：项目骨架、终端界面、签名统一、更新检查、屏幕适配、快捷按钮栏、协议命令词典（21条命令）
 - CI 通过 GitHub Actions 自动编译，日志通过 `gh` CLI 查看
 - 开发记录见 [DEVELOPMENT_LOG.md](./DEVELOPMENT_LOG.md)
 

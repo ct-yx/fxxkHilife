@@ -8,7 +8,7 @@
   <b>A lightweight offline controller for HUAWEI FreeBuds / HONOR Earbuds</b>
 </p>
 
-> 🚧 **Under refactoring** — all code has been cleaned up, rebuilding from scratch.
+> **v2.0.0-alpha.2** — protocol command dictionary complete, terminal UI ready.
 >
 > Controls your earbuds directly via classic Bluetooth SPP — no login, no ads, fully offline.
 
@@ -30,9 +30,10 @@ cd fxxkHilife
 
 ## Project Status
 
-Current version: **Under refactoring**
+Current version: **v2.0.0-alpha.2**
 
 - Previous v1.7.3 release archived (branch `main-archived`)
+- Completed: project skeleton, terminal UI, unified signing, update checker, layout adaptation, shortcut buttons, protocol command dictionary (21 commands)
 - CI compiled via GitHub Actions, logs retrieved through `gh` CLI
 - Development log: [DEVELOPMENT_LOG.md](./DEVELOPMENT_LOG.md)
 
