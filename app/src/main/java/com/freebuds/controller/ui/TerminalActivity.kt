@@ -54,6 +54,9 @@ class TerminalActivity : AppCompatActivity(), OnLogUpdateListener {
         list
     }
 
+    // 权限弹窗回调后自动重试的操作
+    private var pendingAction: (() -> Unit)? = null
+
     private val permissionLauncher = registerForActivityResult(
         ActivityResultContracts.RequestMultiplePermissions()
     ) { result ->
@@ -64,7 +67,14 @@ class TerminalActivity : AppCompatActivity(), OnLogUpdateListener {
         }
         if (denied.isNotEmpty()) {
             LogBuffer.w("Perm", "Denied: ${denied.joinToString(", ")}")
-            LogBuffer.w("Perm", "Some features may not work without these permissions")
+        }
+        // 检查是否所有必需权限都已授予
+        val allGranted = requiredPermissions.all {
+            checkSelfPermission(it) == PackageManager.PERMISSION_GRANTED
+        }
+        if (allGranted) {
+            pendingAction?.invoke()
+            pendingAction = null
         }
     }
 
@@ -246,6 +256,7 @@ class TerminalActivity : AppCompatActivity(), OnLogUpdateListener {
         }
         if (missing.isNotEmpty()) {
             LogBuffer.w("Perm", "Missing permissions for BT scan: ${missing.joinToString(", ")}")
+            pendingAction = { scanDevices() }
             LogBuffer.i("Perm", "Requesting permissions...")
             permissionLauncher.launch(missing.toTypedArray())
             return
@@ -275,6 +286,7 @@ class TerminalActivity : AppCompatActivity(), OnLogUpdateListener {
         }
         if (missing.isNotEmpty()) {
             LogBuffer.w("Perm", "Missing permissions for BT connect: ${missing.joinToString(", ")}")
+            pendingAction = { connectDevice(indexStr) }
             LogBuffer.i("Perm", "Requesting permissions...")
             permissionLauncher.launch(missing.toTypedArray())
             return
