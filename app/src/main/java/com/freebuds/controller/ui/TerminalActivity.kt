@@ -34,9 +34,6 @@ class TerminalActivity : AppCompatActivity(), OnLogUpdateListener {
         setContentView(R.layout.activity_terminal)
         title = "fxxkHilife Terminal"
 
-        // 状态栏透明，内容自动在安全区内（fitsSystemWindows 处理 paddingTop）
-        window.statusBarColor = android.graphics.Color.TRANSPARENT
-
         outputView = findViewById(R.id.terminal_output)
         inputView = findViewById(R.id.terminal_input)
         scrollView = findViewById(R.id.terminal_scroll)
