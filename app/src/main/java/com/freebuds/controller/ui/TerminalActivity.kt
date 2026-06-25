@@ -1,6 +1,7 @@
 package com.freebuds.controller.ui
 
 import android.Manifest
+import android.bluetooth.BluetoothDevice
 import android.content.Intent
 import android.content.pm.PackageManager
 import android.net.Uri
@@ -18,6 +19,8 @@ import androidx.appcompat.app.AppCompatActivity
 import androidx.core.content.FileProvider
 import com.freebuds.controller.BuildConfig
 import com.freebuds.controller.R
+import com.freebuds.controller.bluetooth.BluetoothScanner
+import com.freebuds.controller.bluetooth.SppDriver
 import com.freebuds.controller.data.UpdateChecker
 import com.freebuds.controller.util.LogBuffer
 import com.freebuds.controller.util.LogBuffer.OnLogUpdateListener
@@ -33,6 +36,10 @@ class TerminalActivity : AppCompatActivity(), OnLogUpdateListener {
     private lateinit var scrollView: ScrollView
     private var currentFilter: String? = null
     private val scope = CoroutineScope(Dispatchers.Main)
+
+    private var bluetoothScanner: BluetoothScanner? = null
+    private var sppDriver: SppDriver? = null
+    private var scannedDevices: List<BluetoothDevice> = emptyList()
 
     // 收集所有需要运行时申请的权限
     private val requiredPermissions: List<String> by lazy {
@@ -130,18 +137,23 @@ class TerminalActivity : AppCompatActivity(), OnLogUpdateListener {
             trimmed.equals("check", ignoreCase = true) -> checkUpdate()
             trimmed.equals("download", ignoreCase = true) -> downloadLatest()
             trimmed.equals("perm", ignoreCase = true) -> checkPermissions()
+            trimmed.equals("scan", ignoreCase = true) -> scanDevices()
+            trimmed.startsWith("connect", ignoreCase = true) -> connectDevice(trimmed.removePrefix("connect").trim())
+            trimmed.equals("disconnect", ignoreCase = true) -> disconnectDevice()
+            trimmed.equals("list", ignoreCase = true) -> listDevices()
             trimmed.equals("help", ignoreCase = true) -> {
                 LogBuffer.i("Terminal", "Available commands:")
                 LogBuffer.i("Terminal", "  clear        — clear screen")
-                LogBuffer.i("Terminal", "  filter I     — show only info")
-                LogBuffer.i("Terminal", "  filter W     — show only warnings")
-                LogBuffer.i("Terminal", "  filter E     — show only errors")
-                LogBuffer.i("Terminal", "  filter D     — show only debug")
+                LogBuffer.i("Terminal", "  filter I/W/E — show only level")
                 LogBuffer.i("Terminal", "  filter       — show all levels")
                 LogBuffer.i("Terminal", "  share        — export log as text file")
                 LogBuffer.i("Terminal", "  check        — check for updates")
                 LogBuffer.i("Terminal", "  download     — download & open latest APK")
                 LogBuffer.i("Terminal", "  perm         — re-check permissions")
+                LogBuffer.i("Terminal", "  scan         — scan BT devices")
+                LogBuffer.i("Terminal", "  list         — list scanned devices")
+                LogBuffer.i("Terminal", "  connect <n>  — connect to device #n")
+                LogBuffer.i("Terminal", "  disconnect   — disconnect device")
                 LogBuffer.i("Terminal", "  help         — this message")
             }
             else -> LogBuffer.w("Terminal", "Unknown command: $trimmed — type help")
@@ -228,7 +240,54 @@ class TerminalActivity : AppCompatActivity(), OnLogUpdateListener {
         startActivity(Intent.createChooser(intent, "Share Log"))
     }
 
+    private fun scanDevices() {
+        bluetoothScanner = BluetoothScanner(this)
+        bluetoothScanner?.startScan { devices ->
+            scannedDevices = devices
+            LogBuffer.i("Scan", "Found ${devices.size} devices. Type 'list' to see them")
+        }
+    }
+
+    private fun listDevices() {
+        if (scannedDevices.isEmpty()) {
+            LogBuffer.i("BT", "No devices scanned yet. Type 'scan' first")
+            return
+        }
+        LogBuffer.i("BT", "--- Scanned devices ---")
+        scannedDevices.forEachIndexed { i, d ->
+            LogBuffer.i("BT", "  [$i] ${d.name ?: "?"}  ${d.address}")
+        }
+        LogBuffer.i("BT", "Use 'connect <n>' to connect")
+    }
+
+    private fun connectDevice(indexStr: String) {
+        val index = indexStr.toIntOrNull()
+        if (index == null || index !in scannedDevices.indices) {
+            LogBuffer.w("BT", "Invalid index. Type 'list' to see devices")
+            return
+        }
+        val device = scannedDevices[index]
+        LogBuffer.i("BT", "Connecting to ${device.name}...")
+        scope.launch {
+            sppDriver = SppDriver(device, sppPort = 1)
+            if (sppDriver?.connect() == true) {
+                LogBuffer.i("BT", "Connected to ${device.name}")
+            } else {
+                LogBuffer.e("BT", "Connection failed")
+                sppDriver = null
+            }
+        }
+    }
+
+    private fun disconnectDevice() {
+        sppDriver?.disconnect()
+        sppDriver = null
+        LogBuffer.i("BT", "Disconnected")
+    }
+
     override fun onDestroy() {
+        bluetoothScanner?.stopScan()
+        sppDriver?.disconnect()
         LogBuffer.unregisterListener(this)
         super.onDestroy()
     }
