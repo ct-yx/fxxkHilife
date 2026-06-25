@@ -1,6 +1,7 @@
 package com.freebuds.controller.ui
 
 import android.content.Intent
+import android.net.Uri
 import android.os.Bundle
 import android.text.SpannableString
 import android.text.Spanned
@@ -12,8 +13,12 @@ import androidx.appcompat.app.AppCompatActivity
 import androidx.core.content.FileProvider
 import com.freebuds.controller.BuildConfig
 import com.freebuds.controller.R
+import com.freebuds.controller.data.UpdateChecker
 import com.freebuds.controller.util.LogBuffer
 import com.freebuds.controller.util.LogBuffer.OnLogUpdateListener
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.launch
 import java.io.File
 
 class TerminalActivity : AppCompatActivity(), OnLogUpdateListener {
@@ -22,6 +27,7 @@ class TerminalActivity : AppCompatActivity(), OnLogUpdateListener {
     private lateinit var inputView: TextView
     private lateinit var scrollView: ScrollView
     private var currentFilter: String? = null
+    private val scope = CoroutineScope(Dispatchers.Main)
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -47,7 +53,7 @@ class TerminalActivity : AppCompatActivity(), OnLogUpdateListener {
 
     private fun printBanner() {
         LogBuffer.i("Terminal", "fxxkHilife v2 Terminal — ${BuildConfig.VERSION_NAME}")
-        LogBuffer.i("Terminal", "Commands: clear | filter [I/W/E/D] | share | help")
+        LogBuffer.i("Terminal", "Commands: clear | filter [I/W/E/D] | share | check | download | help")
         LogBuffer.i("Terminal", "---")
     }
 
@@ -69,6 +75,8 @@ class TerminalActivity : AppCompatActivity(), OnLogUpdateListener {
                 renderAll()
             }
             trimmed.equals("share", ignoreCase = true) -> shareLog()
+            trimmed.equals("check", ignoreCase = true) -> checkUpdate()
+            trimmed.equals("download", ignoreCase = true) -> downloadLatest()
             trimmed.equals("help", ignoreCase = true) -> {
                 LogBuffer.i("Terminal", "Available commands:")
                 LogBuffer.i("Terminal", "  clear        — clear screen")
@@ -78,9 +86,44 @@ class TerminalActivity : AppCompatActivity(), OnLogUpdateListener {
                 LogBuffer.i("Terminal", "  filter D     — show only debug")
                 LogBuffer.i("Terminal", "  filter       — show all levels")
                 LogBuffer.i("Terminal", "  share        — export log as text file")
+                LogBuffer.i("Terminal", "  check        — check for updates")
+                LogBuffer.i("Terminal", "  download     — download & open latest APK")
                 LogBuffer.i("Terminal", "  help         — this message")
             }
             else -> LogBuffer.w("Terminal", "Unknown command: $trimmed — type help")
+        }
+    }
+
+    private fun checkUpdate() {
+        LogBuffer.i("Update", "Checking for updates...")
+        scope.launch {
+            val info = UpdateChecker.check()
+            if (UpdateChecker.hasUpdate(info)) {
+                LogBuffer.i("Update", "New version available: ${info!!.latestVersion}")
+                LogBuffer.i("Update", info.releaseNotes)
+                LogBuffer.i("Update", "Type 'download' to get it")
+            } else if (info != null) {
+                LogBuffer.i("Update", "Already up-to-date (${info.latestVersion})")
+            } else {
+                LogBuffer.w("Update", "Failed to check updates (no network?)")
+            }
+        }
+    }
+
+    private fun downloadLatest() {
+        LogBuffer.i("Update", "Fetching latest release info...")
+        scope.launch {
+            val info = UpdateChecker.check()
+            if (info == null || info.downloadUrl.isBlank()) {
+                LogBuffer.w("Update", "No download URL available")
+                return@launch
+            }
+            if (!UpdateChecker.hasUpdate(info)) {
+                LogBuffer.i("Update", "Already up-to-date (${info.latestVersion})")
+            }
+            LogBuffer.i("Update", "Opening: ${info.downloadUrl}")
+            val intent = Intent(Intent.ACTION_VIEW, Uri.parse(info.downloadUrl))
+            startActivity(intent)
         }
     }
 
