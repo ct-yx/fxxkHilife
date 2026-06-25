@@ -67,8 +67,16 @@ class TerminalActivity : AppCompatActivity(), OnLogUpdateListener {
         }
         if (denied.isNotEmpty()) {
             LogBuffer.w("Perm", "Denied: ${denied.joinToString(", ")}")
+            // 检查是否被永久拒绝（不再询问）
+            val permanentlyDenied = denied.any {
+                !shouldShowRequestPermissionRationale(it)
+            }
+            if (permanentlyDenied) {
+                LogBuffer.w("Perm", "Permission permanently denied — please enable in Settings")
+                pendingAction = null
+                return@registerForActivityResult
+            }
         }
-        // 检查是否所有必需权限都已授予
         val allGranted = requiredPermissions.all {
             checkSelfPermission(it) == PackageManager.PERMISSION_GRANTED
         }
