@@ -36,8 +36,8 @@ jobs:
       - name: Grant execute permission
         run: chmod +x gradlew
 
-      - name: Build Debug APK
-        run: ./gradlew assembleDebug
+      - name: Clean and Build Debug APK
+        run: ./gradlew clean assembleDebug
 
       - name: Build Release APK
         run: ./gradlew assembleRelease
