@@ -87,7 +87,6 @@ class TerminalActivity : AppCompatActivity(), OnLogUpdateListener {
     override fun onLogUpdate() = runOnUiThread { renderAll() }
 
     private fun renderAll() {
-        val entries = LogBuffer.getSnapshot()
         if (currentFilter != null) {
             outputView.text = colorize(LogBuffer.getSnapshotText(currentFilter))
         } else {
