@@ -132,7 +132,7 @@ class SppDriver(private val device: BluetoothDevice, private val sppPort: Int = 
     private suspend fun recvLoop() {
         try {
             val buffer = mutableListOf<Byte>()
-            while (coroutineContext.isActive) {
+            while (currentCoroutineContext().isActive) {
                 val input = inputStream ?: break
                 val byte = input.read()
                 if (byte == -1) break
