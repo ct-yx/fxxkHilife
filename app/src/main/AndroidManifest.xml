@@ -22,19 +22,34 @@
         android:theme="@style/Theme.FxxkHilife">
 
         <activity
-            android:name=".ui.MainActivity"
+            android:name=".ui.TerminalActivity"
             android:exported="true"
-            android:label="@string/app_name">
+            android:label="Terminal">
             <intent-filter>
                 <action android:name="android.intent.action.MAIN" />
                 <category android:name="android.intent.category.LAUNCHER" />
             </intent-filter>
         </activity>
 
+        <activity
+            android:name=".ui.MainActivity"
+            android:exported="false"
+            android:label="@string/app_name" />
+
         <service
             android:name=".service.BluetoothService"
             android:foregroundServiceType="connectedDevice"
             android:exported="false" />
+
+        <provider
+            android:name="androidx.core.content.FileProvider"
+            android:authorities="${applicationId}.fileprovider"
+            android:exported="false"
+            android:grantUriPermissions="true">
+            <meta-data
+                android:name="android.support.FILE_PROVIDER_PATHS"
+                android:resource="@xml/file_paths" />
+        </provider>
     </application>
 
 </manifest>

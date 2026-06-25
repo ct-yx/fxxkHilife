@@ -1,0 +1,138 @@
+package com.freebuds.controller.ui
+
+import android.content.Intent
+import android.os.Bundle
+import android.text.SpannableString
+import android.text.Spanned
+import android.text.style.ForegroundColorSpan
+import android.view.inputmethod.EditorInfo
+import android.widget.ScrollView
+import android.widget.TextView
+import androidx.appcompat.app.AppCompatActivity
+import androidx.core.content.FileProvider
+import com.freebuds.controller.R
+import com.freebuds.controller.util.LogBuffer
+import com.freebuds.controller.util.LogBuffer.OnLogUpdateListener
+import java.io.File
+
+class TerminalActivity : AppCompatActivity(), OnLogUpdateListener {
+
+    private lateinit var outputView: TextView
+    private lateinit var inputView: TextView
+    private lateinit var scrollView: ScrollView
+    private var currentFilter: String? = null
+
+    override fun onCreate(savedInstanceState: Bundle?) {
+        super.onCreate(savedInstanceState)
+        setContentView(R.layout.activity_terminal)
+        title = "fxxkHilife Terminal"
+
+        outputView = findViewById(R.id.terminal_output)
+        inputView = findViewById(R.id.terminal_input)
+        scrollView = findViewById(R.id.terminal_scroll)
+
+        inputView.setOnEditorActionListener { _, action, _ ->
+            if (action == EditorInfo.IME_ACTION_SEND) {
+                handleCommand(inputView.text.toString())
+                inputView.text = null
+                true
+            } else false
+        }
+
+        LogBuffer.registerListener(this)
+        printBanner()
+        renderAll()
+    }
+
+    private fun printBanner() {
+        LogBuffer.i("Terminal", "fxxkHilife v2 Terminal — ${BuildConfig.VERSION_NAME}")
+        LogBuffer.i("Terminal", "Commands: clear | filter [I/W/E/D] | share | help")
+        LogBuffer.i("Terminal", "---")
+    }
+
+    private fun handleCommand(cmd: String) {
+        val trimmed = cmd.trim()
+        LogBuffer.i(">", trimmed)
+
+        when {
+            trimmed.equals("clear", ignoreCase = true) -> LogBuffer.clear()
+            trimmed.startsWith("filter", ignoreCase = true) -> {
+                val arg = trimmed.removePrefix("filter").trim()
+                if (arg.length == 1 && arg.first() in listOf('I', 'W', 'E', 'D')) {
+                    currentFilter = arg.uppercase()
+                    LogBuffer.i("Terminal", "Filter set to [$currentFilter]")
+                } else {
+                    currentFilter = null
+                    LogBuffer.i("Terminal", "Filter cleared (show all)")
+                }
+                renderAll()
+            }
+            trimmed.equals("share", ignoreCase = true) -> shareLog()
+            trimmed.equals("help", ignoreCase = true) -> {
+                LogBuffer.i("Terminal", "Available commands:")
+                LogBuffer.i("Terminal", "  clear        — clear screen")
+                LogBuffer.i("Terminal", "  filter I     — show only info")
+                LogBuffer.i("Terminal", "  filter W     — show only warnings")
+                LogBuffer.i("Terminal", "  filter E     — show only errors")
+                LogBuffer.i("Terminal", "  filter D     — show only debug")
+                LogBuffer.i("Terminal", "  filter       — show all levels")
+                LogBuffer.i("Terminal", "  share        — export log as text file")
+                LogBuffer.i("Terminal", "  help         — this message")
+            }
+            else -> LogBuffer.w("Terminal", "Unknown command: $trimmed — type help")
+        }
+    }
+
+    override fun onLogUpdate() = runOnUiThread { renderAll() }
+
+    private fun renderAll() {
+        val entries = LogBuffer.getSnapshot()
+        if (currentFilter != null) {
+            outputView.text = colorize(LogBuffer.getSnapshotText(currentFilter))
+        } else {
+            outputView.text = colorize(LogBuffer.getSnapshotText())
+        }
+        scrollView.post { scrollView.fullScroll(ScrollView.FOCUS_DOWN) }
+    }
+
+    private fun colorize(text: String): SpannableString {
+        val ss = SpannableString(text)
+        val lines = text.lines()
+        var offset = 0
+        for (line in lines) {
+            val bracket = line.indexOf('[')
+            if (bracket >= 0 && bracket + 2 < line.length) {
+                val lvl = line[bracket + 1]
+                val color = when (lvl) {
+                    'E' -> 0xFFFF4444.toInt()
+                    'W' -> 0xFFFFBB33
+                    'I' -> 0xFF99CC00
+                    'D' -> 0xFF33B5E5
+                    else -> 0xFF00FF00
+                }
+                ss.setSpan(ForegroundColorSpan(color), offset + bracket + 1, offset + bracket + 2, Spanned.SPAN_EXCLUSIVE_EXCLUSIVE)
+            }
+            offset += line.length + 1
+        }
+        return ss
+    }
+
+    private fun shareLog() {
+        val text = LogBuffer.getSnapshotText(currentFilter)
+        val file = File(cacheDir, "fxxkHilife_log_${System.currentTimeMillis()}.txt")
+        file.writeText(text)
+
+        val uri = FileProvider.getUriForFile(this, "${packageName}.fileprovider", file)
+        val intent = Intent(Intent.ACTION_SEND).apply {
+            type = "text/plain"
+            putExtra(Intent.EXTRA_STREAM, uri)
+            addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
+        }
+        startActivity(Intent.createChooser(intent, "Share Log"))
+    }
+
+    override fun onDestroy() {
+        LogBuffer.unregisterListener(this)
+        super.onDestroy()
+    }
+}
