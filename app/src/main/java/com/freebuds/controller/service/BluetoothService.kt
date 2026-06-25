@@ -13,6 +13,10 @@ class BluetoothService : Service() {
     companion object {
         const val CHANNEL_ID = "bluetooth_service"
         const val NOTIFICATION_ID = 1001
+        private val PACKAGE = BluetoothService::class.java.`package`?.name ?: ""
+        val ACTION_CONNECT = "$PACKAGE.action.CONNECT"
+        val ACTION_DISCONNECT = "$PACKAGE.action.DISCONNECT"
+        val EXTRA_DEVICE = "$PACKAGE.extra.DEVICE"
     }
 
     override fun onCreate() {
@@ -59,11 +63,4 @@ class BluetoothService : Service() {
         disconnect()
         super.onDestroy()
     }
-
-    // Intent actions
-    const val ACTION_CONNECT = "$PACKAGE.action.CONNECT"
-    const val ACTION_DISCONNECT = "$PACKAGE.action.DISCONNECT"
-    const val EXTRA_DEVICE = "$PACKAGE.extra.DEVICE"
-
-    private val PACKAGE get() = BluetoothService::class.java.`package`?.name ?: ""
 }

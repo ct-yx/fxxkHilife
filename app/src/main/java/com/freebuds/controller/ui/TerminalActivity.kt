@@ -10,6 +10,7 @@ import android.widget.ScrollView
 import android.widget.TextView
 import androidx.appcompat.app.AppCompatActivity
 import androidx.core.content.FileProvider
+import com.freebuds.controller.BuildConfig
 import com.freebuds.controller.R
 import com.freebuds.controller.util.LogBuffer
 import com.freebuds.controller.util.LogBuffer.OnLogUpdateListener
@@ -105,10 +106,10 @@ class TerminalActivity : AppCompatActivity(), OnLogUpdateListener {
                 val lvl = line[bracket + 1]
                 val color = when (lvl) {
                     'E' -> 0xFFFF4444.toInt()
-                    'W' -> 0xFFFFBB33
-                    'I' -> 0xFF99CC00
-                    'D' -> 0xFF33B5E5
-                    else -> 0xFF00FF00
+                    'W' -> 0xFFFFBB33.toInt()
+                    'I' -> 0xFF99CC00.toInt()
+                    'D' -> 0xFF33B5E5.toInt()
+                    else -> 0xFF00FF00.toInt()
                 }
                 ss.setSpan(ForegroundColorSpan(color), offset + bracket + 1, offset + bracket + 2, Spanned.SPAN_EXCLUSIVE_EXCLUSIVE)
             }
