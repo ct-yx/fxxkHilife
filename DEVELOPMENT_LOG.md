@@ -32,3 +32,11 @@
 - 实现协议命令词典：HuaweiSppCommand（21条命令 ID）+ HuaweiSppPackage（封解包 + CRC16 校验）✅
 - 修复 CI 编译错误若干：settings.gradle.kts 语法、BuildConfig 未开启、companion object 合并、signingConfig 路径问题 ✅
 - 更新版本至 v2.0.0-alpha.2
+- 实现设备能力表 DeviceCapability.kt：12款型号 x 33项能力，对照 OpenFreebuds Python 驱动类逐型号翻译 ✅
+- 实现蓝牙驱动层：SppDriver（蓝牙RFCOMM连接、包收发、响应等待、包分发、Handler注册）✅
+- 实现蓝牙设备扫描：BluetoothScanner（BroadcastReceiver 方式）✅
+- 定义 Handler 接口：HuaweiDeviceHandler（onInit + onPackage + commandIds）✅
+- 终端命令扩展：scan / list / connect <n> / disconnect 四条蓝牙操作命令 ✅
+- 运行时权限增强：按钮栏新增 scan 按钮，所有蓝牙操作日志走终端显示 ✅
+- 更新版本至 v2.0.0-alpha.3（code=3）
+- CI 改造：编译通过后自动创建 GitHub Release 并上传 APK

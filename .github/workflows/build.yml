@@ -1,4 +1,4 @@
-name: Build APK
+name: Build & Release APK
 
 on:
   push:
@@ -36,6 +36,12 @@ jobs:
       - name: Grant execute permission
         run: chmod +x gradlew
 
+      - name: Extract version name
+        run: |
+          VERSION=$(grep 'versionName' app/build.gradle.kts | head -1 | cut -d'"' -f2)
+          echo "VERSION_NAME=$VERSION" >> $GITHUB_ENV
+          echo "Building version: $VERSION"
+
       - name: Clean and Build Debug APK
         run: ./gradlew clean assembleDebug
 
@@ -53,3 +59,18 @@ jobs:
         with:
           name: app-release
           path: app/build/outputs/apk/release/*.apk
+
+      - name: Create Release
+        if: github.event_name == 'push'
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          TAG="v${{ env.VERSION_NAME }}"
+          RELEASE_NOTES="fxxkHilife $TAG"
+          gh release create "$TAG" \
+            app/build/outputs/apk/debug/*.apk \
+            app/build/outputs/apk/release/*.apk \
+            --title "$TAG" \
+            --notes "$RELEASE_NOTES" \
+            --prerelease \
+            --target "${{ github.sha }}" || echo "Release $TAG already exists, skipping"
