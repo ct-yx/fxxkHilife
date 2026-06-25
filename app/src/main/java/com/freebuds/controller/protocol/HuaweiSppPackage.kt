@@ -4,9 +4,8 @@ package com.freebuds.controller.protocol
  * 华为 SPP 协议包
  * 对照 OpenFreebuds package.py
  *
- * 协议格式：
- *   `[0x5A]` `[length:2]` `[0x00]` `[command_id:2]` `[param...]` `[crc16:2]`
- *   每个参数: [type:1] [len:1] [value:N]
+ * 协议格式: 0x5A + length(2) + 0x00 + command_id(2) + params... + crc16(2)
+ *   每个参数: type(1) + len(1) + value(N)
  */
 class HuaweiSppPackage(
     val commandId: ByteArray,
