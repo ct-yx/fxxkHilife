@@ -46,3 +46,8 @@
 - 扫描前自动列出已配对设备 ✅
 - 版本更新至 v2.0.0-alpha.4（code=4）
 - CI 自动 Release: 编译通过后 gh release create 上传 Debug+Release APK ✅
+
+- 对照 OpenFreebuds 实现电池 Handler：BatteryHandler.kt（onInit 发送读请求、onPackage 解析电量、setOnBatteryUpdate 回调接口）✅
+- 扫描后自动连接：扫到华为/荣耀设备立即自动连接，手动 connect 保留 ✅
+- 所有 Handler 预留注册接口：connectToDevice() 集中注册，各 Handler 通过 registerHandler 注入 ✅
+- 更新版本至 v2.0.0-alpha.5（code=5）

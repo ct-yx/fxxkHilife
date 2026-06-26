@@ -19,6 +19,7 @@ import androidx.core.content.FileProvider
 import com.freebuds.controller.BuildConfig
 import com.freebuds.controller.R
 import com.freebuds.controller.bluetooth.BluetoothScanner
+import com.freebuds.controller.bluetooth.BatteryHandler
 import com.freebuds.controller.bluetooth.ScannedDevice
 import com.freebuds.controller.bluetooth.SppDriver
 import com.freebuds.controller.data.UpdateChecker
@@ -275,6 +276,13 @@ class TerminalActivity : AppCompatActivity(), OnLogUpdateListener {
                 scannedDevices = bluetoothScanner!!.found.toList()
                 val hwCount = scannedDevices.count { it.isHuaweiOrHonor }
                 LogBuffer.i("Scan", "Found ${scannedDevices.size} devices ($hwCount Huawei/Honor). Type 'list' to see them")
+                val target = scannedDevices.firstOrNull { it.isHuaweiOrHonor }
+                if (target != null) {
+                    LogBuffer.i("Scan", "Auto-connecting to ${target.displayName}...")
+                    scope.launch { connectToDevice(target) }
+                } else {
+                    LogBuffer.i("Scan", "No Huawei/Honor found, use 'connect <n>'")
+                }
             } else {
                 LogBuffer.w("Scan", "Scan failed or cancelled")
             }
@@ -312,16 +320,21 @@ class TerminalActivity : AppCompatActivity(), OnLogUpdateListener {
             LogBuffer.w("BT", "Invalid index. Type 'list' to see devices")
             return
         }
-        val sd = scannedDevices[index]
+        scope.launch { connectToDevice(scannedDevices[index]) }
+    }
+
+    /** 连接设备并注册所有 Handler（可供 scan 自动连接调用） */
+    private suspend fun connectToDevice(sd: ScannedDevice) {
         LogBuffer.i("BT", "Connecting to ${sd.displayName}...")
-        scope.launch {
-            sppDriver = SppDriver(sd.device, sppPort = 1)
-            if (sppDriver?.connect() == true) {
-                LogBuffer.i("BT", "Connected to ${sd.displayName}")
-            } else {
-                LogBuffer.e("BT", "Connection failed")
-                sppDriver = null
-            }
+        val driver = SppDriver(sd.device, sppPort = 1)
+        val bat = BatteryHandler()
+        bat.setOnBatteryUpdate { LogBuffer.i("Battery", "Update") }
+        driver.registerHandler(bat)
+        sppDriver = driver
+        if (driver.connect()) {
+            LogBuffer.i("BT", "Connected to ${sd.displayName}")
+        } else {
+            LogBuffer.e("BT", "Connection failed"); sppDriver = null
         }
     }
 
