@@ -1,7 +1,6 @@
 package com.freebuds.controller.ui
 
 import android.Manifest
-import android.bluetooth.BluetoothDevice
 import android.content.Intent
 import android.content.pm.PackageManager
 import android.net.Uri
@@ -20,6 +19,7 @@ import androidx.core.content.FileProvider
 import com.freebuds.controller.BuildConfig
 import com.freebuds.controller.R
 import com.freebuds.controller.bluetooth.BluetoothScanner
+import com.freebuds.controller.bluetooth.ScannedDevice
 import com.freebuds.controller.bluetooth.SppDriver
 import com.freebuds.controller.data.UpdateChecker
 import com.freebuds.controller.util.LogBuffer
@@ -39,7 +39,7 @@ class TerminalActivity : AppCompatActivity(), OnLogUpdateListener {
 
     private var bluetoothScanner: BluetoothScanner? = null
     private var sppDriver: SppDriver? = null
-    private var scannedDevices: List<BluetoothDevice> = emptyList()
+    private var scannedDevices: List<ScannedDevice> = emptyList()
 
     // 收集所有需要运行时申请的权限
     private val requiredPermissions: List<String> by lazy {
@@ -270,9 +270,14 @@ class TerminalActivity : AppCompatActivity(), OnLogUpdateListener {
             return
         }
         bluetoothScanner = BluetoothScanner(this)
-        bluetoothScanner?.startScan { devices ->
-            scannedDevices = devices
-            LogBuffer.i("Scan", "Found ${devices.size} devices. Type 'list' to see them")
+        bluetoothScanner?.startScan { success ->
+            if (success) {
+                scannedDevices = bluetoothScanner!!.found.toList()
+                val hwCount = scannedDevices.count { it.isHuaweiOrHonor }
+                LogBuffer.i("Scan", "Found ${scannedDevices.size} devices ($hwCount Huawei/Honor). Type 'list' to see them")
+            } else {
+                LogBuffer.w("Scan", "Scan failed or cancelled")
+            }
         }
     }
 
@@ -283,7 +288,10 @@ class TerminalActivity : AppCompatActivity(), OnLogUpdateListener {
         }
         LogBuffer.i("BT", "--- Scanned devices ---")
         scannedDevices.forEachIndexed { i, d ->
-            LogBuffer.i("BT", "  [$i] ${d.name ?: "?"}  ${d.address}")
+            val tag = if (d.isHuaweiOrHonor) "🔹 " else "  "
+            val rssiStr = if (d.rssi != 0) " RSSI:${d.rssi}" else ""
+            val bondedStr = if (d.isBonded) " [paired]" else ""
+            LogBuffer.i("BT", "  $tag[$i] ${d.displayName}  ${d.address}$rssiStr$bondedStr")
         }
         LogBuffer.i("BT", "Use 'connect <n>' to connect")
     }
@@ -304,12 +312,12 @@ class TerminalActivity : AppCompatActivity(), OnLogUpdateListener {
             LogBuffer.w("BT", "Invalid index. Type 'list' to see devices")
             return
         }
-        val device = scannedDevices[index]
-        LogBuffer.i("BT", "Connecting to ${device.name}...")
+        val sd = scannedDevices[index]
+        LogBuffer.i("BT", "Connecting to ${sd.displayName}...")
         scope.launch {
-            sppDriver = SppDriver(device, sppPort = 1)
+            sppDriver = SppDriver(sd.device, sppPort = 1)
             if (sppDriver?.connect() == true) {
-                LogBuffer.i("BT", "Connected to ${device.name}")
+                LogBuffer.i("BT", "Connected to ${sd.displayName}")
             } else {
                 LogBuffer.e("BT", "Connection failed")
                 sppDriver = null

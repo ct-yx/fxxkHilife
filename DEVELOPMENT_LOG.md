@@ -40,3 +40,9 @@
 - 运行时权限增强：按钮栏新增 scan 按钮，所有蓝牙操作日志走终端显示 ✅
 - 更新版本至 v2.0.0-alpha.3（code=3）
 - CI 改造：编译通过后自动创建 GitHub Release 并上传 APK
+
+- 增强蓝牙扫描器：ScannedDevice 数据类（RSSI/品牌识别/配对状态/连接状态），BluetoothScanner 重构为 Boolean 回调 ✅
+- 终端 list 命令增强：显示 🔹 华为/荣耀标识、RSSI 信号强度、[paired] 配对状态 ✅
+- 扫描前自动列出已配对设备 ✅
+- 版本更新至 v2.0.0-alpha.4（code=4）
+- CI 自动 Release: 编译通过后 gh release create 上传 Debug+Release APK ✅

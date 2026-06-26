@@ -8,7 +8,7 @@
   <b>A lightweight offline controller for HUAWEI FreeBuds / HONOR Earbuds</b>
 </p>
 
-> **v2.0.0-alpha.3** — Bluetooth scanning & SPP connection ready, CLI operation.
+> **v2.0.0-alpha.4** — Enhanced BT scanner (brand detection+RSSI+bonding status), Handler interface ready.
 >
 > Controls your earbuds directly via classic Bluetooth SPP — no login, no ads, fully offline.
 
@@ -30,7 +30,7 @@ cd fxxkHilife
 
 ## Project Status
 
-Current version: **v2.0.0-alpha.3**
+Current version: **v2.0.0-alpha.4**
 
 - Previous v1.7.3 release archived (branch `main-archived`)
 - Completed: project skeleton, terminal UI, unified signing, update checker, layout adaptation, shortcut buttons, protocol command dictionary, device capability table (12 models), BT scanning, SPP driver, Handler interface
