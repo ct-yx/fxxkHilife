@@ -6,6 +6,9 @@ on:
   pull_request:
     branches: [ "refactor/v2-alpha" ]
 
+permissions:
+  contents: write
+
 jobs:
   build:
     runs-on: ubuntu-latest
