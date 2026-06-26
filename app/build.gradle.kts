@@ -26,6 +26,15 @@ android {
         jvmTarget = "17"
     }
 
+    signingConfigs {
+        create("fixedDebug") {
+            storeFile = rootProject.file("debug.keystore")
+            storePassword = "android"
+            keyAlias = "androiddebugkey"
+            keyPassword = "android"
+        }
+    }
+
     buildFeatures {
         compose = false
         viewBinding = true
@@ -34,7 +43,7 @@ android {
 
     buildTypes {
         debug {
-            signingConfig = signingConfigs.getByName("debug")
+            signingConfig = signingConfigs.getByName("fixedDebug")
         }
         release {
             isMinifyEnabled = true
@@ -42,7 +51,7 @@ android {
                 getDefaultProguardFile("proguard-android-optimize.txt"),
                 "proguard-rules.pro"
             )
-            signingConfig = signingConfigs.getByName("debug")
+            signingConfig = signingConfigs.getByName("fixedDebug")
         }
     }
 }
