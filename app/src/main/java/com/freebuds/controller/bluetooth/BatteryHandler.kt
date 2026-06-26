@@ -18,8 +18,8 @@ class BatteryHandler(private val wTws: Boolean = true) : HuaweiDeviceHandler {
 
     override val id = "battery"
     override val commandIds = listOf(
-        HuaweiSppCommand.CMD_BATTERY_READ,
-        HuaweiSppCommand.CMD_BATTERY_NOTIFY
+        HuaweiSppCommand.BATTERY_READ,
+        HuaweiSppCommand.BATTERY_NOTIFY
     )
     override val capabilities = listOf(HuaweiCapability.BATTERY)
 
@@ -33,7 +33,7 @@ class BatteryHandler(private val wTws: Boolean = true) : HuaweiDeviceHandler {
     /** 初始化：发送电池读取请求 (param 1=global, 2=left/right/case, 3=charging) */
     override suspend fun onInit(driver: SppDriver) {
         LogBuffer.i("Battery", "Requesting battery levels...")
-        val pkg = HuaweiSppPackage.readRequest(HuaweiSppCommand.CMD_BATTERY_READ, 1, 2, 3)
+        val pkg = HuaweiSppPackage.readRequest(HuaweiSppCommand.BATTERY_READ, 1, 2, 3)
         val resp = driver.sendPackage(pkg)
         if (resp != null) {
             onPackage(resp)
