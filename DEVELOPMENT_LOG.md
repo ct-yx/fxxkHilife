@@ -51,3 +51,31 @@
 - 扫描后自动连接：扫到华为/荣耀设备立即自动连接，手动 connect 保留 ✅
 - 所有 Handler 预留注册接口：connectToDevice() 集中注册，各 Handler 通过 registerHandler 注入 ✅
 - 更新版本至 v2.0.0-alpha.5（code=5）
+
+
+## v2.0.0-beta.1 (2026-06-27)
+
+### 重大重构
+- **底层蓝牙驱动全面替换**: RFCOMM SPP → BLE GATT
+- 新建 : 基于 Android BluetoothGatt 的 BLE 数据通道驱动
+- 自动发现华为 BLE Service (febf/fee0/fd00) 及 WRITE/NOTIFY 特征值
+- 删除 : 因 Android 不支持已连接设备的二次 RFCOMM 通道
+
+### 新增
+- BLE 权限声明 ()
+-  添加 FEATURE_BLUETOOTH_LE
+
+### 修复
+- 已配对耳机扫描后自动连接 BLE 通道
+- 底层通信不再依赖 SPP RFCOMM
+
+### 技术变更
+| 文件 | 操作 |
+|------|------|
+|  | 新建 (382行) |
+|  | 删除 |
+|  | 引用替换: SppDriver→GattDriver |
+|  | +FEATURE_BLUETOOTH_LE |
+
+### 备注
+GattDriver 支持华为/荣耀耳机 BLE 控制通道的自动发现，未来 Handler 扩展无需改动底层。

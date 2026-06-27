@@ -20,7 +20,7 @@ import com.freebuds.controller.R
 import com.freebuds.controller.bluetooth.BluetoothScanner
 import com.freebuds.controller.bluetooth.BatteryHandler
 import com.freebuds.controller.bluetooth.ScannedDevice
-import com.freebuds.controller.bluetooth.SppDriver
+import com.freebuds.controller.bluetooth.GattDriver
 import com.freebuds.controller.data.UpdateChecker
 import com.freebuds.controller.util.LogBuffer
 import com.freebuds.controller.util.LogBuffer.OnLogUpdateListener
@@ -38,7 +38,7 @@ class TerminalActivity : AppCompatActivity(), OnLogUpdateListener {
     private val scope = CoroutineScope(Dispatchers.Main)
 
     private var bluetoothScanner: BluetoothScanner? = null
-    private var sppDriver: SppDriver? = null
+    private var gattDriver: GattDriver? = null
     private var scannedDevices: List<ScannedDevice> = emptyList()
 
     // 收集所有需要运行时申请的权限
@@ -277,27 +277,27 @@ class TerminalActivity : AppCompatActivity(), OnLogUpdateListener {
     /** 连接设备并注册所有 Handler（可供 scan 自动连接调用） */
     private suspend fun connectToDevice(sd: ScannedDevice) {
         LogBuffer.i("BT", "Connecting to ${sd.displayName}...")
-        val driver = SppDriver(sd.device, sppPort = 1)
+        val driver = GattDriver(sd.device)
         val bat = BatteryHandler()
         bat.setOnBatteryUpdate { LogBuffer.i("Battery", "Update") }
         driver.registerHandler(bat)
-        sppDriver = driver
+        gattDriver = driver
         if (driver.connect()) {
             LogBuffer.i("BT", "Connected to ${sd.displayName}")
         } else {
-            LogBuffer.e("BT", "Connection failed"); sppDriver = null
+            LogBuffer.e("BT", "Connection failed"); gattDriver = null
         }
     }
 
     private fun disconnectDevice() {
-        sppDriver?.disconnect()
-        sppDriver = null
+        gattDriver?.disconnect()
+        gattDriver = null
         LogBuffer.i("BT", "Disconnected")
     }
 
     override fun onDestroy() {
         bluetoothScanner?.stopScan()
-        sppDriver?.disconnect()
+        gattDriver?.disconnect()
         LogBuffer.unregisterListener(this)
         super.onDestroy()
     }
