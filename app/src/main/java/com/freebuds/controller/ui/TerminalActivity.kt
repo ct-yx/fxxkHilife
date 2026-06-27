@@ -222,6 +222,8 @@ class TerminalActivity : AppCompatActivity(), OnLogUpdateListener {
             return
         }
         bluetoothScanner = BluetoothScanner(this)
+        // 先把已配对设备同步过来，不等发现完成
+        scannedDevices = bluetoothScanner!!.found.toList()
         bluetoothScanner?.startScan { success ->
             if (success) {
                 scannedDevices = bluetoothScanner!!.found.toList()
