@@ -69,11 +69,12 @@ jobs:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
           TAG="v${{ env.VERSION_NAME }}"
-          RELEASE_NOTES="fxxkHilife $TAG"
+          NOTES=$(git log -1 --pretty=format:"%s" | sed 's/^feat:/## 新功能/;s/^fix:/## 修复/;s/^refactor:/## 重构/;s/^chore:/## 杂项/')
+          CHANGELOG=$(git log --oneline --no-decorate HEAD~10..HEAD 2>/dev/null || git log --oneline --no-decorate -5)
+          BODY="$NOTES"$'\n\n'"$CHANGELOG"
           gh release create "$TAG" \
             app/build/outputs/apk/debug/*.apk \
             app/build/outputs/apk/release/*.apk \
             --title "$TAG" \
-            --notes "$RELEASE_NOTES" \
-            --prerelease \
+            --notes "$BODY" \
             --target "${{ github.sha }}" || echo "Release $TAG already exists, skipping"
