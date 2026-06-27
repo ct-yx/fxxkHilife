@@ -149,7 +149,7 @@ class SppDriver(private val device: BluetoothDevice) {
         try {
             while (currentCoroutineContext().isActive) {
                 val input = inputStream ?: break
-                // 读取包头 4 字节: Z + 2字节长度 + 0x00
+                // 读取 4 字节包头: 0x5A 0x00 + 1字节长度 + 0x00
                 val heading = ByteArray(4)
                 var offset = 0
                 while (offset < 4) {
@@ -158,24 +158,37 @@ class SppDriver(private val device: BluetoothDevice) {
                     offset += n
                 }
 
-                if (heading[0] != 0x5A.toByte() && heading[0] != 0x5A.toByte()) {
-                    LogBuffer.d("SPP", "Non-5A header: ${heading.toHex()}, skipping")
+                // 魔数校验: heading[0:2] == b"5a 00"
+                if (heading[0] != 0x5A.toByte() || heading[1] != 0x00.toByte()) {
+                    LogBuffer.d("SPP", "Bad header: ${heading.toHex()}, skipping")
                     continue
                 }
 
-                val length = ((heading[1].toInt() and 0xFF) shl 8) or (heading[2].toInt() and 0xFF)
-                val payloadSize = length + 4  // heading(4) + body(length-1?) + crc(2)
-                // 实际需要读取剩余字节
-                val remaining = payloadSize - 4
-                val body = ByteArray(remaining)
+                val length = heading[2].toInt() and 0xFF
+                if (length < 4) {
+                    // 短包，丢弃 body（上游仅 read）
+                    val discard = ByteArray(length)
+                    var off = 0
+                    while (off < length) {
+                        val n = input.read(discard, off, length - off)
+                        if (n == -1) throw java.io.EOFException("Stream closed")
+                        off += n
+                    }
+                    LogBuffer.d("SPP", "Short package len=$length, discarded")
+                    continue
+                }
+
+                // 读取包体
+                val body = ByteArray(length)
                 offset = 0
-                while (offset < remaining) {
-                    val n = input.read(body, offset, remaining - offset)
+                while (offset < length) {
+                    val n = input.read(body, offset, length - offset)
                     if (n == -1) throw java.io.EOFException("Stream closed")
                     offset += n
                 }
 
                 val pkgBytes = heading + body
+                LogBuffer.d("SPP", "RX: ${pkgBytes.toHex()}")
                 handlePackage(pkgBytes)
             }
         } catch (e: java.io.EOFException) {

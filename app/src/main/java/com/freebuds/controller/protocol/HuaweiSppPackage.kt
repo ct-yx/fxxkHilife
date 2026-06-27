@@ -24,15 +24,28 @@ class HuaweiSppPackage(
             return HuaweiSppPackage(cmd, parameters = m)
         }
 
+        /**
+         * 从字节数组解析 5A 包。
+         * 格式对照上游 HuaweiSppPackage.from_bytes + __recv_pacakge：
+         *   data = heading(4B) + body(length B)
+         *   heading[0:2] = b"Z\x00" (魔数)
+         *   heading[2] = length (单字节，总包体长度)
+         *   heading[3] = 0x00 (填充)
+         *   body[0:2] = command_id
+         *   body[2:] = parameters (type + plen + pval ...)
+         */
         fun fromBytes(data: ByteArray): HuaweiSppPackage? {
             if (data.size < 7) return null
+            // 魔数: 5a 00
             if (data[0] != 0x5A.toByte()) return null
+            if (data[1] != 0x00.toByte()) return null
             if (data[3] != 0x00.toByte()) return null
-            val len = ((data[1].toInt() and 0xFF) shl 8) or (data[2].toInt() and 0xFF)
+            val len = data[2].toInt() and 0xFF
+            if (data.size < len + 4) return null
             val cmd = data.copyOfRange(4, 6)
             val p = HuaweiSppPackage(cmd)
             var pos = 6
-            while (pos < len + 3) {
+            while (pos < len + 4) {
                 val t = data[pos].toInt() and 0xFF
                 val l = data[pos + 1].toInt() and 0xFF
                 val v = if (l > 0) data.copyOfRange(pos + 2, pos + 2 + l) else byteArrayOf()

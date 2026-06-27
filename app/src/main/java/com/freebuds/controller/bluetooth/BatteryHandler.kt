@@ -38,7 +38,8 @@ class BatteryHandler(private val wTws: Boolean = true) : HuaweiDeviceHandler {
         if (resp != null) {
             onPackage(resp)
         } else {
-            LogBuffer.w("Battery", "No response to battery read request")
+            // 响应为空就抛异常，让上层 initHandlers 重试（匹配上游 init() 重试逻辑）
+            throw RuntimeException("No response to battery read request")
         }
     }
 
