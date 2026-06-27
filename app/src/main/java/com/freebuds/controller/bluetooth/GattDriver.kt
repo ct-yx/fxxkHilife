@@ -72,42 +72,61 @@ class GattDriver(private val device: BluetoothDevice) {
     /** 发起 BLE GATT 连接 */
     suspend fun connect(): Boolean = suspendCancellableCoroutine { cont ->
         if (isConnected) {
+            LogBuffer.i("Gatt", "Already connected, skipping")
             cont.resume(true)
             return@suspendCancellableCoroutine
         }
 
+        LogBuffer.i("Gatt", ">> connect(): ${device.name} (${device.address}) via TRANSPORT_LE")
         connectDeferred = CompletableDeferred()
         connectJob = scope.launch {
             val result = connectDeferred?.await() ?: false
+            LogBuffer.i("Gatt", "<< connection callback result=$result")
             if (result) {
-                // 连接成功 -> 发现服务
+                LogBuffer.i("Gatt", ">> discoverServices()...")
                 discoverDeferred = CompletableDeferred()
                 gatt?.discoverServices()
                 val discResult = discoverDeferred?.await() ?: false
+                val svcCount = gatt?.services?.size ?: 0
+                LogBuffer.i("Gatt", "<< services discovered=$discResult ($svcCount services)")
                 if (discResult) {
-                    // 找到特征值
                     findCharacteristics()
                     if (txChar != null && rxChar != null) {
-                        // 订阅通知
+                        LogBuffer.i("Gatt", ">> enabling notifications on ${rxChar?.uuid}...")
                         if (enableNotifications()) {
                             isConnected = true
                             job = scope.launch { recvLoop() }
                             initHandlers()
+                            LogBuffer.i("Gatt", ">> connect() complete, fully operational")
                             cont.resume(true)
                             return@launch
+                        } else {
+                            LogBuffer.e("Gatt", "Failed to enable notifications")
+                        }
+                    } else {
+                        LogBuffer.e("Gatt", "No TX/RX char found (tx=${txChar != null}, rx=${rxChar != null})")
+                        gatt?.services?.forEach { svc ->
+                            val chars = svc.characteristics.map { "${it.uuid} props=0x${it.properties.toString(16)}" }
+                            LogBuffer.i("Gatt", "  Svc ${svc.uuid}: $chars")
                         }
                     }
+                } else {
+                    LogBuffer.e("Gatt", "Service discovery failed")
                 }
+            } else {
+                LogBuffer.e("Gatt", "BLE GATT connection failed")
             }
             cont.resume(false)
         }
 
+        LogBuffer.i("Gatt", ">> calling connectGatt(TRANSPORT_LE)...")
         gatt = device.connectGatt(
             /* context = */ null,
             /* autoReconnect = */ false,
             /* callback = */ gattCallback,
             /* transport = */ BluetoothDevice.TRANSPORT_LE
         )
+        LogBuffer.i("Gatt", ">> connectGatt returned gatt=${gatt != null}")
     }
 
     /** 初始化所有 Handler（参照 OpenFreebuds _start_all_handlers） */
@@ -325,6 +344,7 @@ class GattDriver(private val device: BluetoothDevice) {
     /** GATT 回调 */
     private val gattCallback = object : BluetoothGattCallback() {
         override fun onConnectionStateChange(gatt: BluetoothGatt, status: Int, newState: Int) {
+            LogBuffer.i("Gatt", "onConnectionStateChange: status=$status newState=$newState (CONNECTED=${BluetoothProfile.STATE_CONNECTED} DISCONNECTED=${BluetoothProfile.STATE_DISCONNECTED})")
             when (newState) {
                 BluetoothProfile.STATE_CONNECTED -> {
                     LogBuffer.i("Gatt", "Connected to ${device.name}")
