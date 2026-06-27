@@ -19,7 +19,7 @@ interface HuaweiDeviceHandler {
     val capabilities: List<HuaweiCapability>
 
     /** 初始化（发送请求读取设备状态） */
-    suspend fun onInit(driver: SppDriver)
+    suspend fun onInit(driver: GattDriver)
 
     /** 收到设备推送包 */
     suspend fun onPackage(pkg: HuaweiSppPackage)
