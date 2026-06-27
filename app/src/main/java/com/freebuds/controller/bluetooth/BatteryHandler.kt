@@ -31,7 +31,7 @@ class BatteryHandler(private val wTws: Boolean = true) : HuaweiDeviceHandler {
     }
 
     /** 初始化：发送电池读取请求 (param 1=global, 2=left/right/case, 3=charging) */
-    override suspend fun onInit(driver: GattDriver) {
+    override suspend fun onInit(driver: SppDriver) {
         LogBuffer.i("Battery", "Requesting battery levels...")
         val pkg = HuaweiSppPackage.readRequest(HuaweiSppCommand.BATTERY_READ, 1, 2, 3)
         val resp = driver.sendPackage(pkg)

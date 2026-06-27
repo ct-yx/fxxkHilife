@@ -20,7 +20,7 @@ import com.freebuds.controller.R
 import com.freebuds.controller.bluetooth.BluetoothScanner
 import com.freebuds.controller.bluetooth.BatteryHandler
 import com.freebuds.controller.bluetooth.ScannedDevice
-import com.freebuds.controller.bluetooth.GattDriver
+import com.freebuds.controller.bluetooth.SppDriver
 import com.freebuds.controller.data.UpdateChecker
 import com.freebuds.controller.util.LogBuffer
 import com.freebuds.controller.util.LogBuffer.OnLogUpdateListener
@@ -38,7 +38,7 @@ class TerminalActivity : AppCompatActivity(), OnLogUpdateListener {
     private val scope = CoroutineScope(Dispatchers.Main)
 
     private var bluetoothScanner: BluetoothScanner? = null
-    private var gattDriver: GattDriver? = null
+    private var gattDriver: SppDriver? = null
     private var scannedDevices: List<ScannedDevice> = emptyList()
 
     // 收集所有需要运行时申请的权限
@@ -220,6 +220,7 @@ class TerminalActivity : AppCompatActivity(), OnLogUpdateListener {
             LogBuffer.i("Perm", "Requesting permissions...")
             permissionLauncher.launch(missing.toTypedArray())
             return
+        }
         bluetoothScanner = BluetoothScanner(this)
         bluetoothScanner?.startScan { success ->
             if (success) {
@@ -236,7 +237,6 @@ class TerminalActivity : AppCompatActivity(), OnLogUpdateListener {
         if (hwDevice != null) {
             LogBuffer.i("Scan", "Auto-connecting to ${hwDevice.displayName}...")
             scope.launch { connectToDevice(hwDevice) }
-        }
         }
     }
 
@@ -277,7 +277,7 @@ class TerminalActivity : AppCompatActivity(), OnLogUpdateListener {
     /** 连接设备并注册所有 Handler（可供 scan 自动连接调用） */
     private suspend fun connectToDevice(sd: ScannedDevice) {
         LogBuffer.i("BT", "Connecting to ${sd.displayName}...")
-        val driver = GattDriver(sd.device)
+        val driver = SppDriver(sd.device)
         val bat = BatteryHandler()
         bat.setOnBatteryUpdate { LogBuffer.i("Battery", "Update") }
         driver.registerHandler(bat)
