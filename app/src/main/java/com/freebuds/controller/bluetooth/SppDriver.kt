@@ -53,6 +53,27 @@ class SppDriver(private val device: BluetoothDevice, private val sppPort: Int = 
     /** 发起蓝牙 RFCOMM 连接 */
     suspend fun connect(): Boolean = withContext(Dispatchers.IO) {
         try {
+            // 如果设备已系统连接，直接复用，不再创建新 RFCOMM 连接
+            val adapter = android.bluetooth.BluetoothAdapter.getDefaultAdapter()
+            if (adapter != null && adapter.getConnectionState(device) == android.bluetooth.BluetoothAdapter.STATE_CONNECTED) {
+                LogBuffer.i("SPP", "${device.name} already connected via system BT, skipping RFCOMM")
+                // 尝试已有 RFCOMM 通道：用 createRfcommSocket… 会失败，改用 createInsecureRfcommSocketToServiceRecord
+                val socket = device.createInsecureRfcommSocketToServiceRecord(UUID.fromString(SPP_UUID))
+                try {
+                    socket.connect()
+                } catch (_: Exception) {
+                    // 如果还是连不上，尝试一种备选方案：createRfcommSocket 并传入 SPP UUID
+                    try { socket.close() } catch (_: Exception) {}
+                    return@withContext tryFallbackConnect()
+                }
+                inputStream = socket.inputStream
+                outputStream = socket.outputStream
+                isConnected = true
+                job = scope.launch { recvLoop() }
+                initHandlers()
+                return@withContext true
+            }
+
             LogBuffer.i("SPP", "Connecting to ${device.name} (${device.address}) on port $sppPort...")
             val socket = device.createRfcommSocketToServiceRecord(UUID.fromString(SPP_UUID))
             socket.connect()
@@ -61,10 +82,7 @@ class SppDriver(private val device: BluetoothDevice, private val sppPort: Int = 
             isConnected = true
             LogBuffer.i("SPP", "Connected")
 
-            // 启动接收循环
             job = scope.launch { recvLoop() }
-
-            // 初始化所有 Handler
             initHandlers()
 
             true
@@ -72,6 +90,24 @@ class SppDriver(private val device: BluetoothDevice, private val sppPort: Int = 
             LogBuffer.e("SPP", "Connection failed: ${e.message}")
             isConnected = false
             false
+        }
+    }
+
+    /** 备选连接方案：尝试非加密 RFCOMM */
+    private suspend fun tryFallbackConnect(): Boolean {
+        try {
+            val socket = device.createRfcommSocketToServiceRecord(UUID.fromString(SPP_UUID))
+            socket.connect()
+            inputStream = socket.inputStream
+            outputStream = socket.outputStream
+            isConnected = true
+            job = scope.launch { recvLoop() }
+            initHandlers()
+            return true
+        } catch (e: Exception) {
+            LogBuffer.e("SPP", "Fallback connect also failed: ${e.message}")
+            isConnected = false
+            return false
         }
     }
 
