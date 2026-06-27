@@ -220,25 +220,23 @@ class TerminalActivity : AppCompatActivity(), OnLogUpdateListener {
             LogBuffer.i("Perm", "Requesting permissions...")
             permissionLauncher.launch(missing.toTypedArray())
             return
-        }
         bluetoothScanner = BluetoothScanner(this)
-        // 先把已配对设备同步过来，不等发现完成
-        scannedDevices = bluetoothScanner!!.found.toList()
         bluetoothScanner?.startScan { success ->
             if (success) {
                 scannedDevices = bluetoothScanner!!.found.toList()
                 val hwCount = scannedDevices.count { it.isHuaweiOrHonor }
                 LogBuffer.i("Scan", "Found ${scannedDevices.size} devices ($hwCount Huawei/Honor). Type 'list' to see them")
-                val target = scannedDevices.firstOrNull { it.isHuaweiOrHonor }
-                if (target != null) {
-                    LogBuffer.i("Scan", "Auto-connecting to ${target.displayName}...")
-                    scope.launch { connectToDevice(target) }
-                } else {
-                    LogBuffer.i("Scan", "No Huawei/Honor found, use 'connect <n>'")
-                }
             } else {
                 LogBuffer.w("Scan", "Scan failed or cancelled")
             }
+        }
+        // startScan 内部已经同步了已配对设备到 found，直接同步过来触发自动连接
+        scannedDevices = bluetoothScanner!!.found.toList()
+        val hwDevice = scannedDevices.firstOrNull { it.isHuaweiOrHonor }
+        if (hwDevice != null) {
+            LogBuffer.i("Scan", "Auto-connecting to ${hwDevice.displayName}...")
+            scope.launch { connectToDevice(hwDevice) }
+        }
         }
     }
 
