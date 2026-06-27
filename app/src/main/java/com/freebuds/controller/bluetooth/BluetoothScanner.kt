@@ -53,15 +53,18 @@ class BluetoothScanner(private val context: Context) {
             return
         }
 
-        // 先列出已配对的设备
+        // 先列出已配对设备，标注连接状态
         val bonded = adapter.bondedDevices
         if (bonded != null) {
             for (device in bonded) {
                 found.add(ScannedDevice(
                     device = device,
                     isBonded = true,
+                    isConnected = true,
                     isHuaweiOrHonor = ScannedDevice.isHuaweiOrHonorName(device.name)
                 ))
+                val tag = if (ScannedDevice.isHuaweiOrHonorName(device.name)) "🔹 " else ""
+                LogBuffer.i("Scan", "$tag${device.name}  ${device.address}  [paired+connected]")
             }
         }
 
