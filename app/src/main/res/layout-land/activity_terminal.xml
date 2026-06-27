@@ -47,21 +47,25 @@
             style="@style/TerminalShortcut"
             android:text="clear" />
         <Button
-            android:id="@+id/btn_filter"
+            android:id="@+id/btn_scan"
             style="@style/TerminalShortcut"
-            android:text="filter" />
+            android:text="scan" />
+        <Button
+            android:id="@+id/btn_list"
+            style="@style/TerminalShortcut"
+            android:text="list" />
+        <Button
+            android:id="@+id/btn_disconnect"
+            style="@style/TerminalShortcut"
+            android:text="discnct" />
         <Button
             android:id="@+id/btn_share"
             style="@style/TerminalShortcut"
             android:text="share" />
         <Button
-            android:id="@+id/btn_check"
+            android:id="@+id/btn_perm"
             style="@style/TerminalShortcut"
-            android:text="check" />
-        <Button
-            android:id="@+id/btn_download"
-            style="@style/TerminalShortcut"
-            android:text="download" />
+            android:text="perm" />
         <Button
             android:id="@+id/btn_help"
             style="@style/TerminalShortcut"

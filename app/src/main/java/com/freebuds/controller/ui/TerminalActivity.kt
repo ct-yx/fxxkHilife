@@ -3,7 +3,6 @@ package com.freebuds.controller.ui
 import android.Manifest
 import android.content.Intent
 import android.content.pm.PackageManager
-import android.net.Uri
 import android.os.Build
 import android.os.Bundle
 import android.text.SpannableString
@@ -105,10 +104,11 @@ class TerminalActivity : AppCompatActivity(), OnLogUpdateListener {
         }
 
         findViewById<Button>(R.id.btn_clear).setOnClickListener { handleCommand("clear") }
-        findViewById<Button>(R.id.btn_filter).setOnClickListener { handleCommand("filter") }
+        findViewById<Button>(R.id.btn_scan).setOnClickListener { handleCommand("scan") }
         findViewById<Button>(R.id.btn_share).setOnClickListener { handleCommand("share") }
-        findViewById<Button>(R.id.btn_check).setOnClickListener { handleCommand("check") }
-        findViewById<Button>(R.id.btn_download).setOnClickListener { handleCommand("download") }
+        findViewById<Button>(R.id.btn_list).setOnClickListener { handleCommand("list") }
+        findViewById<Button>(R.id.btn_disconnect).setOnClickListener { handleCommand("disconnect") }
+        findViewById<Button>(R.id.btn_perm).setOnClickListener { handleCommand("perm") }
         findViewById<Button>(R.id.btn_help).setOnClickListener { handleCommand("help") }
 
         LogBuffer.registerListener(this)
@@ -119,7 +119,7 @@ class TerminalActivity : AppCompatActivity(), OnLogUpdateListener {
 
     private fun printBanner() {
         LogBuffer.i("Terminal", "fxxkHilife v2 Terminal — ${BuildConfig.VERSION_NAME}")
-        LogBuffer.i("Terminal", "Commands: clear | filter [I/W/E/D] | share | check | download | help")
+        LogBuffer.i("Terminal", "Commands: clear | share | perm | scan | list | connect <n> | disconnect | help")
         LogBuffer.i("Terminal", "---")
     }
 
@@ -141,20 +141,7 @@ class TerminalActivity : AppCompatActivity(), OnLogUpdateListener {
 
         when {
             trimmed.equals("clear", ignoreCase = true) -> LogBuffer.clear()
-            trimmed.startsWith("filter", ignoreCase = true) -> {
-                val arg = trimmed.removePrefix("filter").trim()
-                if (arg.length == 1 && arg.first() in listOf('I', 'W', 'E', 'D')) {
-                    currentFilter = arg.uppercase()
-                    LogBuffer.i("Terminal", "Filter set to [$currentFilter]")
-                } else {
-                    currentFilter = null
-                    LogBuffer.i("Terminal", "Filter cleared (show all)")
-                }
-                renderAll()
-            }
             trimmed.equals("share", ignoreCase = true) -> shareLog()
-            trimmed.equals("check", ignoreCase = true) -> checkUpdate()
-            trimmed.equals("download", ignoreCase = true) -> downloadLatest()
             trimmed.equals("perm", ignoreCase = true) -> checkPermissions()
             trimmed.equals("scan", ignoreCase = true) -> scanDevices()
             trimmed.startsWith("connect", ignoreCase = true) -> connectDevice(trimmed.removePrefix("connect").trim())
@@ -163,11 +150,7 @@ class TerminalActivity : AppCompatActivity(), OnLogUpdateListener {
             trimmed.equals("help", ignoreCase = true) -> {
                 LogBuffer.i("Terminal", "Available commands:")
                 LogBuffer.i("Terminal", "  clear        — clear screen")
-                LogBuffer.i("Terminal", "  filter I/W/E — show only level")
-                LogBuffer.i("Terminal", "  filter       — show all levels")
                 LogBuffer.i("Terminal", "  share        — export log as text file")
-                LogBuffer.i("Terminal", "  check        — check for updates")
-                LogBuffer.i("Terminal", "  download     — download & open latest APK")
                 LogBuffer.i("Terminal", "  perm         — re-check permissions")
                 LogBuffer.i("Terminal", "  scan         — scan BT devices")
                 LogBuffer.i("Terminal", "  list         — list scanned devices")
@@ -179,38 +162,6 @@ class TerminalActivity : AppCompatActivity(), OnLogUpdateListener {
         }
     }
 
-    private fun checkUpdate() {
-        LogBuffer.i("Update", "Checking for updates...")
-        scope.launch {
-            val info = UpdateChecker.check()
-            if (UpdateChecker.hasUpdate(info)) {
-                LogBuffer.i("Update", "New version available: ${info!!.latestVersion}")
-                LogBuffer.i("Update", info.releaseNotes)
-                LogBuffer.i("Update", "Type 'download' to get it")
-            } else if (info != null) {
-                LogBuffer.i("Update", "Already up-to-date (${info.latestVersion})")
-            } else {
-                LogBuffer.w("Update", "Failed to check updates (no network?)")
-            }
-        }
-    }
-
-    private fun downloadLatest() {
-        LogBuffer.i("Update", "Fetching latest release info...")
-        scope.launch {
-            val info = UpdateChecker.check()
-            if (info == null || info.downloadUrl.isBlank()) {
-                LogBuffer.w("Update", "No download URL available")
-                return@launch
-            }
-            if (!UpdateChecker.hasUpdate(info)) {
-                LogBuffer.i("Update", "Already up-to-date (${info.latestVersion})")
-            }
-            LogBuffer.i("Update", "Opening: ${info.downloadUrl}")
-            val intent = Intent(Intent.ACTION_VIEW, Uri.parse(info.downloadUrl))
-            startActivity(intent)
-        }
-    }
 
     override fun onLogUpdate() = runOnUiThread { renderAll() }
 
