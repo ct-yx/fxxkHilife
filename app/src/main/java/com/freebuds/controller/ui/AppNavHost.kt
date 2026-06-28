@@ -9,7 +9,7 @@ import com.freebuds.controller.data.ConnectionState
 import com.freebuds.controller.data.DeviceViewModel
 
 enum class Screen {
-    Home, Device, Gesture, Settings
+    PermissionGuide, Home, Device, Gesture, Settings
 }
 
 @Composable
@@ -17,9 +17,7 @@ fun AppNavHost(viewModel: DeviceViewModel, onOpenTerminal: () -> Unit) {
     val context = LocalContext.current
     val connState by viewModel.connectionState.collectAsState()
 
-    var currentScreen by remember { mutableStateOf(Screen.Home) }
-
-    // 检查蓝牙权限
+    // 检查蓝牙权限（Android 12+ 需要运行时授权）
     val hasPermissions = remember {
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
             listOf(Manifest.permission.BLUETOOTH_CONNECT, Manifest.permission.BLUETOOTH_SCAN)
@@ -27,27 +25,30 @@ fun AppNavHost(viewModel: DeviceViewModel, onOpenTerminal: () -> Unit) {
         } else true
     }
 
-    LaunchedEffect(hasPermissions) {
-        if (!hasPermissions) {
-            currentScreen = Screen.Home // 显示主页但禁点（由 HomeScreen 处理）
-        }
-    }
+    var currentScreen by remember { mutableStateOf(
+        if (!hasPermissions) Screen.PermissionGuide else Screen.Home
+    ) }
 
-    // 连接成功自动进入 DeviceScreen
+    // 连接成功自动进 DeviceScreen
     LaunchedEffect(connState) {
         if (connState is ConnectionState.Connected) {
             currentScreen = Screen.Device
         }
     }
 
-    // 连接断开自动退回 Home
+    // 连接断开自动退回 Home（除非正在权限引导）
     LaunchedEffect(connState) {
-        if (connState is ConnectionState.Disconnected && currentScreen != Screen.Home) {
+        if (connState is ConnectionState.Disconnected &&
+            currentScreen != Screen.Home &&
+            currentScreen != Screen.PermissionGuide) {
             currentScreen = Screen.Home
         }
     }
 
     when (currentScreen) {
+        Screen.PermissionGuide -> PermissionGuideScreen(
+            onGranted = { currentScreen = Screen.Home }
+        )
         Screen.Home -> HomeScreen(
             viewModel = viewModel,
             onDeviceClick = { address ->

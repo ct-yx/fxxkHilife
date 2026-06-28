@@ -33,7 +33,7 @@ cd fxxkHilife
 Current version: **v2.3.0**
 
 ### Completed
-- **Four-screen navigation**: Home (saved devices + collapsible scan) → Device → Gesture sub‑page → Settings
+- **Five-screen navigation**: Permission Guide → Home (saved devices + collapsible scan) → Device → Gesture sub‑page → Settings
 - **Saved‑device home**: auto‑persist connected device addresses (StringSet), tap to reconnect, scan collapsed below
 - **Gesture sub‑page**: double‑tap / triple‑tap / swipe / long‑press in dedicated screen with full chinese labels
 - **Instant ANC / Low‑Latency refresh**: setProperty writes expected value first then sends command, no polling wait
