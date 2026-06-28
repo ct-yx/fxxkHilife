@@ -12,7 +12,7 @@ import com.freebuds.controller.ui.theme.ThemeMode
 import com.freebuds.controller.ui.loadWallpaperScope
 
 enum class Screen {
-    PermissionGuide, Home, Device, Gesture, Settings
+    PermissionGuide, Home, Scan, Device, Gesture, Settings
 }
 
 @Composable
@@ -57,7 +57,9 @@ fun AppNavHost(
     LaunchedEffect(connState) {
         if (connState is ConnectionState.Disconnected &&
             currentScreen != Screen.Home &&
-            currentScreen != Screen.PermissionGuide) {
+            currentScreen != Screen.Scan &&
+            currentScreen != Screen.PermissionGuide &&
+            !currentScreen.name.startsWith(Screen.Gesture.name)) {
             currentScreen = Screen.Home
         }
     }
@@ -78,6 +80,15 @@ fun AppNavHost(
                 }
             },
             onSettings = { currentScreen = Screen.Settings },
+            onScan = { currentScreen = Screen.Scan },
+        )
+        Screen.Scan -> ScanScreen(
+            viewModel = viewModel,
+            onBack = { currentScreen = Screen.Home },
+            onDeviceSelected = { address ->
+                viewModel.autoConnectSaved(address)
+                currentScreen = Screen.Device
+            },
         )
         Screen.Device -> DeviceScreen(
             viewModel = viewModel,

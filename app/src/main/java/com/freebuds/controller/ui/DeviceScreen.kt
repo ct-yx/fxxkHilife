@@ -55,6 +55,15 @@ fun DeviceScreen(
     val connState by viewModel.connectionState.collectAsState()
     val props by viewModel.props.collectAsState()
     val deviceName = (connState as? ConnectionState.Connected)?.deviceName ?: "耳机"
+    var optimisticAncMode by remember { mutableStateOf<String?>() }
+    val displayAncMode = optimisticAncMode ?: (props.ancMode ?: "normal")
+
+    // 当 props 的实际值追上乐观值时清除乐观状态
+    LaunchedEffect(props.ancMode) {
+        if (optimisticAncMode != null && props.ancMode == optimisticAncMode) {
+            optimisticAncMode = null
+        }
+    }
 
     Scaffold(
         topBar = {
@@ -91,9 +100,12 @@ fun DeviceScreen(
                 // haze 模糊滑块切换器
                 item {
                     AncModeSlider(
-                        current = props.ancMode ?: "normal",
+                        current = displayAncMode,
                         options = props.ancModeOptions,
-                        onSelect = { viewModel.setProperty("anc", "mode", it) },
+                        onSelect = {
+                            optimisticAncMode = it
+                            viewModel.setProperty("anc", "mode", it)
+                        },
                     )
                 }
                 if (props.ancLevel != null) {

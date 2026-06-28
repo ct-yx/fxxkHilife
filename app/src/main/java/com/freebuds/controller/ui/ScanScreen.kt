@@ -6,6 +6,7 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Settings
+import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -21,7 +22,8 @@ import com.freebuds.controller.data.DeviceViewModel
 @Composable
 fun ScanScreen(
     viewModel: DeviceViewModel,
-    onSettings: () -> Unit,
+    onBack: () -> Unit,
+    onDeviceSelected: (String) -> Unit,
 ) {
     val context = LocalContext.current
     val scanState by viewModel.scanState.collectAsState()
@@ -30,10 +32,10 @@ fun ScanScreen(
     Scaffold(
         topBar = {
             TopAppBar(
-                title = { Text("fxxkHilife") },
-                actions = {
-                    IconButton(onClick = onSettings) {
-                        Icon(Icons.Default.Settings, contentDescription = "设置")
+                title = { Text("扫描设备") },
+                navigationIcon = {
+                    IconButton(onClick = onBack) {
+                        Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "返回")
                     }
                 },
                 colors = TopAppBarDefaults.topAppBarColors(
@@ -97,11 +99,11 @@ fun ScanScreen(
                         item {
                             SectionHeader("华为 / 荣耀设备")
                         }
-                        items(huawei) { DeviceItem(it) { viewModel.connect(it.device) } }
+                        items(huawei) { DeviceItem(it) { onDeviceSelected(it.device.address) } }
                     }
                     if (others.isNotEmpty()) {
                         item { SectionHeader("其他设备") }
-                        items(others) { DeviceItem(it) { viewModel.connect(it.device) } }
+                        items(others) { DeviceItem(it) { onDeviceSelected(it.device.address) } }
                     }
                 }
             }

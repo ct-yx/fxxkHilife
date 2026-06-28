@@ -27,6 +27,7 @@ fun HomeScreen(
     onDeviceClick: (address: String) -> Unit,
     onRemoveDevice: (address: String) -> Unit,
     onSettings: () -> Unit,
+    onScan: () -> Unit,
 ) {
     val context = LocalContext.current
     val connState by viewModel.connectionState.collectAsState()
@@ -36,8 +37,6 @@ fun HomeScreen(
     LaunchedEffect(connState) {
         savedAddresses = viewModel.getSavedAddresses()
     }
-
-    var showScan by remember { mutableStateOf(false) }
 
     Scaffold(
         topBar = {
@@ -116,41 +115,30 @@ fun HomeScreen(
                 }
             }
 
-            // 扫描折叠区
+            // 扫描卡片 → 导航到独立扫描页
             item {
                 Spacer(Modifier.height(8.dp))
-                HorizontalDivider()
-                Row(
+                ElevatedCard(
                     modifier = Modifier
                         .fillMaxWidth()
-                        .clickable { showScan = !showScan }
-                        .padding(horizontal = 16.dp, vertical = 14.dp),
-                    horizontalArrangement = Arrangement.SpaceBetween,
-                    verticalAlignment = Alignment.CenterVertically
+                        .padding(horizontal = 16.dp),
+                    onClick = onScan
                 ) {
-                    Text(
-                        "扫描新设备",
-                        style = MaterialTheme.typography.titleSmall,
-                        color = MaterialTheme.colorScheme.primary
-                    )
-                    Icon(
-                        if (showScan) Icons.Default.ExpandLess else Icons.Default.ExpandMore,
-                        contentDescription = if (showScan) "收起" else "展开",
-                        tint = MaterialTheme.colorScheme.primary
-                    )
-                }
-                HorizontalDivider()
-            }
-
-            item {
-                AnimatedVisibility(visible = showScan) {
-                    ScanSection(
-                        viewModel = viewModel,
-                        context = context,
-                        onConnectClick = { device ->
-                            viewModel.connect(device)
+                    Row(
+                        modifier = Modifier.padding(16.dp),
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.spacedBy(12.dp)
+                    ) {
+                        Icon(Icons.Default.Search, contentDescription = null, tint = MaterialTheme.colorScheme.primary)
+                        Column {
+                            Text("扫描新设备", style = MaterialTheme.typography.titleSmall)
+                            Text(
+                                "发现附近的华为/荣耀耳机",
+                                style = MaterialTheme.typography.bodySmall,
+                                color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.5f)
+                            )
                         }
-                    )
+                    }
                 }
             }
         }

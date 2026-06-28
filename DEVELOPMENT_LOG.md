@@ -308,6 +308,25 @@
 | `HomeScreen.kt` | +6/-1 — savedAddresses 响应式刷新 |
 
 
+## v2.6.0 (2026-06-28)
+
+### Navigation Refactor
+- Added `Scan` screen as independent destination in `AppNavHost`
+- Saved device click now navigates directly to `DeviceScreen` instead of triggering inline scan
+- Disconnect protection excludes `Scan` and `Gesture` screens from auto-redirect
+
+### ANC Optimistic Update
+- Introduced `optimisticAncMode` local state in `DeviceScreen` for instant UI feedback
+- Replaced legacy buttons with Material3 `SegmentedButton`; removed Haze dependency
+
+### Configurable Low-Latency
+- `BluetoothService.onDeviceConnected()` now reads `PREF_AUTO_LOW_LATENCY` preference (default: true)
+- Added "Connection Preferences" section in `SettingsScreen` with auto low-latency toggle
+
+### Saved Devices Display Fix
+- `getSavedAddresses()` now shows all saved device addresses with total count
+- Removed `firstOrNull{isHuaweiOrHonor}` auto-connect logic from `DeviceViewModel.startScan()`
+
 ## v2.5.0 (2026-06-28)
 
 ### 阶段一：ANC UI 状态同步 + 移除 Haze

@@ -131,11 +131,37 @@ fun SettingsScreen(
                 HorizontalDivider()
             }
             item {
-                val saved = viewModel.getSavedAddress() ?: "无"
+                val savedAddresses = viewModel.getSavedAddresses()
                 ListItem(
-                    headlineContent = { Text("已保存的设备") },
-                    supportingContent = { Text(saved) },
+                    headlineContent = { Text("已保存的设备（${savedAddresses.size}）") },
+                    supportingContent = {
+                        Text(if (savedAddresses.isEmpty()) "无" else savedAddresses.joinToString("\n"))
+                    },
                     leadingContent = { Icon(Icons.Default.Devices, contentDescription = null) }
+                )
+                HorizontalDivider()
+            }
+
+            // ── 连接偏好 ──
+            item { SettingsHeader("连接偏好") }
+            item {
+                val prefs = context.getSharedPreferences("settings", android.content.Context.MODE_PRIVATE)
+                var autoLowLatency by remember {
+                    mutableStateOf(prefs.getBoolean("auto_low_latency", true))
+                }
+                ListItem(
+                    headlineContent = { Text("自动低延迟模式") },
+                    supportingContent = { Text("连接已保存耳机后自动开启低延迟") },
+                    leadingContent = { Icon(Icons.Default.Speed, contentDescription = null) },
+                    trailingContent = {
+                        Switch(
+                            checked = autoLowLatency,
+                            onCheckedChange = {
+                                autoLowLatency = it
+                                prefs.edit().putBoolean("auto_low_latency", it).apply()
+                            }
+                        )
+                    }
                 )
                 HorizontalDivider()
             }

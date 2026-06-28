@@ -3,22 +3,23 @@
 > 版本号统一修改入口，按清单逐一更新。
 
 ## 当前版本
-- **v2.5.0** (versionCode=17, 2026-06-28)
+- **v2.6.0** (versionCode=18, 2026-06-28)
 
 ## 版本号位置
 
 | 位置 | 当前值 |
 |------|--------|
-| `app/build.gradle.kts` | versionCode=17, versionName="2.5.0" |
-| `app/src/main/res/values/strings.xml` | version_name=2.5.0 |
-| `README.md` | v2.5.0 |
-| `README_EN.md` | v2.5.0 |
-| `DEVELOPMENT_LOG.md` | v2.5.0 (末尾) |
+| `app/build.gradle.kts` | versionCode=18, versionName="2.6.0" |
+| `app/src/main/res/values/strings.xml` | version_name=2.6.0 |
+| `README.md` | v2.6.0 |
+| `README_EN.md` | v2.6.0 |
+| `DEVELOPMENT_LOG.md` | v2.6.0 (末尾) |
 
 ## 历史版本
 
 | 版本 | Code | 日期 | 主要变更 |
 |------|------|------|---------|
+| v2.6.0 | 18 | 2026-06-28 | 导航重构 / ANC 乐观更新 / 低延迟可配置 / 已保存设备修复 |
 | v2.5.0 | 17 | 2026-06-28 | Haze 移除 / Material3 分段控件 / QuickSettings Tile ANC 切换 / 重试策略优化 |
 | v2.4.0 | 15 | 2026-06-28 | 三阶段大更新
 | v2.4.0 | 15 | 2026-06-28 | 三阶段大更新：自适应轮询 / 三态主题+壁纸 / 通知栏ANC快切 / 日志控制 / ANC模糊滑块 |

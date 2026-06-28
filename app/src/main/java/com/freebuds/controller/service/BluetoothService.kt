@@ -23,6 +23,7 @@ class BluetoothService : Service() {
     companion object {
         const val CHANNEL_ID = "bluetooth_service"
         const val NOTIFICATION_ID = 1001
+        const val PREF_AUTO_LOW_LATENCY = "auto_low_latency"
         private val PACKAGE = BluetoothService::class.java.`package`?.name ?: ""
         val ACTION_CONNECT = "$PACKAGE.action.CONNECT"
         val ACTION_DISCONNECT = "$PACKAGE.action.DISCONNECT"
@@ -117,12 +118,15 @@ class BluetoothService : Service() {
         val repo = HilifeApplication.instance.deviceRepository
         val saved = repo.getSavedAddresses()
         if (device.address in saved) {
-            // 耳机已连接 → 自动开启低延迟模式
             repo.connect(device)
-            MainScope().launch {
-                delay(3000) // 等连接稳定
-                if (repo.connectionState.value is ConnectionState.Connected) {
-                    repo.setProperty("config", "low_latency", "true")
+            val autoLowLatency = getSharedPreferences("settings", Context.MODE_PRIVATE)
+                .getBoolean(PREF_AUTO_LOW_LATENCY, true)
+            if (autoLowLatency) {
+                MainScope().launch {
+                    delay(3000) // 等连接稳定
+                    if (repo.connectionState.value is ConnectionState.Connected) {
+                        repo.setProperty("config", "low_latency", "true")
+                    }
                 }
             }
         }
