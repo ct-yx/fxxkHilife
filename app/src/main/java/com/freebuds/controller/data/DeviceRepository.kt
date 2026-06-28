@@ -1,6 +1,10 @@
 package com.freebuds.controller.data
 
 import android.bluetooth.BluetoothDevice
+import android.content.Context
+import android.content.Intent
+import android.content.SharedPreferences
+import androidx.core.content.FileProvider
 import com.freebuds.controller.bluetooth.*
 import com.freebuds.controller.protocol.HuaweiCapability
 import com.freebuds.controller.protocol.HuaweiModel
@@ -10,6 +14,7 @@ import kotlinx.coroutines.*
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import java.io.File
 
 /** 连接状态 */
 sealed class ConnectionState {
@@ -36,8 +41,10 @@ data class DeviceProps(
     val soundQualityOptions: List<String> = emptyList(),
     val doubleTapLeft: String? = null,
     val doubleTapRight: String? = null,
+    val doubleTapOptions: List<String> = emptyList(),
     val tripleTapLeft: String? = null,
     val tripleTapRight: String? = null,
+    val tripleTapOptions: List<String> = emptyList(),
     val longTap: String? = null,
     val longTapOptions: List<String> = emptyList(),
     val swipeGesture: String? = null,
@@ -62,6 +69,16 @@ class DeviceRepository {
     val props: StateFlow<DeviceProps> = _props.asStateFlow()
 
     private var driver: SppDriver? = null
+    private var prefs: SharedPreferences? = null
+    private val failedHandlers = mutableSetOf<String>()
+    private var retryJob: Job? = null
+    private var pollJob: Job? = null
+
+    // ── 初始化 SharedPreferences ─────────────────────────────────────────
+
+    fun init(context: Context) {
+        prefs = context.getSharedPreferences("fxxk_device", Context.MODE_PRIVATE)
+    }
 
     // ── 连接 ─────────────────────────────────────────────────────────────────
 
@@ -76,8 +93,11 @@ class DeviceRepository {
             driver = d
             if (d.connect()) {
                 _connectionState.value = ConnectionState.Connected(device.name ?: device.address)
-                // 连接后开始同步属性
+                saveDeviceAddress(device.address)
                 syncProps()
+                failedHandlers.addAll(d.failedHandlerIds)
+                startPolling()
+                retryFailedHandlers()
             } else {
                 driver = null
                 _connectionState.value = ConnectionState.Failed("连接失败")
@@ -86,10 +106,71 @@ class DeviceRepository {
     }
 
     fun disconnect() {
+        pollJob?.cancel()
+        retryJob?.cancel()
         driver?.disconnect()
         driver = null
         _connectionState.value = ConnectionState.Disconnected
         _props.value = DeviceProps()
+    }
+
+    // ── 持久化设备地址 ───────────────────────────────────────────────────
+
+    private fun saveDeviceAddress(address: String) {
+        prefs?.edit()?.putString("last_device_address", address)?.apply()
+    }
+
+    fun getSavedAddress(): String? = prefs?.getString("last_device_address", null)
+
+    // ── 后台重试失败 Handler（30s 间隔）───────────────────────────────────
+
+    private fun retryFailedHandlers() {
+        retryJob?.cancel()
+        if (failedHandlers.isEmpty()) return
+        retryJob = scope.launch {
+            while (isActive && driver?.isConnected == true && failedHandlers.isNotEmpty()) {
+                delay(30_000) // 30 秒间隔
+                val d = driver ?: break
+                val toRemove = mutableListOf<String>()
+                for (handlerId in failedHandlers) {
+                    val handler = d.getHandlerById(handlerId) ?: continue
+                    try {
+                        withTimeout(1500) {
+                            handler.onInit(d)
+                        }
+                        LogBuffer.i("SPP", "Retry init $handlerId success")
+                        toRemove.add(handlerId)
+                    } catch (_: Exception) {
+                        LogBuffer.w("SPP", "Retry init $handlerId still failed, will retry in 30s")
+                    }
+                }
+                failedHandlers.removeAll(toRemove)
+                if (failedHandlers.isEmpty()) {
+                    LogBuffer.i("SPP", "All failed handlers recovered")
+                }
+                syncProps()
+            }
+        }
+    }
+
+    // ── 定时轮询（电池 45s，其他 10s）────────────────────────────────────
+
+    private fun startPolling() {
+        pollJob?.cancel()
+        pollJob = scope.launch {
+            var batteryTick = 0L
+            while (isActive && driver?.isConnected == true) {
+                delay(10_000) // 其他属性每 10s 轮询一次
+                if (!isActive || driver?.isConnected != true) break
+                syncProps()
+                batteryTick++
+                // 每 45 秒额外同步电池
+                if (batteryTick >= 4) { // 约 40-45s
+                    batteryTick = 0
+                    // 电池通过被动通知更新，这里做兜底同步
+                }
+            }
+        }
     }
 
     // ── 属性写入（UI → 设备） ─────────────────────────────────────────────────
@@ -97,6 +178,27 @@ class DeviceRepository {
     suspend fun setProperty(group: String, prop: String, value: String) {
         driver?.setProperty(group, prop, value)
         syncProps()
+    }
+
+    // ── 分享日志 ─────────────────────────────────────────────────────────
+
+    fun shareLog(context: Context) {
+        try {
+            val text = LogBuffer.getSnapshotText()
+            val dir = File(context.cacheDir, "logs")
+            dir.mkdirs()
+            val file = File(dir, "fxxkHilife_log_${System.currentTimeMillis()}.txt")
+            file.writeText(text)
+            val uri = FileProvider.getUriForFile(context, "${context.packageName}.fileprovider", file)
+            val intent = Intent(Intent.ACTION_SEND).apply {
+                type = "text/plain"
+                putExtra(Intent.EXTRA_STREAM, uri)
+                addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
+            }
+            context.startActivity(Intent.createChooser(intent, "分享日志"))
+        } catch (e: Exception) {
+            LogBuffer.e("Share", "Failed to share log: ${e.message}")
+        }
     }
 
     // ── 内部：从 driver 属性存储同步到 StateFlow ──────────────────────────────
@@ -123,8 +225,10 @@ class DeviceRepository {
             soundQualityOptions = opts("sound", "quality_preference_options"),
             doubleTapLeft    = get("action", "double_tap_left"),
             doubleTapRight   = get("action", "double_tap_right"),
+            doubleTapOptions = opts("action", "double_tap_options"),
             tripleTapLeft    = get("action", "triple_tap_left"),
             tripleTapRight   = get("action", "triple_tap_right"),
+            tripleTapOptions = opts("action", "triple_tap_options"),
             longTap          = get("action", "long_tap"),
             longTapOptions   = opts("action", "long_tap_options"),
             swipeGesture     = get("action", "swipe_gesture"),
@@ -135,7 +239,7 @@ class DeviceRepository {
         )
     }
 
-    // ── 内部：注册 Handler（从 TerminalActivity 迁移过来） ─────────────────────
+    // ── 内部：注册 Handler ─────────────────────────────────────────────────────
 
     private fun registerHandlers(d: SppDriver, name: String) {
         val model = detectModel(name)

@@ -4,6 +4,8 @@ import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -17,7 +19,10 @@ import com.freebuds.controller.data.DeviceViewModel
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun ScanScreen(viewModel: DeviceViewModel) {
+fun ScanScreen(
+    viewModel: DeviceViewModel,
+    onSettings: () -> Unit,
+) {
     val context = LocalContext.current
     val scanState by viewModel.scanState.collectAsState()
     val connState by viewModel.connectionState.collectAsState()
@@ -26,6 +31,11 @@ fun ScanScreen(viewModel: DeviceViewModel) {
         topBar = {
             TopAppBar(
                 title = { Text("fxxkHilife") },
+                actions = {
+                    IconButton(onClick = onSettings) {
+                        Icon(Icons.Default.Settings, contentDescription = "设置")
+                    }
+                },
                 colors = TopAppBarDefaults.topAppBarColors(
                     containerColor = MaterialTheme.colorScheme.surface
                 )
@@ -37,7 +47,11 @@ fun ScanScreen(viewModel: DeviceViewModel) {
                 .fillMaxSize()
                 .padding(padding)
         ) {
-            // 状态横幅
+            // 已连接提示（返回扫描页时不断连）
+            if (connState is ConnectionState.Connected) {
+                StatusBanner("已连接 ${(connState as ConnectionState.Connected).deviceName}",
+                    isConnected = true)
+            }
             if (connState is ConnectionState.Connecting) {
                 StatusBanner("正在连接 ${(connState as ConnectionState.Connecting).deviceName}…")
             }
@@ -126,10 +140,13 @@ private fun DeviceItem(device: ScannedDevice, onClick: () -> Unit) {
 }
 
 @Composable
-private fun StatusBanner(text: String, isError: Boolean = false) {
+private fun StatusBanner(text: String, isError: Boolean = false, isConnected: Boolean = false) {
     Surface(
-        color = if (isError) MaterialTheme.colorScheme.errorContainer
-        else MaterialTheme.colorScheme.primaryContainer,
+        color = when {
+            isError -> MaterialTheme.colorScheme.errorContainer
+            isConnected -> MaterialTheme.colorScheme.tertiaryContainer
+            else -> MaterialTheme.colorScheme.primaryContainer
+        },
         modifier = Modifier.fillMaxWidth()
     ) {
         Text(

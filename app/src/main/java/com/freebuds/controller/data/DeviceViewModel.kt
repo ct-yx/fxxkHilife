@@ -1,6 +1,7 @@
 package com.freebuds.controller.data
 
 import android.bluetooth.BluetoothDevice
+import android.content.Context
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.freebuds.controller.HilifeApplication
@@ -37,8 +38,24 @@ class DeviceViewModel : ViewModel() {
         viewModelScope.launch { repo.setProperty(group, prop, value) }
     }
 
+    // ── 分享日志 ──────────────────────────────────────────────────────────────
+    fun shareLog(context: Context) = repo.shareLog(context)
+
+    // ── 已保存设备地址 ────────────────────────────────────────────────────────
+    fun getSavedAddress(): String? = repo.getSavedAddress()
+
+    // ── 自动连接已保存设备 ────────────────────────────────────────────────────
+    fun autoConnectSaved(context: Context) {
+        val addr = getSavedAddress() ?: return
+        val adapter = android.bluetooth.BluetoothAdapter.getDefaultAdapter()
+        val device = adapter?.getRemoteDevice(addr)
+        if (device != null) {
+            repo.connect(device)
+        }
+    }
+
     // ── 扫描 ──────────────────────────────────────────────────────────────────
-    fun startScan(context: android.content.Context) {
+    fun startScan(context: Context) {
         scanner?.stopScan()
         _scanState.value = ScanState(isScanning = true)
         scanner = BluetoothScanner(context).also { s ->
@@ -47,6 +64,11 @@ class DeviceViewModel : ViewModel() {
                     isScanning = false,
                     devices = if (success) s.found.toList() else emptyList()
                 )
+                // 扫描完成后，尝试自动连接华为设备
+                val huawei = s.found.firstOrNull { it.isHuaweiOrHonor }
+                if (huawei != null && repo.connectionState.value !is ConnectionState.Connected) {
+                    repo.connect(huawei.device)
+                }
             }
             // 立即同步已配对设备
             _scanState.value = _scanState.value.copy(devices = s.found.toList())

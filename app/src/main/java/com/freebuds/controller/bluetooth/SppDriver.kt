@@ -41,6 +41,7 @@ class SppDriver(private val device: BluetoothDevice) {
 
     // 已注册的 Handler
     private val handlers = mutableListOf<HuaweiDeviceHandler>()
+    val failedHandlerIds = mutableSetOf<String>()
     private val packageHandlers = mutableMapOf<String, HuaweiDeviceHandler?>()
     private val propertyHandlers = mutableMapOf<String, HuaweiDeviceHandler>()
     private val store = mutableMapOf<String, MutableMap<String, String>>()
@@ -58,6 +59,8 @@ class SppDriver(private val device: BluetoothDevice) {
             propertyHandlers["$group//$prop"] = handler
         }
     }
+
+    fun getHandlerById(id: String): HuaweiDeviceHandler? = handlers.find { it.id == id }
 
     suspend fun putProperty(group: String, prop: String?, value: String?, extendGroup: Boolean = false) {
         storeMutex.withLock {
@@ -167,11 +170,13 @@ class SppDriver(private val device: BluetoothDevice) {
                             }
                             if (!success) {
                                 LogBuffer.w("SPP", "Can't initialize ${handler.id}. Skipping.")
+                                failedHandlerIds.add(handler.id)
                             }
                         }
                     }.joinAll()
                 }
-                LogBuffer.i("SPP", "Staggered init completed")
+                LogBuffer.i("SPP", if (failedHandlerIds.isEmpty()) "All handlers initialized" 
+                else "Staggered init completed, ${failedHandlerIds.size} failed: $failedHandlerIds")
             }
         } catch (e: TimeoutCancellationException) {
             LogBuffer.w("SPP", "Staggered init global timeout reached, proceeding with partial results")

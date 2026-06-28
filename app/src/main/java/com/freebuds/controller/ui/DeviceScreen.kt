@@ -17,7 +17,12 @@ import com.freebuds.controller.data.DeviceViewModel
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun DeviceScreen(viewModel: DeviceViewModel, onOpenTerminal: () -> Unit) {
+fun DeviceScreen(
+    viewModel: DeviceViewModel,
+    onBack: () -> Unit,
+    onSettings: () -> Unit,
+    onOpenTerminal: () -> Unit,
+) {
     val connState by viewModel.connectionState.collectAsState()
     val props by viewModel.props.collectAsState()
     val deviceName = (connState as? ConnectionState.Connected)?.deviceName ?: "耳机"
@@ -26,7 +31,15 @@ fun DeviceScreen(viewModel: DeviceViewModel, onOpenTerminal: () -> Unit) {
         topBar = {
             TopAppBar(
                 title = { Text(deviceName) },
+                navigationIcon = {
+                    IconButton(onClick = onBack) {
+                        Icon(Icons.Default.ArrowBack, contentDescription = "返回")
+                    }
+                },
                 actions = {
+                    IconButton(onClick = onSettings) {
+                        Icon(Icons.Default.Settings, contentDescription = "设置")
+                    }
                     IconButton(onClick = { viewModel.disconnect() }) {
                         Icon(Icons.Default.Close, contentDescription = "断开")
                     }
@@ -81,7 +94,7 @@ fun DeviceScreen(viewModel: DeviceViewModel, onOpenTerminal: () -> Unit) {
                             icon = Icons.Default.TouchApp,
                             title = "双击 · 左",
                             current = props.doubleTapLeft,
-                            options = emptyList(),
+                            options = props.doubleTapOptions,
                             onSelect = { viewModel.setProperty("action", "double_tap_left", it) }
                         )
                     }
@@ -92,7 +105,7 @@ fun DeviceScreen(viewModel: DeviceViewModel, onOpenTerminal: () -> Unit) {
                             icon = Icons.Default.TouchApp,
                             title = "双击 · 右",
                             current = props.doubleTapRight,
-                            options = emptyList(),
+                            options = props.doubleTapOptions,
                             onSelect = { viewModel.setProperty("action", "double_tap_right", it) }
                         )
                     }
@@ -103,7 +116,7 @@ fun DeviceScreen(viewModel: DeviceViewModel, onOpenTerminal: () -> Unit) {
                             icon = Icons.Default.TouchApp,
                             title = "三击 · 左",
                             current = props.tripleTapLeft,
-                            options = emptyList(),
+                            options = props.tripleTapOptions,
                             onSelect = { viewModel.setProperty("action", "triple_tap_left", it) }
                         )
                     }
@@ -114,7 +127,7 @@ fun DeviceScreen(viewModel: DeviceViewModel, onOpenTerminal: () -> Unit) {
                             icon = Icons.Default.TouchApp,
                             title = "三击 · 右",
                             current = props.tripleTapRight,
-                            options = emptyList(),
+                            options = props.tripleTapOptions,
                             onSelect = { viewModel.setProperty("action", "triple_tap_right", it) }
                         )
                     }
