@@ -10,6 +10,8 @@ import com.freebuds.controller.data.ConnectionState
 import com.freebuds.controller.ui.MainActivity
 import kotlinx.coroutines.MainScope
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.Job
+import kotlinx.coroutines.delay
 
 /**
  * Quick Settings Tile — 一键切换 ANC 模式 / 打开应用。
@@ -20,6 +22,7 @@ import kotlinx.coroutines.launch
 class QuickSettingsTileService : TileService() {
 
     private val scope = MainScope()
+    private var propsJob: Job? = null
 
     override fun onTileAdded() {
         super.onTileAdded()
@@ -33,6 +36,21 @@ class QuickSettingsTileService : TileService() {
     override fun onStartListening() {
         super.onStartListening()
         updateTileState()
+
+        // v2.7.0 修复：响应式更新（props 变化时自动刷新 Tile）
+        if (propsJob == null) {
+            propsJob = scope.launch {
+                HilifeApplication.instance.deviceRepository.props.collect {
+                    updateTileState()
+                }
+            }
+        }
+    }
+
+    override fun onStopListening() {
+        propsJob?.cancel()
+        propsJob = null
+        super.onStopListening()
     }
 
     override fun onClick() {
@@ -50,9 +68,9 @@ class QuickSettingsTileService : TileService() {
             }
             scope.launch {
                 repo.setProperty("anc", "mode", nextMode)
+                delay(300)
+                updateTileState()
             }
-            // 延迟后更新 Tile 状态
-            android.os.Handler(mainLooper).postDelayed({ updateTileState() }, 800)
         } else {
             // 未连接 → 打开应用
             startActivityAndCollapse(Intent(this, MainActivity::class.java).apply {

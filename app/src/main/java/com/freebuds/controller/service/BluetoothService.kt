@@ -1,6 +1,8 @@
 package com.freebuds.controller.service
 
 import android.app.Notification
+import android.app.NotificationChannel
+import android.app.NotificationManager
 import android.app.PendingIntent
 import android.app.Service
 import android.bluetooth.BluetoothDevice
@@ -57,6 +59,7 @@ class BluetoothService : Service() {
 
     override fun onCreate() {
         super.onCreate()
+        createNotificationChannelIfNeeded()
         startForeground(NOTIFICATION_ID, createNotification())
         startPropsObserver()
 
@@ -65,6 +68,18 @@ class BluetoothService : Service() {
             addAction(BluetoothDevice.ACTION_ACL_DISCONNECTED)
         }
         registerReceiver(aclReceiver, filter)
+    }
+
+    private fun createNotificationChannelIfNeeded() {
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+            val channel = NotificationChannel(
+                CHANNEL_ID, "蓝牙连接与 ANC 状态", NotificationManager.IMPORTANCE_LOW
+            ).apply {
+                description = "显示当前 ANC 模式、听音时长、低延迟/音质状态"
+                setShowBadge(false)
+            }
+            getSystemService(NotificationManager::class.java).createNotificationChannel(channel)
+        }
     }
 
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {

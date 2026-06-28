@@ -7,7 +7,7 @@
 <p align="center">
   <b>HUAWEI FreeBuds / HONOR Earbuds 的轻量离线控制 App</b>
 </p>
-> **v2.6.0** — 导航重构：独立扫描页面，ANC 乐观更新即时反馈，低延迟模式可配置，已保存设备完整显示所有地址。
+> **v2.7.0** — 源头乐观更新：DeviceRepository setProperty 同时更新 StateFlow，Tile 响应式刷新，NotificationChannel 适配，CI 自动发布 Release 带既有 Tag 覆盖。
 
 >
 > 通过蓝牙 SPP 直接控制耳机，无需登录、无广告、完全离线。

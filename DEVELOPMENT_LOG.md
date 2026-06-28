@@ -327,6 +327,35 @@
 - `getSavedAddresses()` now shows all saved device addresses with total count
 - Removed `firstOrNull{isHuaweiOrHonor}` auto-connect logic from `DeviceViewModel.startScan()`
 
+## v2.7.0 (2026-06-28)
+
+### Source-Level Optimistic Update
+- `DeviceRepository.setProperty()` now updates `_props` StateFlow **immediately** before sending the command for `anc.mode`, `config.low_latency`, and `sound.quality_preference`, eliminating UI flicker entirely
+- `delay(100)` → `150` for better hardware response tolerance
+- `ensureDefaultAncOptions()` fills fallback `("normal", "cancellation", "awareness")` when `ancModeOptions` is empty
+- Called at end of every `syncProps()` to guarantee defaults
+
+### Tile Reactive Refresh
+- `QuickSettingsTileService` now subscribes to `props.collect{}` during `onStartListening`, auto-updating Tile subtitle on any property change
+- `propsJob` lifecycle managed via `onStopListening` → `cancel()` + null
+- Click delay `800ms` → `300ms` (now inside coroutine with `delay(300)` + `updateTileState()`)
+
+### NotificationChannel Adaptation
+- `BluetoothService.onCreate()` now calls `createNotificationChannelIfNeeded()` before `startForeground()`, complying with Android 8+ requirements
+- Channel: `CHANNEL_ID` ("bluetooth_service"), low importance, no badge, description on ANC/sound/low-latency status
+
+### CI Auto-Release Enhancement
+- Build triggers: added `main` branch + `v*` tag push
+- `fetch-depth: 0` for accurate git log
+- Release step: creates tag if missing, **updates assets on existing tag** via `gh release upload --clobber`
+- Separated "Get Version" step for clean `VERSION_NAME` env
+
+### DeviceScreen LaunchedEffect Protection
+- 3000ms timeout guard added: if ANC mode doesn't match expected value within 3s, optimistic state auto-clears to prevent stuck UI
+
+### Version Bump
+- `versionCode` 18 → 19, `versionName` "2.6.0" → "2.7.0"
+
 ## v2.5.0 (2026-06-28)
 
 ### 阶段一：ANC UI 状态同步 + 移除 Haze

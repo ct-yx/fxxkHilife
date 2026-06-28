@@ -7,7 +7,7 @@
 <p align="center">
   <b>A lightweight offline controller for HUAWEI FreeBuds / HONOR Earbuds</b>
 </p>
-> **v2.6.0** — Navigation refactor: dedicated scan screen, optimistic ANC update, configurable low-latency, saved devices display fix.
+> **v2.7.0** — Source-level optimistic update: DeviceRepository setProperty updates StateFlow instantly, Tile reactive refresh, NotificationChannel adaptation, Auto-release with existing tag override.
 
 >
 > Controls your earbuds directly via classic Bluetooth SPP — no login, no ads, fully offline.

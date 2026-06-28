@@ -250,10 +250,32 @@ class DeviceRepository {
 
     suspend fun setProperty(group: String, prop: String, value: String) {
         val d = driver ?: return
+
+        // ========== v2.7.0 根因修复：源头乐观更新 ==========
+        // 让 UI、Tile、Notification 全部瞬间看到预期值，彻底解决跳变问题
+        when {
+            group == "anc" && prop == "mode" -> {
+                _props.value = _props.value.copy(ancMode = value)
+            }
+            group == "config" && prop == "low_latency" -> {
+                _props.value = _props.value.copy(lowLatency = value.toBooleanStrictOrNull())
+            }
+            group == "sound" && prop == "quality_preference" -> {
+                _props.value = _props.value.copy(soundQuality = value)
+            }
+        }
+
         d.setProperty(group, prop, value)
-        // 重新发起 onInit 获取真实值（Handler.setProperty 内部已发 init 请求）
-        delay(100) // 给硬件响应时间
+        delay(150)
         syncProps()
+    }
+
+    private fun ensureDefaultAncOptions() {
+        if (_props.value.ancModeOptions.isEmpty()) {
+            _props.value = _props.value.copy(
+                ancModeOptions = listOf("normal", "cancellation", "awareness")
+            )
+        }
     }
 
     // ── 分享日志 ─────────────────────────────────────────────────────────
@@ -322,6 +344,7 @@ class DeviceRepository {
             firmwareVersion  = get("info", "software_ver"),
             connectedSince   = connectedAt.takeIf { it > 0 },
         )
+        ensureDefaultAncOptions()
     }
 
     // ── 内部：注册 Handler ─────────────────────────────────────────────────────

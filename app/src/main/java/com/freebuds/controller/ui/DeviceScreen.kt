@@ -7,6 +7,7 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
+import kotlinx.coroutines.delay
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.vector.ImageVector
@@ -58,10 +59,16 @@ fun DeviceScreen(
     var optimisticAncMode by remember { mutableStateOf<String?>(null) }
     val displayAncMode = optimisticAncMode ?: (props.ancMode ?: "normal")
 
-    // 当 props 的实际值追上乐观值时清除乐观状态
+    // 当 props 的实际值追上乐观值时清除乐观状态（含超时保护）
     LaunchedEffect(props.ancMode) {
-        if (optimisticAncMode != null && props.ancMode == optimisticAncMode) {
-            optimisticAncMode = null
+        optimisticAncMode?.let { expected ->
+            if (props.ancMode == expected) {
+                optimisticAncMode = null
+            } else {
+                // 超时保护，防止卡死或乱跳
+                delay(3000)
+                if (optimisticAncMode == expected) optimisticAncMode = null
+            }
         }
     }
 
@@ -95,13 +102,15 @@ fun DeviceScreen(
             item { BatteryCard(props) }
 
             // ── ANC ─────────────────────────────────────────────────────────
-            if (props.ancMode != null) {
+            if (props.ancMode != null || props.ancModeOptions.isNotEmpty()) {
                 item { SettingsGroupHeader("ANC模式") }
                 // haze 模糊滑块切换器
                 item {
                     AncModeSlider(
                         current = displayAncMode,
-                        options = props.ancModeOptions,
+                        options = props.ancModeOptions.ifEmpty {
+                            listOf("normal", "cancellation", "awareness")
+                        },
                         onSelect = {
                             optimisticAncMode = it
                             viewModel.setProperty("anc", "mode", it)
