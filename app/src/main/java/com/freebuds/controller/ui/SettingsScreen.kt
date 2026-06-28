@@ -285,13 +285,14 @@ private fun ThemeSelector(
                 }
             }
         }
+        val scheme = MaterialTheme.colorScheme
         Box(
             modifier = Modifier
                 .matchParentSize()
                 .hazeChild(state = hazeState) {
                     style = HazeStyle(
                         blurRadius = 10.dp,
-                        tint = HazeTint(MaterialTheme.colorScheme.surface.copy(alpha = 0.3f))
+                        tint = HazeTint(scheme.surface.copy(alpha = 0.3f))
                     )
                 }
         )
@@ -314,13 +315,14 @@ private fun ThemeSelector(
             contentAlignment = Alignment.Center
         ) {
             Box(modifier = Modifier.matchParentSize().haze(state = btnHaze))
+            val scheme2 = MaterialTheme.colorScheme
             Box(
                 modifier = Modifier
                     .matchParentSize()
                     .hazeChild(state = btnHaze) {
                         style = HazeStyle(
                             blurRadius = 8.dp,
-                            tint = HazeTint(MaterialTheme.colorScheme.primary.copy(alpha = 0.2f))
+                            tint = HazeTint(scheme2.primary.copy(alpha = 0.2f))
                         )
                     }
             )

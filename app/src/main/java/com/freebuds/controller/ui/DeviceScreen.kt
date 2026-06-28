@@ -397,13 +397,14 @@ private fun AncModeSlider(
         }
 
         // haze 子层：模糊 + 折射
+        val scheme = MaterialTheme.colorScheme
         Box(
             modifier = Modifier
                 .matchParentSize()
                 .hazeChild(state = hazeState) {
                     style = HazeStyle(
                         blurRadius = 10.dp,
-                        tint = HazeTint(MaterialTheme.colorScheme.surface.copy(alpha = 0.3f))
+                        tint = HazeTint(scheme.surface.copy(alpha = 0.3f))
                     )
                 }
         )
