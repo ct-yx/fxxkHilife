@@ -263,19 +263,23 @@ nav .links a:hover{color:#fff}
 .timeline-detail-inner{
   padding-top:10px;min-height:0;
 }
-.timeline-detail-inner p{margin-bottom:8px}
-.timeline-detail-inner code{background:rgba(124,124,240,.1);padding:1px 6px;border-radius:4px;font-size:12px;color:#b388ff}
-.timeline-detail-inner pre{background:rgba(0,0,0,.3);padding:10px 14px;border-radius:8px;overflow-x:auto;margin:8px 0;border:1px solid rgba(255,255,255,.06)}
-.timeline-detail-inner pre code{background:none;padding:0;font-size:12px;color:#a0a0e0}
-.timeline-detail-inner h3,.timeline-detail-inner h4{font-size:14px;color:#b388ff;margin:12px 0 6px;font-weight:600}
-.timeline-detail-inner ul,.timeline-detail-inner ol{padding-left:20px;margin:6px 0}
-.timeline-detail-inner li{margin-bottom:4px}
-.timeline-detail-inner strong{color:rgba(255,255,255,.7)}
-.timeline-detail-inner a{color:#7c7cf0;text-decoration:underline}
-.timeline-detail-inner hr{margin:12px 0;border:none;border-top:1px solid rgba(255,255,255,.06)}
-.timeline-detail-inner table{width:100%;border-collapse:collapse;margin:8px 0;font-size:12px}
-.timeline-detail-inner th,.timeline-detail-inner td{padding:4px 8px;border:1px solid rgba(255,255,255,.08);text-align:left}
-.timeline-detail-inner th{background:rgba(124,124,240,.08);color:#b388ff;font-weight:600}
+.timeline-detail-medium,.timeline-detail-full{padding-top:10px;min-height:0}
+.timeline-detail-full{display:none}
+.timeline-detail-wrap.full .timeline-detail-medium{display:none}
+.timeline-detail-wrap.full .timeline-detail-full{display:block}
+.timeline-detail-medium p,.timeline-detail-full p{margin-bottom:8px}
+.timeline-detail-medium code,.timeline-detail-full code{background:rgba(124,124,240,.1);padding:1px 6px;border-radius:4px;font-size:12px;color:#b388ff}
+.timeline-detail-medium pre,.timeline-detail-full pre{background:rgba(0,0,0,.3);padding:10px 14px;border-radius:8px;overflow-x:auto;margin:8px 0;border:1px solid rgba(255,255,255,.06)}
+.timeline-detail-medium pre code,.timeline-detail-full pre code{background:none;padding:0;font-size:12px;color:#a0a0e0}
+.timeline-detail-medium h3,.timeline-detail-medium h4,.timeline-detail-full h3,.timeline-detail-full h4{font-size:14px;color:#b388ff;margin:12px 0 6px;font-weight:600}
+.timeline-detail-medium ul,.timeline-detail-medium ol,.timeline-detail-full ul,.timeline-detail-full ol{padding-left:20px;margin:6px 0}
+.timeline-detail-medium li,.timeline-detail-full li{margin-bottom:4px}
+.timeline-detail-medium strong,.timeline-detail-full strong{color:rgba(255,255,255,.7)}
+.timeline-detail-medium a,.timeline-detail-full a{color:#7c7cf0;text-decoration:underline}
+.timeline-detail-medium hr,.timeline-detail-full hr{margin:12px 0;border:none;border-top:1px solid rgba(255,255,255,.06)}
+.timeline-detail-medium table,.timeline-detail-full table{width:100%;border-collapse:collapse;margin:8px 0;font-size:12px}
+.timeline-detail-medium th,.timeline-detail-medium td,.timeline-detail-full th,.timeline-detail-full td{padding:4px 8px;border:1px solid rgba(255,255,255,.08);text-align:left}
+.timeline-detail-medium th,.timeline-detail-full th{background:rgba(124,124,240,.08);color:#b388ff;font-weight:600}
 .timeline-toggle{
   display:inline-flex;align-items:center;gap:4px;margin-top:10px;
   font-size:11px;color:#7c7cf0;cursor:pointer;
@@ -564,10 +568,11 @@ document.querySelectorAll('.reveal').forEach(el => observer.observe(el));
           <div class="timeline-date">${item.date}</div>
           <div class="timeline-title">${item.title}</div>
           <div class="timeline-desc">${item.summary}</div>
-          <span class="timeline-toggle" onclick="var p=this.closest('.timeline-item');p.classList.toggle('open');this.nextElementSibling.classList.toggle('open');this.classList.toggle('open');var t=this.classList.contains('open');this.innerHTML=t?'收起 <svg viewBox="0 0 12 12" fill="currentColor"><polygon points="3,4.5 6,7.5 9,4.5"/></svg>':'展开详情 <svg viewBox="0 0 12 12" fill="currentColor"><polygon points="3,4.5 6,7.5 9,4.5"/></svg>'">展开详情 <svg viewBox='0 0 12 12' fill='currentColor'><polygon points='3,4.5 6,7.5 9,4.5'/></svg></span>
+          <span class="timeline-toggle" onclick="var p=this.closest('.timeline-item');var w=this.closest('.timeline-item-inner').querySelector('.timeline-detail-wrap');var b=this;if(p.classList.contains('full')){p.classList.remove('open','full');w.classList.remove('open','full');b.classList.remove('open','full');b.innerHTML='展开详情 <svg viewBox="0 0 12 12" fill="currentColor"><polygon points="3,4.5 6,7.5 9,4.5"/></svg>';}else if(p.classList.contains('open')){p.classList.add('full');w.classList.add('full');b.classList.add('full');b.innerHTML='收起 <svg viewBox="0 0 12 12" fill="currentColor"><polygon points="3,4.5 6,7.5 9,4.5"/></svg>';}else{p.classList.add('open');w.classList.add('open');b.classList.add('open');b.innerHTML='完整日志 <svg viewBox="0 0 12 12" fill="currentColor"><polygon points="3,4.5 6,7.5 9,4.5"/></svg>';}">展开详情 <svg viewBox='0 0 12 12' fill='currentColor'><polygon points='3,4.5 6,7.5 9,4.5'/></svg></span>
           <div class="timeline-detail-wrap">
             <div class="timeline-detail">
-              <div class="timeline-detail-inner">${item.detail}</div>
+              <div class="timeline-detail-medium">${item.medium}</div>
+              <div class="timeline-detail-full">${item.detail}</div>
             </div>
           </div>
         </div>
@@ -632,19 +637,27 @@ function parseDevelopmentLog(text) {
     // 摘要：取前35字的完整片断
     const plain = fullDesc.replace(/\*\*/g,'').replace(/`/g,'').replace(/\[([^\]]+)\]\([^)]+\)/g,'$1').replace(/#+\s/g,'').trim();
     const summary = plain.length > 35 ? plain.slice(0, 35).replace(/\s\S*$/,'') + '…' : (plain || '暂无摘要');
-    // 详情：完整 Markdown 渲染
-let detail = fullDesc
-.replace(/\|([^|]+)\|/g,'')
-.replace(/\n{3,}/g,'\n\n')
-.replace(/否\n/g,'')
-.replace(/否/g,'');
-try { detail = marked.parse(detail); } catch(e) { detail = fullDesc.replace(/\n/g,'<br>'); }
+    // 完整Markdown渲染
+    let detail = fullDesc
+      .replace(/\|([^|]+)\|/g,'')
+      .replace(/\n{3,}/g,'\n\n')
+      .replace(/否\n/g,'')
+      .replace(/否/g,'');
+    try { detail = marked.parse(detail); } catch(e) { detail = fullDesc.replace(/\n/g,'<br>'); }
+    // Medium：取第一个完整段落的Markdown渲染（第一次展开内容）
+const mediumRaw = fullDesc.split(/^### /m)[0].trim();
+const paragraphs = mediumRaw.split(/\n\s*\n/).filter(Boolean);
+const firstBlock = paragraphs[0] || mediumRaw;
+let mediumRawFinal = firstBlock.length < 60 && paragraphs.length > 1 ? paragraphs.slice(0,2).join('\n\n') : firstBlock;
+let medium = mediumRawFinal;
+try { medium = marked.parse(mediumRawFinal); } catch(e) { medium = mediumRawFinal.replace(/\n/g,'<br>'); }
     versions.push({
       version: m.version,
       date: m.date || '—',
       title: title || '',
       summary: summary,
-      detail: detail || '暂无详细日志'
+      detail: detail || '暂无详细日志',
+      medium: medium || '暂无摘要'
     });
   }
   // 按语义版本号倒序排序
