@@ -8,7 +8,7 @@
   <b>A lightweight offline controller for HUAWEI FreeBuds / HONOR Earbuds</b>
 </p>
 
-> **v2.1.3** — Staggered parallel init (80ms gap, 1.5s fast-fail), ANC passive notification, full battery parsing, 6i capability verified.
+> **v2.2.0** — Full Material 3 Compose UI rewrite: permission guide, auto‑connect, device persistence, background retry, timed polling, settings screen, log sharing.
 >
 > Controls your earbuds directly via classic Bluetooth SPP — no login, no ads, fully offline.
 
@@ -30,18 +30,28 @@ cd fxxkHilife
 
 ## Project Status
 
-Current version: **v2.1.3**
+Current version: **v2.2.0**
 
-- Previous v1.7.3 release archived (branch `main-archived`)
-- Completed: protocol layer packet recv/parse precisely aligned with OpenFreebuds, property storage system, `props/set` terminal commands, 13 active Handlers (6i capability-filtered: InfoHandler, BatteryHandler, InEarHandler, LogsHandler, AutoPauseHandler, LowLatencyHandler, SoundQualityHandler, VoiceLanguageHandler, AncHandler, DoubleTapHandler, TripleTapHandler, SwipeGestureHandler, LongTapHandler)
-- Handler architecture fully matches upstream `OfbDriverHandlerHuawei`'s `handler_id`/`commands`/`ignore_commands`/`properties` routing system
-- Handler init: staggered parallel (`mapIndexed` + `delay` × 80ms), 1.5s fast-fail per handler × 3 retries, 10s global timeout
-- Device capability table (`modelCapabilities`) for model-based Handler filtering
-- ANC Handler supports both active request (`2b2a`) and passive notification (`2b2c`)
-- Full battery parsing (global/L/R/case/charging status)
-- FreeBuds 6i verified: 9/13 handlers init in ~5.5s, remaining 4 to be bound on-demand in future UI
-- CI compiles via GitHub Actions and publishes Release automatically
-- Development log: [DEVELOPMENT_LOG.md](./DEVELOPMENT_LOG.md)
+### Completed
+- **Compose UI rewrite**: four‑screen navigation (Permission Guide → Scan → Device ↔ Settings)
+- **Connection persistence**: save device address via SharedPreferences, stay connected on back‑navigation
+- **Auto‑connect**: automatically connect to discovered Huawei/Honor devices
+- **Background retry**: failed init handlers retried every 30s until successful
+- **Timed polling**: properties synced every 10s, battery on passive push + 45s fallback
+- **Settings screen**: global top‑right entry with version, saved device, debug terminal, log sharing
+- **Log sharing**: one‑tap export current SPP logs as a text file
+- 13 functional Handlers (info/battery/anc/double_tap/triple_tap/swipe/long_tap/auto_pause/low_latency/sound_quality/voice_language/in_ear/logs)
+- Staggered parallel init (80ms gap, 1.5s fast‑fail, 3 retries, 10s global timeout)
+- ANC dual notification (active 2b2a + passive push 2b2c)
+- Full battery parsing (L/R/Case/charging status)
+- Capability‑table per‑model Handler filtering
+- FreeBuds 6i verified: 9/13 handlers init in ~5.5s
+- CI auto‑builds and publishes Release
+
+### Known Issues
+- 6i Bluetooth channel congestion: device_info/gesture_double/gesture_swipe/voice_language may fail init (auto‑retried every 30s)
+- EQ Preset/Custom and Dual Connect: not yet implemented
+- FileProvider registration needed in AndroidManifest.xml for log sharing
 
 ---
 

@@ -140,3 +140,66 @@
 
 ### 编译修复
 - TerminalActivity 类型推断歧义修复
+
+## v2.2.0 (2026-06-28)
+
+### Compose UI 完整重构
+
+**四屏导航架构**：
+```
+AppNavHost
+├── PermissionGuideScreen  ← 无权限时自动显示
+├── ScanScreen             ← 扫描/自动连接 + 右上角设置入口
+├── DeviceScreen           ← 连接后自动进入，返回不断连
+└── SettingsScreen         ← 全局设置（版本/设备/终端/分享日志）
+```
+
+**新增屏幕**：
+- `PermissionGuideScreen.kt` — 初次使用蓝牙权限引导
+- `SettingsScreen.kt` — 版本信息、已保存设备、调试终端入口、分享日志
+- `AppNavHost.kt` — 四屏路由枚举，权限检测 + 连接状态自动导航
+
+**连接持久化**：
+- `DeviceRepository` 新增 `SharedPreferences` 持久化设备地址（`last_device_address`）
+- `getSavedAddress()` 读取已保存地址
+- 返回扫描页时不再调用 `disconnect()`，状态保持 `Connected`
+
+**自动连接**：
+- `DeviceViewModel.startScan()` 扫描完成后自动检测 `isHuaweiOrHonor` 并调 `connect()`
+- `autoConnectSaved()` 接口（启动时可用，待接入）
+
+**后台重试失败 Handler**：
+- `SppDriver.initHandlers()` 记录 `failedHandlerIds`
+- `DeviceRepository.retryFailedHandlers()` 每 30s 尝试重新初始化失败的 Handler
+- `SppDriver.getHandlerById()` 按 id 检索 Handler 实例
+
+**定时轮询**：
+- `DeviceRepository.startPolling()` — 每 10s 同步全部属性
+- 电池 45s 兜底（被动推送为主）
+
+**分享日志**：
+- `DeviceRepository.shareLog()` — 通过 `FileProvider` 导出日志文本并调系统分享
+
+**UI 改进**：
+- `ScanScreen` 顶栏加设置按钮，已连接状态绿色横幅
+- `DeviceScreen` 顶栏加返回按钮 + 设置按钮，双击/三击 options 从 `DeviceProps` 动态读取
+- `MainActivity` 精简（权限逻辑移入 `AppNavHost`）
+
+**双击/三击选项**：
+- `DeviceProps` 新增 `doubleTapOptions` / `tripleTapOptions`
+- `syncProps()` 从 prop store 读取 `action.double_tap_options` / `action.triple_tap_options`
+
+### 文件变更统计
+| 文件 | 变更 |
+|------|------|
+| `HilifeApplication.kt` | +1 — `repo.init(this)` |
+| `SppDriver.kt` | +7/-1 — `failedHandlerIds` + `getHandlerById()` |
+| `DeviceRepository.kt` | +108/-7 — 持久化/重试/轮询/分享 |
+| `DeviceViewModel.kt` | +24/-1 — `shareLog`/`getSavedAddress`/`autoConnectSaved`/自动连接 |
+| `AppNavHost.kt` | +51/-3 — 四屏路由 + 权限检测 + 连接状态自动导航 |
+| `DeviceScreen.kt` | +23/-1 — 返回/设置按钮 + options |
+| `MainActivity.kt` | -34 — 权限逻辑移入 AppNavHost |
+| `ScanScreen.kt` | +27/-2 — 设置按钮 + 已连接横幅 |
+| `PermissionGuideScreen.kt` | 新增 — 权限引导 |
+| `SettingsScreen.kt` | 新增 — 全局设置 |
+| **合计** | **+425/-51 行** |

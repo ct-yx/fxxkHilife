@@ -8,7 +8,7 @@
   <b>HUAWEI FreeBuds / HONOR Earbuds 的轻量离线控制 App</b>
 </p>
 
-> **v2.1.3** — 交错并行初始化（80ms 间隔、1.5s 快速失败），ANC 被动通知，电池完整解析，6i 全能力验证。
+> **v2.2.0** — Material 3 Compose UI 完整重构：权限引导、自动连接、持久化、后台重试、定时轮询、全局设置页、分享日志。
 >
 > 通过蓝牙 SPP 直接控制耳机，无需登录、无广告、完全离线。
 
@@ -30,18 +30,28 @@ cd fxxkHilife
 
 ## 项目状态
 
-当前版本：**v2.1.3**
+当前版本：**v2.2.0**
 
-- 旧 v1.7.3 版本已归档（分支 `main-archived`）
-- 已完成：协议层收包/解析精准对齐 OpenFreebuds，属性存储系统，`props/set` 终端命令，13 个活跃 Handler（按 6i 能力表过滤：InfoHandler、BatteryHandler、InEarHandler、LogsHandler、AutoPauseHandler、LowLatencyHandler、SoundQualityHandler、VoiceLanguageHandler、AncHandler、DoubleTapHandler、TripleTapHandler、SwipeGestureHandler、LongTapHandler）
-- 协议架构全面匹配上游 `OfbDriverHandlerHuawei` 的 `handler_id`/`commands`/`ignore_commands`/`properties` 路由体系
-- Handler 初始化改为交错并行（`mapIndexed` + `delay` × 80ms），单 Handler 1.5s 快速失败 × 3 次重试，全局 10s 超时
-- 设备能力表建模过滤（`modelCapabilities`），按型号只注册支持的 Handler
-- ANC Handler 同时支持主动请求 (`2b2a`) 和被动通知 (`2b2c`)
-- 电池完整解析（全局/左耳/右耳/充电盒/充电状态）
-- FreeBuds 6i 实测：5.5s 内完成 9/13 Handler 初始化，剩余 4 个待 UI 开发时按需绑定
-- CI 通过 GitHub Actions 自动编译并发布 Release
-- 开发记录见 [DEVELOPMENT_LOG.md](./DEVELOPMENT_LOG.md)
+### 已完成
+- **Compose UI 完整重构**：四屏导航（权限引导 → 扫描 → 设备详情 ↔ 全局设置）
+- **连接持久化**：连接后自动保存设备地址（SharedPreferences），返回扫描页不断连
+- **自动连接**：扫描到华为/荣耀设备自动连接
+- **后台重试**：初始化失败的 Handler 每 30 秒后台重试直至成功
+- **定时轮询**：属性每 10 秒同步，电池被动推送 + 45 秒兜底
+- **设置界面**：全局右上角入口，含版本信息、已保存设备、调试终端入口、分享日志
+- **分享日志**：一键导出当前 SPP 日志为文本文件
+- 13 个功能 Handler（info/battery/anc/double_tap/triple_tap/swipe/long_tap/auto_pause/low_latency/sound_quality/voice_language/in_ear/logs）
+- 交错并行初始化（80ms 间隔、1.5s 快失、3 次重试、10s 全局超时）
+- ANC 双重通知（主动请求 2b2a + 被动推送 2b2c）
+- 电池完整解析（L/R/Case/充电状态）
+- 设备能力表按型号过滤 Handler
+- FreeBuds 6i 实测 9/13 Handler 5.5s 内初始化成功
+- CI 自动编译发布 Release
+
+### 已知问题
+- 6i 蓝牙通道拥塞：device_info/gesture_double/gesture_swipe/voice_language 偶发初始化失败（后台 30s 自动重试）
+- 均衡器预设（EQ Preset/Custom）和双设备连接（Dual Connect）：未实现
+- FileProvider 需在 AndroidManifest.xml 注册（分享日志功能依赖）
 
 ---
 
