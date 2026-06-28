@@ -20,9 +20,16 @@ import androidx.compose.ui.unit.dp
 fun PermissionGuideScreen(onGranted: () -> Unit) {
     val context = LocalContext.current
     val perms = remember {
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S)
-            arrayOf(Manifest.permission.BLUETOOTH_CONNECT, Manifest.permission.BLUETOOTH_SCAN)
-        else emptyArray()
+        val list = mutableListOf<String>()
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
+            list.add(Manifest.permission.BLUETOOTH_CONNECT)
+            list.add(Manifest.permission.BLUETOOTH_SCAN)
+        }
+        // Android 10-11 还需要位置权限来蓝牙扫描
+        if (Build.VERSION.SDK_INT in Build.VERSION_CODES.Q..Build.VERSION_CODES.R) {
+            list.add(Manifest.permission.ACCESS_FINE_LOCATION)
+        }
+        list.toTypedArray()
     }
 
     val launcher = rememberLauncherForActivityResult(
