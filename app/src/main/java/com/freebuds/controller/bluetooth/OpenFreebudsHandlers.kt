@@ -342,7 +342,7 @@ class LongTapHandler : HuaweiDeviceHandler {
     override val commandIds = listOf(HuaweiSppCommand.LONG_TAP_SPLIT_READ_BASE)
     override val ignoreCommandIds = listOf(HuaweiSppCommand.LONG_TAP_SPLIT_WRITE_BASE)
     override val properties = listOf("action" to "long_tap")
-    override val capabilities = listOf(HuaweiCapability.ACTION_LONG_TAP)
+    override val capabilities = listOf(HuaweiCapability.ACTION_LONG_TAP, HuaweiCapability.ACTION_LONG_TAP_SPLIT)
     private val opts = mapOf(-1 to "noise_control_disabled", 3 to "noise_control_off_on", 5 to "noise_control_off_on_aw", 6 to "noise_control_on_aw", 9 to "noise_control_off_an")
 
     override suspend fun onInit(driver: SppDriver) {

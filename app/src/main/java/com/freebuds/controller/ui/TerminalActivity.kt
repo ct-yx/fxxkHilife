@@ -22,6 +22,9 @@ import com.freebuds.controller.bluetooth.BatteryHandler
 import com.freebuds.controller.bluetooth.ScannedDevice
 import com.freebuds.controller.bluetooth.*
 import com.freebuds.controller.bluetooth.SppDriver
+import com.freebuds.controller.protocol.HuaweiModel
+import com.freebuds.controller.protocol.HuaweiCapability
+import com.freebuds.controller.protocol.modelCapabilities
 import com.freebuds.controller.data.UpdateChecker
 import com.freebuds.controller.util.LogBuffer
 import com.freebuds.controller.util.LogBuffer.OnLogUpdateListener
@@ -311,33 +314,55 @@ class TerminalActivity : AppCompatActivity(), OnLogUpdateListener {
         scope.launch { connectToDevice(scannedDevices[index]) }
     }
 
-    private fun registerOpenFreebudsHandlers(driver: SppDriver) {
+    private fun registerOpenFreebudsHandlers(driver: SppDriver, name: String) {
+        // 确定设备型号
+        val model = when {
+            name.contains("FreeBuds 6i", true) -> HuaweiModel.BUDS_6I
+            name.contains("FreeBuds Pro 4", true) || name.contains("FreeBuds Pro 3", true) || name.contains("FreeClip", true) -> HuaweiModel.BUDS_PRO_3
+            name.contains("FreeBuds Pro 2", true) -> HuaweiModel.BUDS_PRO_2
+            name.contains("FreeBuds Pro ", true) -> HuaweiModel.BUDS_PRO
+            name.contains("FreeBuds Studio", true) -> HuaweiModel.STUDIO
+            name.contains("FreeBuds SE 4", true) -> HuaweiModel.BUDS_SE_4
+            name.contains("FreeBuds SE 2", true) -> HuaweiModel.BUDS_SE_2
+            name.contains("FreeBuds SE", true) -> HuaweiModel.BUDS_SE
+            name.contains("FreeBuds 5i", true) -> HuaweiModel.BUDS_5I
+            name.contains("FreeBuds 4i", true) -> HuaweiModel.BUDS_4I
+            name.contains("FreeLace Pro 2", true) -> HuaweiModel.LACE_PRO_2
+            name.contains("FreeLace Pro", true) -> HuaweiModel.LACE_PRO
+            name.contains("Earbuds 2", true) || name.contains("Earbuds 2 Lite", true) || name.contains("Earbuds 2 SE", true) || name.contains("Earbuds SE", true) -> HuaweiModel.BUDS_4I
+            else -> null
+        }
+        val caps = if (model != null) modelCapabilities[model]?.toSet() ?: emptySet() else emptySet()
+        fun hasCap(needle: HuaweiCapability): Boolean = caps.isEmpty() || needle in caps
         val battery = BatteryHandler()
         battery.setOnBatteryUpdate { LogBuffer.i("Battery", "Update") }
-        listOf(
-            LogsHandler(),
-            InfoHandler(),
-            InEarHandler(),
-            battery,
-            AncLegacyChangeHandler(),
-            AncHandler(),
-            DoubleTapHandler(),
-            TripleTapHandler(),
-            LongTapHandler(),
-            SwipeGestureHandler(),
-            PowerButtonHandler(),
-            AutoPauseHandler(),
-            LowLatencyHandler(),
-            SoundQualityHandler(),
-            VoiceLanguageHandler(),
-        ).forEach { driver.registerHandler(it) }
+        val allHandlers = listOf(
+            0 to { LogsHandler() },
+            HuaweiCapability.INFO to { InfoHandler() },
+            HuaweiCapability.WEAR_DETECT to { InEarHandler() },
+            HuaweiCapability.BATTERY to { battery },
+            HuaweiCapability.ANC_LEGACY to { AncLegacyChangeHandler() },
+            HuaweiCapability.ANC to { AncHandler() },
+            HuaweiCapability.ACTION_DOUBLE_TAP to { DoubleTapHandler() },
+            HuaweiCapability.ACTION_TRIPLE_TAP to { TripleTapHandler() },
+            HuaweiCapability.ACTION_LONG_TAP_SPLIT to { LongTapHandler() },
+            HuaweiCapability.ACTION_SWIPE to { SwipeGestureHandler() },
+            HuaweiCapability.ACTION_POWER_BUTTON to { PowerButtonHandler() },
+            HuaweiCapability.AUTO_PAUSE to { AutoPauseHandler() },
+            HuaweiCapability.LOW_LATENCY to { LowLatencyHandler() },
+            HuaweiCapability.SOUND_QUALITY to { SoundQualityHandler() },
+            HuaweiCapability.VOICE_LANGUAGE to { VoiceLanguageHandler() },
+        )
+        for ((needle, factory) in allHandlers) {
+            if (needle is Int || hasCap(needle)) driver.registerHandler(factory())
+        }
     }
 
     /** 连接设备并注册所有 Handler（可供 scan 自动连接调用） */
     private suspend fun connectToDevice(sd: ScannedDevice) {
         LogBuffer.i("BT", "Connecting to ${sd.displayName}...")
         val driver = SppDriver(sd.device)
-        registerOpenFreebudsHandlers(driver)
+        registerOpenFreebudsHandlers(driver, sd.displayName)
         sppDriver = driver
         if (driver.connect()) {
             LogBuffer.i("BT", "Connected to ${sd.displayName}")
