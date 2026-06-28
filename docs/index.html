@@ -678,8 +678,10 @@ function switchLang() {
   const stops = sections.map((_,i) => document.getElementById('stop'+i));
   const labelEls = sections.map((_,i) => document.getElementById('label'+i));
   let isDragging = false;
-  let activeIdx = -1;
   let hideTimer = null;
+
+  // 等间距节点位置（0~1）
+  const stopPositions = labels.map((_,i) => i / (labels.length - 1));
 
   function calcRatio(e){
     const rect = track.getBoundingClientRect();
@@ -687,64 +689,53 @@ function switchLang() {
     return Math.max(0, Math.min(1, y / rect.height));
   }
 
-  function getSectionRatios(){
-    const total = document.documentElement.scrollHeight - window.innerHeight;
-    if(total <= 0) return sections.map(() => 0);
-    return sections.map(id => {
-      const el = document.getElementById(id);
-      return el ? Math.max(0, Math.min(1, el.offsetTop / total)) : 0;
-    });
-  }
-
-  function snapTo(ratio){
-    const ratios = getSectionRatios();
+  function findNearest(ratio){
     let nearest = 0, minDist = Infinity;
-    ratios.forEach((r,i) => {
-      if(Math.abs(r - ratio) < minDist){ minDist = Math.abs(r - ratio); nearest = i; }
+    stopPositions.forEach((p,i) => {
+      if(Math.abs(p - ratio) < minDist){ minDist = Math.abs(p - ratio); nearest = i; }
     });
-    if(Math.abs(ratios[nearest] - ratio) < 0.06) return {index: nearest, ratio: ratios[nearest]};
-    return {index: nearest, ratio: ratio};
+    return nearest;
   }
 
-  function updateUI(ratio, idx){
+  function updateUI(ratio){
     thumb.style.top = (ratio * 100) + '%';
-    if(idx !== undefined){
-      stops.forEach((s,i) => s && s.classList.toggle('active', i === idx));
-      labelEls.forEach((l,i) => l && l.classList.toggle('active', i === idx));
-      activeIdx = idx;
-    }
+    const idx = findNearest(ratio);
+    stops.forEach((s,i) => s && s.classList.toggle('active', i === idx));
+    labelEls.forEach((l,i) => l && l.classList.toggle('active', i === idx));
   }
 
   function updateFromScroll(){
     if(isDragging) return;
-    const scrollY = window.scrollY + window.innerHeight * 0.2;
+    const scrollY = window.scrollY + window.innerHeight * 0.3;
     const total = document.documentElement.scrollHeight - window.innerHeight;
     if(total <= 0) return;
-    const rawRatio = Math.max(0, Math.min(1, scrollY / total));
-    const {index, ratio} = snapTo(rawRatio);
-    updateUI(ratio, index);
+    const ratio = Math.max(0, Math.min(1, scrollY / total));
+    updateUI(ratio);
     nav.classList.add('show');
     clearTimeout(hideTimer);
     hideTimer = setTimeout(() => nav.classList.remove('show'), 2000);
   }
 
+  function scrollToSection(idx){
+    const el = document.getElementById(sections[idx]);
+    if(el) el.scrollIntoView({behavior:'smooth', block:'start'});
+  }
+
   function onDragStart(e){
     isDragging = true;
     const ratio = calcRatio(e);
-    const {index} = snapTo(ratio);
-    updateUI(ratio, index);
+    updateUI(ratio);
     e.preventDefault();
   }
 
   function onDragMove(e){
     if(!isDragging) return;
     const ratio = calcRatio(e);
-    const {index} = snapTo(ratio);
-    updateUI(ratio, index);
+    updateUI(ratio);
     e.preventDefault();
   }
 
-  function onDragEnd(e){
+    function onDragEnd(e){
     if(!isDragging) return;
     isDragging = false;
     let ratio;
@@ -754,24 +745,14 @@ function switchLang() {
     } else {
       ratio = calcRatio(e);
     }
-    const {index, ratio: snapRatio} = snapTo(ratio);
-    updateUI(snapRatio, index);
-    // 跳转
-    const total = document.documentElement.scrollHeight - window.innerHeight;
-    const target = sections[index];
-    const el = document.getElementById(target);
-    if(el) el.scrollIntoView({behavior:'smooth', block:'start'});
+    const idx = findNearest(ratio);
+    updateUI(stopPositions[idx]);
+    scrollToSection(idx);
   }
-
-  // 点击节点跳转
+  // 点击节点直接跳转
   stops.forEach((stop,i) => {
     if(!stop) return;
-    stop.addEventListener('click', () => {
-      const el = document.getElementById(sections[i]);
-      if(el) el.scrollIntoView({behavior:'smooth', block:'start'});
-    });
-    stop.addEventListener('mousedown', (e) => { isDragging = true; const ratio = calcRatio(e); updateUI(ratio, i); e.preventDefault(); });
-    stop.addEventListener('mouseup', () => { isDragging = false; const el = document.getElementById(sections[i]); if(el) el.scrollIntoView({behavior:'smooth', block:'start'}); });
+    stop.addEventListener('click', () => scrollToSection(i));
   });
 
   track.addEventListener('mousedown', onDragStart);
