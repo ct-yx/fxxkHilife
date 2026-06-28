@@ -30,7 +30,12 @@ fun HomeScreen(
 ) {
     val context = LocalContext.current
     val connState by viewModel.connectionState.collectAsState()
-    val savedAddresses by remember { mutableStateOf(viewModel.getSavedAddresses()) }
+    // 使用 key 强制重组：每次连接状态变化都刷新已保存设备列表
+    var savedAddresses by remember { mutableStateOf(viewModel.getSavedAddresses()) }
+    // 订阅连接状态变化来刷新列表
+    LaunchedEffect(connState) {
+        savedAddresses = viewModel.getSavedAddresses()
+    }
 
     var showScan by remember { mutableStateOf(false) }
 
@@ -169,7 +174,9 @@ private fun SavedDeviceItem(
     }
 
     ListItem(
-        headlineContent = { Text(name, fontWeight = FontWeight.Medium) },
+        headlineContent = { 
+            Text(name, fontWeight = FontWeight.Medium, modifier = Modifier.fillMaxWidth().clickable(onClick = onClick))
+        },
         supportingContent = {
             Text(
                 buildString {
@@ -177,14 +184,16 @@ private fun SavedDeviceItem(
                     if (isBonded) append(" · 已配对")
                 },
                 style = MaterialTheme.typography.bodySmall,
-                color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.6f)
+                color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.6f),
+                modifier = Modifier.fillMaxWidth().clickable(onClick = onClick)
             )
         },
         leadingContent = {
             Icon(
                 Icons.Default.Headphones,
                 contentDescription = null,
-                tint = MaterialTheme.colorScheme.primary
+                tint = MaterialTheme.colorScheme.primary,
+                modifier = Modifier.clickable(onClick = onClick)
             )
         },
         trailingContent = {
@@ -196,7 +205,6 @@ private fun SavedDeviceItem(
                 )
             }
         },
-        modifier = Modifier.clickable(onClick = onClick)
     )
     HorizontalDivider(modifier = Modifier.padding(start = 16.dp))
 }

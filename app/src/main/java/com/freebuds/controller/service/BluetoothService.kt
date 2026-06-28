@@ -179,8 +179,8 @@ class BluetoothService : Service() {
 
         // 音质模式
         val sqLabel = when (props.soundQuality) {
-            "sound_quality" -> "声音优先"
-            "connectivity" -> "连接优先"
+            "sqp_quality" -> "声音优先"
+            "sqp_connectivity" -> "连接优先"
             else -> props.soundQuality
         }
         if (sqLabel != null) lines.add("音质：$sqLabel")
