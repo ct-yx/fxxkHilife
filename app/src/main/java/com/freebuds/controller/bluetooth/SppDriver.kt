@@ -141,45 +141,40 @@ class SppDriver(private val device: BluetoothDevice) {
         }
     }
 
-    /** 初始化所有 Handler（分批并行：每批 4 个间隔 200ms，每个 Handler 最多 5 次重试 × 3s 超时，全局超时 15s） */
+    /** 初始化所有 Handler（交错发射：每个间隔 150ms，每个 Handler 最多 5 次重试 × 3s 超时，全局超时 15s） */
     private suspend fun initHandlers() {
         try {
             withTimeout(15000) {
-                LogBuffer.i("SPP", "Starting batched init for ${handlers.size} handlers (batch=4, gap=200ms, timeout=15s)")
-                val batchSize = 4
-                handlers.chunked(batchSize).forEach { batch ->
-                    LogBuffer.d("SPP", "Init batch: ${batch.joinToString { it.id }}")
-                    coroutineScope {
-                        batch.map { handler ->
-                            launch {
-                                var success = false
-                                for (attempt in 0 until 5) {
-                                    try {
-                                        withTimeout(3000) {
-                                            handler.onInit(this@SppDriver)
-                                        }
-                                        success = true
-                                        LogBuffer.i("SPP", "Init ${handler.id} success (attempt=${attempt + 1})")
-                                        break
-                                    } catch (e: TimeoutCancellationException) {
-                                        LogBuffer.w("SPP", "Init ${handler.id} timeout (attempt=${attempt + 1})")
-                                    } catch (e: Exception) {
-                                        LogBuffer.w("SPP", "Init ${handler.id} failed (attempt=${attempt + 1}): ${e.message}")
+                LogBuffer.i("SPP", "Starting staggered init for ${handlers.size} handlers (gap=150ms, timeout=15s)")
+                coroutineScope {
+                    handlers.mapIndexed { index, handler ->
+                        launch {
+                            if (index > 0) delay(index * 150L)
+                            var success = false
+                            for (attempt in 0 until 5) {
+                                try {
+                                    withTimeout(3000) {
+                                        handler.onInit(this@SppDriver)
                                     }
-                                }
-                                if (!success) {
-                                    LogBuffer.w("SPP", "Can't initialize ${handler.id}. Skipping.")
+                                    success = true
+                                    LogBuffer.i("SPP", "Init ${handler.id} success (attempt=${attempt + 1})")
+                                    break
+                                } catch (e: TimeoutCancellationException) {
+                                    LogBuffer.w("SPP", "Init ${handler.id} timeout (attempt=${attempt + 1})")
+                                } catch (e: Exception) {
+                                    LogBuffer.w("SPP", "Init ${handler.id} failed (attempt=${attempt + 1}): ${e.message}")
                                 }
                             }
-                        }.joinAll()
-                    }
-                    // 批次间隔 200ms，让耳机消化
-                    delay(200)
+                            if (!success) {
+                                LogBuffer.w("SPP", "Can't initialize ${handler.id}. Skipping.")
+                            }
+                        }
+                    }.joinAll()
                 }
-                LogBuffer.i("SPP", "Batched init completed")
+                LogBuffer.i("SPP", "Staggered init completed")
             }
         } catch (e: TimeoutCancellationException) {
-            LogBuffer.w("SPP", "Batched init global timeout reached, proceeding with partial results")
+            LogBuffer.w("SPP", "Staggered init global timeout reached, proceeding with partial results")
         }
     }
 
