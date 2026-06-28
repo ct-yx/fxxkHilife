@@ -354,7 +354,8 @@ class TerminalActivity : AppCompatActivity(), OnLogUpdateListener {
             HuaweiCapability.VOICE_LANGUAGE to { VoiceLanguageHandler() },
         )
         for ((needle, factory) in allHandlers) {
-            if (needle is Int || hasCap(needle)) driver.registerHandler(factory())
+                if (needle is HuaweiCapability && hasCap(needle)) driver.registerHandler(factory())
+                else if (needle is Int) driver.registerHandler(factory())
         }
     }
 

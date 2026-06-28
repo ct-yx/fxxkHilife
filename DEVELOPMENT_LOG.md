@@ -108,3 +108,17 @@
 - `OfbHuaweiEqualizerPresetHandler`（均衡器预设）
 - `OfbHuaweiDualConnectHandler`（双连模式）
 - 需要后续迭代补充
+
+## v2.1.1 (2026-06-28)
+
+### 编译修复
+- TerminalActivity 中 `needle is Int || hasCap(needle)` 类型推断歧义改为显式分支判断
+
+### 设备能力表集成
+- `registerOpenFreebudsHandlers` 改由设备名匹配 `HuaweiModel`，查 `modelCapabilities` 再只注册支持的 Handler
+- 避免向 6i 发送 `ACTION_POWER_BUTTON`、`ANC_LEGACY` 等不支持的初始化请求
+
+### 电池 Handler 完整实现
+- 恢复上游完整参数 `readRequest(BATTERY_READ, 1, 2, 3)`（全局/左右耳/充电盒/充电状态）
+- 新增 `onDriverPackage` 对接 `BATTERY_NOTIFY` 被动通知
+- 电量写入 `battery` 属性组，对齐上游 `put_property("battery", None, out)`
