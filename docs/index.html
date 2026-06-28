@@ -63,18 +63,6 @@ img{max-width:100%;display:block}
   animation-name:blob3;animation-duration:30s;
 }
 
-/* ===== LANG TOGGLE ===== */
-.lang-toggle{display:flex;gap:4px;margin-left:auto;margin-right:20px;flex-shrink:0}
-.lang-btn{
-  padding:4px 10px;border-radius:6px;font-size:12px;font-weight:500;
-  background:transparent;border:1px solid rgba(255,255,255,.15);
-  color:rgba(255,255,255,.4);cursor:pointer;transition:all .3s;
-  line-height:1.4;
-}
-.lang-btn:hover{color:rgba(255,255,255,.7);border-color:rgba(255,255,255,.3)}
-.lang-btn.active{background:rgba(124,124,240,.2);border-color:#7c7cf0;color:#b388ff}
-@media(max-width:480px){.lang-toggle{margin-right:12px}}
-
 /* ===== LAYOUT ===== */
 .wrapper{position:relative;z-index:1}
 section{padding:80px 20px;max-width:1100px;margin:0 auto}
@@ -88,7 +76,7 @@ nav{
   border-bottom:1px solid rgba(255,255,255,.06);
   padding:0 20px;height:56px;display:flex;align-items:center;justify-content:space-between;
 }
-nav .logo{font-size:18px;font-weight:700;background:linear-gradient(135deg,#7c7cf0,#b388ff);-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text;flex-shrink:0}
+nav .logo{font-size:18px;font-weight:700;background:linear-gradient(135deg,#7c7cf0,#b388ff);-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text}
 nav .links{display:flex;gap:24px;font-size:14px}
 nav .links a{color:rgba(255,255,255,.6)}
 nav .links a:hover{color:#fff}
@@ -213,7 +201,7 @@ nav .links a:hover{color:#fff}
 /* ===== TIMELINE ===== */
 .timeline{position:relative;max-width:700px;margin:0 auto}
 .timeline::before{
-  content:'';position:absolute;left:24px;top:8px;bottom:8px;
+  content:'';position:absolute;left:24px;top:0;bottom:0;
   width:1px;background:linear-gradient(to bottom,rgba(124,124,240,.4),transparent);
 }
 @media(max-width:480px){.timeline::before{left:16px}}
@@ -234,39 +222,22 @@ nav .links a:hover{color:#fff}
   margin-bottom:2px;
 }
 .timeline-date{font-size:12px;color:rgba(255,255,255,.3);margin-bottom:8px}
-.timeline-title{
-  font-size:16px;font-weight:600;color:#e8e8ed;margin-bottom:8px;
-  cursor:pointer;display:inline-flex;align-items:center;gap:8px;
-  transition:color .3s;
-}
-.timeline-title:hover{color:#b388ff}
-.timeline-title .expand-icon{
-  display:inline-flex;align-items:center;justify-content:center;
-  width:20px;height:20px;border-radius:50%;
-  background:rgba(124,124,240,.1);border:1px solid rgba(124,124,240,.2);
-  font-size:12px;transition:all .4s cubic-bezier(.16,1,.3,1);
-  flex-shrink:0;line-height:1;
-}
-.timeline-title .expand-icon.open{transform:rotate(180deg);background:rgba(124,124,240,.2)}
-.timeline-summary{
+.timeline-title{font-size:16px;font-weight:600;color:#e8e8ed;margin-bottom:6px}
+.timeline-desc{
   font-size:13px;color:rgba(255,255,255,.45);line-height:1.7;
 }
-.timeline-detail{
-  max-height:0;overflow:hidden;
-  transition:max-height .6s cubic-bezier(.16,1,.3,1),opacity .4s ease;
-  opacity:0;
+.timeline-desc code{background:rgba(124,124,240,.1);padding:1px 6px;border-radius:4px;font-size:12px;color:#b388ff}
+.timeline-detail{display:none;margin-top:10px;font-size:13px;color:rgba(255,255,255,.45);line-height:1.7;padding:12px 16px;background:rgba(255,255,255,.015);border-radius:10px;border:1px solid rgba(255,255,255,.04)}
+.timeline-detail.open{display:block;animation:fadeIn .3s ease}
+.timeline-toggle{
+  display:inline-block;margin-top:8px;font-size:11px;color:#7c7cf0;cursor:pointer;
+  background:none;border:1px solid rgba(124,124,240,.2);border-radius:6px;padding:2px 10px;
+  transition:all .2s;
 }
-.timeline-detail.open{max-height:2000px;opacity:1}
-.timeline-detail-inner{
-  margin-top:10px;padding:16px 18px;
-  background:rgba(124,124,240,.04);border:1px solid rgba(124,124,240,.1);
-  border-radius:12px;font-size:13px;color:rgba(255,255,255,.5);line-height:1.8;
-}
-.timeline-detail-inner code{background:rgba(124,124,240,.1);padding:1px 6px;border-radius:4px;font-size:12px;color:#b388ff}
-.timeline-detail-inner strong{color:rgba(255,255,255,.6)}
-.timeline .loading-text{text-align:center;padding:40px 0;color:rgba(255,255,255,.3);font-size:14px}
-.timeline .loading-text .spinner{display:inline-block;width:18px;height:18px;border:2px solid rgba(124,124,240,.15);border-top-color:#7c7cf0;border-radius:50%;animation:spin .8s linear infinite;vertical-align:middle;margin-right:10px}
-@keyframes spin{to{transform:rotate(360deg)}}
+.timeline-toggle:hover{background:rgba(124,124,240,.1)}
+.timeline-toggle svg{width:10px;height:10px;display:inline-block;margin-left:2px;transition:transform .3s}
+.timeline-toggle.open svg{transform:rotate(180deg)}
+.timeline-loading{text-align:center;padding:40px;color:rgba(255,255,255,.2);font-size:14px}
 
 /* ===== PHILOSOPHY ===== */
 .philosophy{
@@ -317,15 +288,11 @@ footer .spacer{display:inline-block;margin:0 8px;color:rgba(255,255,255,.1)}
 <nav>
   <div class="logo">✦ fxxkHilife</div>
   <div class="links">
-    <a href="#features" data-i18n="nav_features">特性</a>
-    <a href="#screenshots" data-i18n="nav_screenshots">截屏</a>
-    <a href="#name" data-i18n="nav_name">名字</a>
-    <a href="#timeline" data-i18n="nav_timeline">历程</a>
-    <a href="https://github.com/ct-yx/fxxkHilife" target="_blank" data-i18n="nav_github">GitHub</a>
-  </div>
-  <div class="lang-toggle">
-    <button class="lang-btn active" onclick="switchLang('zh')" data-i18n-lang="zh">中文</button>
-    <button class="lang-btn" onclick="switchLang('en')" data-i18n-lang="en">English</button>
+    <a href="#features">特性</a>
+    <a href="#screenshots">截屏</a>
+    <a href="#name">名字</a>
+    <a href="#timeline">历程</a>
+    <a href="https://github.com/ct-yx/fxxkHilife" target="_blank">GitHub</a>
   </div>
 </nav>
 
@@ -334,36 +301,36 @@ footer .spacer{display:inline-block;margin:0 8px;color:rgba(255,255,255,.1)}
 <!-- === HERO === -->
 <section class="hero">
   <img src="./icon.png" alt="fxxkHilife" class="hero-icon">
-  <h1 data-i18n="hero_title">fxxkHilife</h1>
-  <p class="tagline" data-i18n="hero_tagline">HUAWEI FreeBuds / HONOR Earbuds 的轻量离线控制 App</p>
-  <p class="sub" data-i18n="hero_sub">无需登录 · 无广告 · 完全离线 · 开源</p>
+  <h1>fxxkHilife</h1>
+  <p class="tagline">HUAWEI FreeBuds / HONOR Earbuds 的轻量离线控制 App</p>
+  <p class="sub">无需登录 · 无广告 · 完全离线 · 开源</p>
   <div class="hero-badges">
-    <span data-i18n="hero_badge1">v2.5.0</span>
-    <span data-i18n="hero_badge2">Kotlin + Jetpack Compose</span>
-    <span data-i18n="hero_badge3">Bluetooth SPP</span>
-    <span data-i18n="hero_badge4">Material3</span>
+    <span>v2.5.0</span>
+    <span>Kotlin + Jetpack Compose</span>
+    <span>Bluetooth SPP</span>
+    <span>Material3</span>
   </div>
   <div class="download-btn-group" id="downloadSection">
     <a class="download-btn" id="downloadBtn" href="https://github.com/ct-yx/fxxkHilife/releases/latest" target="_blank">
       <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
-      <span id="downloadText" data-i18n="hero_download_btn">下载最新版</span>
+      <span id="downloadText">下载最新版</span>
     </a>
     <a class="secondary-btn" href="https://github.com/ct-yx/fxxkHilife" target="_blank">
       <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor"><path d="M12 0C5.37 0 0 5.37 0 12c0 5.3 3.44 9.8 8.2 11.4.6.1.82-.26.82-.58v-2.17c-3.34.72-4.04-1.44-4.04-1.44-.54-1.38-1.33-1.75-1.33-1.75-1.09-.74.08-.73.08-.73 1.2.08 1.83 1.23 1.83 1.23 1.07 1.83 2.8 1.3 3.48 1 .11-.78.42-1.3.76-1.6-2.66-.3-5.46-1.33-5.46-5.93 0-1.31.47-2.38 1.23-3.22-.12-.3-.54-1.52.12-3.16 0 0 1-.32 3.3 1.23a11.5 11.5 0 0 1 6 0c2.28-1.55 3.28-1.23 3.28-1.23.66 1.64.24 2.86.12 3.16.77.84 1.24 1.91 1.24 3.22 0 4.61-2.8 5.62-5.47 5.92.43.37.82 1.1.82 2.22v3.29c0 .32.22.7.83.58C20.57 21.8 24 17.3 24 12 24 5.37 18.63 0 12 0z"/></svg>
-      <span data-i18n="hero_github_btn">GitHub 仓库</span>
+      GitHub 仓库
     </a>
   </div>
-  <div class="dl-version-info" id="versionInfo" data-i18n="hero_version_info">正在获取最新版本信息…</div>
+  <div class="dl-version-info" id="versionInfo">正在获取最新版本信息…</div>
 </section>
 
 <!-- === NAME EXPLANATION === -->
 <section id="name" class="name-section reveal">
-  <h2 class="section-title" data-i18n="name_title">名字的意味</h2>
-  <p class="section-sub" data-i18n="name_sub">一个名字背后的清醒与温柔</p>
+  <h2 class="section-title">名字的意味</h2>
+  <p class="section-sub">一个名字背后的清醒与温柔</p>
   <div class="name-card reveal reveal-delay-1">
-    <div class="chinese" data-i18n="name_chinese">破茧</div>
-    <div class="pinyin" data-i18n="name_pinyin">f·x·x·k · H·i·L·i·f·e</div>
-    <div class="meaning" data-i18n="name_meaning_html">
+    <div class="chinese">破茧</div>
+    <div class="pinyin">f·x·x·k · H·i·L·i·f·e</div>
+    <div class="meaning">
       HiLife 圈养了一个美好的世界，却要求你把钥匙交给它。<br>
       fxxkHilife 不是愤怒，是<em>清醒</em>——<br>
       是把自由从服务条款里<em>撕回来</em>的那一下。<br><br>
@@ -377,86 +344,86 @@ footer .spacer{display:inline-block;margin:0 8px;color:rgba(255,255,255,.1)}
 
 <!-- === FEATURES === -->
 <section id="features" class="reveal">
-  <h2 class="section-title" data-i18n="features_title">核心特性</h2>
-  <p class="section-sub" data-i18n="features_sub">一个纯粹的离线控制工具，只做一件事，把它做到极致</p>
+  <h2 class="section-title">核心特性</h2>
+  <p class="section-sub">一个纯粹的离线控制工具，只做一件事，把它做到极致</p>
   <div class="features-grid">
     <div class="feature-card reveal reveal-delay-1">
       <div class="feature-icon">🔌</div>
-      <h3 data-i18n="feat1_title">离线直连 · 无需账号</h3>
-      <p data-i18n="feat1_desc">通过蓝牙 SPP 直接控制耳机，无需登录华为账号、无需联网、无广告。即开即用。</p>
+      <h3>离线直连 · 无需账号</h3>
+      <p>通过蓝牙 SPP 直接控制耳机，无需登录华为账号、无需联网、无广告。即开即用。</p>
     </div>
     <div class="feature-card reveal reveal-delay-2">
       <div class="feature-icon">🎛️</div>
-      <h3 data-i18n="feat2_title">ANC 三模快切</h3>
-      <p data-i18n="feat2_desc">通知栏一键切换 关闭 / 降噪 / 透传，支持 QuickSettings Tile 快捷开关，抬手即切。</p>
+      <h3>ANC 三模快切</h3>
+      <p>通知栏一键切换 关闭 / 降噪 / 透传，支持 QuickSettings Tile 快捷开关，抬手即切。</p>
     </div>
     <div class="feature-card reveal reveal-delay-3">
       <div class="feature-icon">🎨</div>
-      <h3 data-i18n="feat3_title">Material3 + 自定义壁纸</h3>
-      <p data-i18n="feat3_desc">三态主题（跟随系统/深色/浅色），支持导入自定义壁纸并选择作用域，打造专属视觉风格。</p>
+      <h3>Material3 + 自定义壁纸</h3>
+      <p>三态主题（跟随系统/深色/浅色），支持导入自定义壁纸并选择作用域，打造专属视觉风格。</p>
     </div>
     <div class="feature-card reveal reveal-delay-4">
       <div class="feature-icon">✋</div>
-      <h3 data-i18n="feat4_title">手势全定制</h3>
-      <p data-i18n="feat4_desc">双击/三击/滑动/长按——每个手势独立设置页面，全部中文选项，一目了然。</p>
+      <h3>手势全定制</h3>
+      <p>双击/三击/滑动/长按——每个手势独立设置页面，全部中文选项，一目了然。</p>
     </div>
     <div class="feature-card reveal reveal-delay-5">
       <div class="feature-icon">⚡</div>
-      <h3 data-i18n="feat5_title">低延迟模式</h3>
-      <p data-i18n="feat5_desc">一键开启游戏低延迟模式，音画同步优先。连接即自动开启，无需每次手动切换。</p>
+      <h3>低延迟模式</h3>
+      <p>一键开启游戏低延迟模式，音画同步优先。连接即自动开启，无需每次手动切换。</p>
     </div>
     <div class="feature-card reveal reveal-delay-1">
       <div class="feature-icon">🔄</div>
-      <h3 data-i18n="feat6_title">自适应轮询 · 省电智能</h3>
-      <p data-i18n="feat6_desc">前台 800ms 高频刷新，后台 5s 低频保活。由 Activity 生命周期自动调度，省电又流畅。</p>
+      <h3>自适应轮询 · 省电智能</h3>
+      <p>前台 800ms 高频刷新，后台 5s 低频保活。由 Activity 生命周期自动调度，省电又流畅。</p>
     </div>
     <div class="feature-card reveal reveal-delay-2">
       <div class="feature-icon">📋</div>
-      <h3 data-i18n="feat7_title">通知栏实时状态</h3>
-      <p data-i18n="feat7_desc">ANC 模式、音质模式、低延迟状态、佩戴时长——通知栏一目了然，无需打开应用。</p>
+      <h3>通知栏实时状态</h3>
+      <p>ANC 模式、音质模式、低延迟状态、佩戴时长——通知栏一目了然，无需打开应用。</p>
     </div>
     <div class="feature-card reveal reveal-delay-3">
       <div class="feature-icon">🔐</div>
-      <h3 data-i18n="feat8_title">完全开源 · 透明可控</h3>
-      <p data-i18n="feat8_desc">基于 OpenFreebuds 协议逆向工作，代码全公开。无暗埋权限、无数据上传、无隐私收集。</p>
+      <h3>完全开源 · 透明可控</h3>
+      <p>基于 OpenFreebuds 协议逆向工作，代码全公开。无暗埋权限、无数据上传、无隐私收集。</p>
     </div>
     <div class="feature-card reveal reveal-delay-4">
       <div class="feature-icon">📊</div>
-      <h3 data-i18n="feat9_title">电池详尽解析</h3>
-      <p data-i18n="feat9_desc">左右耳、充电盒独立电量显示 + 充电状态识别。FreeBuds 6i 实测 9/13 Handler 5.5s 内就绪。</p>
+      <h3>电池详尽解析</h3>
+      <p>左右耳、充电盒独立电量显示 + 充电状态识别。FreeBuds 6i 实测 9/13 Handler 5.5s 内就绪。</p>
     </div>
   </div>
 </section>
 
 <!-- === SCREENSHOTS === -->
 <section id="screenshots" class="reveal">
-  <h2 class="section-title" data-i18n="screenshots_title">应用截屏</h2>
-  <p class="section-sub" data-i18n="screenshots_sub">FreeBuds 6i 实机运行的 fxxkHilife</p>
+  <h2 class="section-title">应用截屏</h2>
+  <p class="section-sub">FreeBuds 6i 实机运行的 fxxkHilife</p>
   <div class="screenshots-grid">
     <div class="screenshot-card reveal reveal-delay-1">
       <img src="./screenshot_home.jpg" alt="fxxkHilife 主页" loading="lazy">
-      <div class="caption" data-i18n="screenshots_cap1">主页 · 已保存设备列表 + 扫描新设备</div>
+      <div class="caption">主页 · 已保存设备列表 + 扫描新设备</div>
     </div>
     <div class="screenshot-card reveal reveal-delay-2">
       <img src="./screenshot_device.jpg" alt="fxxkHilife 设备详情" loading="lazy">
-      <div class="caption" data-i18n="screenshots_cap2">设备详情 · ANC 控制 / 手势 / 音频偏好</div>
+      <div class="caption">设备详情 · ANC 控制 / 手势 / 音频偏好</div>
     </div>
   </div>
 </section>
 
 <!-- === TIMELINE === -->
 <section id="timeline" class="reveal">
-  <h2 class="section-title" data-i18n="timeline_title">开发历程</h2>
-  <p class="section-sub" data-i18n="timeline_sub">从协议逆向到完整应用 · 24 小时内的进化</p>
+  <h2 class="section-title">开发历程</h2>
+  <p class="section-sub">从协议逆向到完整应用 · 由 DEVELOPMENT_LOG.md 自动生成</p>
   <div class="timeline" id="timelineContainer">
-    <div class="loading-text"><span class="spinner"></span><span data-i18n="timeline_loading">正在加载开发日志…</span></div>
+    <div class="timeline-loading">正在加载开发日志…</div>
   </div>
 </section>
 
 <!-- === PHILOSOPHY === -->
 <section class="philosophy reveal">
-  <h2 class="section-title" data-i18n="philosophy_title">项目理念</h2>
-  <blockquote data-i18n="philosophy_text_html">
+  <h2 class="section-title">项目理念</h2>
+  <blockquote>
     你的耳机，你的控制权。<br><br>
     我们相信硬件属于购买它的人，但很多厂商用封闭的生态把本该属于用户的控制权锁进了自己的 App。<br><br>
     fxxkHilife 的意义不是"破解"，而是<strong>归还</strong>——<br>
@@ -469,21 +436,21 @@ footer .spacer{display:inline-block;margin:0 8px;color:rgba(255,255,255,.1)}
 
 <!-- === SPONSOR === -->
 <section class="sponsor reveal">
-  <h2 class="section-title" data-i18n="sponsor_title">支持项目</h2>
-  <p class="section-sub" data-i18n="sponsor_sub">如果你喜欢这个项目，不妨请作者喝杯咖啡 ☕</p>
+  <h2 class="section-title">支持项目</h2>
+  <p class="section-sub">如果你喜欢这个项目，不妨请作者喝杯咖啡 ☕</p>
   <div class="sponsor-grid">
     <a class="sponsor-card" href="https://www.ifdian.net/a/Ct_yx?utm_source=copylink&utm_medium=link" target="_blank" rel="noopener">
       <svg viewBox="0 0 24 24" fill="currentColor"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-2 15l-5-5 1.41-1.41L10 14.17l7.59-7.59L19 8l-9 9z"/></svg>
       <div class="label">
-        <span data-i18n="sponsor_afdian_name">爱发电</span>
-        <span class="sub" data-i18n="sponsor_afdian_sub">ifdian.net @Ct_yx</span>
+        <span>爱发电</span>
+        <span class="sub">ifdian.net @Ct_yx</span>
       </div>
     </a>
     <a class="sponsor-card" href="https://buymeacoffee.com/ctyx" target="_blank" rel="noopener">
       <svg viewBox="0 0 24 24" fill="currentColor"><path d="M2 21V8h2v11h16V8h2v13H2zm2-16h5V3h6v2h5v2H4V5zm5 0V4h6v1H9zm1 11l4.5-6H10V8h7v2l-4.5 6H17v2h-7v-2z"/></svg>
       <div class="label">
-        <span data-i18n="sponsor_bmc_name">Buy Me a Coffee</span>
-        <span class="sub" data-i18n="sponsor_bmc_sub">buymeacoffee.com/ctyx</span>
+        <span>Buy Me a Coffee</span>
+        <span class="sub">buymeacoffee.com/ctyx</span>
       </div>
     </a>
   </div>
@@ -491,87 +458,153 @@ footer .spacer{display:inline-block;margin:0 8px;color:rgba(255,255,255,.1)}
 
 <!-- === FOOTER === -->
 <footer>
-  <p data-i18n="footer_line1">fxxkHilife · 基于 <a href="https://github.com/melianmiko/OpenFreebuds" target="_blank">OpenFreebuds</a> 协议逆向工作</p>
+  <p>fxxkHilife · 基于 <a href="https://github.com/melianmiko/OpenFreebuds" target="_blank">OpenFreebuds</a> 协议逆向工作</p>
   <p style="margin-top:6px">
-    <a href="https://github.com/ct-yx/fxxkHilife" target="_blank" data-i18n="footer_link_github">GitHub 仓库</a>
+    <a href="https://github.com/ct-yx/fxxkHilife" target="_blank">GitHub 仓库</a>
     <span class="spacer">·</span>
-    <a href="https://github.com/ct-yx/fxxkHilife/releases" target="_blank" data-i18n="footer_link_releases">Release 页面</a>
+    <a href="https://github.com/ct-yx/fxxkHilife/releases" target="_blank">Release 页面</a>
     <span class="spacer">·</span>
-    <a href="./README.md" data-i18n="footer_link_zh">中文文档</a>
+    <a href="./README.md">中文文档</a>
     <span class="spacer">·</span>
-    <a href="./README_EN.md" data-i18n="footer_link_en">English Docs</a>
+    <a href="./README_EN.md">English Docs</a>
     <span class="spacer">·</span>
-    <a href="https://www.ifdian.net/a/Ct_yx?utm_source=copylink&utm_medium=link" target="_blank" data-i18n="footer_link_afdian">爱发电</a>
+    <a href="https://www.ifdian.net/a/Ct_yx?utm_source=copylink&utm_medium=link" target="_blank">爱发电</a>
     <span class="spacer">·</span>
-    <a href="https://buymeacoffee.com/ctyx" target="_blank" data-i18n="footer_link_bmc">Buy me a coffee</a>
+    <a href="https://buymeacoffee.com/ctyx" target="_blank">Buy me a coffee</a>
   </p>
-  <p style="margin-top:12px" data-i18n="footer_line3">仅供学习与个人研究使用 · 禁止商业用途</p>
-</footer>
+  <p style="margin-top:12px">仅供学习与个人研究使用 · 禁止商业用途</p>
 </footer>
 
+</div><!-- .wrapper -->
+
 <script>
-// ===== TIMELINE: LOAD FROM DEVELOPMENT_LOG.md =====
-(async function loadTimeline() {
-  const container = document.getElementById("timelineContainer");
-  if (!container) return;
+// ===== SCROLL REVEAL =====
+const observer = new IntersectionObserver((entries) => {
+  entries.forEach(entry => {
+    if(entry.isIntersecting) entry.target.classList.add('visible');
+  });
+}, { threshold: 0.12, rootMargin: '0px 0px -40px 0px' });
+
+document.querySelectorAll('.reveal').forEach(el => observer.observe(el));
+
+// ===== FETCH & BUILD TIMELINE FROM DEVELOPMENT_LOG.md =====
+(async function buildTimeline() {
+  const container = document.getElementById('timelineContainer');
+  const logUrl = 'https://raw.githubusercontent.com/ct-yx/fxxkHilife/refactor/v2-alpha/DEVELOPMENT_LOG.md';
   try {
-    const resp = await fetch("./DEVELOPMENT_LOG.md");
-    if (!resp.ok) throw new Error("HTTP " + resp.status);
+    // 需要先把 docs/DEVELOPMENT_LOG.md 放到 repo
+    const resp = await fetch(logUrl);
+    if(!resp.ok) throw new Error('HTTP ' + resp.status);
     const text = await resp.text();
-    const versionRegex = /^## (v[\w.\-]+)\s*\(([^)]+)\)\s*\n([\s\S]*?)(?=^## |\Z)/gm;
-    const entries = [];
-    let m;
-    while ((m = versionRegex.exec(text)) !== null) {
-      const ver = m[1], date = m[2];
-      let body = m[3].trim();
-      let summaryLine = body.replace(/^###.*\n?/gm,"").replace(/\*\*/g,"").replace(/^[\s\n]*/,"").split("\n")[0] || "";
-      if (summaryLine.length < 5) {
-        const lines = body.split("\n").filter(l => l.trim() && !l.startsWith("#") && !l.startsWith("|"));
-        summaryLine = lines.length > 0 ? lines[0].trim() : "详细更新";
-      }
-      summaryLine = summaryLine.replace(/<[^>]*>/g,"").trim();
-      if (summaryLine.length > 35) summaryLine = summaryLine.slice(0,32) + "...";
-      let detailHtml = body.replace(/^### .*\n?/gm,"").replace(/\|.*\|.*\|/g,"").slice(0,600);
-      detailHtml = detailHtml.replace(/\n\n/g,"<br><br>").replace(/\n/g,"<br>");
-      detailHtml = detailHtml.replace(/`([^`]+)`/g,"<code>$1</code>");
-      detailHtml = detailHtml.replace(/\*\*([^*]+)\*\*/g,"<strong>$1</strong>");
-      entries.push({ ver, date, summaryLine, detailHtml });
-    }
-    if (entries.length === 0) {
-      container.innerHTML = '<div class="loading-text">No version entries found</div>';
-      return;
-    }
-    container.innerHTML = "";
-    entries.forEach((e, i) => {
-      const delay = Math.min(i + 1, 5);
-      const item = document.createElement("div");
-      item.className = "timeline-item reveal reveal-delay-" + delay;
-      item.innerHTML =
-        '<div class="timeline-dot"></div>' +
-        '<div class="timeline-version">' + e.ver + '</div>' +
-        '<div class="timeline-date">' + e.date + '</div>' +
-        '<div class="timeline-title" onclick="toggleDetail(this)">' +
-          '<span class="summary-text">' + e.summaryLine + '</span>' +
-          '<span class="expand-icon">&#9660;</span>' +
-        '</div>' +
-        '<div class="timeline-detail">' +
-          '<div class="timeline-detail-inner">' + e.detailHtml + '</div>' +
-        '</div>';
-      container.appendChild(item);
-      requestAnimationFrame(() => { item.classList.add("visible"); });
-    });
-  } catch (e) {
-    container.innerHTML = '<div class="loading-text">⚠ Error loading development log</div>';
+    const items = parseDevelopmentLog(text);
+    if(items.length === 0) throw new Error('No releases found');
+    container.innerHTML = items.map((item, i) => `
+      <div class="timeline-item" style="animation:fadeUp .6s ${i * 0.08}s both cubic-bezier(.16,1,.3,1)">
+        <div class="timeline-dot"></div>
+        <div class="timeline-version">${item.version}</div>
+        <div class="timeline-date">${item.date}</div>
+        <div class="timeline-title">${item.title}</div>
+        <div class="timeline-desc">${item.summary}</div>
+        <span class="timeline-toggle" onclick="var d=this.nextElementSibling;d.classList.toggle('open');this.classList.toggle('open')">详情 <svg viewBox='0 0 12 12' fill='currentColor'><polygon points='3,4.5 6,7.5 9,4.5'/></svg></span>
+        <div class="timeline-detail">${item.detail}</div>
+      </div>
+    `).join('');
+    // 对新生成的 timeline-item 做 reveal
+    container.querySelectorAll('.timeline-item').forEach(el => observer.observe(el));
+  } catch(e) {
+    container.innerHTML = '<div class="timeline-loading" style="color:rgba(255,255,255,.4)">开发日志暂时无法加载<br><a href="https://github.com/ct-yx/fxxkHilife/blob/refactor/v2-alpha/DEVELOPMENT_LOG.md" target="_blank">在 GitHub 上查看</a></div>';
   }
 })();
-function toggleDetail(el) {
-  const detail = el.parentElement.querySelector(".timeline-detail");
-  const icon = el.querySelector(".expand-icon");
-  if (!detail) return;
-  const isOpen = detail.classList.contains("open");
-  detail.classList.toggle("open");
-  if (icon) icon.classList.toggle("open");
+
+function parseDevelopmentLog(text) {
+  const versions = [];
+  // 匹配 "## vX.Y.Z ... (日期)" 或 "## vX.Y.Z ... (日期)"
+  const versionRe = /^##\s+(v[\d][\w.-]+(?:\s*→\s*v[\d][\w.-]+)?)\s*[\(（](\d{4}-\d{2}-\d{2})[\)）]/gm;
+  let match;
+  const matches = [];
+  while ((match = versionRe.exec(text)) !== null) {
+    matches.push({
+      version: match[1],
+      date: match[2],
+      index: match.index
+    });
+  }
+  // 对每个版本提取 text
+  for(let i = 0; i < matches.length; i++) {
+    const m = matches[i];
+    const start = m.index;
+    const end = i < matches.length - 1 ? matches[i+1].index : text.length;
+    const block = text.slice(start, end);
+    // 提取第一行当 title (## 后面的行)
+    const lines = block.split('\n');
+    // 找标题后面的实质性描述行，跳过空行和 "###" 子标题
+    let title = m.version;
+    let fullDesc = '';
+    let collecting = false;
+    for(let j = 0; j < lines.length; j++) {
+      const line = lines[j].trim();
+      if(j === 0) {
+        // 版本行: ## v ... 取 "-" 或 "：" 后的内容当标题
+        const dashIdx = line.lastIndexOf(' - ');
+        const colonIdx = line.lastIndexOf('：');
+        const boundary = Math.max(dashIdx, colonIdx);
+        if(boundary > -1) {
+          title = line.slice(boundary + (dashIdx > -1 ? 3 : 1)).trim();
+        }
+        continue;
+      }
+      if(line.startsWith('###')) { collecting = true; continue; }
+      if(!collecting && line && !line.startsWith('|') && !line.startsWith('>') && !line.startsWith('---') && !line.startsWith('**') && line !== '') {
+        // 第一条真正的段落就是摘要
+        fullDesc += (fullDesc ? ' ' : '') + line;
+      } else if(collecting) {
+        fullDesc += (fullDesc ? '\n' : '') + line;
+      }
+    }
+    // 摘要: 取前 ~30 个字的完整句子
+    const plain = fullDesc.replace(/\*\*/g,'').replace(/`/g,'').replace(/\[([^\]]+)\]\([^)]+\)/g,'$1').replace(/#+\s/g,'').trim();
+    const summary = plain.length > 35 ? plain.slice(0, 35).replace(/\s\S*$/,'') + '…' : plain;
+    // 详情: 把 markdown 转成简单 HTML
+    let detail = fullDesc
+      .replace(/&/g,'&').replace(/</g,'<').replace(/>/g,'>')
+      .replace(/\*\*([^*]+)\*\*/g,'<strong>$1</strong>')
+      .replace(/`([^`]+)`/g,'<code>$1</code>')
+      .replace(/\[([^\]]+)\]\(([^)]+)\)/g,'<a href="$2" target="_blank">$1</a>')
+      .replace(/^### (.*)$/gm,'<em style="color:#b388ff">$1</em>')
+      .replace(/\n/g,'<br>');
+    versions.push({
+      version: m.version,
+      date: m.date,
+      title: title || '',
+      summary: summary || '暂无摘要',
+      detail: detail || '暂无详细日志'
+    });
+  }
+  return versions;
 }
+
+// ===== LATEST VERSION FROM GITHUB API =====
+(async function fetchLatestRelease() {
+  const btn = document.getElementById('downloadBtn');
+  const text = document.getElementById('downloadText');
+  const info = document.getElementById('versionInfo');
+  try {
+    const resp = await fetch('https://api.github.com/repos/ct-yx/fxxkHilife/releases/latest');
+    if(!resp.ok) throw new Error('HTTP ' + resp.status);
+    const data = await resp.json();
+    const ver = data.tag_name || data.name || 'latest';
+    const apkAssets = data.assets ? data.assets.filter(a => a.name.endsWith('.apk')) : [];
+    const apkUrl = apkAssets.length > 0 ? apkAssets[0].browser_download_url : data.html_url;
+    btn.href = apkUrl;
+    text.textContent = '下载 v' + ver.replace(/^v/i,'');
+    info.innerHTML = '<strong>v' + ver.replace(/^v/i,'') + '</strong> · ' + (apkAssets.length > 0 ? apkAssets[0].name : '最新发布') + ' · ' + new Date(data.published_at).toLocaleDateString('zh-CN');
+  } catch(e) {
+    // fallback: 跳转到 releases 页面
+    btn.href = 'https://github.com/ct-yx/fxxkHilife/releases/latest';
+    text.textContent = '获取最新版 →';
+    info.innerHTML = '前往 <a href="https://github.com/ct-yx/fxxkHilife/releases">GitHub Releases</a> 查看最新版本';
+  }
+})();
 </script>
 
 </body>
