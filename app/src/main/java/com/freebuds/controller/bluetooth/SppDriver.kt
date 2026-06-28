@@ -163,8 +163,8 @@ class SppDriver(private val device: BluetoothDevice) {
                     continue
                 }
 
-                // 解析长度（双字节大端）
-                val length = ((head[2].toInt() and 0xFF) shl 8) or (head[3].toInt() and 0xFF)
+                // 解析长度（双字节大端: head[1:3]）
+                val length = ((head[1].toInt() and 0xFF) shl 8) or (head[2].toInt() and 0xFF)
                 if (length < 4) {
                     val discard = ByteArray(length)
                     var dOff = 0
