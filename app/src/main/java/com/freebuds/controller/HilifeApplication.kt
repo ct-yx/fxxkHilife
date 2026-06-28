@@ -15,6 +15,10 @@ class HilifeApplication : Application() {
         super.onCreate()
         instance = this
         deviceRepository.init(this)
+        // 从 SharedPreferences 加载日志保留行数
+        val maxLines = getSharedPreferences("fxxk_theme", MODE_PRIVATE)
+            .getInt("log_max_lines", 2000)
+        com.freebuds.controller.util.LogBuffer.setMaxLines(maxLines)
         createNotificationChannel()
     }
 
@@ -23,7 +27,7 @@ class HilifeApplication : Application() {
             val channel = NotificationChannel(
                 BluetoothService.CHANNEL_ID,
                 "蓝牙连接",
-                NotificationManager.IMPORTANCE_LOW
+                NotificationManager.IMPORTANCE_DEFAULT
             ).apply { description = "FreeBuds 后台连接服务" }
             getSystemService(NotificationManager::class.java)
                 .createNotificationChannel(channel)

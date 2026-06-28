@@ -15,12 +15,18 @@ enum class Screen {
 }
 
 @Composable
-fun AppNavHost(viewModel: DeviceViewModel, onOpenTerminal: () -> Unit) {
+fun AppNavHost(
+    viewModel: DeviceViewModel,
+    onOpenTerminal: () -> Unit,
+    onThemeChange: (ThemeMode) -> Unit,
+) {
     val context = LocalContext.current
     val connState by viewModel.connectionState.collectAsState()
 
-    val themeMode = remember { loadThemeMode(context) }
-    var currentTheme by remember { mutableStateOf(themeMode) }
+    // 主题由 MainActivity 管理，AppNavHost 通过 onThemeChange 回调通知 MainActivity
+    // currentTheme 从 SharedPreferences 加载初始值，后续由 SettingsScreen 回调更新
+    val initialTheme = remember { loadThemeMode(context) }
+    var currentTheme by remember { mutableStateOf(initialTheme) }
     val savedWallpaper = remember {
         context.getSharedPreferences("fxxk_theme", android.content.Context.MODE_PRIVATE)
             .getString("wallpaper_uri", null)
@@ -93,7 +99,10 @@ fun AppNavHost(viewModel: DeviceViewModel, onOpenTerminal: () -> Unit) {
                 }
             },
             themeMode = currentTheme,
-            onThemeChange = { currentTheme = it },
+            onThemeChange = { mode ->
+                currentTheme = mode
+                onThemeChange(mode)
+            },
             wallpaperUri = wallpaperUri,
             onWallpaperChange = { wallpaperUri = it },
             wallpaperScope = wallpaperScope,

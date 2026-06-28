@@ -264,4 +264,47 @@
 | `QrCodeScreen.kt` | 新建 — 二维码扫码占位 |
 | **合计** | **+744/-108 行** |
 
+## v2.4.1 (2026-06-28)
+
+### Bug 修复与增强
+
+**通知栏改善**：
+- NotificationChannel 重要性 `IMPORTANCE_LOW` → `IMPORTANCE_DEFAULT`，确保通知栏图标可见
+- 通知栏 ANC 按钮标签不变，音质映射修正已在 v2.4.0 完成
+
+**Quick Settings Tile（快捷开关）**：
+- 新增 `QuickSettingsTileService`：TileService 实现，点击打开应用，连接状态自动显示激活/未连接
+- AndroidManifest 注册 `BIND_QUICK_SETTINGS_TILE` 权限
+- 新增 `ic_tile.xml` 矢量图标（耳机/锁形图标）
+- 用户需手动从快捷设置编辑页面添加 Tile 到控制面板
+
+**已保存设备列表响应式修复**：
+- `HomeScreen.savedAddresses` 从 `remember { ... }` 静态缓存改为 `LaunchedEffect(connState)` 订阅连接状态变化时刷新
+- 删除设备后列表立即更新，无需退出重进
+
+**日志模块改进**：
+- `HilifeApplication.onCreate` 新增从 `SharedPreferences` 加载 `log_max_lines` 持久化值
+- 应用冷启动后日志保留行数正确恢复
+
+**6i ANC Level 确认**：
+- 上游 `buds_6i.py` 第 15 行证实 `OfbHuaweiAncHandler(w_cancel_lvl=True, w_cancel_dynamic=True)`
+- 当前 `DeviceCapability.kt` 中 `BUDS_6I` 已包含 `ANC_LEVEL` + `ANC_DYNAMIC`，UI 应正确展示降噪强度选择
+- `2b04` 写入已在 `AncHandler.ignoreCommandIds` 中忽略，不会等待超时
+
+**佩戴检测说明**：
+- `InEarHandler.onInit` 初始设为 `false`，等待耳机 `2b03` 被动通知触发更新
+- 当前 6i 日志未观察到 `2b03` 推送，需确认耳机固件是否支持佩戴检测推送
+
+**设置页清理**：
+- 移除"奇怪图标"：圆形按钮 haze 模糊预览组件已删除
+
+### 文件变更
+| 文件 | 变更 |
+|------|------|
+| `AndroidManifest.xml` | +11 — QuickSettingsTileService 注册 |
+| `QuickSettingsTileService.kt` | 新建 — TileService 实现 (+64) |
+| `ic_tile.xml` | 新建 — Tile 矢量图标 |
+| `HilifeApplication.kt` | +5/-1 — log_max_lines 加载 + IMPORTANCE_DEFAULT |
+| `HomeScreen.kt` | +6/-1 — savedAddresses 响应式刷新 |
+
 

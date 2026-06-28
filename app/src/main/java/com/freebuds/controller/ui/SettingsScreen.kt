@@ -298,39 +298,7 @@ private fun ThemeSelector(
         )
     }
 
-    // 圆形按钮模糊预览
-    Spacer(Modifier.height(12.dp))
-    Row(
-        modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp),
-        horizontalArrangement = Arrangement.spacedBy(12.dp),
-        verticalAlignment = Alignment.CenterVertically
-    ) {
-        val btnHaze = remember { HazeState() }
-        Box(
-            modifier = Modifier
-                .size(48.dp)
-                .clip(CircleShape)
-                .background(MaterialTheme.colorScheme.primaryContainer)
-                .clickable { },
-            contentAlignment = Alignment.Center
-        ) {
-            Box(modifier = Modifier.matchParentSize().haze(state = btnHaze))
-            val scheme2 = MaterialTheme.colorScheme
-            Box(
-                modifier = Modifier
-                    .matchParentSize()
-                    .hazeChild(state = btnHaze) {
-                        style = HazeStyle(
-                            blurRadius = 8.dp,
-                            tint = HazeTint(scheme2.primary.copy(alpha = 0.2f))
-                        )
-                    }
-            )
-            Icon(Icons.Default.Hearing, contentDescription = null, tint = MaterialTheme.colorScheme.primary)
-        }
-        Text("圆形按钮 haze 模糊", style = MaterialTheme.typography.bodySmall,
-            color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.5f))
-    }
+    // 不需要圆形按钮模糊预览
 }
 
 @Composable

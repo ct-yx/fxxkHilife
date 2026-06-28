@@ -8,7 +8,7 @@
   <b>A lightweight offline controller for HUAWEI FreeBuds / HONOR Earbuds</b>
 </p>
 
-> **v2.4.0** — Three-phase major update: adaptive polling (800ms foreground / 5s background), overhauled navigation, tri-state theme + wallpaper, notification ANC quick-switch, log control.
+> **v2.4.1** — Bug fixes & enhancements: QuickSettings Tile, savedAddresses reactive refresh, notification improvements, log module cleanup.
 >
 > Controls your earbuds directly via classic Bluetooth SPP — no login, no ads, fully offline.
 
@@ -30,7 +30,7 @@ cd fxxkHilife
 
 ## Project Status
 
-Current version: **v2.4.0**
+Current version: **v2.4.1**
 
 ### Completed
 - **Adaptive polling**: 800ms foreground high-frequency, 5s background low-frequency, driven by Activity lifecycle
