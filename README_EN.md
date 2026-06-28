@@ -8,7 +8,7 @@
   <b>A lightweight offline controller for HUAWEI FreeBuds / HONOR Earbuds</b>
 </p>
 
-> **v2.1.2** — Parallel Handler init (12s global timeout), ANC passive notification (`2b2c`) support, battery notify integration.
+> **v2.1.2** — Staggered parallel init (80ms gap, 1.5s fast-fail), ANC passive notification (`2b2c`), full battery parsing, 6i capability verified.
 >
 > Controls your earbuds directly via classic Bluetooth SPP — no login, no ads, fully offline.
 
@@ -33,11 +33,13 @@ cd fxxkHilife
 Current version: **v2.1.2**
 
 - Previous v1.7.3 release archived (branch `main-archived`)
-- Completed: protocol layer packet recv/parse precisely aligned with OpenFreebuds, property storage system, `props/set` terminal commands, 15 upstream Handlers (InfoHandler, BatteryHandler, InEarHandler, LogsHandler, AutoPauseHandler, LowLatencyHandler, SoundQualityHandler, VoiceLanguageHandler, AncLegacyChangeHandler, AncHandler, DoubleTapHandler, TripleTapHandler, SwipeGestureHandler, LongTapHandler, PowerButtonHandler)
+- Completed: protocol layer packet recv/parse precisely aligned with OpenFreebuds, property storage system, `props/set` terminal commands, 13 active Handlers (6i capability-filtered: InfoHandler, BatteryHandler, InEarHandler, LogsHandler, AutoPauseHandler, LowLatencyHandler, SoundQualityHandler, VoiceLanguageHandler, AncHandler, DoubleTapHandler, TripleTapHandler, SwipeGestureHandler, LongTapHandler)
 - Handler architecture fully matches upstream `OfbDriverHandlerHuawei`'s `handler_id`/`commands`/`ignore_commands`/`properties` routing system
-- Handler init parallelized (`coroutineScope` + `launch`) with 12s global timeout
-- Device capability table for model-based Handler filtering
+- Handler init: staggered parallel (`mapIndexed` + `delay` × 80ms), 1.5s fast-fail per handler × 3 retries, 10s global timeout
+- Device capability table (`modelCapabilities`) for model-based Handler filtering
 - ANC Handler supports both active request (`2b2a`) and passive notification (`2b2c`)
+- Full battery parsing (global/L/R/case/charging status)
+- FreeBuds 6i verified: 9/13 handlers init in ~5.5s, remaining 4 to be bound on-demand in future UI
 - CI compiles via GitHub Actions and publishes Release automatically
 - Development log: [DEVELOPMENT_LOG.md](./DEVELOPMENT_LOG.md)
 
