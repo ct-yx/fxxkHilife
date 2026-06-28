@@ -306,6 +306,11 @@ nav .links a:hover{color:#fff}
   .timeline-item-inner,.timeline-item.right .timeline-item-inner{width:calc(100% - 52px);margin-left:52px}
   .timeline-item .timeline-version-badge{left:20px;top:20px;transform:none;font-size:10px;padding:3px 10px}
   .timeline-dot{left:20px;transform:none;width:12px;height:12px;border-width:2px}
+  /* 窄屏下展开时不偏移中线/版本号/圆点 */
+  .timeline.open-left::before,.timeline.open-right::before{left:20px}
+  .timeline-item.open.left .timeline-version-badge,.timeline-item.open.right .timeline-version-badge,
+  .timeline-item.open.left .timeline-dot,.timeline-item.open.right .timeline-dot{left:20px;top:20px}
+}
 }</pre>
 
 
