@@ -144,53 +144,49 @@ class SppDriver(private val device: BluetoothDevice) {
         }
     }
 
-    /** 接收循环：逐字节搜索 5a 00 魔数同步帧 */
+    /** 接收循环：批量读取，无效包头直接丢弃重同步 */
     private suspend fun recvLoop() {
         try {
             val input = inputStream ?: return
             while (currentCoroutineContext().isActive) {
-                // 搜索 5a 00 魔数
-                var b0 = 0
-                while (true) {
-                    b0 = input.read()
-                    if (b0 == -1) throw java.io.EOFException("Stream closed")
-                    if (b0 == 0x5A) {
-                        val b1 = input.read()
-                        if (b1 == -1) throw java.io.EOFException("Stream closed")
-                        if (b1 == 0x00) break  // 找到 5a 00
-                    }
+                // 批量读取 4 字节头部
+                val head = ByteArray(4)
+                var off = 0
+                while (off < 4) {
+                    val n = input.read(head, off, 4 - off)
+                    if (n == -1) throw java.io.EOFException("Stream closed")
+                    off += n
                 }
 
-                // 读取长度字节和填充
-                val lenHi = input.read()
-                if (lenHi == -1) throw java.io.EOFException("Stream closed")
-                val lenLo = input.read()
-                if (lenLo == -1) throw java.io.EOFException("Stream closed")
+                // 魔数校验: 5a 00
+                if (head[0] != 0x5A.toByte() || head[1] != 0x00.toByte()) {
+                    continue
+                }
 
-                val length = ((lenHi.toInt() and 0xFF) shl 8) or (lenLo.toInt() and 0xFF)
+                // 解析长度（双字节大端）
+                val length = ((head[2].toInt() and 0xFF) shl 8) or (head[3].toInt() and 0xFF)
                 if (length < 4) {
-                    // 短包跳过
                     val discard = ByteArray(length)
-                    var off = 0
-                    while (off < length) {
-                        val n = input.read(discard, off, length - off)
+                    var dOff = 0
+                    while (dOff < length) {
+                        val n = input.read(discard, dOff, length - dOff)
                         if (n == -1) throw java.io.EOFException("Stream closed")
-                        off += n
+                        dOff += n
                     }
                     continue
                 }
 
-                // 读取包体
-                val body = ByteArray(length)
-                var offset = 0
-                while (offset < length) {
-                    val n = input.read(body, offset, length - offset)
+                // 读取包体（含CRC）
+                val bodyLen = length + 2
+                val body = ByteArray(bodyLen)
+                off = 0
+                while (off < bodyLen) {
+                    val n = input.read(body, off, bodyLen - off)
                     if (n == -1) throw java.io.EOFException("Stream closed")
-                    offset += n
+                    off += n
                 }
 
-                // 组装完整包: 5a 00 + lenHi lenLo + body
-                val pkgBytes = byteArrayOf(0x5A, 0x00, lenHi.toByte(), lenLo.toByte()) + body
+                val pkgBytes = head + body
                 LogBuffer.d("SPP", "RX: ${pkgBytes.toHex()}")
                 handlePackage(pkgBytes)
             }
