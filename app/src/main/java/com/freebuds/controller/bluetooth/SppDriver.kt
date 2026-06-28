@@ -147,29 +147,32 @@ class SppDriver(private val device: BluetoothDevice) {
         }
     }
 
-    /** 接收循环（对照 _loop_recv + __recv_pacakge） */
+    /** 接收循环：逐字节搜索 5a 00 魔数同步帧 */
     private suspend fun recvLoop() {
         try {
+            val input = inputStream ?: return
             while (currentCoroutineContext().isActive) {
-                val input = inputStream ?: break
-                // 读取 4 字节包头: 0x5A 0x00 + 1字节长度 + 0x00
-                val heading = ByteArray(4)
-                var offset = 0
-                while (offset < 4) {
-                    val n = input.read(heading, offset, 4 - offset)
-                    if (n == -1) throw java.io.EOFException("Stream closed")
-                    offset += n
+                // 搜索 5a 00 魔数
+                var b0 = 0
+                while (true) {
+                    b0 = input.read()
+                    if (b0 == -1) throw java.io.EOFException("Stream closed")
+                    if (b0 == 0x5A) {
+                        val b1 = input.read()
+                        if (b1 == -1) throw java.io.EOFException("Stream closed")
+                        if (b1 == 0x00) break  // 找到 5a 00
+                    }
                 }
 
-                // 魔数校验: heading[0:2] == b"5a 00"
-                if (heading[0] != 0x5A.toByte() || heading[1] != 0x00.toByte()) {
-                    LogBuffer.d("SPP", "Bad header: ${heading.toHex()}, skipping")
-                    continue
-                }
+                // 读取长度字节和填充
+                val lenHi = input.read()
+                if (lenHi == -1) throw java.io.EOFException("Stream closed")
+                val lenLo = input.read()
+                if (lenLo == -1) throw java.io.EOFException("Stream closed")
 
-                val length = heading[2].toInt() and 0xFF
+                val length = ((lenHi.toInt() and 0xFF) shl 8) or (lenLo.toInt() and 0xFF)
                 if (length < 4) {
-                    // 短包，丢弃 body（上游仅 read）
+                    // 短包跳过
                     val discard = ByteArray(length)
                     var off = 0
                     while (off < length) {
@@ -177,20 +180,20 @@ class SppDriver(private val device: BluetoothDevice) {
                         if (n == -1) throw java.io.EOFException("Stream closed")
                         off += n
                     }
-                    LogBuffer.d("SPP", "Short package len=$length, discarded")
                     continue
                 }
 
                 // 读取包体
                 val body = ByteArray(length)
-                offset = 0
+                var offset = 0
                 while (offset < length) {
                     val n = input.read(body, offset, length - offset)
                     if (n == -1) throw java.io.EOFException("Stream closed")
                     offset += n
                 }
 
-                val pkgBytes = heading + body
+                // 组装完整包: 5a 00 + lenHi lenLo + body
+                val pkgBytes = byteArrayOf(0x5A, 0x00, lenHi.toByte(), lenLo.toByte()) + body
                 LogBuffer.d("SPP", "RX: ${pkgBytes.toHex()}")
                 handlePackage(pkgBytes)
             }
