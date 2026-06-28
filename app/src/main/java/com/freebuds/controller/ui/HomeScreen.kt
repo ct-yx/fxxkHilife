@@ -25,7 +25,6 @@ import com.freebuds.controller.data.DeviceViewModel
 fun HomeScreen(
     viewModel: DeviceViewModel,
     onDeviceClick: (address: String) -> Unit,
-    onQrCode: () -> Unit,
     onSettings: () -> Unit,
 ) {
     val context = LocalContext.current
@@ -39,9 +38,6 @@ fun HomeScreen(
             TopAppBar(
                 title = { Text("fxxkHilife") },
                 actions = {
-                    IconButton(onClick = onQrCode) {
-                        Icon(Icons.Default.QrCodeScanner, contentDescription = "扫码")
-                    }
                     IconButton(onClick = onSettings) {
                         Icon(Icons.Default.Settings, contentDescription = "设置")
                     }

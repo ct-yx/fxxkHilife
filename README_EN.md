@@ -33,14 +33,13 @@ cd fxxkHilife
 Current version: **v2.3.0**
 
 ### Completed
-- **Five‑screen navigation**: Home (saved devices + collapsible scan) → Device → Gesture sub‑page → QR Scan → Settings
+- **Four-screen navigation**: Home (saved devices + collapsible scan) → Device → Gesture sub‑page → Settings
 - **Saved‑device home**: auto‑persist connected device addresses (StringSet), tap to reconnect, scan collapsed below
 - **Gesture sub‑page**: double‑tap / triple‑tap / swipe / long‑press in dedicated screen with full chinese labels
 - **Instant ANC / Low‑Latency refresh**: setProperty writes expected value first then sends command, no polling wait
 - **Faster polling**: property sync 10s → 3s, setProperty adds 100ms delay + syncProps
 - **Disconnect guard**: SppDriver recvLoop sets isConnected=false on exit, prevents Broken pipe
 - **Full chinese label mapping**: Noise cancel / Transparency / Off, Sound quality / Connection first, Play/Pause / Next track etc.
-- **QR code page**: placeholder for camera‑based scan connection (CameraX TBD)
 - **Connection persistence**: save device address via SharedPreferences, stay connected on back‑navigation
 - **Auto‑connect**: automatically connect to discovered Huawei/Honor devices
 - **Background retry**: failed init handlers retried every 30s until successful

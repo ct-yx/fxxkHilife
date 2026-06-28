@@ -9,7 +9,7 @@ import com.freebuds.controller.data.ConnectionState
 import com.freebuds.controller.data.DeviceViewModel
 
 enum class Screen {
-    Home, Device, Gesture, QrCode, Settings
+    Home, Device, Gesture, Settings
 }
 
 @Composable
@@ -53,7 +53,6 @@ fun AppNavHost(viewModel: DeviceViewModel, onOpenTerminal: () -> Unit) {
             onDeviceClick = { address ->
                 viewModel.autoConnectSaved(address)
             },
-            onQrCode = { currentScreen = Screen.QrCode },
             onSettings = { currentScreen = Screen.Settings },
         )
         Screen.Device -> DeviceScreen(
@@ -67,9 +66,6 @@ fun AppNavHost(viewModel: DeviceViewModel, onOpenTerminal: () -> Unit) {
             props = viewModel.props.collectAsState().value,
             viewModel = viewModel,
             onBack = { currentScreen = Screen.Device },
-        )
-        Screen.QrCode -> QrCodeScreen(
-            onBack = { currentScreen = Screen.Home },
         )
         Screen.Settings -> SettingsScreen(
             viewModel = viewModel,
