@@ -507,360 +507,46 @@ footer .spacer{display:inline-block;margin:0 8px;color:rgba(255,255,255,.1)}
   </p>
   <p style="margin-top:12px" data-i18n="footer_line3">仅供学习与个人研究使用 · 禁止商业用途</p>
 </footer>
-
-</div><!-- .wrapper -->
+</footer>
 
 <script>
-// ===== i18n =====
-const i18n = {
-  zh: {
-    nav_features: '特性',
-    nav_screenshots: '截屏',
-    nav_name: '名字',
-    nav_timeline: '历程',
-    nav_github: 'GitHub',
-    hero_title: 'fxxkHilife',
-    hero_tagline: 'HUAWEI FreeBuds / HONOR Earbuds 的轻量离线控制 App',
-    hero_sub: '无需登录 · 无广告 · 完全离线 · 开源',
-    hero_badge1: 'v2.5.0',
-    hero_badge2: 'Kotlin + Jetpack Compose',
-    hero_badge3: 'Bluetooth SPP',
-    hero_badge4: 'Material3',
-    hero_download_btn: '下载最新版',
-    hero_github_btn: 'GitHub 仓库',
-    hero_version_info: '正在获取最新版本信息…',
-    name_title: '名字的意味',
-    name_sub: '一个名字背后的清醒与温柔',
-    name_chinese: '破茧',
-    name_pinyin: 'f·x·x·k · H·i·L·i·f·e',
-    name_meaning_html: 'HiLife 圈养了一个美好的世界，却要求你把钥匙交给它。<br>fxxkHilife 不是愤怒，是<em>清醒</em>——<br>是把自由从服务条款里<em>撕回来</em>的那一下。<br><br>像挣脱一件太合身的制服，<br>像在别人修好的花园里，<em>偏要走出一条自己的路</em>。<br><br>所以它不叫 HateHiLife，也不叫 ByeHiLife。<br>它叫 <em>fxxkHilife</em> —— 一种带着笑意的叛逆，<em>温柔而坚定</em>。',
-    features_title: '核心特性',
-    features_sub: '一个纯粹的离线控制工具，只做一件事，把它做到极致',
-    feat1_title: '离线直连 · 无需账号',
-    feat1_desc: '通过蓝牙 SPP 直接控制耳机，无需登录华为账号、无需联网、无广告。即开即用。',
-    feat2_title: 'ANC 三模快切',
-    feat2_desc: '通知栏一键切换 关闭 / 降噪 / 透传，支持 QuickSettings Tile 快捷开关，抬手即切。',
-    feat3_title: 'Material3 + 自定义壁纸',
-    feat3_desc: '三态主题（跟随系统/深色/浅色），支持导入自定义壁纸并选择作用域，打造专属视觉风格。',
-    feat4_title: '手势全定制',
-    feat4_desc: '双击/三击/滑动/长按——每个手势独立设置页面，全部中文选项，一目了然。',
-    feat5_title: '低延迟模式',
-    feat5_desc: '一键开启游戏低延迟模式，音画同步优先。连接即自动开启，无需每次手动切换。',
-    feat6_title: '自适应轮询 · 省电智能',
-    feat6_desc: '前台 800ms 高频刷新，后台 5s 低频保活。由 Activity 生命周期自动调度，省电又流畅。',
-    feat7_title: '通知栏实时状态',
-    feat7_desc: 'ANC 模式、音质模式、低延迟状态、佩戴时长——通知栏一目了然，无需打开应用。',
-    feat8_title: '完全开源 · 透明可控',
-    feat8_desc: '基于 OpenFreebuds 协议逆向工作，代码全公开。无暗埋权限、无数据上传、无隐私收集。',
-    feat9_title: '电池详尽解析',
-    feat9_desc: '左右耳、充电盒独立电量显示 + 充电状态识别。FreeBuds 6i 实测 9/13 Handler 5.5s 内就绪。',
-    screenshots_title: '应用截屏',
-    screenshots_sub: 'FreeBuds 6i 实机运行的 fxxkHilife',
-    screenshots_cap1: '主页 · 已保存设备列表 + 扫描新设备',
-    screenshots_cap2: '设备详情 · ANC 控制 / 手势 / 音频偏好',
-    timeline_title: '开发历程',
-    timeline_sub: '从协议逆向到完整应用 · 24 小时内的进化',
-    timeline_loading: '正在加载开发日志…',
-    timeline_expand: '展开详情',
-    timeline_collapse: '收起详情',
-    philosophy_title: '项目理念',
-    philosophy_text_html: '你的耳机，你的控制权。<br><br>我们相信硬件属于购买它的人，但很多厂商用封闭的生态把本该属于用户的控制权锁进了自己的 App。<br><br>fxxkHilife 的意义不是"破解"，而是<strong>归还</strong>——<br>用一条蓝牙 SPP 通道，把 ANC 切换、手势定制、音质偏好……<br>所有这些本该在指尖的东西，<strong>还给你</strong>。<br><br>仅作学习与研究。<br>自由的前提，是理解规则。',
-    sponsor_title: '支持项目',
-    sponsor_sub: '如果你喜欢这个项目，不妨请作者喝杯咖啡 ☕',
-    sponsor_afdian_name: '爱发电',
-    sponsor_afdian_sub: 'ifdian.net @Ct_yx',
-    sponsor_bmc_name: 'Buy Me a Coffee',
-    sponsor_bmc_sub: 'buymeacoffee.com/ctyx',
-    footer_line1: 'fxxkHilife · 基于 <a href="https://github.com/melianmiko/OpenFreebuds" target="_blank">OpenFreebuds</a> 协议逆向工作',
-    footer_link_github: 'GitHub 仓库',
-    footer_link_releases: 'Release 页面',
-    footer_link_zh: '中文文档',
-    footer_link_en: 'English Docs',
-    footer_link_afdian: '爱发电',
-    footer_link_bmc: 'Buy me a coffee',
-    footer_line3: '仅供学习与个人研究使用 · 禁止商业用途'
-  },
-  en: {
-    nav_features: 'Features',
-    nav_screenshots: 'Screenshots',
-    nav_name: 'Name',
-    nav_timeline: 'History',
-    nav_github: 'GitHub',
-    hero_title: 'fxxkHilife',
-    hero_tagline: 'Lightweight offline control App for HUAWEI FreeBuds / HONOR Earbuds',
-    hero_sub: 'No login · No ads · Fully offline · Open Source',
-    hero_badge1: 'v2.5.0',
-    hero_badge2: 'Kotlin + Jetpack Compose',
-    hero_badge3: 'Bluetooth SPP',
-    hero_badge4: 'Material3',
-    hero_download_btn: 'Download Latest',
-    hero_github_btn: 'GitHub Repo',
-    hero_version_info: 'Fetching latest version info…',
-    name_title: 'The Meaning of the Name',
-    name_sub: 'Clarity and tenderness behind a name',
-    name_chinese: 'Cocoon Break',
-    name_pinyin: 'f·x·x·k · H·i·L·i·f·e',
-    name_meaning_html: 'HiLife curates a beautiful world, but demands you hand over the keys.<br>fxxkHilife is not anger — it\'s <em>clarity</em> —<br>it\'s the act of <em>tearing freedom back</em> from the terms of service.<br><br>Like shedding a uniform that fit too well,<br>like walking a path of your own through someone else\'s manicured garden.<br><br>That\'s why it\'s not called HateHiLife, nor ByeHiLife.<br>It\'s called <em>fxxkHilife</em> — a smiling rebellion, <em>gentle yet unwavering</em>.',
-    features_title: 'Core Features',
-    features_sub: 'A pure offline control tool that does one thing, and does it to perfection',
-    feat1_title: 'Offline Direct Connect',
-    feat1_desc: 'Control earbuds directly via Bluetooth SPP — no Huawei account, no internet, no ads. Plug and play.',
-    feat2_title: 'ANC 3-Mode Quick Switch',
-    feat2_desc: 'Toggle Off / Noise Cancellation / Transparency from the notification bar. QuickSettings Tile supported.',
-    feat3_title: 'Material3 + Custom Wallpaper',
-    feat3_desc: 'Triple themes (System/Dark/Light), custom wallpaper import with scope selection. Build your own visual style.',
-    feat4_title: 'Full Gesture Customization',
-    feat4_desc: 'Double-tap, triple-tap, swipe, long-press — each gesture has its own settings page. Crystal clear.',
-    feat5_title: 'Low Latency Mode',
-    feat5_desc: 'One-tap game mode with audio-video sync priority. Auto-enables on connection.',
-    feat6_title: 'Adaptive Polling · Smart Power Saving',
-    feat6_desc: '800ms high-frequency refresh in foreground, 5s keep-alive in background. Activity-lifecycle-driven.',
-    feat7_title: 'Real-time Notification Bar Status',
-    feat7_desc: 'ANC mode, audio preset, low-latency status, wearing duration — all visible without opening the app.',
-    feat8_title: 'Fully Open Source · Transparent',
-    feat8_desc: 'Based on OpenFreebuds protocol reverse engineering. No hidden permissions, no data upload, no tracking.',
-    feat9_title: 'Detailed Battery Analysis',
-    feat9_desc: 'Independent battery display for left/right buds and case + charging state. FreeBuds 6i 9/13 handlers ready in 5.5s.',
-    screenshots_title: 'Screenshots',
-    screenshots_sub: 'fxxkHilife running on FreeBuds 6i',
-    screenshots_cap1: 'Home · Saved devices list + Scan new devices',
-    screenshots_cap2: 'Device Details · ANC control / Gestures / Audio preferences',
-    timeline_title: 'Development History',
-    timeline_sub: 'From protocol reverse engineering to a full app — evolution in 24 hours',
-    timeline_loading: 'Loading development log…',
-    timeline_expand: 'Expand details',
-    timeline_collapse: 'Collapse details',
-    philosophy_title: 'Project Philosophy',
-    philosophy_text_html: 'Your earbuds. Your control.<br><br>We believe hardware belongs to those who buy it. Yet many manufacturers lock user control behind closed ecosystems.<br><br>fxxkHilife isn\'t about "cracking" — it\'s about <strong>returning</strong> —<br>using a Bluetooth SPP channel to give ANC switching, gesture customization, audio preferences…<br>all the things that should be at your fingertips, <strong>back to you</strong>.<br><br>For learning and research only.<br>Freedom begins with understanding the rules.',
-    sponsor_title: 'Support the Project',
-    sponsor_sub: 'If you like this project, why not buy the author a coffee ☕',
-    sponsor_afdian_name: '爱发电 (Afdian)',
-    sponsor_afdian_sub: 'ifdian.net @Ct_yx',
-    sponsor_bmc_name: 'Buy Me a Coffee',
-    sponsor_bmc_sub: 'buymeacoffee.com/ctyx',
-    footer_line1: 'fxxkHilife · Based on <a href="https://github.com/melianmiko/OpenFreebuds" target="_blank">OpenFreebuds</a> protocol reverse engineering',
-    footer_link_github: 'GitHub Repo',
-    footer_link_releases: 'Releases',
-    footer_link_zh: '中文文档 (Chinese Docs)',
-    footer_link_en: 'English Docs',
-    footer_link_afdian: '爱发电 (Afdian)',
-    footer_link_bmc: 'Buy me a coffee',
-    footer_line3: 'For learning and personal research only · Commercial use prohibited'
-  }
-};
-
-let currentLang = 'zh';
-
-function switchLang(lang) {
-  currentLang = lang;
-  const t = i18n[lang];
-
-  // Translate all data-i18n elements
-  document.querySelectorAll('[data-i18n]').forEach(el => {
-    const key = el.getAttribute('data-i18n');
-    if (t[key] !== undefined) {
-      el.innerHTML = t[key];
-    }
-  });
-
-  // Update download button text from GitHub data if already fetched
-  const dt = document.getElementById('downloadText');
-  if (dt && dt._versionText) {
-    dt.textContent = lang === 'zh' ? '下载 ' + dt._versionText : 'Download ' + dt._versionText;
-  }
-
-  // Update version info date locale
-  const vi = document.getElementById('versionInfo');
-  if (vi && vi._date && vi._verText) {
-    const d = new Date(vi._date);
-    const dateStr = d.toLocaleDateString(lang === 'zh' ? 'zh-CN' : 'en-US');
-    vi.innerHTML = '<strong>' + vi._verText + '</strong> · ' + vi._apkName + ' · ' + dateStr;
-  }
-
-  // Update language buttons
-  updateLangButtons(lang);
-
-  // Update html lang attribute
-  document.documentElement.lang = lang === 'zh' ? 'zh-CN' : 'en';
-}
-
-function updateLangButtons(lang) {
-  document.querySelectorAll('.lang-btn').forEach(btn => {
-    btn.classList.toggle('active', btn.getAttribute('data-i18n-lang') === lang);
-  });
-}
-
-// ===== SCROLL REVEAL =====
-const observer = new IntersectionObserver((entries) => {
-  entries.forEach(entry => {
-    if(entry.isIntersecting) entry.target.classList.add('visible');
-  });
-}, { threshold: 0.12, rootMargin: '0px 0px -40px 0px' });
-
-document.querySelectorAll('.reveal').forEach(el => observer.observe(el));
-
-// ===== LATEST VERSION FROM GITHUB API =====
-(async function fetchLatestRelease() {
-  const btn = document.getElementById('downloadBtn');
-  const text = document.getElementById('downloadText');
-  const info = document.getElementById('versionInfo');
-  try {
-    const resp = await fetch('https://api.github.com/repos/ct-yx/fxxkHilife/releases/latest');
-    if(!resp.ok) throw new Error('HTTP ' + resp.status);
-    const data = await resp.json();
-    const ver = data.tag_name || data.name || 'latest';
-    const apkAssets = data.assets ? data.assets.filter(a => a.name.endsWith('.apk')) : [];
-    const apkUrl = apkAssets.length > 0 ? apkAssets[0].browser_download_url : data.html_url;
-    const versionStr = ver.replace(/^v/i,'');
-    btn.href = apkUrl;
-    // Save version text for i18n switching
-    text._versionText = 'v' + versionStr;
-    text.textContent = currentLang === 'zh' ? '下载 v' + versionStr : 'Download v' + versionStr;
-    // Store version info for i18n
-    vi._date = data.published_at;
-    vi._verText = 'v' + versionStr;
-    vi._apkName = apkAssets.length > 0 ? apkAssets[0].name : (currentLang === 'zh' ? '最新发布' : 'Latest Release');
-    const d = new Date(data.published_at);
-    const dateStr = d.toLocaleDateString(currentLang === 'zh' ? 'zh-CN' : 'en-US');
-    info.innerHTML = '<strong>v' + versionStr + '</strong> · ' + vi._apkName + ' · ' + dateStr;
-  } catch(e) {
-    // fallback: 跳转到 releases 页面
-    btn.href = 'https://github.com/ct-yx/fxxkHilife/releases/latest';
-    text.textContent = currentLang === 'zh' ? '获取最新版 →' : 'Get Latest →';
-    info.innerHTML = currentLang === 'zh'
-      ? '前往 <a href="https://github.com/ct-yx/fxxkHilife/releases">GitHub Releases</a> 查看最新版本'
-      : 'Visit <a href="https://github.com/ct-yx/fxxkHilife/releases">GitHub Releases</a> for the latest version';
-  }
-})();
-
-// ===== TIMELINE: LOAD FROM DEVELOP_LOG.md =====
-(async function loadTimeline() {
-  const container = document.getElementById("timelineContainer");
-  try {
-    const resp = await fetch("./DEVELOPMENT_LOG.md");
-    if(!resp.ok) throw new Error("HTTP " + resp.status);
-    const text = await resp.text();
-    
-    /* Parse version entries: match "## vX.Y.Z" blocks */
-    const versionRegex = /^## (v[\w.-]+)\s*\(([^)]+)\)\s*\n([\s\S]*?)(?=^## |\Z)/gm;
-    const entries = [];
-    let m;
-    while((m = versionRegex.exec(text)) !== null) {
-      const ver = m[1];
-      const date = m[2];
-      const body = m[3].trim();
-      
-      /* Extract first meaningful line (30-40 chars) as summary */
-      let summaryLine = body.replace(/^###.*\n?/gm, "").replace(/\*\*|\*/g, "").replace(/^[\s\n]*/, "").split(/\n/)[0];
-      if(!summaryLine || summaryLine.length < 5) {
-        const lines = body.split(/\n/).filter(l => l.trim() && !l.startsWith("#") && !l.startsWith("|") && !l.startsWith("-") && !l.startsWith(">"));
-        summaryLine = lines.length > 0 ? lines[0] : "详细更新";
-      }
-      summaryLine = summaryLine.replace(/<[^>]*>/g, "").trim();
-      if(summaryLine.length > 35) summaryLine = summaryLine.slice(0, 35) + "...";
-      
-      /* Format detail: keep key bullet points, limit ~200 chars */
-      let detailHtml = body
-        .replace(/^### .*\n?/gm, "")
-        .replace(/\|.*\|.*\|/g, "")
-        .slice(0, 800);
-      detailHtml = detailHtml.replace(/\n\n/g, "<br><br>").replace(/\n/g, "<br>");
-      detailHtml = detailHtml.replace(/`([^`]+)`/g, "<code>$1</code>");
-      detailHtml = detailHtml.replace(/\*\*([^*]+)\*\*/g, "<strong>$1</strong>");
-      entries.push({ ver, date, summaryLine, detailHtml });
-    }
-    
-    if(entries.length === 0) throw new Error("No version entries found");
-    
-    /* Render timeline */
-    container.innerHTML = "";
-    entries.forEach((e, i) => {
-      const delay = Math.min(i + 1, 5);
-      const item = document.createElement("div");
-      item.className = "timeline-item reveal reveal-delay-" + delay;
-      item.innerHTML = `
-        <div class="timeline-dot"></div>
-        <div class="timeline-version">${e.ver}</div>
-        <div class="timeline-date">${e.date}</div>
-        <div class="timeline-title" onclick="toggleDetail(this)">
-          <span class="summary-text">${e.summaryLine}</span>
-          <span class="expand-icon">▼</span>
-        </div>
-        <div class="timeline-detail">
-          <div class="timeline-detail-inner">${e.detailHtml}</div>
-        </div>
-      `;
-      container.appendChild(item);
-      /* Trigger reveal after DOM append */
-      requestAnimationFrame(() => { item.classList.add("visible"); });
-    });
-  } catch(e) {
-    container.innerHTML = "<div class=\"loading-text\" style=\"color:rgba(255,255,255,.3)\">⚠ " + (currentLang === "zh" ? "加载开发日志失败" : "Failed to load development log") + "</div>";
-  }
-})();
-
-function toggleDetail(el) {
-  const detail = el.parentElement.querySelector(".timeline-detail");
-  const icon = el.querySelector(".expand-icon");
-  if(!detail) return;
-  const isOpen = detail.classList.contains("open");
-  detail.classList.toggle("open");
-  if(icon) icon.classList.toggle("open");
-  /* Update i18n hint */
-  const t = i18n[currentLang] || i18n.zh;
-  el.title = isOpen ? t.timeline_expand : t.timeline_collapse;
-}
-
-</script>
 // ===== TIMELINE: LOAD FROM DEVELOPMENT_LOG.md =====
 (async function loadTimeline() {
   const container = document.getElementById("timelineContainer");
+  if (!container) return;
   try {
     const resp = await fetch("./DEVELOPMENT_LOG.md");
     if (!resp.ok) throw new Error("HTTP " + resp.status);
     const text = await resp.text();
-
-    // Parse "## vX.Y.Z (date)" blocks
     const versionRegex = /^## (v[\w.\-]+)\s*\(([^)]+)\)\s*\n([\s\S]*?)(?=^## |\Z)/gm;
     const entries = [];
     let m;
     while ((m = versionRegex.exec(text)) !== null) {
-      const ver = m[1];
-      const date = m[2];
+      const ver = m[1], date = m[2];
       let body = m[3].trim();
-
-      // Extract ~30-35 char summary from first non-header/non-table line
-      let summaryLine = body.replace(/^###.*\n?/gm, "").replace(/\*\*/g, "").replace(/^[\s\n]*/, "").split("\n")[0] || "";
+      let summaryLine = body.replace(/^###.*\n?/gm,"").replace(/\*\*/g,"").replace(/^[\s\n]*/,"").split("\n")[0] || "";
       if (summaryLine.length < 5) {
-        const lines = body.split("\n").filter(l => l.trim() && !l.startsWith("#") && !l.startsWith("|") && !l.startsWith("- ") && !l.startsWith(">"));
+        const lines = body.split("\n").filter(l => l.trim() && !l.startsWith("#") && !l.startsWith("|"));
         summaryLine = lines.length > 0 ? lines[0].trim() : "详细更新";
       }
-      summaryLine = summaryLine.replace(/<[^>]*>/g, "").trim();
-      if (summaryLine.length > 35) summaryLine = summaryLine.slice(0, 32) + "...";
-
-      // Build detail HTML (first 600 chars, line breaks, code highlighting)
-      let detailHtml = body
-        .replace(/^### .*\n?/gm, "")
-        .replace(/\|.*\|.*\|/g, "")
-        .slice(0, 600);
-      detailHtml = detailHtml.replace(/\n\n/g, "<br><br>").replace(/\n/g, "<br>");
-      detailHtml = detailHtml.replace(/`([^`]+)`/g, "<code>$1</code>");
-      detailHtml = detailHtml.replace(/\*\*([^*]+)\*\*/g, "<strong>$1</strong>");
-
+      summaryLine = summaryLine.replace(/<[^>]*>/g,"").trim();
+      if (summaryLine.length > 35) summaryLine = summaryLine.slice(0,32) + "...";
+      let detailHtml = body.replace(/^### .*\n?/gm,"").replace(/\|.*\|.*\|/g,"").slice(0,600);
+      detailHtml = detailHtml.replace(/\n\n/g,"<br><br>").replace(/\n/g,"<br>");
+      detailHtml = detailHtml.replace(/`([^`]+)`/g,"<code>$1</code>");
+      detailHtml = detailHtml.replace(/\*\*([^*]+)\*\*/g,"<strong>$1</strong>");
       entries.push({ ver, date, summaryLine, detailHtml });
     }
-
     if (entries.length === 0) {
-      container.innerHTML = "<div class=\"loading-text\">No version entries found</div>";
+      container.innerHTML = '<div class="loading-text">No version entries found</div>';
       return;
     }
-
     container.innerHTML = "";
     entries.forEach((e, i) => {
       const delay = Math.min(i + 1, 5);
       const item = document.createElement("div");
       item.className = "timeline-item reveal reveal-delay-" + delay;
-      item.innerHTML = "" +
+      item.innerHTML =
         '<div class="timeline-dot"></div>' +
         '<div class="timeline-version">' + e.ver + '</div>' +
         '<div class="timeline-date">' + e.date + '</div>' +
@@ -875,10 +561,9 @@ function toggleDetail(el) {
       requestAnimationFrame(() => { item.classList.add("visible"); });
     });
   } catch (e) {
-    container.innerHTML = "<div class=\"loading-text\">⚠ Error loading development log</div>";
+    container.innerHTML = '<div class="loading-text">⚠ Error loading development log</div>';
   }
 })();
-
 function toggleDetail(el) {
   const detail = el.parentElement.querySelector(".timeline-detail");
   const icon = el.querySelector(".expand-icon");
@@ -887,3 +572,7 @@ function toggleDetail(el) {
   detail.classList.toggle("open");
   if (icon) icon.classList.toggle("open");
 }
+</script>
+
+</body>
+</html>
