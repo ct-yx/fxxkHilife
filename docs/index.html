@@ -199,58 +199,101 @@ nav .links a:hover{color:#fff}
 .screenshot-card .caption{padding:14px 18px 18px;font-size:13px;color:rgba(255,255,255,.4);text-align:center}
 
 /* ===== TIMELINE ===== */
-.timeline{position:relative;max-width:700px;margin:0 auto}
+.timeline{position:relative;max-width:800px;margin:0 auto;padding:10px 0}
 .timeline::before{
-  content:'';position:absolute;left:24px;top:0;bottom:0;
-  width:1px;background:linear-gradient(to bottom,rgba(124,124,240,.4),transparent);
+  content:'';position:absolute;left:50%;top:0;bottom:0;
+  width:2px;transform:translateX(-50%);
+  background:linear-gradient(to bottom,rgba(124,124,240,.5),rgba(124,124,240,.2),transparent);
+  transition:left .6s cubic-bezier(.16,1,.3,1),transform .6s cubic-bezier(.16,1,.3,1);
 }
-@media(max-width:480px){.timeline::before{left:16px}}
 .timeline-item{
-  padding-left:64px;position:relative;margin-bottom:36px;
+  position:relative;margin-bottom:40px;width:100%;
+  display:flex;justify-content:flex-start;
 }
-@media(max-width:480px){.timeline-item{padding-left:48px;margin-bottom:28px}}
+.timeline-item-inner{
+  width:calc(50% - 40px);position:relative;
+  padding:20px 24px;border-radius:16px;
+  background:rgba(255,255,255,.015);
+  border:1px solid rgba(255,255,255,.04);
+  transition:all .5s cubic-bezier(.16,1,.3,1);
+}
+.timeline-item:hover .timeline-item-inner{
+  background:rgba(124,124,240,.04);border-color:rgba(124,124,240,.12);
+  transform:translateY(-2px);box-shadow:0 8px 30px rgba(0,0,0,.3);
+}
+.timeline-item.right{justify-content:flex-end}
+.timeline-item.right .timeline-item-inner{margin-right:0}
+.timeline-item .timeline-version-badge{
+  position:absolute;top:22px;left:50%;transform:translateX(-50%);
+  z-index:2;pointer-events:none;
+  background:linear-gradient(135deg,#7c7cf0,#5c5ce0);
+  color:#fff;font-size:11px;font-weight:700;letter-spacing:.5px;
+  padding:4px 12px;border-radius:20px;
+  box-shadow:0 0 16px rgba(124,124,240,.25);
+  white-space:nowrap;
+  transition:all .5s cubic-bezier(.16,1,.3,1);
+}
+.timeline-item.open .timeline-version-badge{
+  box-shadow:0 0 28px rgba(124,124,240,.45);
+}
 .timeline-dot{
-  position:absolute;left:16px;top:4px;
-  width:16px;height:16px;border-radius:50%;
-  background:rgba(124,124,240,.2);border:2px solid #7c7cf0;
-  transition:all .3s;
+  position:absolute;top:24px;left:50%;transform:translateX(-50%);
+  width:14px;height:14px;border-radius:50%;z-index:1;
+  background:rgba(124,124,240,.15);
+  border:3px solid #7c7cf0;
+  transition:all .5s cubic-bezier(.16,1,.3,1);
 }
-@media(max-width:480px){.timeline-dot{left:8px;width:16px;height:16px}}
-.timeline-item:hover .timeline-dot{background:#7c7cf0;box-shadow:0 0 20px rgba(124,124,240,.4)}
-.timeline-version{
-  font-size:11px;color:#7c7cf0;font-weight:700;letter-spacing:1px;
-  margin-bottom:2px;
+.timeline-item:hover .timeline-dot{
+  background:#7c7cf0;box-shadow:0 0 24px rgba(124,124,240,.5);
 }
-.timeline-date{font-size:12px;color:rgba(255,255,255,.3);margin-bottom:8px}
-.timeline-title{font-size:16px;font-weight:600;color:#e8e8ed;margin-bottom:6px}
+.timeline-date{font-size:11px;color:rgba(255,255,255,.25);margin-bottom:4px;letter-spacing:.3px}
+.timeline-title{font-size:16px;font-weight:600;color:#e8e8ed;margin-bottom:6px;line-height:1.4}
 .timeline-desc{
   font-size:13px;color:rgba(255,255,255,.45);line-height:1.7;
 }
 .timeline-desc code{background:rgba(124,124,240,.1);padding:1px 6px;border-radius:4px;font-size:12px;color:#b388ff}
-.timeline-detail{display:none;margin-top:10px;font-size:13px;color:rgba(255,255,255,.45);line-height:1.7;padding:12px 16px;background:rgba(255,255,255,.015);border-radius:10px;border:1px solid rgba(255,255,255,.04)}
-.timeline-detail p{margin-bottom:8px}
-.timeline-detail code{background:rgba(124,124,240,.1);padding:1px 6px;border-radius:4px;font-size:12px;color:#b388ff}
-.timeline-detail pre{background:rgba(0,0,0,.3);padding:10px 14px;border-radius:8px;overflow-x:auto;margin:8px 0;border:1px solid rgba(255,255,255,.06)}
-.timeline-detail pre code{background:none;padding:0;font-size:12px;color:#a0a0e0}
-.timeline-detail h3,.timeline-detail h4{font-size:14px;color:#b388ff;margin:12px 0 6px;font-weight:600}
-.timeline-detail ul,.timeline-detail ol{padding-left:20px;margin:6px 0}
-.timeline-detail li{margin-bottom:4px}
-.timeline-detail strong{color:rgba(255,255,255,.7)}
-.timeline-detail a{color:#7c7cf0;text-decoration:underline}
-.timeline-detail hr{margin:12px 0;border:none;border-top:1px solid rgba(255,255,255,.06)}
-.timeline-detail table{width:100%;border-collapse:collapse;margin:8px 0;font-size:12px}
-.timeline-detail th,.timeline-detail td{padding:4px 8px;border:1px solid rgba(255,255,255,.08);text-align:left}
-.timeline-detail th{background:rgba(124,124,240,.08);color:#b388ff;font-weight:600}
-.timeline-detail.open{display:block;animation:fadeIn .3s ease}
-.timeline-toggle{
-  display:inline-block;margin-top:8px;font-size:11px;color:#7c7cf0;cursor:pointer;
-  background:none;border:1px solid rgba(124,124,240,.2);border-radius:6px;padding:2px 10px;
-  transition:all .2s;
+.timeline-detail-wrap{
+  display:grid;grid-template-rows:0fr;transition:grid-template-rows .5s cubic-bezier(.16,1,.3,1);
 }
-.timeline-toggle:hover{background:rgba(124,124,240,.1)}
-.timeline-toggle svg{width:10px;height:10px;display:inline-block;margin-left:2px;transition:transform .3s}
+.timeline-detail-wrap.open{grid-template-rows:1fr}
+.timeline-detail{
+  overflow:hidden;
+  font-size:13px;color:rgba(255,255,255,.45);line-height:1.7;
+}
+.timeline-detail-inner{
+  padding-top:10px;min-height:0;
+}
+.timeline-detail-inner p{margin-bottom:8px}
+.timeline-detail-inner code{background:rgba(124,124,240,.1);padding:1px 6px;border-radius:4px;font-size:12px;color:#b388ff}
+.timeline-detail-inner pre{background:rgba(0,0,0,.3);padding:10px 14px;border-radius:8px;overflow-x:auto;margin:8px 0;border:1px solid rgba(255,255,255,.06)}
+.timeline-detail-inner pre code{background:none;padding:0;font-size:12px;color:#a0a0e0}
+.timeline-detail-inner h3,.timeline-detail-inner h4{font-size:14px;color:#b388ff;margin:12px 0 6px;font-weight:600}
+.timeline-detail-inner ul,.timeline-detail-inner ol{padding-left:20px;margin:6px 0}
+.timeline-detail-inner li{margin-bottom:4px}
+.timeline-detail-inner strong{color:rgba(255,255,255,.7)}
+.timeline-detail-inner a{color:#7c7cf0;text-decoration:underline}
+.timeline-detail-inner hr{margin:12px 0;border:none;border-top:1px solid rgba(255,255,255,.06)}
+.timeline-detail-inner table{width:100%;border-collapse:collapse;margin:8px 0;font-size:12px}
+.timeline-detail-inner th,.timeline-detail-inner td{padding:4px 8px;border:1px solid rgba(255,255,255,.08);text-align:left}
+.timeline-detail-inner th{background:rgba(124,124,240,.08);color:#b388ff;font-weight:600}
+.timeline-toggle{
+  display:inline-flex;align-items:center;gap:4px;margin-top:10px;
+  font-size:11px;color:#7c7cf0;cursor:pointer;
+  background:none;border:1px solid rgba(124,124,240,.2);border-radius:6px;padding:3px 12px;
+  transition:all .3s;
+}
+.timeline-toggle:hover{background:rgba(124,124,240,.1);border-color:rgba(124,124,240,.4)}
+.timeline-toggle svg{width:10px;height:10px;transition:transform .4s cubic-bezier(.16,1,.3,1)}
 .timeline-toggle.open svg{transform:rotate(180deg)}
 .timeline-loading{text-align:center;padding:40px;color:rgba(255,255,255,.2);font-size:14px}
+@media(max-width:640px){
+  .timeline::before{left:20px;transform:none}
+  .timeline-item,.timeline-item.right{justify-content:flex-start}
+  .timeline-item-inner,.timeline-item.right .timeline-item-inner{width:calc(100% - 52px);margin-left:52px}
+  .timeline-item .timeline-version-badge{left:20px;top:20px;transform:none;font-size:10px;padding:3px 10px}
+  .timeline-dot{left:20px;transform:none;width:12px;height:12px;border-width:2px}
+}</pre>
+
 
 /* ===== PHILOSOPHY ===== */
 .philosophy{
@@ -512,16 +555,22 @@ document.querySelectorAll('.reveal').forEach(el => observer.observe(el));
     const text = await resp.text();
     const items = parseDevelopmentLog(text);
     if(items.length === 0) throw new Error('No releases found');
-    // parseDevelopmentLog 已按版本号倒序
+    // parseDevelopmentLog 已按版本号倒序；交替左右布局
     container.innerHTML = items.map((item, i) => `
-      <div class="timeline-item" style="animation:fadeUp .6s ${i * 0.08}s both cubic-bezier(.16,1,.3,1)">
+      <div class="timeline-item ${i % 2 === 0 ? 'left' : 'right'}" style="animation:fadeUp .6s ${i * 0.08}s both cubic-bezier(.16,1,.3,1)">
+        <div class="timeline-version-badge">${item.version}</div>
         <div class="timeline-dot"></div>
-        <div class="timeline-version">${item.version}</div>
-        <div class="timeline-date">${item.date}</div>
-        <div class="timeline-title">${item.title}</div>
-        <div class="timeline-desc">${item.summary}</div>
-        <span class="timeline-toggle" onclick="var d=this.nextElementSibling;d.classList.toggle('open');this.classList.toggle('open')">详情 <svg viewBox='0 0 12 12' fill='currentColor'><polygon points='3,4.5 6,7.5 9,4.5'/></svg></span>
-        <div class="timeline-detail">${item.detail}</div>
+        <div class="timeline-item-inner">
+          <div class="timeline-date">${item.date}</div>
+          <div class="timeline-title">${item.title}</div>
+          <div class="timeline-desc">${item.summary}</div>
+          <span class="timeline-toggle" onclick="var p=this.closest('.timeline-item');p.classList.toggle('open');this.nextElementSibling.classList.toggle('open');this.classList.toggle('open');var t=this.classList.contains('open');this.innerHTML=t?'收起 <svg viewBox="0 0 12 12" fill="currentColor"><polygon points="3,4.5 6,7.5 9,4.5"/></svg>':'展开详情 <svg viewBox="0 0 12 12" fill="currentColor"><polygon points="3,4.5 6,7.5 9,4.5"/></svg>'">展开详情 <svg viewBox='0 0 12 12' fill='currentColor'><polygon points='3,4.5 6,7.5 9,4.5'/></svg></span>
+          <div class="timeline-detail-wrap">
+            <div class="timeline-detail">
+              <div class="timeline-detail-inner">${item.detail}</div>
+            </div>
+          </div>
+        </div>
       </div>
     `).join('');
     // 对新生成的 timeline-item 做 reveal
