@@ -55,7 +55,7 @@ fun DeviceScreen(
     val connState by viewModel.connectionState.collectAsState()
     val props by viewModel.props.collectAsState()
     val deviceName = (connState as? ConnectionState.Connected)?.deviceName ?: "耳机"
-    var optimisticAncMode by remember { mutableStateOf<String?>() }
+    var optimisticAncMode by remember { mutableStateOf(null) }
     val displayAncMode = optimisticAncMode ?: (props.ancMode ?: "normal")
 
     // 当 props 的实际值追上乐观值时清除乐观状态
