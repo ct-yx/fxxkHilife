@@ -42,9 +42,12 @@ class HuaweiSppPackage(
             val cmd = data.copyOfRange(4, 6)
             val p = HuaweiSppPackage(cmd)
             var pos = 6
-            while (pos < len + 4) {
+            val end = len + 3
+            while (pos < end) {
+                if (pos + 1 >= data.size) return null
                 val t = data[pos].toInt() and 0xFF
                 val l = data[pos + 1].toInt() and 0xFF
+                if (pos + 2 + l > data.size) return null
                 val v = if (l > 0) data.copyOfRange(pos + 2, pos + 2 + l) else byteArrayOf()
                 p.parameters[t] = v
                 pos += l + 2

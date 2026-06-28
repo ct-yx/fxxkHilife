@@ -38,7 +38,7 @@ class TerminalActivity : AppCompatActivity(), OnLogUpdateListener {
     private val scope = CoroutineScope(Dispatchers.Main)
 
     private var bluetoothScanner: BluetoothScanner? = null
-    private var gattDriver: SppDriver? = null
+    private var sppDriver: SppDriver? = null
     private var scannedDevices: List<ScannedDevice> = emptyList()
 
     // 收集所有需要运行时申请的权限
@@ -119,7 +119,7 @@ class TerminalActivity : AppCompatActivity(), OnLogUpdateListener {
 
     private fun printBanner() {
         LogBuffer.i("Terminal", "fxxkHilife v2 Terminal — ${BuildConfig.VERSION_NAME}")
-        LogBuffer.i("Terminal", "Commands: clear | share | perm | scan | list | connect <n> | disconnect | help")
+        LogBuffer.i("Terminal", "Commands: clear | share | perm | scan | list | connect <n> | disconnect | props | set <group.prop> <value> | help")
         LogBuffer.i("Terminal", "---")
     }
 
@@ -147,6 +147,8 @@ class TerminalActivity : AppCompatActivity(), OnLogUpdateListener {
             trimmed.startsWith("connect", ignoreCase = true) -> connectDevice(trimmed.removePrefix("connect").trim())
             trimmed.equals("disconnect", ignoreCase = true) -> disconnectDevice()
             trimmed.equals("list", ignoreCase = true) -> listDevices()
+            trimmed.equals("props", ignoreCase = true) -> printProps()
+            trimmed.startsWith("set ", ignoreCase = true) -> setProp(trimmed.removePrefix("set").trim())
             trimmed.equals("help", ignoreCase = true) -> {
                 LogBuffer.i("Terminal", "Available commands:")
                 LogBuffer.i("Terminal", "  clear        — clear screen")
@@ -156,6 +158,8 @@ class TerminalActivity : AppCompatActivity(), OnLogUpdateListener {
                 LogBuffer.i("Terminal", "  list         — list scanned devices")
                 LogBuffer.i("Terminal", "  connect <n>  — connect to device #n")
                 LogBuffer.i("Terminal", "  disconnect   — disconnect device")
+                LogBuffer.i("Terminal", "  props        — print OpenFreebuds property store")
+                LogBuffer.i("Terminal", "  set <group.prop> <value> — write OpenFreebuds property")
                 LogBuffer.i("Terminal", "  help         — this message")
             }
             else -> LogBuffer.w("Terminal", "Unknown command: $trimmed — type help")
@@ -255,6 +259,38 @@ class TerminalActivity : AppCompatActivity(), OnLogUpdateListener {
         LogBuffer.i("BT", "Use 'connect <n>' to connect")
     }
 
+    private fun printProps() {
+        val driver = sppDriver
+        if (driver == null) {
+            LogBuffer.w("Prop", "Not connected")
+            return
+        }
+        scope.launch {
+            val text = driver.getProperty() ?: ""
+            if (text.isBlank()) LogBuffer.i("Prop", "No properties yet")
+            else text.lines().forEach { LogBuffer.i("Prop", it) }
+        }
+    }
+
+    private fun setProp(payload: String) {
+        val driver = sppDriver
+        if (driver == null) {
+            LogBuffer.w("Prop", "Not connected")
+            return
+        }
+        val firstSpace = payload.indexOf(' ')
+        val key = if (firstSpace > 0) payload.substring(0, firstSpace) else payload
+        val value = if (firstSpace > 0) payload.substring(firstSpace + 1) else ""
+        val dot = key.indexOf('.')
+        if (dot <= 0 || dot == key.lastIndex) {
+            LogBuffer.w("Prop", "Usage: set <group.prop> <value>")
+            return
+        }
+        scope.launch {
+            driver.setProperty(key.substring(0, dot), key.substring(dot + 1), value)
+        }
+    }
+
     private fun connectDevice(indexStr: String) {
         val missing = requiredPermissions.filter {
             checkSelfPermission(it) != PackageManager.PERMISSION_GRANTED
@@ -274,30 +310,50 @@ class TerminalActivity : AppCompatActivity(), OnLogUpdateListener {
         scope.launch { connectToDevice(scannedDevices[index]) }
     }
 
+    private fun registerOpenFreebudsHandlers(driver: SppDriver) {
+        val battery = BatteryHandler()
+        battery.setOnBatteryUpdate { LogBuffer.i("Battery", "Update") }
+        listOf(
+            LogsHandler(),
+            InfoHandler(),
+            InEarHandler(),
+            battery,
+            AncLegacyChangeHandler(),
+            AncHandler(),
+            DoubleTapHandler(),
+            TripleTapHandler(),
+            LongTapHandler(),
+            SwipeGestureHandler(),
+            PowerButtonHandler(),
+            AutoPauseHandler(),
+            LowLatencyHandler(),
+            SoundQualityHandler(),
+            VoiceLanguageHandler(),
+        ).forEach { driver.registerHandler(it) }
+    }
+
     /** 连接设备并注册所有 Handler（可供 scan 自动连接调用） */
     private suspend fun connectToDevice(sd: ScannedDevice) {
         LogBuffer.i("BT", "Connecting to ${sd.displayName}...")
         val driver = SppDriver(sd.device)
-        val bat = BatteryHandler()
-        bat.setOnBatteryUpdate { LogBuffer.i("Battery", "Update") }
-        driver.registerHandler(bat)
-        gattDriver = driver
+        registerOpenFreebudsHandlers(driver)
+        sppDriver = driver
         if (driver.connect()) {
             LogBuffer.i("BT", "Connected to ${sd.displayName}")
         } else {
-            LogBuffer.e("BT", "Connection failed"); gattDriver = null
+            LogBuffer.e("BT", "Connection failed"); sppDriver = null
         }
     }
 
     private fun disconnectDevice() {
-        gattDriver?.disconnect()
-        gattDriver = null
+        sppDriver?.disconnect()
+        sppDriver = null
         LogBuffer.i("BT", "Disconnected")
     }
 
     override fun onDestroy() {
         bluetoothScanner?.stopScan()
-        gattDriver?.disconnect()
+        sppDriver?.disconnect()
         LogBuffer.unregisterListener(this)
         super.onDestroy()
     }

@@ -33,7 +33,7 @@ class SppDriver(private val device: BluetoothDevice) {
     private var socket: Any? = null  // BluetoothSocket
     private var closeMethod: Method? = null
     private var job: Job? = null
-    private val scope = CoroutineScope(Dispatchers.IO + SupervisorJob())
+    private var scope = CoroutineScope(Dispatchers.IO + SupervisorJob())
 
     // 待响应映射: responseId (hex) -> CompletableDeferred
     private val pendingResponses = mutableMapOf<String, CompletableDeferred<HuaweiSppPackage>>()
@@ -41,13 +41,60 @@ class SppDriver(private val device: BluetoothDevice) {
 
     // 已注册的 Handler
     private val handlers = mutableListOf<HuaweiDeviceHandler>()
-    private val packageHandlers = mutableMapOf<String, HuaweiDeviceHandler>()
+    private val packageHandlers = mutableMapOf<String, HuaweiDeviceHandler?>()
+    private val propertyHandlers = mutableMapOf<String, HuaweiDeviceHandler>()
+    private val store = mutableMapOf<String, MutableMap<String, String>>()
+    private val storeMutex = Mutex()
 
     fun registerHandler(handler: HuaweiDeviceHandler) {
         handlers.add(handler)
         for (cmd in handler.commandIds) {
             packageHandlers[cmd.toHex()] = handler
         }
+        for (cmd in handler.ignoreCommandIds) {
+            packageHandlers[cmd.toHex()] = null
+        }
+        for ((group, prop) in handler.properties) {
+            propertyHandlers["$group//$prop"] = handler
+        }
+    }
+
+    suspend fun putProperty(group: String, prop: String?, value: String?, extendGroup: Boolean = false) {
+        storeMutex.withLock {
+            if (prop == null) {
+                val incoming = parseObject(value)
+                store[group] = if (extendGroup) {
+                    (store[group] ?: mutableMapOf()).apply { putAll(incoming) }
+                } else {
+                    incoming.toMutableMap()
+                }
+            } else {
+                val target = store.getOrPut(group) { mutableMapOf() }
+                if (value == null) target.remove(prop) else target[prop] = value
+            }
+        }
+        LogBuffer.i("Prop", if (prop == null) "$group=*" else "$group.$prop=${value ?: "null"}")
+    }
+
+    suspend fun getProperty(group: String? = null, prop: String? = null, fallback: String? = null): String? {
+        return storeMutex.withLock {
+            when {
+                group == null -> store.entries.joinToString("\n") { (g, props) ->
+                    props.entries.joinToString("\n") { (p, v) -> "$g.$p=$v" }
+                }
+                prop == null -> store[group]?.entries?.joinToString("\n") { (p, v) -> "$group.$p=$v" } ?: fallback
+                else -> store[group]?.get(prop) ?: fallback
+            }
+        }
+    }
+
+    suspend fun setProperty(group: String, prop: String, value: String) {
+        val handler = propertyHandlers["$group//$prop"] ?: propertyHandlers["$group//"]
+        if (handler == null) {
+            LogBuffer.w("Prop", "No handler for $group.$prop")
+            return
+        }
+        handler.setProperty(this, group, prop, value)
     }
 
     /** 发起 RFCOMM 连接（对照 OfbDriverSppGeneric.start） */
@@ -60,6 +107,7 @@ class SppDriver(private val device: BluetoothDevice) {
         LogBuffer.i("SPP", "Connecting to ${device.name} (${device.address}) via RFCOMM port=$SPP_SERVICE_PORT...")
         try {
             // 使用端口号连接（对照 OpenFreebuds _spp_service_port）
+            scope = CoroutineScope(Dispatchers.IO + SupervisorJob())
             val sockClass = Class.forName("android.bluetooth.BluetoothSocket")
             val createMethod = device.javaClass.getMethod(
                 "createRfcommSocket", Int::class.javaPrimitiveType
@@ -88,20 +136,31 @@ class SppDriver(private val device: BluetoothDevice) {
         } catch (e: Exception) {
             LogBuffer.e("SPP", "Connection failed: ${e.message}")
             closeSocket()
+            scope.cancel()
             false
         }
     }
 
-    /** 初始化所有 Handler（对照 OfbDriverHuaweiGeneric._start_all_handlers） */
+    /** 初始化所有 Handler（对照 OfbDriverHandlerHuawei.init: 3s timeout, max 5 attempts） */
     private suspend fun initHandlers() {
         for (handler in handlers) {
-            try {
-                withTimeout(5000) {
-                    handler.onInit(this@SppDriver)
+            var success = false
+            for (attempt in 0 until 5) {
+                try {
+                    withTimeout(3000) {
+                        handler.onInit(this@SppDriver)
+                    }
+                    success = true
+                    LogBuffer.i("SPP", "Init ${handler.id} success (attempt=${attempt + 1})")
+                    break
+                } catch (e: TimeoutCancellationException) {
+                    LogBuffer.w("SPP", "Init ${handler.id} timeout (attempt=${attempt + 1})")
+                } catch (e: Exception) {
+                    LogBuffer.w("SPP", "Init ${handler.id} failed (attempt=${attempt + 1}): ${e.message}")
                 }
-                LogBuffer.i("SPP", "Init ${handler.id} success")
-            } catch (e: Exception) {
-                LogBuffer.w("SPP", "Init ${handler.id} failed: ${e.message}")
+            }
+            if (!success) {
+                LogBuffer.w("SPP", "Can't initialize ${handler.id}. Skipping.")
             }
         }
     }
@@ -163,28 +222,16 @@ class SppDriver(private val device: BluetoothDevice) {
                     continue
                 }
 
-                // 解析长度（双字节大端: head[1:3]）
-                val length = ((head[1].toInt() and 0xFF) shl 8) or (head[2].toInt() and 0xFF)
+                // 对照上游 __recv_pacakge: length 使用 heading[2]，读取 heading 后面的 length 字节。
+                val length = head[2].toInt() and 0xFF
                 if (length < 4) {
-                    val discard = ByteArray(length)
-                    var dOff = 0
-                    while (dOff < length) {
-                        val n = input.read(discard, dOff, length - dOff)
-                        if (n == -1) throw java.io.EOFException("Stream closed")
-                        dOff += n
-                    }
+                    readFully(input, ByteArray(length))
                     continue
                 }
 
-                // 读取包体（含CRC）
-                val bodyLen = length + 2
+                val bodyLen = length
                 val body = ByteArray(bodyLen)
-                off = 0
-                while (off < bodyLen) {
-                    val n = input.read(body, off, bodyLen - off)
-                    if (n == -1) throw java.io.EOFException("Stream closed")
-                    off += n
-                }
+                readFully(input, body)
 
                 val pkgBytes = head + body
                 LogBuffer.d("SPP", "RX: ${pkgBytes.toHex()}")
@@ -214,9 +261,11 @@ class SppDriver(private val device: BluetoothDevice) {
             }
         }
 
-        val handler = packageHandlers[cmdKey]
-        if (handler != null) {
-            handler.onPackage(pkg)
+        if (packageHandlers.containsKey(cmdKey)) {
+            val handler = packageHandlers[cmdKey]
+            if (handler != null) {
+                handler.onDriverPackage(this, pkg)
+            }
         } else {
             LogBuffer.d("SPP", "No handler for cmd=${pkg.commandId.toHex()}")
         }
@@ -224,7 +273,6 @@ class SppDriver(private val device: BluetoothDevice) {
 
     fun disconnect() {
         job?.cancel()
-        scope.cancel()
         closeSocket()
         isConnected = false
         LogBuffer.i("SPP", "Disconnected")
@@ -233,16 +281,41 @@ class SppDriver(private val device: BluetoothDevice) {
     private fun closeSocket() {
         try {
             inputStream?.close()
-        } catch (_: Exception) {}
+        } catch (e: Exception) {
+            LogBuffer.w("SPP", "Input close failed: ${e.message}")
+        }
         try {
             outputStream?.close()
-        } catch (_: Exception) {}
+        } catch (e: Exception) {
+            LogBuffer.w("SPP", "Output close failed: ${e.message}")
+        }
         try {
             closeMethod?.invoke(socket)
-        } catch (_: Exception) {}
+        } catch (e: Exception) {
+            LogBuffer.w("SPP", "Socket close failed: ${e.message}")
+        }
         socket = null
         inputStream = null
         outputStream = null
+    }
+
+    private fun readFully(input: InputStream, buffer: ByteArray) {
+        var off = 0
+        while (off < buffer.size) {
+            val n = input.read(buffer, off, buffer.size - off)
+            if (n == -1) throw java.io.EOFException("Stream closed")
+            off += n
+        }
+    }
+
+    private fun parseObject(value: String?): Map<String, String> {
+        if (value.isNullOrBlank()) return emptyMap()
+        return value.lineSequence()
+            .mapNotNull { line ->
+                val idx = line.indexOf('=')
+                if (idx <= 0) null else line.substring(0, idx) to line.substring(idx + 1)
+            }
+            .toMap()
     }
 
     private fun ByteArray.toHex(): String = joinToString("") { "%02x".format(it) }
