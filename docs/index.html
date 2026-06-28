@@ -228,6 +228,19 @@ nav .links a:hover{color:#fff}
 }
 .timeline-desc code{background:rgba(124,124,240,.1);padding:1px 6px;border-radius:4px;font-size:12px;color:#b388ff}
 .timeline-detail{display:none;margin-top:10px;font-size:13px;color:rgba(255,255,255,.45);line-height:1.7;padding:12px 16px;background:rgba(255,255,255,.015);border-radius:10px;border:1px solid rgba(255,255,255,.04)}
+.timeline-detail p{margin-bottom:8px}
+.timeline-detail code{background:rgba(124,124,240,.1);padding:1px 6px;border-radius:4px;font-size:12px;color:#b388ff}
+.timeline-detail pre{background:rgba(0,0,0,.3);padding:10px 14px;border-radius:8px;overflow-x:auto;margin:8px 0;border:1px solid rgba(255,255,255,.06)}
+.timeline-detail pre code{background:none;padding:0;font-size:12px;color:#a0a0e0}
+.timeline-detail h3,.timeline-detail h4{font-size:14px;color:#b388ff;margin:12px 0 6px;font-weight:600}
+.timeline-detail ul,.timeline-detail ol{padding-left:20px;margin:6px 0}
+.timeline-detail li{margin-bottom:4px}
+.timeline-detail strong{color:rgba(255,255,255,.7)}
+.timeline-detail a{color:#7c7cf0;text-decoration:underline}
+.timeline-detail hr{margin:12px 0;border:none;border-top:1px solid rgba(255,255,255,.06)}
+.timeline-detail table{width:100%;border-collapse:collapse;margin:8px 0;font-size:12px}
+.timeline-detail th,.timeline-detail td{padding:4px 8px;border:1px solid rgba(255,255,255,.08);text-align:left}
+.timeline-detail th{background:rgba(124,124,240,.08);color:#b388ff;font-weight:600}
 .timeline-detail.open{display:block;animation:fadeIn .3s ease}
 .timeline-toggle{
   display:inline-block;margin-top:8px;font-size:11px;color:#7c7cf0;cursor:pointer;
@@ -280,6 +293,7 @@ footer a{color:rgba(124,124,240,.5)}
 footer a:hover{color:#7c7cf0}
 footer .spacer{display:inline-block;margin:0 8px;color:rgba(255,255,255,.1)}
 </style>
+<script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
 </head>
 <body>
 
@@ -569,14 +583,13 @@ function parseDevelopmentLog(text) {
     // 摘要：取前35字的完整片断
     const plain = fullDesc.replace(/\*\*/g,'').replace(/`/g,'').replace(/\[([^\]]+)\]\([^)]+\)/g,'$1').replace(/#+\s/g,'').trim();
     const summary = plain.length > 35 ? plain.slice(0, 35).replace(/\s\S*$/,'') + '…' : (plain || '暂无摘要');
-    // 详情：markdown简单转HTML
-    let detail = fullDesc
-      .replace(/\n{3,}/g,'\n\n')
-      .replace(/\*\*([^*]+)\*\*/g,'<strong>$1</strong>')
-      .replace(/`([^`]+)`/g,'<code>$1</code>')
-      .replace(/\[([^\]]+)\]\(([^)]+)\)/g,'<a href="$2" target="_blank">$1</a>')
-      .replace(/^### (.*)$/gm,'<em style="color:#b388ff">$1</em>')
-      .replace(/\n/g,'<br>');
+    // 详情：完整 Markdown 渲染
+let detail = fullDesc
+.replace(/\|([^|]+)\|/g,'')
+.replace(/\n{3,}/g,'\n\n')
+.replace(/否\n/g,'')
+.replace(/否/g,'');
+try { detail = marked.parse(detail); } catch(e) { detail = fullDesc.replace(/\n/g,'<br>'); }
     versions.push({
       version: m.version,
       date: m.date || '—',
