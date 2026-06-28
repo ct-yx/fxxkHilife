@@ -8,7 +8,7 @@
   <b>A lightweight offline controller for HUAWEI FreeBuds / HONOR Earbuds</b>
 </p>
 
-> **v2.1.2** — Parallel Handler init (12s global timeout), ANC passive notification (`2b2c`) support, capability table fix (remove TripleTap for 6i), battery notify integration.
+> **v2.1.2** — Parallel Handler init (12s global timeout), ANC passive notification (`2b2c`) support, battery notify integration.
 >
 > Controls your earbuds directly via classic Bluetooth SPP — no login, no ads, fully offline.
 

@@ -118,11 +118,15 @@
 - **ANC 被动通知 (`2b2c`)**：AncHandler 新增 `2b2c` 命令支持，处理 6i 主动推送的 ANC 模式变更通知（单字节 param 格式）。
 
 ### 缺陷修复
-- **6i 能力表修正**：去除 FreeBuds 6i 的 `TRIPLE_TAP`，实测 `0126` 请求不响应。
 - **AncHandler `onPackage` 双格式兼容**：`2b2a` 响应（2字节 param）和 `2b2c` 推送（1字节 param）统一处理。
 
 ### 其他
 - 版本文档更新：README.md、README_EN.md、DEVELOPMENT_LOG.md、strings.xml
+
+### 已知问题
+- **Battery `0108`**：FreeBuds 6i 对主动读取请求无响应，电池状态需依赖 `BATTERY_NOTIFY` 被动通知（`onDriverPackage` 已对接）
+- **TripleTap `0126`**：6i 官方支持三击（手势界面有配置入口），但当前 `0126` 读请求未获响应，需进一步排查命令码差异或参数格式
+- **均衡器预设（EQ Preset/Custom）和双设备连接（Dual Connect）**：未实现
 
 ### 编译修复
 - TerminalActivity 中 `needle is Int || hasCap(needle)` 类型推断歧义改为显式分支判断

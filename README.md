@@ -8,7 +8,7 @@
   <b>HUAWEI FreeBuds / HONOR Earbuds 的轻量离线控制 App</b>
 </p>
 
-> **v2.1.2** — 并行 Handler 初始化（12s 全局超时），ANC 被动通知 (`2b2c`) 支持，能力表修正（6i 去除 TripleTap），电池被动通知对接。
+> **v2.1.2** — 并行 Handler 初始化（12s 全局超时），ANC 被动通知 (`2b2c`) 支持，电池被动通知对接。
 >
 > 通过蓝牙 SPP 直接控制耳机，无需登录、无广告、完全离线。
 
