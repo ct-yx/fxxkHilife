@@ -51,16 +51,16 @@ class BatteryHandler(private val wTws: Boolean = true) : HuaweiDeviceHandler {
     private suspend fun onPackage(pkg: HuaweiSppPackage, driver: SppDriver) {
         val out = mutableMapOf<String, String>()
 
-        // param 1: 综合电量 (1 byte)
+        // param 1: 综合电量 (至少 1 byte)
         val p1 = pkg.findParam(1)
-        if (p1.isNotEmpty() && p1.size == 1) {
+        if (p1.isNotEmpty()) {
             out["global"] = (p1[0].toInt() and 0xFF).toString()
         }
 
-        // param 2: 左右耳+充电盒 (3 bytes: left, right, case)
+        // param 2: 左右耳+充电盒 (至少 3 bytes)
         if (wTws) {
             val p2 = pkg.findParam(2)
-            if (p2.size == 3) {
+            if (p2.size >= 3) {
                 out["left"] = (p2[0].toInt() and 0xFF).toString()
                 out["right"] = (p2[1].toInt() and 0xFF).toString()
                 out["case"] = (p2[2].toInt() and 0xFF).toString()
@@ -73,7 +73,8 @@ class BatteryHandler(private val wTws: Boolean = true) : HuaweiDeviceHandler {
             out["is_charging"] = if (p3.contains(0x01.toByte())) "true" else "false"
         }
 
-        // 写入属性存储，对照上游 put_property("battery", None, out)
+        LogBuffer.i("Battery", "Update: $out")
+
         driver.putProperty("battery", null, out.entries.joinToString("\n") { (k, v) -> "$k=$v" })
 
         batteryCallback?.invoke(out.mapValues { it.value.toIntOrNull() })
