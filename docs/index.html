@@ -697,8 +697,10 @@ function switchLang() {
     return nearest;
   }
 
-  function updateUI(ratio){
+  function moveThumb(ratio){
     thumb.style.top = (ratio * 100) + '%';
+  }
+  function highlightNearest(ratio){
     const idx = findNearest(ratio);
     stops.forEach((s,i) => s && s.classList.toggle('active', i === idx));
     labelEls.forEach((l,i) => l && l.classList.toggle('active', i === idx));
@@ -710,7 +712,8 @@ function switchLang() {
     const total = document.documentElement.scrollHeight - window.innerHeight;
     if(total <= 0) return;
     const ratio = Math.max(0, Math.min(1, scrollY / total));
-    updateUI(ratio);
+    moveThumb(ratio);
+    highlightNearest(ratio);
     nav.classList.add('show');
     clearTimeout(hideTimer);
     hideTimer = setTimeout(() => nav.classList.remove('show'), 2000);
@@ -724,14 +727,16 @@ function switchLang() {
   function onDragStart(e){
     isDragging = true;
     const ratio = calcRatio(e);
-    updateUI(ratio);
+    moveThumb(ratio);
+    highlightNearest(ratio);
     e.preventDefault();
   }
 
   function onDragMove(e){
     if(!isDragging) return;
     const ratio = calcRatio(e);
-    updateUI(ratio);
+    moveThumb(ratio);
+    highlightNearest(ratio);
     e.preventDefault();
   }
 
@@ -746,7 +751,8 @@ function switchLang() {
       ratio = calcRatio(e);
     }
     const idx = findNearest(ratio);
-    updateUI(stopPositions[idx]);
+    moveThumb(stopPositions[idx]);
+    highlightNearest(stopPositions[idx]);
     scrollToSection(idx);
   }
   // 点击节点直接跳转
