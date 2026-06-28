@@ -498,6 +498,7 @@ document.querySelectorAll('.reveal').forEach(el => observer.observe(el));
     const text = await resp.text();
     const items = parseDevelopmentLog(text);
     if(items.length === 0) throw new Error('No releases found');
+    items.reverse();
     container.innerHTML = items.map((item, i) => `
       <div class="timeline-item" style="animation:fadeUp .6s ${i * 0.08}s both cubic-bezier(.16,1,.3,1)">
         <div class="timeline-dot"></div>
