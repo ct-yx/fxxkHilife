@@ -133,7 +133,7 @@ fun DeviceScreen(viewModel: DeviceViewModel, onOpenTerminal: () -> Unit) {
                 if (props.swipeGesture != null) {
                     item {
                         OptionSettingItem(
-                            icon = Icons.Default.SwipeRight,
+                            icon = Icons.Default.Swipe,
                             title = "滑动手势",
                             current = props.swipeGesture,
                             options = props.swipeGestureOptions,
