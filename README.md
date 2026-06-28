@@ -8,7 +8,7 @@
   <b>HUAWEI FreeBuds / HONOR Earbuds 的轻量离线控制 App</b>
 </p>
 
-> **v2.0.0-stable.2** — 端口号方式恢复，修复粘包同步与电池解析。
+> **v2.1.0** — 完整移植 15 个上游 Handler（ANC、手势、佩戴检测、信息、自动暂停、低延迟、音质等），协议层与 OpenFreebuds 精准对齐。
 >
 > 通过蓝牙 SPP 直接控制耳机，无需登录、无广告、完全离线。
 
@@ -30,10 +30,11 @@ cd fxxkHilife
 
 ## 项目状态
 
-当前版本：**v2.0.0-stable.2**
+当前版本：**v2.1.0**
 
 - 旧 v1.7.3 版本已归档（分支 `main-archived`）
-- 已完成：项目骨架、终端界面、签名统一、更新检查、屏幕适配、快捷按钮栏、协议命令词典、设备能力表（12型号）、蓝牙扫描、SPP驱动、Handler接口
+- 已完成：协议层收包/解析精准对齐 OpenFreebuds，属性存储系统，`props/set` 终端命令，15 个上游 Handler（InfoHandler、BatteryHandler、InEarHandler、LogsHandler、AutoPauseHandler、LowLatencyHandler、SoundQualityHandler、VoiceLanguageHandler、AncLegacyChangeHandler、AncHandler、DoubleTapHandler、TripleTapHandler、SwipeGestureHandler、LongTapHandler、PowerButtonHandler）
+- 协议架构全面匹配上游 `OfbDriverHandlerHuawei` 的 `handler_id`/`commands`/`ignore_commands`/`properties` 路由体系
 - CI 通过 GitHub Actions 自动编译并发布 Release
 - 开发记录见 [DEVELOPMENT_LOG.md](./DEVELOPMENT_LOG.md)
 

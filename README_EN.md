@@ -8,7 +8,7 @@
   <b>A lightweight offline controller for HUAWEI FreeBuds / HONOR Earbuds</b>
 </p>
 
-> **v2.0.0-stable.1** — Reverted to RFCOMM SPP (strictly matching OpenFreebuds), fixed packet parsing and battery reading.
+> **v2.1.0** — Fully ported 15 upstream Handlers (ANC, gestures, in-ear detection, device info, auto-pause, low-latency, sound quality, voice language, etc.), protocol layer precisely aligned with OpenFreebuds.
 >
 > Controls your earbuds directly via classic Bluetooth SPP — no login, no ads, fully offline.
 
@@ -30,10 +30,11 @@ cd fxxkHilife
 
 ## Project Status
 
-Current version: **v2.0.0-stable.1**
+Current version: **v2.1.0**
 
 - Previous v1.7.3 release archived (branch `main-archived`)
-- Completed: project skeleton, terminal UI, unified signing, update checker, layout adaptation, shortcut buttons, protocol command dictionary, device capability table (12 models), BT scanning, SPP driver, Handler interface
+- Completed: protocol layer packet recv/parse precisely aligned with OpenFreebuds, property storage system, `props/set` terminal commands, 15 upstream Handlers (InfoHandler, BatteryHandler, InEarHandler, LogsHandler, AutoPauseHandler, LowLatencyHandler, SoundQualityHandler, VoiceLanguageHandler, AncLegacyChangeHandler, AncHandler, DoubleTapHandler, TripleTapHandler, SwipeGestureHandler, LongTapHandler, PowerButtonHandler)
+- Handler architecture fully matches upstream `OfbDriverHandlerHuawei`'s `handler_id`/`commands`/`ignore_commands`/`properties` routing system
 - CI compiles via GitHub Actions and publishes Release automatically
 - Development log: [DEVELOPMENT_LOG.md](./DEVELOPMENT_LOG.md)
 

@@ -56,3 +56,55 @@
 - FreeBuds 6i 已确认 SPP 连接成功，电池读取正验证中
 - 更多 Handler（ANC、手势等）尚未实现
 - SPP 端口号目前硬编码为 1，未来需根据型号动态配置
+
+## v2.1.0 (2026-06-28)
+
+### 协议层精准修复
+
+**收包长度修正**（`SppDriver.recvLoop`）：
+- `head[1:3]` 双字节 → `heading[2]` 单字节，匹配上游 `__recv_pacakge`
+- 读取 `heading` 后只读 body `length` 字节，去掉多余的 +2（匹配 `await reader.read(length)`）
+- 新增 `readFully()` 同步读取辅助，处理 TCP 粘包
+
+**参数解析边界修正**（`HuaweiSppPackage.fromBytes`）：
+- 循环终止条件 `pos < len + 4` → `pos < len + 3`，匹配上游 `while position < length + 3`
+- 新增参数读写 `pos + 1 >= data.size` 和 `pos + 2 + l > data.size` 边界保护
+
+**Handler 初始化重试**：
+- 从单次 5s 超时 → 5 次重试 × 3s 超时（匹配上游 `OfbDriverHandlerHuawei.init`）
+
+### 属性存储系统
+- `putProperty`/`getProperty`/`setProperty`——完整的属性存储接口，与上游 `put_property`/`get_property` 对标
+- 支持 `(group, prop)` 键值对以及 `extendGroup` 批量写入
+- `setProperty` 自动路由到对应 Handler 的 `setProperty()` 方法
+- `registerHandler` 注册 `commandIds`、`ignoreCommandIds`、`properties` 全路由
+- `packageHandlers` 分发区分 `containsKey`（ 表示精确忽略，不存在表示未注册）
+
+### 15 个上游 Handler 移植
+
+| Handler | 功能 | 上游对照文件 |
+|---------|------|-------------|
+| `InfoHandler` | 设备信息（型号、固件、序列号） | `handlers/device_info.py` |
+| `LogsHandler` | 忽略硬件日志包 `0a 0d` | `handlers/logs.py` |
+| `InEarHandler` | 佩戴检测 `2b 03` | `handlers/state_in_ear.py` |
+| `AutoPauseHandler` | 自动暂停开关 `2b 11` | `handlers/config_auto_pause.py` |
+| `LowLatencyHandler` | 游戏/低延迟模式 `2b 6c` | `handlers/low_latency.py` |
+| `SoundQualityHandler` | 连接质量 vs 音质 | `handlers/sound_quality_preference.py` |
+| `VoiceLanguageHandler` | 语音语言读写 | `handlers/service_language.py` |
+| `AncLegacyChangeHandler` | ANC 按钮变更检测 | `handlers/anc_change.py` |
+| `AncHandler` | ANC 模式/级别读写 | `handlers/anc.py` |
+| `DoubleTapHandler` | 双击手势 | `handlers/action_dual_tap.py` |
+| `TripleTapHandler` | 三击手势 | `handlers/action_triple_tap.py` |
+| `SwipeGestureHandler` | 滑动手势（音量控制） | `handlers/action_swipe_gesture.py` |
+| `LongTapHandler` | 长按配置 | `handlers/action_long_tap.py` |
+| `PowerButtonHandler` | 电源键双击（FreeBuds Studio） | `handlers/action_power_button.py` |
+
+### 终端扩展
+- `props`：打印当前属性存储内容
+- `set group.prop value`：写入属性，路由到 `Handler.setProperty()`
+- `connectToDevice` 重构为 `registerOpenFreebudsHandlers(driver)` 单次注册全部 Handler
+
+### 未移植
+- `OfbHuaweiEqualizerPresetHandler`（均衡器预设）
+- `OfbHuaweiDualConnectHandler`（双连模式）
+- 需要后续迭代补充
