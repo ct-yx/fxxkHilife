@@ -27,7 +27,7 @@ class InfoHandler : HuaweiDeviceHandler {
     )
 
     override suspend fun onInit(driver: SppDriver) {
-        driver.sendPackage(HuaweiSppPackage.readRequest(b(0x01, 0x07), *IntArray(32) { it + 0 }.toTypedArray()))?.let { onPackage(it, driver) }
+        driver.sendPackage(HuaweiSppPackage.readRequest(b(0x01, 0x07), 3, 7, 9, 10, 15))?.let { onPackage(it, driver) }
     }
 
     override suspend fun onDriverPackage(driver: SppDriver, pkg: HuaweiSppPackage) {
