@@ -4,7 +4,6 @@ import android.content.Intent
 import android.net.Uri
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
-import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
@@ -27,11 +26,6 @@ import com.freebuds.controller.data.DeviceViewModel
 import com.freebuds.controller.util.LogBuffer
 import com.freebuds.controller.ui.theme.ThemeMode
 import com.freebuds.controller.ui.theme.saveThemeMode
-import dev.chrisbanes.haze.HazeState
-import dev.chrisbanes.haze.HazeStyle
-import dev.chrisbanes.haze.HazeTint
-import dev.chrisbanes.haze.haze
-import dev.chrisbanes.haze.hazeChild
 
 enum class WallpaperScope { ALL, HOME, SETTINGS }
 
@@ -249,56 +243,36 @@ private fun ThemeSelector(
         ThemeMode.DARK to "深色",
         ThemeMode.LIGHT to "浅色",
     )
-    val hazeState = remember { HazeState() }
 
-    Box(
+    Row(
         modifier = Modifier
             .fillMaxWidth()
-            .padding(horizontal = 16.dp, vertical = 8.dp)
-            .clip(MaterialTheme.shapes.medium)
+            .padding(horizontal = 16.dp, vertical = 8.dp),
+        horizontalArrangement = Arrangement.spacedBy(8.dp)
     ) {
-        Box(modifier = Modifier.fillMaxWidth().haze(state = hazeState)) {
-            Row(
-                modifier = Modifier.fillMaxWidth().padding(4.dp),
-                horizontalArrangement = Arrangement.spacedBy(4.dp)
+        options.forEach { (mode, label) ->
+            val selected = mode == current
+            Surface(
+                modifier = Modifier
+                    .weight(1f)
+                    .clickable { onSelect(mode) },
+                shape = MaterialTheme.shapes.small,
+                color = if (selected) MaterialTheme.colorScheme.primary
+                else MaterialTheme.colorScheme.surfaceVariant,
+                tonalElevation = if (selected) 2.dp else 0.dp,
             ) {
-                options.forEach { (mode, label) ->
-                    val selected = mode == current
-                    Surface(
-                        modifier = Modifier
-                            .weight(1f)
-                            .clickable { onSelect(mode) },
-                        shape = MaterialTheme.shapes.small,
-                        color = if (selected) MaterialTheme.colorScheme.primary
-                        else MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f),
-                    ) {
-                        Text(
-                            label,
-                            modifier = Modifier.padding(vertical = 12.dp),
-                            textAlign = TextAlign.Center,
-                            style = MaterialTheme.typography.labelLarge,
-                            fontWeight = if (selected) FontWeight.Bold else FontWeight.Normal,
-                            color = if (selected) MaterialTheme.colorScheme.onPrimary
-                            else MaterialTheme.colorScheme.onSurface,
-                        )
-                    }
-                }
+                Text(
+                    label,
+                    modifier = Modifier.padding(vertical = 12.dp),
+                    textAlign = TextAlign.Center,
+                    style = MaterialTheme.typography.labelLarge,
+                    fontWeight = if (selected) FontWeight.Bold else FontWeight.Normal,
+                    color = if (selected) MaterialTheme.colorScheme.onPrimary
+                    else MaterialTheme.colorScheme.onSurface,
+                )
             }
         }
-        val scheme = MaterialTheme.colorScheme
-        Box(
-            modifier = Modifier
-                .matchParentSize()
-                .hazeChild(state = hazeState) {
-                    style = HazeStyle(
-                        blurRadius = 10.dp,
-                        tint = HazeTint(scheme.surface.copy(alpha = 0.3f))
-                    )
-                }
-        )
     }
-
-    // 不需要圆形按钮模糊预览
 }
 
 @Composable

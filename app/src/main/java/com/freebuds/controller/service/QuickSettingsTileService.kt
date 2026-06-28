@@ -8,19 +8,23 @@ import androidx.annotation.RequiresApi
 import com.freebuds.controller.HilifeApplication
 import com.freebuds.controller.data.ConnectionState
 import com.freebuds.controller.ui.MainActivity
+import kotlinx.coroutines.MainScope
+import kotlinx.coroutines.launch
 
 /**
- * Quick Settings Tile — 一键启动或切换 ANC 模式。
- * 点击：打开应用
- * 长按：切换 ANC 模式 (关闭 → 降噪 → 透传 → 关闭)
+ * Quick Settings Tile — 一键切换 ANC 模式 / 打开应用。
+ * 已连接时：点击切换 ANC (关闭 → 降噪 → 透传 → 关闭)
+ * 未连接时：点击打开应用
  */
 @RequiresApi(Build.VERSION_CODES.N)
 class QuickSettingsTileService : TileService() {
 
+    private val scope = MainScope()
+
     override fun onTileAdded() {
         super.onTileAdded()
         qsTile?.apply {
-            label = "fxxkHilife"
+            label = "ANC"
             state = Tile.STATE_INACTIVE
             updateTile()
         }
@@ -34,30 +38,56 @@ class QuickSettingsTileService : TileService() {
     override fun onClick() {
         super.onClick()
         val repo = HilifeApplication.instance.deviceRepository
-        if (repo.connectionState.value is ConnectionState.Connected) {
-            // 长按行为 → 切换 ANC（因 onClick 无法区分单点，用状态判断）
-            // 这里保持简单：直接打开应用
+        val connState = repo.connectionState.value
+        if (connState is ConnectionState.Connected) {
+            // 切换 ANC 模式
+            val currentMode = repo.props.value.ancMode
+            val nextMode = when (currentMode) {
+                "normal" -> "cancellation"
+                "cancellation" -> "awareness"
+                "awareness" -> "normal"
+                else -> "normal"
+            }
+            scope.launch {
+                repo.setProperty("anc", "mode", nextMode)
+            }
+            // 延迟后更新 Tile 状态
+            android.os.Handler(mainLooper).postDelayed({ updateTileState() }, 800)
+        } else {
+            // 未连接 → 打开应用
+            startActivityAndCollapse(Intent(this, MainActivity::class.java).apply {
+                addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+            })
         }
-        // 打开应用
-        startActivityAndCollapse(Intent(this, MainActivity::class.java).apply {
-            addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
-        })
     }
 
     private fun updateTileState() {
         val repo = HilifeApplication.instance.deviceRepository
+        val connState = repo.connectionState.value
         qsTile?.apply {
-            state = when (repo.connectionState.value) {
+            state = when (connState) {
                 is ConnectionState.Connected -> Tile.STATE_ACTIVE
                 is ConnectionState.Connecting -> Tile.STATE_UNAVAILABLE
                 else -> Tile.STATE_INACTIVE
             }
-            subtitle = when {
-                repo.connectionState.value is ConnectionState.Connected -> "已连接"
-                repo.connectionState.value is ConnectionState.Connecting -> "连接中..."
+            subtitle = when (connState) {
+                is ConnectionState.Connected -> {
+                    val ancLabel = when (repo.props.value.ancMode) {
+                        "cancellation" -> "降噪"
+                        "awareness" -> "透传"
+                        "normal" -> "关闭"
+                        else -> repo.props.value.ancMode
+                    }
+                    "已连接 · $ancLabel"
+                }
+                is ConnectionState.Connecting -> "连接中…"
                 else -> "未连接"
             }
             updateTile()
         }
+    }
+
+    override fun onDestroy() {
+        super.onDestroy()
     }
 }

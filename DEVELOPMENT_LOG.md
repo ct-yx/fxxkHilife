@@ -308,3 +308,60 @@
 | `HomeScreen.kt` | +6/-1 — savedAddresses 响应式刷新 |
 
 
+## v2.5.0 (2026-06-28)
+
+### 阶段一：ANC UI 状态同步 + 移除 Haze
+
+**Haze 模糊效果完全移除**：
+- `DeviceScreen.kt`：`AncModeSlider` 从 Haze 双层 Box（hazeState + haze/hazeChild）替换为简单 `Row + Surface` 分段控件
+- `SettingsScreen.kt`：`ThemeSelector` 同样移除 Haze，改用 `Row + Surface` 原生 Material3 样式
+- 同时清除了两个文件中所有 Haze 相关 import（`HazeState`/`HazeStyle`/`HazeTint`/`haze`/`hazeChild`）
+- 选中项通过 `tonalElevation = 2.dp` 提供轻微浮起效果替代模糊
+
+**ANC 被动渲染确认**：
+- `AncHandler.setProperty` 在第 253 行已先 `putProperty(group, prop, value)` 写入预期值再 `sendPackage`（2b04 在 ignoreCommandIds 中不等待响应）
+- UI 通过 `props.collectAsState()` 直接读取 `props.ancMode`，完全被动渲染，切换无延迟
+
+### 阶段二：导航逻辑修复
+
+**确认无问题**：
+- HomeScreen 的 `SavedDeviceItem` 已在 v2.4.1 修复 `clickable` 事件冲突（clickable 下放到子组件）
+- AppNavHost 中 `LaunchedEffect(connState)` 检测 `Connected` 后自动切到 `Device` 页
+
+### 阶段三：通知系统增强
+
+**已确认实现完整**：
+- BluetoothService 前景通知（startForeground）+ props.collect 实时更新 + 3 个 ANC Action 按钮
+- NotificationChannel 重要性 IMPORTANCE_DEFAULT，发送 POST_NOTIFICATIONS 权限请求
+- 通知内容含 ANC 模式、音质模式、低延迟状态、佩戴时长
+
+### 阶段四：Quick Settings Tile 完善
+
+**功能增强**：
+- Tile `label` 从 "fxxkHilife" 改为 "ANC"
+- 已连接时 `onClick` 直接切换 ANC 模式（关闭→降噪→透传→关闭）
+- 未连接时打开 MainActivity
+- Tile 副标题实时显示当前 ANC 模式中文标签（降噪/透传/关闭）
+- 切换后 800ms 延迟更新 Tile 状态
+
+### 阶段五：Init 超时优化
+
+**重试策略改进**：
+- `DeviceRepository.retryFailedHandlers` 重试间隔从固定 30s → 阶梯式（前 3 次 5s，之后 30s）
+- 新增 `attempt` 计数器，日志输出当前 attempt 编号
+- 关键 Handler（如 anc_global）能在连接后快速重试成功
+
+### 文件变更
+| 文件 | 变更 |
+|------|------|
+| `DeviceScreen.kt` | +27/-61 — Haze 移除，AncModeSlider 重写为 Row+Surface |
+| `SettingsScreen.kt` | +25/-50 — Haze 移除，ThemeSelector 重写为 Row+Surface |
+| `QuickSettingsTileService.kt` | +45/-15 — 一键 ANC 切换 + 实时状态副标题 |
+| `DeviceRepository.kt` | +7/-4 — 阶梯式重试间隔 |
+| `app/build.gradle.kts` | +2/-2 — 版本号 16→17, 2.4.1→2.5.0 |
+| `README.md` | +4/-4 — 版本号 + 功能描述更新 |
+| `README_EN.md` | +4/-4 — 版本号 + 功能描述更新 |
+| `VERSION_MANAGEMENT.md` | +7/-7 — 版本号 + 历史表格更新 |
+| `DEVELOPMENT_LOG.md` | +55 — v2.5.0 记录 |
+| **合计** | **~176/~147 行** |
+

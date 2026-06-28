@@ -9,8 +9,6 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.clip
-import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
@@ -18,11 +16,6 @@ import androidx.compose.ui.unit.dp
 import com.freebuds.controller.data.ConnectionState
 import com.freebuds.controller.data.DeviceProps
 import com.freebuds.controller.data.DeviceViewModel
-import dev.chrisbanes.haze.HazeState
-import dev.chrisbanes.haze.HazeStyle
-import dev.chrisbanes.haze.HazeTint
-import dev.chrisbanes.haze.haze
-import dev.chrisbanes.haze.hazeChild
 
 // ── 中文映射（DeviceScreen 专用）──────────────────────────────────────────
 
@@ -338,7 +331,7 @@ private fun OptionsDialog(title: String, options: List<String>, rawOptions: List
     )
 }
 
-// ── ANC 模式 haze 模糊滑块 ──────────────────────────────────────────────
+// ── ANC 模式分段选择器 ──────────────────────────────────────────────
 
 @Composable
 private fun AncModeSlider(
@@ -346,67 +339,38 @@ private fun AncModeSlider(
     options: List<String>,
     onSelect: (String) -> Unit,
 ) {
-    val hazeState = remember { HazeState() }
-    val selectedIndex = options.indexOf(current).coerceAtLeast(0)
-
-    Box(
+    Row(
         modifier = Modifier
             .fillMaxWidth()
-            .padding(horizontal = 16.dp, vertical = 8.dp)
-            .clip(MaterialTheme.shapes.medium)
+            .padding(horizontal = 16.dp, vertical = 8.dp),
+        horizontalArrangement = Arrangement.spacedBy(8.dp)
     ) {
-        // 模糊背景层
-        Box(
-            modifier = Modifier
-                .fillMaxWidth()
-                .haze(state = hazeState)
-        ) {
-            Row(
+        options.forEach { raw ->
+            val label = chineseAncMode(raw)
+            val isSelected = raw == current
+            Surface(
                 modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(4.dp),
-                horizontalArrangement = Arrangement.spacedBy(4.dp)
+                    .weight(1f)
+                    .clickable { onSelect(raw) },
+                shape = MaterialTheme.shapes.small,
+                color = if (isSelected)
+                    MaterialTheme.colorScheme.primary
+                else
+                    MaterialTheme.colorScheme.surfaceVariant,
+                tonalElevation = if (isSelected) 2.dp else 0.dp,
             ) {
-                options.forEachIndexed { idx, raw ->
-                    val label = chineseAncMode(raw)
-                    val isSelected = idx == selectedIndex
-                    Surface(
-                        modifier = Modifier
-                            .weight(1f)
-                            .clickable { onSelect(raw) },
-                        shape = MaterialTheme.shapes.small,
-                        color = if (isSelected)
-                            MaterialTheme.colorScheme.primary
-                        else
-                            MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f),
-                    ) {
-                        Text(
-                            label,
-                            modifier = Modifier.padding(vertical = 12.dp),
-                            textAlign = TextAlign.Center,
-                            style = MaterialTheme.typography.labelLarge,
-                            fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Normal,
-                            color = if (isSelected)
-                                MaterialTheme.colorScheme.onPrimary
-                            else
-                                MaterialTheme.colorScheme.onSurface,
-                        )
-                    }
-                }
+                Text(
+                    label,
+                    modifier = Modifier.padding(vertical = 12.dp),
+                    textAlign = TextAlign.Center,
+                    style = MaterialTheme.typography.labelLarge,
+                    fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Normal,
+                    color = if (isSelected)
+                        MaterialTheme.colorScheme.onPrimary
+                    else
+                        MaterialTheme.colorScheme.onSurface,
+                )
             }
         }
-
-        // haze 子层：模糊 + 折射
-        val scheme = MaterialTheme.colorScheme
-        Box(
-            modifier = Modifier
-                .matchParentSize()
-                .hazeChild(state = hazeState) {
-                    style = HazeStyle(
-                        blurRadius = 10.dp,
-                        tint = HazeTint(scheme.surface.copy(alpha = 0.3f))
-                    )
-                }
-        )
     }
 }

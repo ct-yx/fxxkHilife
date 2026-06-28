@@ -166,14 +166,17 @@ class DeviceRepository {
         p.edit().putStringSet("saved_devices", set).apply()
     }
 
-    // ── 后台重试失败 Handler（30s 间隔）───────────────────────────────────
+    // ── 后台重试失败 Handler（阶梯间隔：前 3 次 5s，之后 30s）───────────
 
     private fun retryFailedHandlers() {
         retryJob?.cancel()
         if (failedHandlers.isEmpty()) return
         retryJob = scope.launch {
+            var attempt = 0
             while (isActive && driver?.isConnected == true && failedHandlers.isNotEmpty()) {
-                delay(30_000) // 30 秒间隔
+                val delayMs = if (attempt < 3) 5_000L else 30_000L
+                delay(delayMs)
+                attempt++
                 val d = driver ?: break
                 val toRemove = mutableListOf<String>()
                 for (handlerId in failedHandlers) {
@@ -182,10 +185,10 @@ class DeviceRepository {
                         withTimeout(1500) {
                             handler.onInit(d)
                         }
-                        LogBuffer.i("SPP", "Retry init $handlerId success")
+                        LogBuffer.i("SPP", "Retry init $handlerId success (attempt=$attempt)")
                         toRemove.add(handlerId)
                     } catch (_: Exception) {
-                        LogBuffer.w("SPP", "Retry init $handlerId still failed, will retry in 30s")
+                        LogBuffer.w("SPP", "Retry init $handlerId still failed (attempt=$attempt), will retry in ${delayMs/1000}s")
                     }
                 }
                 failedHandlers.removeAll(toRemove)
