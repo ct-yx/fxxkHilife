@@ -46,6 +46,9 @@ class DeviceViewModel : ViewModel() {
     fun getSavedAddress(): String? = repo.getSavedAddress()
     fun removeSavedDevice(address: String) = repo.removeSavedDevice(address)
 
+    // ── 前后台感知 ────────────────────────────────────────────────────────────
+    fun setAppInForeground(foreground: Boolean) = repo.setAppInForeground(foreground)
+
     // ── 自动连接已保存设备 ────────────────────────────────────────────────────
     fun autoConnectSaved(address: String) {
         val adapter = android.bluetooth.BluetoothAdapter.getDefaultAdapter()

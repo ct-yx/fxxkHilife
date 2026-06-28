@@ -25,6 +25,7 @@ import com.freebuds.controller.data.DeviceViewModel
 fun HomeScreen(
     viewModel: DeviceViewModel,
     onDeviceClick: (address: String) -> Unit,
+    onRemoveDevice: (address: String) -> Unit,
     onSettings: () -> Unit,
 ) {
     val context = LocalContext.current
@@ -104,7 +105,8 @@ fun HomeScreen(
                     SavedDeviceItem(
                         address = addr,
                         adapter = BluetoothAdapter.getDefaultAdapter(),
-                        onClick = { onDeviceClick(addr) }
+                        onClick = { onDeviceClick(addr) },
+                        onRemove = { onRemoveDevice(addr) }
                     )
                 }
             }
@@ -158,6 +160,7 @@ private fun SavedDeviceItem(
     address: String,
     adapter: BluetoothAdapter?,
     onClick: () -> Unit,
+    onRemove: () -> Unit,
 ) {
     val device = remember(address) { adapter?.getRemoteDevice(address) }
     val name = device?.name ?: address
@@ -183,6 +186,15 @@ private fun SavedDeviceItem(
                 contentDescription = null,
                 tint = MaterialTheme.colorScheme.primary
             )
+        },
+        trailingContent = {
+            IconButton(onClick = onRemove) {
+                Icon(
+                    Icons.Default.Delete,
+                    contentDescription = "删除",
+                    tint = MaterialTheme.colorScheme.error
+                )
+            }
         },
         modifier = Modifier.clickable(onClick = onClick)
     )

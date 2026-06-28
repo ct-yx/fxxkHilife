@@ -7,6 +7,8 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.platform.LocalContext
 import com.freebuds.controller.data.ConnectionState
 import com.freebuds.controller.data.DeviceViewModel
+import com.freebuds.controller.ui.theme.loadThemeMode
+import com.freebuds.controller.ui.loadWallpaperScope
 
 enum class Screen {
     PermissionGuide, Home, Device, Gesture, Settings
@@ -17,7 +19,17 @@ fun AppNavHost(viewModel: DeviceViewModel, onOpenTerminal: () -> Unit) {
     val context = LocalContext.current
     val connState by viewModel.connectionState.collectAsState()
 
-    // 检查蓝牙权限（Android 12+ 需要运行时授权）
+    val themeMode = remember { loadThemeMode(context) }
+    var currentTheme by remember { mutableStateOf(themeMode) }
+    val savedWallpaper = remember {
+        context.getSharedPreferences("fxxk_theme", android.content.Context.MODE_PRIVATE)
+            .getString("wallpaper_uri", null)
+    }
+    var wallpaperUri by remember { mutableStateOf(savedWallpaper) }
+    val savedScope = remember { loadWallpaperScope(context) }
+    var wallpaperScope by remember { mutableStateOf(savedScope) }
+
+    // 检查蓝牙权限
     val hasPermissions = remember {
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
             listOf(Manifest.permission.BLUETOOTH_CONNECT, Manifest.permission.BLUETOOTH_SCAN)
@@ -29,14 +41,12 @@ fun AppNavHost(viewModel: DeviceViewModel, onOpenTerminal: () -> Unit) {
         if (!hasPermissions) Screen.PermissionGuide else Screen.Home
     ) }
 
-    // 连接成功自动进 DeviceScreen
     LaunchedEffect(connState) {
         if (connState is ConnectionState.Connected) {
             currentScreen = Screen.Device
         }
     }
 
-    // 连接断开自动退回 Home（除非正在权限引导）
     LaunchedEffect(connState) {
         if (connState is ConnectionState.Disconnected &&
             currentScreen != Screen.Home &&
@@ -53,6 +63,12 @@ fun AppNavHost(viewModel: DeviceViewModel, onOpenTerminal: () -> Unit) {
             viewModel = viewModel,
             onDeviceClick = { address ->
                 viewModel.autoConnectSaved(address)
+            },
+            onRemoveDevice = { address ->
+                viewModel.removeSavedDevice(address)
+                if (viewModel.connectionState.value is ConnectionState.Connected) {
+                    viewModel.disconnect()
+                }
             },
             onSettings = { currentScreen = Screen.Settings },
         )
@@ -76,6 +92,12 @@ fun AppNavHost(viewModel: DeviceViewModel, onOpenTerminal: () -> Unit) {
                     else -> Screen.Home
                 }
             },
+            themeMode = currentTheme,
+            onThemeChange = { currentTheme = it },
+            wallpaperUri = wallpaperUri,
+            onWallpaperChange = { wallpaperUri = it },
+            wallpaperScope = wallpaperScope,
+            onWallpaperScopeChange = { wallpaperScope = it },
         )
     }
 }

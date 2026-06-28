@@ -8,7 +8,7 @@
   <b>A lightweight offline controller for HUAWEI FreeBuds / HONOR Earbuds</b>
 </p>
 
-> **v2.3.0** — UI/UX overhaul: 3s polling, instant ANC refresh, gesture sub‑page, saved‑device home, full chinese labels, five‑screen routing.
+> **v2.4.0** — Three-phase major update: adaptive polling (800ms foreground / 5s background), overhauled navigation, tri-state theme + wallpaper, notification ANC quick-switch, log control.
 >
 > Controls your earbuds directly via classic Bluetooth SPP — no login, no ads, fully offline.
 
@@ -30,9 +30,18 @@ cd fxxkHilife
 
 ## Project Status
 
-Current version: **v2.3.0**
+Current version: **v2.4.0**
 
 ### Completed
+- **Adaptive polling**: 800ms foreground high-frequency, 5s background low-frequency, driven by Activity lifecycle
+- **Tri-state theme**: Follow system / Dark / Light with haze blur preview
+- **Wallpaper system**: Import custom image wallpaper (coil AsyncImage), scope selector (All / Home only / Settings only)
+- **Notification ANC quick-switch**: Toggle ANC mode directly from notification bar (Off / ANC / Awareness), three Action buttons
+- **Notification live status**: Display current ANC mode, sound quality, low‑latency, and usage duration (auto‑timed)
+- **Log control**: Configurable log retention lines (500/1000/2000/5000/10000)
+- **Navigation refactor**: Disconnect button moved to saved-device list on Home, red delete icon
+- **ANC blur slider**: haze blur + refraction effect segment selector (Off / ANC / Awareness)
+- **Settings overhaul**: Theme switch, wallpaper import + scope, app details (project idea / GitHub / update link)
 - **Five-screen navigation**: Permission Guide → Home (saved devices + collapsible scan) → Device → Gesture sub‑page → Settings
 - **Saved‑device home**: auto‑persist connected device addresses (StringSet), tap to reconnect, scan collapsed below
 - **Gesture sub‑page**: double‑tap / triple‑tap / swipe / long‑press in dedicated screen with full chinese labels

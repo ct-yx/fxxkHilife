@@ -52,6 +52,8 @@ data class DeviceProps(
     val inEar: Boolean? = null,
     val deviceModel: String? = null,
     val firmwareVersion: String? = null,
+    // 连接时刻 ( = 未连接)，用于计算佩戴时长
+    val connectedSince: Long? = null,
 )
 
 /**
@@ -73,11 +75,32 @@ class DeviceRepository {
     private val failedHandlers = mutableSetOf<String>()
     private var retryJob: Job? = null
     private var pollJob: Job? = null
+    private var fastPollJob: Job? = null
+    private var foregroundMode: Boolean = false
+
+    // 设备信息是否已获取（本次进程生命周期内）
+    private var deviceInfoFetched: Boolean = false
+
+    // 连接建立时刻（>0 表示已连接），用于计算佩戴时长
+    private var connectedAt: Long = 0
+
+    // ── 前后台感知 ───────────────────────────────────────────────────────────
+    fun setAppInForeground(foreground: Boolean) {
+        foregroundMode = foreground
+        if (driver?.isConnected == true) {
+            if (foreground) {
+                startFastPolling()
+            } else {
+                stopFastPolling()
+            }
+        }
+    }
 
     // ── 初始化 SharedPreferences ─────────────────────────────────────────
 
     fun init(context: Context) {
         prefs = context.getSharedPreferences("fxxk_device", Context.MODE_PRIVATE)
+        deviceInfoFetched = false // 每次进程启动重置
     }
 
     // ── 连接 ─────────────────────────────────────────────────────────────────
@@ -93,10 +116,13 @@ class DeviceRepository {
             driver = d
             if (d.connect()) {
                 _connectionState.value = ConnectionState.Connected(device.name ?: device.address)
+                connectedAt = System.currentTimeMillis()
                 saveDeviceAddress(device.address)
                 syncProps()
+                deviceInfoFetched = false // 新连接：允许重新获取设备信息
                 failedHandlers.addAll(d.failedHandlerIds)
                 startPolling()
+                if (foregroundMode) startFastPolling()
                 retryFailedHandlers()
             } else {
                 driver = null
@@ -107,11 +133,14 @@ class DeviceRepository {
 
     fun disconnect() {
         pollJob?.cancel()
+        fastPollJob?.cancel()
         retryJob?.cancel()
         driver?.disconnect()
         driver = null
+        deviceInfoFetched = false
         _connectionState.value = ConnectionState.Disconnected
         _props.value = DeviceProps()
+        connectedAt = 0
     }
 
     // ── 持久化设备地址（集合）───────────────────────────────────────────
@@ -168,23 +197,50 @@ class DeviceRepository {
         }
     }
 
-    // ── 定时轮询（电池 45s，基础 3s）────────────────────────────────────
+    // ── 定时轮询（后台 5s 基础属性，前台 fastPoll 800ms）─────────────────
 
     private fun startPolling() {
         pollJob?.cancel()
         pollJob = scope.launch {
-            var batteryTick = 0L
             while (isActive && driver?.isConnected == true) {
-                delay(3_000) // 基础属性每 3s 轮询一次
+                delay(5_000) // 后台每 5s 轮询一次
                 if (!isActive || driver?.isConnected != true) break
-                syncProps()
-                batteryTick++
-                // 每 45 秒额外同步电池（被动推送为主）
-                if (batteryTick >= 15) {
-                    batteryTick = 0
+                if (!foregroundMode) {
+                    syncProps()
                 }
             }
         }
+    }
+
+    private fun startFastPolling() {
+        fastPollJob?.cancel()
+        fastPollJob = scope.launch {
+            var tick = 0
+            while (isActive && driver?.isConnected == true && foregroundMode) {
+                delay(800) // 前台 800ms 高频刷新
+                if (!isActive || driver?.isConnected != true || !foregroundMode) break
+                // 设备信息仅在首次连接时获取一次
+                if (!deviceInfoFetched) {
+                    val d = driver ?: return@launch
+                    val infoHandler = d.getHandlerById("device_info")
+                    if (infoHandler != null) {
+                        try {
+                            withTimeout(1500) { infoHandler.onInit(d) }
+                            deviceInfoFetched = true
+                        } catch (_: Exception) { }
+                    } else {
+                        deviceInfoFetched = true
+                    }
+                }
+                syncProps()
+                tick++
+            }
+        }
+    }
+
+    private fun stopFastPolling() {
+        fastPollJob?.cancel()
+        fastPollJob = null
     }
 
     // ── 属性写入（UI → 设备）──等待响应后重新同步 ─────────────────
@@ -226,11 +282,19 @@ class DeviceRepository {
         suspend fun opts(group: String, prop: String) =
             get(group, prop)?.split(",")?.filter { it.isNotBlank() } ?: emptyList()
 
+        val caseRaw = get("battery", "case")?.toIntOrNull()
+        // 充电盒值为 0x64(=100) 且耳机没有盒连接时，视为无效数据，显示 0
+        val batteryCase = when {
+            caseRaw == null -> null
+            caseRaw == 100 -> 0 // 默认 100 说明无盒，显示 0
+            else -> caseRaw
+        }
+
         _props.value = DeviceProps(
             batteryGlobal    = get("battery", "global")?.toIntOrNull(),
             batteryLeft      = get("battery", "left")?.toIntOrNull(),
             batteryRight     = get("battery", "right")?.toIntOrNull(),
-            batteryCase      = get("battery", "case")?.toIntOrNull(),
+            batteryCase      = batteryCase,
             isCharging       = get("battery", "is_charging")?.toBooleanStrictOrNull(),
             ancMode          = get("anc", "mode"),
             ancModeOptions   = opts("anc", "mode_options"),
@@ -253,6 +317,7 @@ class DeviceRepository {
             inEar            = get("state", "in_ear")?.toBooleanStrictOrNull(),
             deviceModel      = get("info", "device_model"),
             firmwareVersion  = get("info", "software_ver"),
+            connectedSince   = connectedAt.takeIf { it > 0 },
         )
     }
 

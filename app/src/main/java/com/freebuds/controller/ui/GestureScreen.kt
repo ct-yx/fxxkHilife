@@ -194,8 +194,14 @@ private fun OptionsDialog2(
                         style = MaterialTheme.typography.bodyLarge
                     )
                 }
+                Spacer(Modifier.height(8.dp))
+                HorizontalDivider()
+                TextButton(
+                    onClick = onDismiss,
+                    modifier = Modifier.fillMaxWidth()
+                ) { Text("取消") }
             }
         },
-        confirmButton = { TextButton(onClick = onDismiss) { Text("取消") } }
+        confirmButton = { }
     )
 }

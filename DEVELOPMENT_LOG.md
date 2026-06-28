@@ -141,7 +141,91 @@
 ### 编译修复
 - TerminalActivity 类型推断歧义修复
 
-## v2.3.0 (2026-06-28)
+## v2.4.0 (开发中)
+
+### 阶段一：底层修复 (2026-06-28)
+
+**前后台感知 + 自适应轮询**：
+- 新增 `DeviceRepository.setAppInForeground()`，由 `MainActivity` 生命周期驱动
+- 前台 800ms 高频轮询（`fastPollJob`），后台 5s 低频轮询（`pollJob`）
+- 切换回前台时自动恢复高频
+
+**设备信息单次获取**：
+- `deviceInfoFetched` 标记防止重复请求 `device_info`
+- 进程冷启动（`init()`）+ 每次新连接时重置标记
+- 仅在首次 `fastPoll` 循环中尝试获取一次
+
+**被动通知全量覆盖**：
+- 确认所有 Handler (`AncHandler`, `SoundQualityHandler`, `InEarHandler`, `BatteryHandler`) 的 `onDriverPackage` 已正确 `putProperty`
+- 前台 800ms 刷新延迟最多 800ms 可见被动变更
+
+**充电盒电量修复**：
+- `syncProps()` 中 `case=100`（0x64）转为 0，表示无盒连接
+- 正常范围值保持不变
+
+**低延迟自动重开 + 后台服务**：
+- `BluetoothService` 重写：注册 `ACTION_ACL_CONNECTED` / `ACTION_ACL_DISCONNECTED` 广播
+- 检测到已保存设备蓝牙连接后自动发起 SPP 连接 + 3s 后自动开低延迟
+- 通知栏增加 PendingIntent 跳转 MainActivity
+### 阶段二：UI 重构 (2026-06-28)
+
+**UI 翻译修正**：
+- ANC 模式中文名修正："降噪" → "ANC模式"，透传子选项 "标准" → "透传模式"
+- 取消按钮从对话框顶部移到内容区底部（Spacer + HorizontalDivider + TextButton）
+- GestureScreen 的 OptionsDialog2 同样处理
+
+**页面调度重构**：
+- DeviceScreen 顶部栏移除断开按钮（`IconButton.Close`）
+- HomeScreen 已保存设备列表每个条目尾部加红色删除图标（`Icons.Default.Delete`）
+- `AppNavHost` 中 `onRemoveDevice` 回调执行 `removeSavedDevice` + 如果已连接则 `disconnect`
+
+**手势选项下移到 DeviceScreen 底部**：
+- 手势区块（`hasGesture` 判断 + 分组标题 + 可点击 ListItem）从 ANC 和音频之间移到音频之后、关于之前
+
+**ANC 模式 haze 模糊滑块**：
+- 新建 `AncModeSlider` 组件，`HazeState` + `haze`/`hazeChild` 实现带模糊和折射效果的分段选择器
+- 三个选项（关闭/降噪/透传）等宽分布，选中项突出显示
+
+**设置页改造**：
+- `Theme.kt` 完全重写：新增 `LightColors` 浅色方案、`ThemeMode` 枚举（SYSTEM/DARK/LIGHT）、持久化
+- `FxxkHilifeTheme` 接受 `mode` 参数，通过 `AppCompatDelegate.setDefaultNightMode` 同步系统主题
+- `SettingsScreen.kt` 完全重写：主题分段选择器 + 壁纸导入（coil AsyncImage + `GetContent` + `takePersistableUriPermission`）+ 壁纸作用域选择（`WallpaperScope` 枚举，全部/仅主页/仅设置 FilterChip）+ 应用详情（项目理念/GitHub/更新地址）+ 圆形按钮 haze 模糊预览
+- `AppNavHost` 适配主题/壁纸/作用域状态管理
+
+### 阶段三：新功能 (2026-06-28)
+
+**通知栏 ANC 三模式快切**：
+- `BluetoothService` 新增 `ACTION_ANC_NORMAL`/`ACTION_ANC_CANCEL`/`ACTION_ANC_AWARE` 三个 Action
+- `onStartCommand` 路由到 `setAncMode(mode)` 方法
+- `createNotification` 通过 `PendingIntent.getService` 创建三个通知栏按钮（关闭/降噪/透传）
+
+**日志控制**：
+- `LogBuffer` 新增 `setMaxLines(max: Int)` 方法（范围 100-10000）、`getMaxLines()` 方法
+- `MAX_LINES` 常量子段 → 动态 `_maxLines` 字段（默认 2000）
+- `SettingsScreen` 调试区域新增 `LogRetentionSelector` 组件（500/1000/2000/5000/10000 行 FilterChip 选择）
+- 日志保留行数持久化到 `log_max_lines`
+
+**通知栏实时状态**：
+- `DeviceProps` 新增 `connectedSince` 字段，`DeviceRepository` 追踪连接时刻
+- `BluetoothService` 启动时通过 `props.collect` 监听属性变化，实时更新通知内容
+- 通知显示 ANC 模式、音质模式、低延迟状态、佩戴时长（自动计时，h:m 格式）
+- `scope = MainScope()` 统一管理协程，`onDestroy` 时取消 propsJob
+
+### 文件变更
+| 文件 | 变更 |
+|------|------|
+| `SettingsScreen.kt` | +250/-120 — 完全重写：主题/壁纸/作用域/应用详情/日志保留 |
+| `Theme.kt` | +120/-30 — 三态主题 + LightColors + 持久化 |
+| `AppNavHost.kt` | +45/-8 — 主题/壁纸/作用域状态管理 + onRemoveDevice |
+| `DeviceScreen.kt` | +80/-30 — ANC 滑块 + 手势下移 + 断连按钮移除 |
+| `HomeScreen.kt` | +25/-3 — 删除设备图标 + onRemoveDevice |
+| `GestureScreen.kt` | +2/-2 — 取消按钮下移 |
+| `BluetoothService.kt` | +135/-3 — ANC Action + setAncMode + props 监听 + 通知实时更新 |
+| `DeviceRepository.kt` | +72/-8 — 前后台轮询 + 设备信息单次 + case 修复 + connectedAt + connectedSince |
+| `LogBuffer.kt` | +12/-2 — 动态 _maxLines + setMaxLines/getMaxLines |
+| `build.gradle.kts` | +1 — coil-compose 2.7.0 依赖 |
+| `MainActivity.kt` | +15 — themeMode 状态 + 持久化加载 |
+| **合计** | **~690/~200 行** |
 
 ### UI/UX 全面修复
 

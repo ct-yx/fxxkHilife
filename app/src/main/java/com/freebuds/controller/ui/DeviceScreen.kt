@@ -9,11 +9,20 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import com.freebuds.controller.data.ConnectionState
 import com.freebuds.controller.data.DeviceProps
 import com.freebuds.controller.data.DeviceViewModel
+import dev.chrisbanes.haze.HazeState
+import dev.chrisbanes.haze.HazeStyle
+import dev.chrisbanes.haze.HazeTint
+import dev.chrisbanes.haze.haze
+import dev.chrisbanes.haze.hazeChild
 
 // ── 中文映射（DeviceScreen 专用）──────────────────────────────────────────
 
@@ -26,7 +35,7 @@ fun chineseAncMode(raw: String?): String = when (raw) {
 
 fun chineseAncLevel(raw: String?): String = when (raw) {
     "comfort" -> "舒适"
-    "normal" -> "标准"
+    "normal" -> "透传模式"
     "ultra" -> "深度"
     "dynamic" -> "动态"
     "voice_boost" -> "人声增强"
@@ -67,9 +76,6 @@ fun DeviceScreen(
                     IconButton(onClick = onSettings) {
                         Icon(Icons.Default.Settings, contentDescription = "设置")
                     }
-                    IconButton(onClick = { viewModel.disconnect() }) {
-                        Icon(Icons.Default.Close, contentDescription = "断开")
-                    }
                 },
                 colors = TopAppBarDefaults.topAppBarColors(
                     containerColor = MaterialTheme.colorScheme.surface
@@ -86,17 +92,15 @@ fun DeviceScreen(
             // ── 电池卡片 ─────────────────────────────────────────────────────
             item { BatteryCard(props) }
 
-            // ── 降噪 ─────────────────────────────────────────────────────────
+            // ── ANC ─────────────────────────────────────────────────────────
             if (props.ancMode != null) {
-                item { SettingsGroupHeader("降噪") }
+                item { SettingsGroupHeader("ANC模式") }
+                // haze 模糊滑块切换器
                 item {
-                    DeviceOptionItem(
-                        icon = Icons.Default.Hearing,
-                        title = "降噪模式",
-                        current = chineseAncMode(props.ancMode),
-                        options = props.ancModeOptions.map(::chineseAncMode),
-                        rawOptions = props.ancModeOptions,
-                        onSelect = { viewModel.setProperty("anc", "mode", it) }
+                    AncModeSlider(
+                        current = props.ancMode ?: "normal",
+                        options = props.ancModeOptions,
+                        onSelect = { viewModel.setProperty("anc", "mode", it) },
                     )
                 }
                 if (props.ancLevel != null) {
@@ -110,22 +114,6 @@ fun DeviceScreen(
                             onSelect = { viewModel.setProperty("anc", "level", it) }
                         )
                     }
-                }
-            }
-
-            // ── 手势（折叠到独立页面） ────────────────────────────────────────
-            val hasGesture = props.doubleTapLeft != null || props.longTap != null || props.swipeGesture != null
-            if (hasGesture) {
-                item { SettingsGroupHeader("手势") }
-                item {
-                    ListItem(
-                        headlineContent = { Text("手势设置") },
-                        supportingContent = { Text("双击 / 三击 / 滑动 / 长按") },
-                        leadingContent = { Icon(Icons.Default.TouchApp, contentDescription = null) },
-                        trailingContent = { Icon(Icons.Default.ChevronRight, contentDescription = null) },
-                        modifier = Modifier.clickable(onClick = onGesture)
-                    )
-                    HorizontalDivider()
                 }
             }
 
@@ -164,6 +152,22 @@ fun DeviceScreen(
                             onCheckedChange = { viewModel.setProperty("config", "low_latency", it.toString()) }
                         )
                     }
+                }
+            }
+
+            // ── 手势（下移到页面底部）────────────────────────────────────────
+            val hasGesture = props.doubleTapLeft != null || props.longTap != null || props.swipeGesture != null
+            if (hasGesture) {
+                item { SettingsGroupHeader("手势") }
+                item {
+                    ListItem(
+                        headlineContent = { Text("手势设置") },
+                        supportingContent = { Text("双击 / 三击 / 滑动 / 长按") },
+                        leadingContent = { Icon(Icons.Default.TouchApp, contentDescription = null) },
+                        trailingContent = { Icon(Icons.Default.ChevronRight, contentDescription = null) },
+                        modifier = Modifier.clickable(onClick = onGesture)
+                    )
+                    HorizontalDivider()
                 }
             }
 
@@ -322,8 +326,86 @@ private fun OptionsDialog(title: String, options: List<String>, rawOptions: List
                         style = MaterialTheme.typography.bodyLarge
                     )
                 }
+                Spacer(Modifier.height(8.dp))
+                HorizontalDivider()
+                TextButton(
+                    onClick = onDismiss,
+                    modifier = Modifier.fillMaxWidth()
+                ) { Text("取消") }
             }
         },
-        confirmButton = { TextButton(onClick = onDismiss) { Text("取消") } }
+        confirmButton = { } // 取消已移到内容区
     )
+}
+
+// ── ANC 模式 haze 模糊滑块 ──────────────────────────────────────────────
+
+@Composable
+private fun AncModeSlider(
+    current: String,
+    options: List<String>,
+    onSelect: (String) -> Unit,
+) {
+    val hazeState = remember { HazeState() }
+    val selectedIndex = options.indexOf(current).coerceAtLeast(0)
+
+    Box(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(horizontal = 16.dp, vertical = 8.dp)
+            .clip(MaterialTheme.shapes.medium)
+    ) {
+        // 模糊背景层
+        Box(
+            modifier = Modifier
+                .fillMaxWidth()
+                .haze(state = hazeState)
+        ) {
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(4.dp),
+                horizontalArrangement = Arrangement.spacedBy(4.dp)
+            ) {
+                options.forEachIndexed { idx, raw ->
+                    val label = chineseAncMode(raw)
+                    val isSelected = idx == selectedIndex
+                    Surface(
+                        modifier = Modifier
+                            .weight(1f)
+                            .clickable { onSelect(raw) },
+                        shape = MaterialTheme.shapes.small,
+                        color = if (isSelected)
+                            MaterialTheme.colorScheme.primary
+                        else
+                            MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f),
+                    ) {
+                        Text(
+                            label,
+                            modifier = Modifier.padding(vertical = 12.dp),
+                            textAlign = TextAlign.Center,
+                            style = MaterialTheme.typography.labelLarge,
+                            fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Normal,
+                            color = if (isSelected)
+                                MaterialTheme.colorScheme.onPrimary
+                            else
+                                MaterialTheme.colorScheme.onSurface,
+                        )
+                    }
+                }
+            }
+        }
+
+        // haze 子层：模糊 + 折射
+        Box(
+            modifier = Modifier
+                .matchParentSize()
+                .hazeChild(state = hazeState) {
+                    style = HazeStyle(
+                        blurRadius = 10.dp,
+                        tint = HazeTint(MaterialTheme.colorScheme.surface.copy(alpha = 0.3f))
+                    )
+                }
+        )
+    }
 }

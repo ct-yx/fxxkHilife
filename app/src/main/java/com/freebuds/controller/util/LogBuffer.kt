@@ -35,7 +35,7 @@ object LogBuffer {
         val entry = LogEntry(level = level, tag = tag, message = msg)
         synchronized(log) {
             log.add(entry)
-            if (log.size > MAX_LINES) {
+            if (log.size > _maxLines) {
                 log.removeAt(0)
             }
         }
@@ -57,6 +57,17 @@ object LogBuffer {
         mainHandler.post { listeners.forEach { it.onLogUpdate() } }
     }
 
+    fun setMaxLines(max: Int) {
+        synchronized(log) {
+            _maxLines = max.coerceIn(100, 10000)
+            while (log.size > _maxLines) {
+                log.removeAt(0)
+            }
+        }
+    }
+
+    fun getMaxLines(): Int = _maxLines
+
     fun registerListener(l: OnLogUpdateListener) = listeners.add(l)
     fun unregisterListener(l: OnLogUpdateListener) = listeners.remove(l)
 
@@ -64,5 +75,5 @@ object LogBuffer {
         fun onLogUpdate()
     }
 
-    private const val MAX_LINES = 2000
+    private var _maxLines = 2000
 }
