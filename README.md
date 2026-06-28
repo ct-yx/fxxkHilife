@@ -8,7 +8,7 @@
   <b>HUAWEI FreeBuds / HONOR Earbuds 的轻量离线控制 App</b>
 </p>
 
-> **v2.1.2** — 交错并行初始化（80ms 间隔、1.5s 快速失败），ANC 被动通知 (`2b2c`) 支持，电池完整解析，6i 全能力验证。
+> **v2.1.3** — 交错并行初始化（80ms 间隔、1.5s 快速失败），ANC 被动通知，电池完整解析，6i 全能力验证。
 >
 > 通过蓝牙 SPP 直接控制耳机，无需登录、无广告、完全离线。
 
@@ -30,7 +30,7 @@ cd fxxkHilife
 
 ## 项目状态
 
-当前版本：**v2.1.2**
+当前版本：**v2.1.3**
 
 - 旧 v1.7.3 版本已归档（分支 `main-archived`）
 - 已完成：协议层收包/解析精准对齐 OpenFreebuds，属性存储系统，`props/set` 终端命令，13 个活跃 Handler（按 6i 能力表过滤：InfoHandler、BatteryHandler、InEarHandler、LogsHandler、AutoPauseHandler、LowLatencyHandler、SoundQualityHandler、VoiceLanguageHandler、AncHandler、DoubleTapHandler、TripleTapHandler、SwipeGestureHandler、LongTapHandler）

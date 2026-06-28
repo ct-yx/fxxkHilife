@@ -8,7 +8,7 @@
   <b>A lightweight offline controller for HUAWEI FreeBuds / HONOR Earbuds</b>
 </p>
 
-> **v2.1.2** — Staggered parallel init (80ms gap, 1.5s fast-fail), ANC passive notification (`2b2c`), full battery parsing, 6i capability verified.
+> **v2.1.3** — Staggered parallel init (80ms gap, 1.5s fast-fail), ANC passive notification, full battery parsing, 6i capability verified.
 >
 > Controls your earbuds directly via classic Bluetooth SPP — no login, no ads, fully offline.
 
@@ -30,7 +30,7 @@ cd fxxkHilife
 
 ## Project Status
 
-Current version: **v2.1.2**
+Current version: **v2.1.3**
 
 - Previous v1.7.3 release archived (branch `main-archived`)
 - Completed: protocol layer packet recv/parse precisely aligned with OpenFreebuds, property storage system, `props/set` terminal commands, 13 active Handlers (6i capability-filtered: InfoHandler, BatteryHandler, InEarHandler, LogsHandler, AutoPauseHandler, LowLatencyHandler, SoundQualityHandler, VoiceLanguageHandler, AncHandler, DoubleTapHandler, TripleTapHandler, SwipeGestureHandler, LongTapHandler)
