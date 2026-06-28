@@ -21,21 +21,34 @@ img{max-width:100%;display:block}
 
 /* ===== PROGRESS NAV ===== */
 .progress-nav{
-  position:fixed;right:12px;top:50%;transform:translateY(-50%);
-  z-index:99;display:flex;flex-direction:column;align-items:center;
-  gap:0;width:20px;
-  opacity:.3;transition:opacity .4s;
+  position:fixed;right:0;top:50%;transform:translateY(-50%);
+  z-index:99;display:flex;flex-direction:column;gap:6px;
+  padding:16px 8px;opacity:.25;transition:opacity .3s;
 }
-.progress-nav:hover{opacity:.8}
+.progress-nav:hover{opacity:1}
 .progress-nav.hidden{opacity:0;pointer-events:none}
-.progress-dot{
-  width:8px;height:8px;border-radius:50%;
-  background:rgba(255,255,255,.25);border:1px solid rgba(255,255,255,.1);
-  cursor:pointer;transition:all .3s;position:absolute;
+.progress-item{
+  display:flex;align-items:center;justify-content:flex-end;gap:6px;
+  cursor:pointer;transition:all .3s;padding:2px 0;
+  border:none;background:none;color:rgba(255,255,255,.4);
+  font-size:11px;font-family:inherit;text-align:right;
+  width:auto;white-space:nowrap;
 }
-.progress-dot:hover,.progress-dot.active{background:#7c7cf0;border-color:#7c7cf0;transform:scale(1.4)}
-.progress-dot.active{box-shadow:0 0 12px rgba(124,124,240,.5)}
-@media(max-width:640px){.progress-nav{display:none}}
+.progress-item:hover{color:#fff}
+.progress-item .dot{
+  width:3px;height:18px;border-radius:3px;flex-shrink:0;
+  background:rgba(255,255,255,.2);transition:all .3s;
+}
+.progress-item.active{color:#7c7cf0}
+.progress-item.active .dot{background:#7c7cf0;border-color:#7c7cf0;box-shadow:0 0 8px rgba(124,124,240,.4)}
+.progress-item .label{display:none}
+.progress-item.active .label,.progress-nav:hover .progress-item .label{display:inline}
+@media(max-width:640px){
+  .progress-nav{right:4px;padding:10px 4px;gap:4px}
+  .progress-item{font-size:10px}
+  .progress-item .dot{width:3px;height:14px}
+  .progress-item .label{display:inline;max-width:60px;overflow:hidden;text-overflow:ellipsis}
+}
 
 /* ===== ANIMATIONS ===== */
 @keyframes fadeUp{from{opacity:0;transform:translateY(30px)}to{opacity:1;transform:translateY(0)}}
@@ -99,7 +112,7 @@ nav .logo{font-size:18px;font-weight:700;background:linear-gradient(135deg,#7c7c
 nav .links{display:flex;gap:24px;font-size:14px}
 nav .links a{color:rgba(255,255,255,.6)}
 nav .links a:hover{color:#fff}
-@media(max-width:480px){nav .links{display:none}}
+@media(max-width:640px){nav .links a:not(.lang-btn){display:none}nav .links{display:flex;align-items:center;gap:8px}.lang-btn{display:inline-flex!important}}
 
 /* ===== HERO ===== */
 .hero{
@@ -362,7 +375,7 @@ footer .spacer{display:inline-block;margin:0 8px;color:rgba(255,255,255,.1)}
     <a href="#name" data-i18n="nav_name">名字</a>
     <a href="#timeline" data-i18n="nav_timeline">历程</a>
     <a href="https://github.com/ct-yx/fxxkHilife" target="_blank">GitHub</a>
-    <span class="lang-btn" onclick="switchLang()" style="cursor:pointer;color:rgba(255,255,255,.4);font-size:12px;border:1px solid rgba(255,255,255,.1);border-radius:6px;padding:2px 8px;transition:all .3s" id="langBtn">EN</span>
+    <span class="lang-btn" onclick="switchLang()" style="cursor:pointer;color:rgba(255,255,255,.4);font-size:12px;border:1px solid rgba(255,255,255,.1);border-radius:6px;padding:2px 8px;transition:all .3s;display:inline-flex" id="langBtn">EN</span>
   </div>
 </nav>
 
@@ -370,12 +383,12 @@ footer .spacer{display:inline-block;margin:0 8px;color:rgba(255,255,255,.1)}
 
 <!-- === PROGRESS NAV === -->
 <div id="progressNav" class="progress-nav">
-  <div class="progress-dot" data-section="hero" style="top:4%"></div>
-  <div class="progress-dot" data-section="name" style="top:22%"></div>
-  <div class="progress-dot" data-section="philosophy" style="top:38%"></div>
-  <div class="progress-dot" data-section="features" style="top:52%"></div>
-  <div class="progress-dot" data-section="screenshots" style="top:68%"></div>
-  <div class="progress-dot" data-section="timeline" style="top:84%"></div>
+  <button class="progress-item" data-section="hero"><span class="label">首页</span><span class="dot"></span></button>
+  <button class="progress-item" data-section="name"><span class="label">名字</span><span class="dot"></span></button>
+  <button class="progress-item" data-section="philosophy"><span class="label">理念</span><span class="dot"></span></button>
+  <button class="progress-item" data-section="features"><span class="label">特性</span><span class="dot"></span></button>
+  <button class="progress-item" data-section="screenshots"><span class="label">截屏</span><span class="dot"></span></button>
+  <button class="progress-item" data-section="timeline"><span class="label">历程</span><span class="dot"></span></button>
 </div>
 
 <!-- === HERO === -->
@@ -629,7 +642,7 @@ function switchLang() {
 (function(){
   const nav = document.getElementById('progressNav');
   if(!nav) return;
-  const dots = nav.querySelectorAll('.progress-dot');
+  const items = nav.querySelectorAll('.progress-item');
   const sections = ['hero','name','philosophy','features','screenshots','timeline'];
   let lastActive = -1;
   let hideTimer = null;
@@ -642,13 +655,13 @@ function switchLang() {
       if(el && el.offsetTop <= scrollY) activeIdx = i;
     }
     if(activeIdx !== lastActive){
-      dots.forEach((d,i) => d.classList.toggle('active', i === activeIdx));
+      items.forEach((d,i) => d.classList.toggle('active', i === activeIdx));
       lastActive = activeIdx;
     }
   }
 
-  dots.forEach((dot,i) => {
-    dot.addEventListener('click', () => {
+  items.forEach((item,i) => {
+    item.addEventListener('click', () => {
       const el = document.getElementById(sections[i]);
       if(el) el.scrollIntoView({behavior:'smooth', block:'start'});
     });
@@ -657,7 +670,6 @@ function switchLang() {
   // 自动隐藏：滚动停止后 2s 隐藏，滚动时显示
   function showNav(){ nav.classList.remove('hidden'); clearTimeout(hideTimer); hideTimer = setTimeout(() => nav.classList.add('hidden'), 2000); }
   window.addEventListener('scroll', () => { nav.classList.remove('hidden'); clearTimeout(hideTimer); hideTimer = setTimeout(() => nav.classList.add('hidden'), 2000); updateProgress(); }, {passive:true});
-  nav.classList.add('hidden');
   updateProgress();
 })();
 
