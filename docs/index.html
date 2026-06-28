@@ -276,8 +276,15 @@ nav .links a:hover{color:#fff}
 .timeline-toggle.open svg{transform:rotate(180deg)}
 .timeline-loading{text-align:center;padding:40px;color:rgba(255,255,255,.2);font-size:14px}
 @media(max-width:640px){
-  .timeline-item{padding-left:32px}
-  .timeline-version-badge{font-size:10px;padding:3px 10px}
+  .timeline-item{padding-left:0}
+  .timeline::before{left:10px}
+  .timeline-version-badge{
+    position:relative;left:10px;top:0;transform:none;
+    display:inline-block;margin-bottom:8px;
+    font-size:10px;padding:3px 10px;
+  }
+  .timeline-item-inner{padding:14px 16px}
+  .timeline-dot{display:none}
 }
 
 /* ===== PHILOSOPHY ===== */
