@@ -42,16 +42,22 @@ class DeviceViewModel : ViewModel() {
     fun shareLog(context: Context) = repo.shareLog(context)
 
     // ── 已保存设备地址 ────────────────────────────────────────────────────────
+    fun getSavedAddresses(): List<String> = repo.getSavedAddresses()
     fun getSavedAddress(): String? = repo.getSavedAddress()
+    fun removeSavedDevice(address: String) = repo.removeSavedDevice(address)
 
     // ── 自动连接已保存设备 ────────────────────────────────────────────────────
-    fun autoConnectSaved(context: Context) {
-        val addr = getSavedAddress() ?: return
+    fun autoConnectSaved(address: String) {
         val adapter = android.bluetooth.BluetoothAdapter.getDefaultAdapter()
-        val device = adapter?.getRemoteDevice(addr)
+        val device = adapter?.getRemoteDevice(address)
         if (device != null) {
             repo.connect(device)
         }
+    }
+
+    fun autoConnectLast(context: Context) {
+        val addr = getSavedAddress() ?: return
+        autoConnectSaved(addr)
     }
 
     // ── 扫描 ──────────────────────────────────────────────────────────────────

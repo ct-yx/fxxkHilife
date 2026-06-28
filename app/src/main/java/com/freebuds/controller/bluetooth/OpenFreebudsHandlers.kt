@@ -123,6 +123,7 @@ class LowLatencyHandler : HuaweiDeviceHandler {
     }
 
     override suspend fun setProperty(driver: SppDriver, group: String, prop: String, value: String) {
+        driver.putProperty(group, prop, value)
         driver.sendPackage(HuaweiSppPackage.changeRequest(HuaweiSppCommand.LOW_LATENCY, 1 to b(if (value == "true") 1 else 0)))
         onInit(driver)
     }
@@ -248,6 +249,8 @@ class AncHandler(
         } else {
             b(activeMode, valueByte)
         }
+        // 先直接写入目标值，防止 onInit 读请求超时而 UI 无反馈
+        driver.putProperty(group, prop, value)
         driver.sendPackage(HuaweiSppPackage.changeRequest(b(0x2b, 0x04), 1 to data))
         onInit(driver)
     }

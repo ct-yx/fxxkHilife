@@ -9,7 +9,7 @@ import com.freebuds.controller.data.ConnectionState
 import com.freebuds.controller.data.DeviceViewModel
 
 enum class Screen {
-    PermissionGuide, Scan, Device, Settings
+    Home, Device, Gesture, QrCode, Settings
 }
 
 @Composable
@@ -17,9 +17,9 @@ fun AppNavHost(viewModel: DeviceViewModel, onOpenTerminal: () -> Unit) {
     val context = LocalContext.current
     val connState by viewModel.connectionState.collectAsState()
 
-    var currentScreen by remember { mutableStateOf(Screen.Scan) }
+    var currentScreen by remember { mutableStateOf(Screen.Home) }
 
-    // 检查权限
+    // 检查蓝牙权限
     val hasPermissions = remember {
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
             listOf(Manifest.permission.BLUETOOTH_CONNECT, Manifest.permission.BLUETOOTH_SCAN)
@@ -28,36 +28,57 @@ fun AppNavHost(viewModel: DeviceViewModel, onOpenTerminal: () -> Unit) {
     }
 
     LaunchedEffect(hasPermissions) {
-        currentScreen = if (!hasPermissions) Screen.PermissionGuide else Screen.Scan
+        if (!hasPermissions) {
+            currentScreen = Screen.Home // 显示主页但禁点（由 HomeScreen 处理）
+        }
     }
 
-    // 监听连接状态：连接成功自动进入 DeviceScreen
+    // 连接成功自动进入 DeviceScreen
     LaunchedEffect(connState) {
         if (connState is ConnectionState.Connected) {
             currentScreen = Screen.Device
         }
     }
 
+    // 连接断开自动退回 Home
+    LaunchedEffect(connState) {
+        if (connState is ConnectionState.Disconnected && currentScreen != Screen.Home) {
+            currentScreen = Screen.Home
+        }
+    }
+
     when (currentScreen) {
-        Screen.PermissionGuide -> PermissionGuideScreen(
-            onGranted = { currentScreen = Screen.Scan }
-        )
-        Screen.Scan -> ScanScreen(
+        Screen.Home -> HomeScreen(
             viewModel = viewModel,
+            onDeviceClick = { address ->
+                viewModel.autoConnectSaved(address)
+            },
+            onQrCode = { currentScreen = Screen.QrCode },
             onSettings = { currentScreen = Screen.Settings },
         )
         Screen.Device -> DeviceScreen(
             viewModel = viewModel,
-            onBack = { currentScreen = Screen.Scan },
+            onBack = { currentScreen = Screen.Home },
+            onGesture = { currentScreen = Screen.Gesture },
             onSettings = { currentScreen = Screen.Settings },
             onOpenTerminal = onOpenTerminal,
         )
+        Screen.Gesture -> GestureScreen(
+            props = viewModel.props.collectAsState().value,
+            viewModel = viewModel,
+            onBack = { currentScreen = Screen.Device },
+        )
+        Screen.QrCode -> QrCodeScreen(
+            onBack = { currentScreen = Screen.Home },
+        )
         Screen.Settings -> SettingsScreen(
             viewModel = viewModel,
-            onBack = { currentScreen = when (connState) {
-                is ConnectionState.Connected -> Screen.Device
-                else -> Screen.Scan
-            } },
+            onBack = {
+                currentScreen = when (connState) {
+                    is ConnectionState.Connected -> Screen.Device
+                    else -> Screen.Home
+                }
+            },
         )
     }
 }

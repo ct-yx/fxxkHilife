@@ -255,13 +255,15 @@ class SppDriver(private val device: BluetoothDevice) {
                 LogBuffer.d("SPP", "RX: ${pkgBytes.toHex()}")
                 handlePackage(pkgBytes)
             }
-        } catch (e: java.io.EOFException) {
+            } catch (e: java.io.EOFException) {
             LogBuffer.i("SPP", "Recv loop: connection closed")
         } catch (e: Exception) {
             if (e !is CancellationException) {
                 LogBuffer.e("SPP", "Recv loop error: ${e.message}")
             }
         }
+        // recv loop 退出，标记断开
+        isConnected = false
         LogBuffer.i("SPP", "Recv loop ended")
     }
 

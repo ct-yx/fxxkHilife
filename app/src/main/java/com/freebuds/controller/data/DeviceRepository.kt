@@ -114,13 +114,28 @@ class DeviceRepository {
         _props.value = DeviceProps()
     }
 
-    // ── 持久化设备地址 ───────────────────────────────────────────────────
+    // ── 持久化设备地址（集合）───────────────────────────────────────────
 
     private fun saveDeviceAddress(address: String) {
-        prefs?.edit()?.putString("last_device_address", address)?.apply()
+        val p = prefs ?: return
+        val set = p.getStringSet("saved_devices", emptySet())?.toMutableSet() ?: mutableSetOf()
+        set.add(address)
+        p.edit().putStringSet("saved_devices", set).apply()
     }
 
-    fun getSavedAddress(): String? = prefs?.getString("last_device_address", null)
+    fun getSavedAddresses(): List<String> {
+        val p = prefs ?: return emptyList()
+        return p.getStringSet("saved_devices", emptySet())?.toList() ?: emptyList()
+    }
+
+    fun getSavedAddress(): String? = getSavedAddresses().lastOrNull()
+
+    fun removeSavedDevice(address: String) {
+        val p = prefs ?: return
+        val set = p.getStringSet("saved_devices", emptySet())?.toMutableSet() ?: mutableSetOf()
+        set.remove(address)
+        p.edit().putStringSet("saved_devices", set).apply()
+    }
 
     // ── 后台重试失败 Handler（30s 间隔）───────────────────────────────────
 
@@ -153,30 +168,32 @@ class DeviceRepository {
         }
     }
 
-    // ── 定时轮询（电池 45s，其他 10s）────────────────────────────────────
+    // ── 定时轮询（电池 45s，基础 3s）────────────────────────────────────
 
     private fun startPolling() {
         pollJob?.cancel()
         pollJob = scope.launch {
             var batteryTick = 0L
             while (isActive && driver?.isConnected == true) {
-                delay(10_000) // 其他属性每 10s 轮询一次
+                delay(3_000) // 基础属性每 3s 轮询一次
                 if (!isActive || driver?.isConnected != true) break
                 syncProps()
                 batteryTick++
-                // 每 45 秒额外同步电池
-                if (batteryTick >= 4) { // 约 40-45s
+                // 每 45 秒额外同步电池（被动推送为主）
+                if (batteryTick >= 15) {
                     batteryTick = 0
-                    // 电池通过被动通知更新，这里做兜底同步
                 }
             }
         }
     }
 
-    // ── 属性写入（UI → 设备） ─────────────────────────────────────────────────
+    // ── 属性写入（UI → 设备）──等待响应后重新同步 ─────────────────
 
     suspend fun setProperty(group: String, prop: String, value: String) {
-        driver?.setProperty(group, prop, value)
+        val d = driver ?: return
+        d.setProperty(group, prop, value)
+        // 重新发起 onInit 获取真实值（Handler.setProperty 内部已发 init 请求）
+        delay(100) // 给硬件响应时间
         syncProps()
     }
 
