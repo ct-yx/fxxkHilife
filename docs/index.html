@@ -1,0 +1,493 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>fxxkHilife — 破茧 · 自由的听感</title>
+<meta name="description" content="HUAWEI FreeBuds / HONOR Earbuds 的轻量离线控制 App。无需登录、无广告、完全离线。">
+<style>
+/* ===== RESET & BASE ===== */
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+html{scroll-behavior:smooth}
+body{
+  font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,"Helvetica Neue",Arial,sans-serif;
+  background:#0a0a0f;color:#e8e8ed;line-height:1.6;overflow-x:hidden;
+  -webkit-font-smoothing:antialiased;
+}
+a{color:#7c7cf0;text-decoration:none;transition:color .3s}
+a:hover{color:#9f9fff}
+img{max-width:100%;display:block}
+
+/* ===== ANIMATIONS ===== */
+@keyframes fadeUp{from{opacity:0;transform:translateY(30px)}to{opacity:1;transform:translateY(0)}}
+@keyframes fadeIn{from{opacity:0}to{opacity:1}}
+@keyframes pulseGlow{0%,100%{box-shadow:0 0 20px rgba(124,124,240,.3)}50%{box-shadow:0 0 40px rgba(124,124,240,.6)}}
+@keyframes float{
+  0%,100%{transform:translateY(0)}
+  50%{transform:translateY(-10px)}
+}
+@keyframes shimmer{
+  0%{background-position:-200% center}
+  100%{background-position:200% center}
+}
+@keyframes blob1{0%,100%{transform:translate(0,0) scale(1)}33%{transform:translate(30px,-50px) scale(1.1)}66%{transform:translate(-20px,20px) scale(.9)}}
+@keyframes blob2{0%,100%{transform:translate(0,0) scale(1)}33%{transform:translate(-40px,30px) scale(.95)}66%{transform:translate(20px,-40px) scale(1.05)}}
+@keyframes blob3{0%,100%{transform:translate(0,0) rotate(0)}33%{transform:translate(30px,40px) rotate(120deg)}66%{transform:translate(-30px,-20px) rotate(240deg)}}
+@keyframes borderGlow{0%,100%{border-color:rgba(124,124,240,.3)}50%{border-color:rgba(124,124,240,.7)}}
+
+/* ===== SCROLL ANIMATIONS ===== */
+.reveal{opacity:0;transform:translateY(40px);transition:all .8s cubic-bezier(.16,1,.3,1)}
+.reveal.visible{opacity:1;transform:translateY(0)}
+.reveal-delay-1{transition-delay:.1s}
+.reveal-delay-2{transition-delay:.2s}
+.reveal-delay-3{transition-delay:.3s}
+.reveal-delay-4{transition-delay:.4s}
+.reveal-delay-5{transition-delay:.5s}
+
+/* ===== BACKGROUND BLURB ===== */
+.blur-bg{position:fixed;inset:0;overflow:hidden;pointer-events:none;z-index:0}
+.blur-bg span{
+  position:absolute;border-radius:50%;filter:blur(80px);opacity:.15;
+  animation:blob1 20s infinite ease-in-out;
+}
+.blur-bg span:nth-child(1){
+  width:400px;height:400px;background:#7c7cf0;top:-10%;left:-5%;
+  animation-name:blob1;animation-duration:25s;
+}
+.blur-bg span:nth-child(2){
+  width:350px;height:350px;background:#5c5ce0;bottom:-5%;right:-5%;
+  animation-name:blob2;animation-duration:20s;
+}
+.blur-bg span:nth-child(3){
+  width:300px;height:300px;background:#3a3a9a;top:40%;left:50%;
+  animation-name:blob3;animation-duration:30s;
+}
+
+/* ===== LAYOUT ===== */
+.wrapper{position:relative;z-index:1}
+section{padding:80px 20px;max-width:1100px;margin:0 auto}
+@media(max-width:768px){section{padding:50px 16px}}
+
+/* ===== NAV ===== */
+nav{
+  position:fixed;top:0;left:0;right:0;z-index:100;
+  background:rgba(10,10,15,.8);backdrop-filter:blur(20px);
+  -webkit-backdrop-filter:blur(20px);
+  border-bottom:1px solid rgba(255,255,255,.06);
+  padding:0 20px;height:56px;display:flex;align-items:center;justify-content:space-between;
+}
+nav .logo{font-size:18px;font-weight:700;background:linear-gradient(135deg,#7c7cf0,#b388ff);-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text}
+nav .links{display:flex;gap:24px;font-size:14px}
+nav .links a{color:rgba(255,255,255,.6)}
+nav .links a:hover{color:#fff}
+@media(max-width:480px){nav .links{display:none}}
+
+/* ===== HERO ===== */
+.hero{
+  min-height:100vh;display:flex;flex-direction:column;justify-content:center;
+  align-items:center;text-align:center;padding:120px 20px 80px;position:relative;
+}
+.hero-icon{
+  width:96px;height:96px;border-radius:24px;margin-bottom:32px;
+  animation:float 4s ease-in-out infinite;
+  box-shadow:0 0 40px rgba(124,124,240,.25);
+}
+.hero h1{
+  font-size:clamp(2.4rem,7vw,4.5rem);font-weight:800;line-height:1.1;
+  background:linear-gradient(135deg,#e8e8ed 0%,#7c7cf0 50%,#b388ff 100%);
+  -webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text;
+}
+.hero .tagline{
+  margin-top:12px;font-size:clamp(1rem,2.5vw,1.25rem);color:rgba(255,255,255,.5);
+  max-width:500px;letter-spacing:.3px;
+}
+.hero .sub{
+  margin-top:8px;font-size:clamp(.85rem,1.8vw,1rem);color:rgba(255,255,255,.35);
+}
+.hero-badges{display:flex;gap:12px;margin-top:40px;flex-wrap:wrap;justify-content:center}
+.hero-badges span{
+  padding:6px 16px;border-radius:100px;font-size:12px;font-weight:500;
+  background:rgba(124,124,240,.12);border:1px solid rgba(124,124,240,.2);
+  color:rgba(255,255,255,.7);
+}
+.download-btn-group{display:flex;gap:16px;margin-top:48px;flex-wrap:wrap;justify-content:center}
+.download-btn,.secondary-btn{
+  display:inline-flex;align-items:center;gap:10px;
+  padding:16px 36px;border-radius:14px;font-size:15px;font-weight:600;
+  cursor:pointer;transition:all .3s cubic-bezier(.16,1,.3,1);
+  border:none;
+}
+.download-btn{
+  background:linear-gradient(135deg,#7c7cf0,#5c5ce0);color:#fff;
+  animation:pulseGlow 3s infinite ease-in-out;
+  position:relative;overflow:hidden;
+}
+.download-btn::before{
+  content:'';position:absolute;inset:0;border-radius:14px;
+  background:linear-gradient(135deg,transparent 30%,rgba(255,255,255,.15) 50%,transparent 70%);
+  background-size:200% 100%;animation:shimmer 3s infinite;
+}
+.download-btn:hover{transform:translateY(-3px) scale(1.02);box-shadow:0 12px 40px rgba(124,124,240,.4);}
+.download-btn:active{transform:scale(.97)}
+.secondary-btn{
+  background:rgba(255,255,255,.05);color:rgba(255,255,255,.7);
+  border:1px solid rgba(255,255,255,.1);
+}
+.secondary-btn:hover{background:rgba(255,255,255,.1);color:#fff;transform:translateY(-2px);}
+
+.dl-version-info{margin-top:12px;font-size:12px;color:rgba(255,255,255,.3);text-align:center}
+.dl-version-info strong{color:rgba(255,255,255,.5)}
+
+/* ===== SECTION TITLES ===== */
+.section-title{
+  font-size:clamp(1.5rem,4vw,2.2rem);font-weight:700;text-align:center;
+  margin-bottom:12px;background:linear-gradient(135deg,#e8e8ed,#b388ff);
+  -webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text;
+}
+.section-sub{text-align:center;color:rgba(255,255,255,.4);font-size:14px;margin-bottom:60px}
+
+/* ===== NAME EXPLANATION ===== */
+.name-section{text-align:center;padding-top:0}
+.name-card{
+  background:linear-gradient(135deg,rgba(124,124,240,.06),rgba(179,136,255,.04));
+  border:1px solid rgba(124,124,240,.12);border-radius:20px;
+  padding:40px 32px;max-width:700px;margin:0 auto;
+  position:relative;overflow:hidden;
+}
+.name-card::before{
+  content:'';position:absolute;top:-50%;right:-50%;width:200%;height:200%;
+  background:radial-gradient(circle,rgba(124,124,240,.04),transparent 60%);
+  pointer-events:none;
+}
+.name-card .chinese{font-size:2.2rem;font-weight:700;color:#b388ff;margin-bottom:8px}
+.name-card .pinyin{font-size:14px;color:rgba(255,255,255,.3);margin-bottom:24px;letter-spacing:2px}
+.name-card .meaning{font-size:15px;line-height:1.9;color:rgba(255,255,255,.65);max-width:540px;margin:0 auto}
+.name-card .meaning em{font-style:normal;color:#b388ff}
+
+/* ===== FEATURES ===== */
+.features-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(280px,1fr));gap:20px}
+@media(max-width:480px){.features-grid{grid-template-columns:1fr}}
+.feature-card{
+  background:rgba(255,255,255,.02);border:1px solid rgba(255,255,255,.06);
+  border-radius:16px;padding:28px 24px;transition:all .4s cubic-bezier(.16,1,.3,1);
+  cursor:default;
+}
+.feature-card:hover{
+  background:rgba(124,124,240,.06);border-color:rgba(124,124,240,.2);
+  transform:translateY(-4px);box-shadow:0 12px 40px rgba(0,0,0,.3);
+}
+.feature-icon{
+  width:44px;height:44px;border-radius:12px;display:flex;align-items:center;justify-content:center;
+  font-size:22px;margin-bottom:16px;
+  background:rgba(124,124,240,.1);
+}
+.feature-card h3{font-size:16px;font-weight:600;margin-bottom:8px;color:#e8e8ed}
+.feature-card p{font-size:13px;color:rgba(255,255,255,.45);line-height:1.7}
+
+/* ===== SCREENSHOTS ===== */
+.screenshots-grid{
+  display:grid;grid-template-columns:1fr 1fr;gap:24px;max-width:800px;margin:0 auto;
+}
+@media(max-width:600px){.screenshots-grid{grid-template-columns:1fr;max-width:360px}}
+.screenshot-card{
+  border-radius:20px;overflow:hidden;
+  border:1px solid rgba(255,255,255,.06);background:rgba(255,255,255,.02);
+  transition:all .5s cubic-bezier(.16,1,.3,1);
+}
+.screenshot-card:hover{transform:translateY(-6px) scale(1.01);box-shadow:0 20px 60px rgba(0,0,0,.4);border-color:rgba(124,124,240,.2);}
+.screenshot-card img{width:100%;height:auto;display:block}
+.screenshot-card .caption{padding:14px 18px 18px;font-size:13px;color:rgba(255,255,255,.4);text-align:center}
+
+/* ===== TIMELINE ===== */
+.timeline{position:relative;max-width:700px;margin:0 auto}
+.timeline::before{
+  content:'';position:absolute;left:24px;top:0;bottom:0;
+  width:1px;background:linear-gradient(to bottom,rgba(124,124,240,.4),transparent);
+}
+@media(max-width:480px){.timeline::before{left:16px}}
+.timeline-item{
+  padding-left:64px;position:relative;margin-bottom:36px;
+}
+@media(max-width:480px){.timeline-item{padding-left:48px;margin-bottom:28px}}
+.timeline-dot{
+  position:absolute;left:16px;top:4px;
+  width:16px;height:16px;border-radius:50%;
+  background:rgba(124,124,240,.2);border:2px solid #7c7cf0;
+  transition:all .3s;
+}
+@media(max-width:480px){.timeline-dot{left:8px;width:16px;height:16px}}
+.timeline-item:hover .timeline-dot{background:#7c7cf0;box-shadow:0 0 20px rgba(124,124,240,.4)}
+.timeline-version{
+  font-size:11px;color:#7c7cf0;font-weight:700;letter-spacing:1px;
+  margin-bottom:2px;
+}
+.timeline-date{font-size:12px;color:rgba(255,255,255,.3);margin-bottom:8px}
+.timeline-title{font-size:16px;font-weight:600;color:#e8e8ed;margin-bottom:6px}
+.timeline-desc{
+  font-size:13px;color:rgba(255,255,255,.45);line-height:1.7;
+}
+.timeline-desc code{background:rgba(124,124,240,.1);padding:1px 6px;border-radius:4px;font-size:12px;color:#b388ff}
+
+/* ===== PHILOSOPHY ===== */
+.philosophy{
+  text-align:center;padding:60px 20px 80px;
+}
+.philosophy blockquote{
+  max-width:640px;margin:0 auto;
+  font-size:clamp(1rem,2.5vw,1.2rem);line-height:1.9;
+  color:rgba(255,255,255,.55);font-style:italic;
+  border-left:2px solid rgba(124,124,240,.3);padding-left:24px;text-align:left;
+}
+.philosophy blockquote strong{color:#b388ff;font-style:normal}
+
+/* ===== FOOTER ===== */
+footer{
+  text-align:center;padding:40px 20px;
+  border-top:1px solid rgba(255,255,255,.04);
+  font-size:12px;color:rgba(255,255,255,.25);
+}
+footer a{color:rgba(124,124,240,.5)}
+footer a:hover{color:#7c7cf0}
+footer .spacer{display:inline-block;margin:0 8px;color:rgba(255,255,255,.1)}
+</style>
+</head>
+<body>
+
+<div class="blur-bg"><span></span><span></span><span></span></div>
+
+<nav>
+  <div class="logo">✦ fxxkHilife</div>
+  <div class="links">
+    <a href="#features">特性</a>
+    <a href="#screenshots">截屏</a>
+    <a href="#name">名字</a>
+    <a href="#timeline">历程</a>
+    <a href="https://github.com/ct-yx/fxxkHilife" target="_blank">GitHub</a>
+  </div>
+</nav>
+
+<div class="wrapper">
+
+<!-- === HERO === -->
+<section class="hero">
+  <img src="./icon.png" alt="fxxkHilife" class="hero-icon">
+  <h1>fxxkHilife</h1>
+  <p class="tagline">HUAWEI FreeBuds / HONOR Earbuds 的轻量离线控制 App</p>
+  <p class="sub">无需登录 · 无广告 · 完全离线 · 开源</p>
+  <div class="hero-badges">
+    <span>v2.5.0</span>
+    <span>Kotlin + Jetpack Compose</span>
+    <span>Bluetooth SPP</span>
+    <span>Material3</span>
+  </div>
+  <div class="download-btn-group" id="downloadSection">
+    <a class="download-btn" id="downloadBtn" href="https://github.com/ct-yx/fxxkHilife/releases/latest" target="_blank">
+      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+      <span id="downloadText">下载最新版</span>
+    </a>
+    <a class="secondary-btn" href="https://github.com/ct-yx/fxxkHilife" target="_blank">
+      <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor"><path d="M12 0C5.37 0 0 5.37 0 12c0 5.3 3.44 9.8 8.2 11.4.6.1.82-.26.82-.58v-2.17c-3.34.72-4.04-1.44-4.04-1.44-.54-1.38-1.33-1.75-1.33-1.75-1.09-.74.08-.73.08-.73 1.2.08 1.83 1.23 1.83 1.23 1.07 1.83 2.8 1.3 3.48 1 .11-.78.42-1.3.76-1.6-2.66-.3-5.46-1.33-5.46-5.93 0-1.31.47-2.38 1.23-3.22-.12-.3-.54-1.52.12-3.16 0 0 1-.32 3.3 1.23a11.5 11.5 0 0 1 6 0c2.28-1.55 3.28-1.23 3.28-1.23.66 1.64.24 2.86.12 3.16.77.84 1.24 1.91 1.24 3.22 0 4.61-2.8 5.62-5.47 5.92.43.37.82 1.1.82 2.22v3.29c0 .32.22.7.83.58C20.57 21.8 24 17.3 24 12 24 5.37 18.63 0 12 0z"/></svg>
+      GitHub 仓库
+    </a>
+  </div>
+  <div class="dl-version-info" id="versionInfo">正在获取最新版本信息…</div>
+</section>
+
+<!-- === NAME EXPLANATION === -->
+<section id="name" class="name-section reveal">
+  <h2 class="section-title">名字的意味</h2>
+  <p class="section-sub">一个名字背后的清醒与温柔</p>
+  <div class="name-card reveal reveal-delay-1">
+    <div class="chinese">破茧</div>
+    <div class="pinyin">f·x·x·k · H·i·L·i·f·e</div>
+    <div class="meaning">
+      HiLife 圈养了一个美好的世界，却要求你把钥匙交给它。<br>
+      fxxkHilife 不是愤怒，是<em>清醒</em>——<br>
+      是把自由从服务条款里<em>撕回来</em>的那一下。<br><br>
+      像挣脱一件太合身的制服，<br>
+      像在别人修好的花园里，<em>偏要走出一条自己的路</em>。<br><br>
+      所以它不叫 HateHiLife，也不叫 ByeHiLife。<br>
+      它叫 <em>fxxkHilife</em> —— 一种带着笑意的叛逆，<em>温柔而坚定</em>。
+    </div>
+  </div>
+</section>
+
+<!-- === FEATURES === -->
+<section id="features" class="reveal">
+  <h2 class="section-title">核心特性</h2>
+  <p class="section-sub">一个纯粹的离线控制工具，只做一件事，把它做到极致</p>
+  <div class="features-grid">
+    <div class="feature-card reveal reveal-delay-1">
+      <div class="feature-icon">🔌</div>
+      <h3>离线直连 · 无需账号</h3>
+      <p>通过蓝牙 SPP 直接控制耳机，无需登录华为账号、无需联网、无广告。即开即用。</p>
+    </div>
+    <div class="feature-card reveal reveal-delay-2">
+      <div class="feature-icon">🎛️</div>
+      <h3>ANC 三模快切</h3>
+      <p>通知栏一键切换 关闭 / 降噪 / 透传，支持 QuickSettings Tile 快捷开关，抬手即切。</p>
+    </div>
+    <div class="feature-card reveal reveal-delay-3">
+      <div class="feature-icon">🎨</div>
+      <h3>Material3 + 自定义壁纸</h3>
+      <p>三态主题（跟随系统/深色/浅色），支持导入自定义壁纸并选择作用域，打造专属视觉风格。</p>
+    </div>
+    <div class="feature-card reveal reveal-delay-4">
+      <div class="feature-icon">✋</div>
+      <h3>手势全定制</h3>
+      <p>双击/三击/滑动/长按——每个手势独立设置页面，全部中文选项，一目了然。</p>
+    </div>
+    <div class="feature-card reveal reveal-delay-5">
+      <div class="feature-icon">⚡</div>
+      <h3>低延迟模式</h3>
+      <p>一键开启游戏低延迟模式，音画同步优先。连接即自动开启，无需每次手动切换。</p>
+    </div>
+    <div class="feature-card reveal reveal-delay-1">
+      <div class="feature-icon">🔄</div>
+      <h3>自适应轮询 · 省电智能</h3>
+      <p>前台 800ms 高频刷新，后台 5s 低频保活。由 Activity 生命周期自动调度，省电又流畅。</p>
+    </div>
+    <div class="feature-card reveal reveal-delay-2">
+      <div class="feature-icon">📋</div>
+      <h3>通知栏实时状态</h3>
+      <p>ANC 模式、音质模式、低延迟状态、佩戴时长——通知栏一目了然，无需打开应用。</p>
+    </div>
+    <div class="feature-card reveal reveal-delay-3">
+      <div class="feature-icon">🔐</div>
+      <h3>完全开源 · 透明可控</h3>
+      <p>基于 OpenFreebuds 协议逆向工作，代码全公开。无暗埋权限、无数据上传、无隐私收集。</p>
+    </div>
+    <div class="feature-card reveal reveal-delay-4">
+      <div class="feature-icon">📊</div>
+      <h3>电池详尽解析</h3>
+      <p>左右耳、充电盒独立电量显示 + 充电状态识别。FreeBuds 6i 实测 9/13 Handler 5.5s 内就绪。</p>
+    </div>
+  </div>
+</section>
+
+<!-- === SCREENSHOTS === -->
+<section id="screenshots" class="reveal">
+  <h2 class="section-title">应用截屏</h2>
+  <p class="section-sub">FreeBuds 6i 实机运行的 fxxkHilife</p>
+  <div class="screenshots-grid">
+    <div class="screenshot-card reveal reveal-delay-1">
+      <img src="./screenshot_home.jpg" alt="fxxkHilife 主页" loading="lazy">
+      <div class="caption">主页 · 已保存设备列表 + 扫描新设备</div>
+    </div>
+    <div class="screenshot-card reveal reveal-delay-2">
+      <img src="./screenshot_device.jpg" alt="fxxkHilife 设备详情" loading="lazy">
+      <div class="caption">设备详情 · ANC 控制 / 手势 / 音频偏好</div>
+    </div>
+  </div>
+</section>
+
+<!-- === TIMELINE === -->
+<section id="timeline" class="reveal">
+  <h2 class="section-title">开发历程</h2>
+  <p class="section-sub">从协议逆向到完整应用 · 24 小时内的进化</p>
+  <div class="timeline">
+    <div class="timeline-item reveal reveal-delay-1">
+      <div class="timeline-dot"></div>
+      <div class="timeline-version">v2.5.0</div>
+      <div class="timeline-date">2026-06-28</div>
+      <div class="timeline-title">UI 重构 · QuickSettings Tile · 重试优化</div>
+      <div class="timeline-desc">移除 Haze 模糊效果，ANC 分段控件改用 <code>Material3</code> 原生样式；QuickSettings Tile 一键切换 ANC 模式；后台重试策略优化为阶梯间隔（5s/30s）。</div>
+    </div>
+    <div class="timeline-item reveal reveal-delay-2">
+      <div class="timeline-dot"></div>
+      <div class="timeline-version">v2.4.0</div>
+      <div class="timeline-date">2026-06-28</div>
+      <div class="timeline-title">三阶段大更新</div>
+      <div class="timeline-desc">自适应轮询（前台800ms/后台5s）+ 三态主题 + 壁纸系统 + 通知栏 ANC 三模快切 + 日志控制 + ANC 模糊滑块。</div>
+    </div>
+    <div class="timeline-item reveal reveal-delay-3">
+      <div class="timeline-dot"></div>
+      <div class="timeline-version">v2.3.0</div>
+      <div class="timeline-date">2026-06-28</div>
+      <div class="timeline-title">UI/UX 全面修复</div>
+      <div class="timeline-desc">3s 轮询提速 + ANC 即时刷新 + 手势子页面 + 已保存设备主页 + 全中文映射 + 五屏导航。</div>
+    </div>
+    <div class="timeline-item reveal reveal-delay-4">
+      <div class="timeline-dot"></div>
+      <div class="timeline-version">v2.1.0 → v2.1.3</div>
+      <div class="timeline-date">2026-06-28</div>
+      <div class="timeline-title">协议层稳固 · 15 Handler 移植</div>
+      <div class="timeline-desc">13 个功能 Handler 完整移植（info/battery/anc/手势全系/低延迟/音质…），交错并行初始化（80ms 间隔、1.5s 快失、3 次重试）。</div>
+    </div>
+    <div class="timeline-item reveal reveal-delay-5">
+      <div class="timeline-dot"></div>
+      <div class="timeline-version">v2.0.0-stable.1</div>
+      <div class="timeline-date">2026-06-27</div>
+      <div class="timeline-title">回归 RFCOMM SPP</div>
+      <div class="timeline-desc">放弃 BLE GATT 推测方案，严格对照上游 OpenFreebuds 重写 <code>SppDriver</code> + 包解析格式修正。FreeBuds 6i SPP 连接成功验证。</div>
+    </div>
+  </div>
+</section>
+
+<!-- === PHILOSOPHY === -->
+<section class="philosophy reveal">
+  <h2 class="section-title">项目理念</h2>
+  <blockquote>
+    你的耳机，你的控制权。<br><br>
+    我们相信硬件属于购买它的人，但很多厂商用封闭的生态把本该属于用户的控制权锁进了自己的 App。<br><br>
+    fxxkHilife 的意义不是"破解"，而是<strong>归还</strong>——<br>
+    用一条蓝牙 SPP 通道，把 ANC 切换、手势定制、音质偏好……<br>
+    所有这些本该在指尖的东西，<strong>还给你</strong>。<br><br>
+    仅作学习与研究。<br>
+    自由的前提，是理解规则。
+  </blockquote>
+</section>
+
+<!-- === FOOTER === -->
+<footer>
+  <p>fxxkHilife · 基于 <a href="https://github.com/melianmiko/OpenFreebuds" target="_blank">OpenFreebuds</a> 协议逆向工作</p>
+  <p style="margin-top:6px">
+    <a href="https://github.com/ct-yx/fxxkHilife" target="_blank">GitHub 仓库</a>
+    <span class="spacer">·</span>
+    <a href="https://github.com/ct-yx/fxxkHilife/releases" target="_blank">Release 页面</a>
+    <span class="spacer">·</span>
+    <a href="./README.md">中文文档</a>
+    <span class="spacer">·</span>
+    <a href="./README_EN.md">English Docs</a>
+  </p>
+  <p style="margin-top:12px">仅供学习与个人研究使用 · 禁止商业用途</p>
+</footer>
+
+</div><!-- .wrapper -->
+
+<script>
+// ===== SCROLL REVEAL =====
+const observer = new IntersectionObserver((entries) => {
+  entries.forEach(entry => {
+    if(entry.isIntersecting) entry.target.classList.add('visible');
+  });
+}, { threshold: 0.12, rootMargin: '0px 0px -40px 0px' });
+
+document.querySelectorAll('.reveal').forEach(el => observer.observe(el));
+
+// ===== LATEST VERSION FROM GITHUB API =====
+(async function fetchLatestRelease() {
+  const btn = document.getElementById('downloadBtn');
+  const text = document.getElementById('downloadText');
+  const info = document.getElementById('versionInfo');
+  try {
+    const resp = await fetch('https://api.github.com/repos/ct-yx/fxxkHilife/releases/latest');
+    if(!resp.ok) throw new Error('HTTP ' + resp.status);
+    const data = await resp.json();
+    const ver = data.tag_name || data.name || 'latest';
+    const apkAssets = data.assets ? data.assets.filter(a => a.name.endsWith('.apk')) : [];
+    const apkUrl = apkAssets.length > 0 ? apkAssets[0].browser_download_url : data.html_url;
+    btn.href = apkUrl;
+    text.textContent = '下载 v' + ver.replace(/^v/i,'');
+    info.innerHTML = '<strong>v' + ver.replace(/^v/i,'') + '</strong> · ' + (apkAssets.length > 0 ? apkAssets[0].name : '最新发布') + ' · ' + new Date(data.published_at).toLocaleDateString('zh-CN');
+  } catch(e) {
+    // fallback: 跳转到 releases 页面
+    btn.href = 'https://github.com/ct-yx/fxxkHilife/releases/latest';
+    text.textContent = '获取最新版 →';
+    info.innerHTML = '前往 <a href="https://github.com/ct-yx/fxxkHilife/releases">GitHub Releases</a> 查看最新版本';
+  }
+})();
+</script>
+
+</body>
+</html>
