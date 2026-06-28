@@ -213,7 +213,7 @@ nav .links a:hover{color:#fff}
 /* ===== TIMELINE ===== */
 .timeline{position:relative;max-width:700px;margin:0 auto}
 .timeline::before{
-  content:'';position:absolute;left:24px;top:0;bottom:0;
+  content:'';position:absolute;left:24px;top:8px;bottom:8px;
   width:1px;background:linear-gradient(to bottom,rgba(124,124,240,.4),transparent);
 }
 @media(max-width:480px){.timeline::before{left:16px}}
@@ -234,11 +234,39 @@ nav .links a:hover{color:#fff}
   margin-bottom:2px;
 }
 .timeline-date{font-size:12px;color:rgba(255,255,255,.3);margin-bottom:8px}
-.timeline-title{font-size:16px;font-weight:600;color:#e8e8ed;margin-bottom:6px}
-.timeline-desc{
+.timeline-title{
+  font-size:16px;font-weight:600;color:#e8e8ed;margin-bottom:8px;
+  cursor:pointer;display:inline-flex;align-items:center;gap:8px;
+  transition:color .3s;
+}
+.timeline-title:hover{color:#b388ff}
+.timeline-title .expand-icon{
+  display:inline-flex;align-items:center;justify-content:center;
+  width:20px;height:20px;border-radius:50%;
+  background:rgba(124,124,240,.1);border:1px solid rgba(124,124,240,.2);
+  font-size:12px;transition:all .4s cubic-bezier(.16,1,.3,1);
+  flex-shrink:0;line-height:1;
+}
+.timeline-title .expand-icon.open{transform:rotate(180deg);background:rgba(124,124,240,.2)}
+.timeline-summary{
   font-size:13px;color:rgba(255,255,255,.45);line-height:1.7;
 }
-.timeline-desc code{background:rgba(124,124,240,.1);padding:1px 6px;border-radius:4px;font-size:12px;color:#b388ff}
+.timeline-detail{
+  max-height:0;overflow:hidden;
+  transition:max-height .6s cubic-bezier(.16,1,.3,1),opacity .4s ease;
+  opacity:0;
+}
+.timeline-detail.open{max-height:2000px;opacity:1}
+.timeline-detail-inner{
+  margin-top:10px;padding:16px 18px;
+  background:rgba(124,124,240,.04);border:1px solid rgba(124,124,240,.1);
+  border-radius:12px;font-size:13px;color:rgba(255,255,255,.5);line-height:1.8;
+}
+.timeline-detail-inner code{background:rgba(124,124,240,.1);padding:1px 6px;border-radius:4px;font-size:12px;color:#b388ff}
+.timeline-detail-inner strong{color:rgba(255,255,255,.6)}
+.timeline .loading-text{text-align:center;padding:40px 0;color:rgba(255,255,255,.3);font-size:14px}
+.timeline .loading-text .spinner{display:inline-block;width:18px;height:18px;border:2px solid rgba(124,124,240,.15);border-top-color:#7c7cf0;border-radius:50%;animation:spin .8s linear infinite;vertical-align:middle;margin-right:10px}
+@keyframes spin{to{transform:rotate(360deg)}}
 
 /* ===== PHILOSOPHY ===== */
 .philosophy{
@@ -420,42 +448,8 @@ footer .spacer{display:inline-block;margin:0 8px;color:rgba(255,255,255,.1)}
 <section id="timeline" class="reveal">
   <h2 class="section-title" data-i18n="timeline_title">开发历程</h2>
   <p class="section-sub" data-i18n="timeline_sub">从协议逆向到完整应用 · 24 小时内的进化</p>
-  <div class="timeline">
-    <div class="timeline-item reveal reveal-delay-1">
-      <div class="timeline-dot"></div>
-      <div class="timeline-version">v2.5.0</div>
-      <div class="timeline-date">2026-06-28</div>
-      <div class="timeline-title" data-i18n="tl1_title">UI 重构 · QuickSettings Tile · 重试优化</div>
-      <div class="timeline-desc" data-i18n="tl1_desc">移除 Haze 模糊效果，ANC 分段控件改用 <code>Material3</code> 原生样式；QuickSettings Tile 一键切换 ANC 模式；后台重试策略优化为阶梯间隔（5s/30s）。</div>
-    </div>
-    <div class="timeline-item reveal reveal-delay-2">
-      <div class="timeline-dot"></div>
-      <div class="timeline-version">v2.4.0</div>
-      <div class="timeline-date">2026-06-28</div>
-      <div class="timeline-title" data-i18n="tl2_title">三阶段大更新</div>
-      <div class="timeline-desc" data-i18n="tl2_desc">自适应轮询（前台800ms/后台5s）+ 三态主题 + 壁纸系统 + 通知栏 ANC 三模快切 + 日志控制 + ANC 模糊滑块。</div>
-    </div>
-    <div class="timeline-item reveal reveal-delay-3">
-      <div class="timeline-dot"></div>
-      <div class="timeline-version">v2.3.0</div>
-      <div class="timeline-date">2026-06-28</div>
-      <div class="timeline-title" data-i18n="tl3_title">UI/UX 全面修复</div>
-      <div class="timeline-desc" data-i18n="tl3_desc">3s 轮询提速 + ANC 即时刷新 + 手势子页面 + 已保存设备主页 + 全中文映射 + 五屏导航。</div>
-    </div>
-    <div class="timeline-item reveal reveal-delay-4">
-      <div class="timeline-dot"></div>
-      <div class="timeline-version">v2.1.0 → v2.1.3</div>
-      <div class="timeline-date">2026-06-28</div>
-      <div class="timeline-title" data-i18n="tl4_title">协议层稳固 · 15 Handler 移植</div>
-      <div class="timeline-desc" data-i18n="tl4_desc">13 个功能 Handler 完整移植（info/battery/anc/手势全系/低延迟/音质…），交错并行初始化（80ms 间隔、1.5s 快失、3 次重试）。</div>
-    </div>
-    <div class="timeline-item reveal reveal-delay-5">
-      <div class="timeline-dot"></div>
-      <div class="timeline-version">v2.0.0-stable.1</div>
-      <div class="timeline-date">2026-06-27</div>
-      <div class="timeline-title" data-i18n="tl5_title">回归 RFCOMM SPP</div>
-      <div class="timeline-desc" data-i18n="tl5_desc">放弃 BLE GATT 推测方案，严格对照上游 OpenFreebuds 重写 <code>SppDriver</code> + 包解析格式修正。FreeBuds 6i SPP 连接成功验证。</div>
-    </div>
+  <div class="timeline" id="timelineContainer">
+    <div class="loading-text"><span class="spinner"></span><span data-i18n="timeline_loading">正在加载开发日志…</span></div>
   </div>
 </section>
 
@@ -566,16 +560,9 @@ const i18n = {
     screenshots_cap2: '设备详情 · ANC 控制 / 手势 / 音频偏好',
     timeline_title: '开发历程',
     timeline_sub: '从协议逆向到完整应用 · 24 小时内的进化',
-    tl1_title: 'UI 重构 · QuickSettings Tile · 重试优化',
-    tl1_desc: '移除 Haze 模糊效果，ANC 分段控件改用 <code>Material3</code> 原生样式；QuickSettings Tile 一键切换 ANC 模式；后台重试策略优化为阶梯间隔（5s/30s）。',
-    tl2_title: '三阶段大更新',
-    tl2_desc: '自适应轮询（前台800ms/后台5s）+ 三态主题 + 壁纸系统 + 通知栏 ANC 三模快切 + 日志控制 + ANC 模糊滑块。',
-    tl3_title: 'UI/UX 全面修复',
-    tl3_desc: '3s 轮询提速 + ANC 即时刷新 + 手势子页面 + 已保存设备主页 + 全中文映射 + 五屏导航。',
-    tl4_title: '协议层稳固 · 15 Handler 移植',
-    tl4_desc: '13 个功能 Handler 完整移植（info/battery/anc/手势全系/低延迟/音质…），交错并行初始化（80ms 间隔、1.5s 快失、3 次重试）。',
-    tl5_title: '回归 RFCOMM SPP',
-    tl5_desc: '放弃 BLE GATT 推测方案，严格对照上游 OpenFreebuds 重写 <code>SppDriver</code> + 包解析格式修正。FreeBuds 6i SPP 连接成功验证。',
+    timeline_loading: '正在加载开发日志…',
+    timeline_expand: '展开详情',
+    timeline_collapse: '收起详情',
     philosophy_title: '项目理念',
     philosophy_text_html: '你的耳机，你的控制权。<br><br>我们相信硬件属于购买它的人，但很多厂商用封闭的生态把本该属于用户的控制权锁进了自己的 App。<br><br>fxxkHilife 的意义不是"破解"，而是<strong>归还</strong>——<br>用一条蓝牙 SPP 通道，把 ANC 切换、手势定制、音质偏好……<br>所有这些本该在指尖的东西，<strong>还给你</strong>。<br><br>仅作学习与研究。<br>自由的前提，是理解规则。',
     sponsor_title: '支持项目',
@@ -640,16 +627,9 @@ const i18n = {
     screenshots_cap2: 'Device Details · ANC control / Gestures / Audio preferences',
     timeline_title: 'Development History',
     timeline_sub: 'From protocol reverse engineering to a full app — evolution in 24 hours',
-    tl1_title: 'UI Refactor · QuickSettings Tile · Retry Optimization',
-    tl1_desc: 'Removed Haze blur effect, native <code>Material3</code> ANC segment control; QuickSettings Tile for ANC toggle; stepped retry strategy (5s/30s).',
-    tl2_title: 'Three-Phase Major Update',
-    tl2_desc: 'Adaptive polling (800ms FG / 5s BG) + triple theme + wallpaper system + notification bar ANC toggle + logging control + ANC slider.',
-    tl3_title: 'UI/UX Full Restoration',
-    tl3_desc: '3s polling speedup + ANC instant refresh + gesture sub-pages + saved device home + full Chinese mapping + 5-screen navigation.',
-    tl4_title: 'Protocol Layer Stabilization · 15 Handler Port',
-    tl4_desc: '13 functional handlers fully ported (info/battery/anc/gestures/low-latency/audio…), staggered parallel init (80ms gap, 1.5s timeout, 3 retries).',
-    tl5_title: 'Return to RFCOMM SPP',
-    tl5_desc: 'Abandoned BLE GATT approach, rewrote <code>SppDriver</code> following upstream OpenFreebuds spec. FreeBuds 6i SPP connection verified.',
+    timeline_loading: 'Loading development log…',
+    timeline_expand: 'Expand details',
+    timeline_collapse: 'Collapse details',
     philosophy_title: 'Project Philosophy',
     philosophy_text_html: 'Your earbuds. Your control.<br><br>We believe hardware belongs to those who buy it. Yet many manufacturers lock user control behind closed ecosystems.<br><br>fxxkHilife isn\'t about "cracking" — it\'s about <strong>returning</strong> —<br>using a Bluetooth SPP channel to give ANC switching, gesture customization, audio preferences…<br>all the things that should be at your fingertips, <strong>back to you</strong>.<br><br>For learning and research only.<br>Freedom begins with understanding the rules.',
     sponsor_title: 'Support the Project',
@@ -752,7 +732,158 @@ document.querySelectorAll('.reveal').forEach(el => observer.observe(el));
       : 'Visit <a href="https://github.com/ct-yx/fxxkHilife/releases">GitHub Releases</a> for the latest version';
   }
 })();
-</script>
 
-</body>
-</html>
+// ===== TIMELINE: LOAD FROM DEVELOP_LOG.md =====
+(async function loadTimeline() {
+  const container = document.getElementById("timelineContainer");
+  try {
+    const resp = await fetch("./DEVELOPMENT_LOG.md");
+    if(!resp.ok) throw new Error("HTTP " + resp.status);
+    const text = await resp.text();
+    
+    /* Parse version entries: match "## vX.Y.Z" blocks */
+    const versionRegex = /^## (v[\w.-]+)\s*\(([^)]+)\)\s*\n([\s\S]*?)(?=^## |\Z)/gm;
+    const entries = [];
+    let m;
+    while((m = versionRegex.exec(text)) !== null) {
+      const ver = m[1];
+      const date = m[2];
+      const body = m[3].trim();
+      
+      /* Extract first meaningful line (30-40 chars) as summary */
+      let summaryLine = body.replace(/^###.*\n?/gm, "").replace(/\*\*|\*/g, "").replace(/^[\s\n]*/, "").split(/\n/)[0];
+      if(!summaryLine || summaryLine.length < 5) {
+        const lines = body.split(/\n/).filter(l => l.trim() && !l.startsWith("#") && !l.startsWith("|") && !l.startsWith("-") && !l.startsWith(">"));
+        summaryLine = lines.length > 0 ? lines[0] : "详细更新";
+      }
+      summaryLine = summaryLine.replace(/<[^>]*>/g, "").trim();
+      if(summaryLine.length > 35) summaryLine = summaryLine.slice(0, 35) + "...";
+      
+      /* Format detail: keep key bullet points, limit ~200 chars */
+      let detailHtml = body
+        .replace(/^### .*\n?/gm, "")
+        .replace(/\|.*\|.*\|/g, "")
+        .slice(0, 800);
+      detailHtml = detailHtml.replace(/\n\n/g, "<br><br>").replace(/\n/g, "<br>");
+      detailHtml = detailHtml.replace(/`([^`]+)`/g, "<code>$1</code>");
+      detailHtml = detailHtml.replace(/\*\*([^*]+)\*\*/g, "<strong>$1</strong>");
+      entries.push({ ver, date, summaryLine, detailHtml });
+    }
+    
+    if(entries.length === 0) throw new Error("No version entries found");
+    
+    /* Render timeline */
+    container.innerHTML = "";
+    entries.forEach((e, i) => {
+      const delay = Math.min(i + 1, 5);
+      const item = document.createElement("div");
+      item.className = "timeline-item reveal reveal-delay-" + delay;
+      item.innerHTML = `
+        <div class="timeline-dot"></div>
+        <div class="timeline-version">${e.ver}</div>
+        <div class="timeline-date">${e.date}</div>
+        <div class="timeline-title" onclick="toggleDetail(this)">
+          <span class="summary-text">${e.summaryLine}</span>
+          <span class="expand-icon">▼</span>
+        </div>
+        <div class="timeline-detail">
+          <div class="timeline-detail-inner">${e.detailHtml}</div>
+        </div>
+      `;
+      container.appendChild(item);
+      /* Trigger reveal after DOM append */
+      requestAnimationFrame(() => { item.classList.add("visible"); });
+    });
+  } catch(e) {
+    container.innerHTML = "<div class=\"loading-text\" style=\"color:rgba(255,255,255,.3)\">⚠ " + (currentLang === "zh" ? "加载开发日志失败" : "Failed to load development log") + "</div>";
+  }
+})();
+
+function toggleDetail(el) {
+  const detail = el.parentElement.querySelector(".timeline-detail");
+  const icon = el.querySelector(".expand-icon");
+  if(!detail) return;
+  const isOpen = detail.classList.contains("open");
+  detail.classList.toggle("open");
+  if(icon) icon.classList.toggle("open");
+  /* Update i18n hint */
+  const t = i18n[currentLang] || i18n.zh;
+  el.title = isOpen ? t.timeline_expand : t.timeline_collapse;
+}
+
+</script>
+// ===== TIMELINE: LOAD FROM DEVELOPMENT_LOG.md =====
+(async function loadTimeline() {
+  const container = document.getElementById("timelineContainer");
+  try {
+    const resp = await fetch("./DEVELOPMENT_LOG.md");
+    if (!resp.ok) throw new Error("HTTP " + resp.status);
+    const text = await resp.text();
+
+    // Parse "## vX.Y.Z (date)" blocks
+    const versionRegex = /^## (v[\w.\-]+)\s*\(([^)]+)\)\s*\n([\s\S]*?)(?=^## |\Z)/gm;
+    const entries = [];
+    let m;
+    while ((m = versionRegex.exec(text)) !== null) {
+      const ver = m[1];
+      const date = m[2];
+      let body = m[3].trim();
+
+      // Extract ~30-35 char summary from first non-header/non-table line
+      let summaryLine = body.replace(/^###.*\n?/gm, "").replace(/\*\*/g, "").replace(/^[\s\n]*/, "").split("\n")[0] || "";
+      if (summaryLine.length < 5) {
+        const lines = body.split("\n").filter(l => l.trim() && !l.startsWith("#") && !l.startsWith("|") && !l.startsWith("- ") && !l.startsWith(">"));
+        summaryLine = lines.length > 0 ? lines[0].trim() : "详细更新";
+      }
+      summaryLine = summaryLine.replace(/<[^>]*>/g, "").trim();
+      if (summaryLine.length > 35) summaryLine = summaryLine.slice(0, 32) + "...";
+
+      // Build detail HTML (first 600 chars, line breaks, code highlighting)
+      let detailHtml = body
+        .replace(/^### .*\n?/gm, "")
+        .replace(/\|.*\|.*\|/g, "")
+        .slice(0, 600);
+      detailHtml = detailHtml.replace(/\n\n/g, "<br><br>").replace(/\n/g, "<br>");
+      detailHtml = detailHtml.replace(/`([^`]+)`/g, "<code>$1</code>");
+      detailHtml = detailHtml.replace(/\*\*([^*]+)\*\*/g, "<strong>$1</strong>");
+
+      entries.push({ ver, date, summaryLine, detailHtml });
+    }
+
+    if (entries.length === 0) {
+      container.innerHTML = "<div class=\"loading-text\">No version entries found</div>";
+      return;
+    }
+
+    container.innerHTML = "";
+    entries.forEach((e, i) => {
+      const delay = Math.min(i + 1, 5);
+      const item = document.createElement("div");
+      item.className = "timeline-item reveal reveal-delay-" + delay;
+      item.innerHTML = "" +
+        '<div class="timeline-dot"></div>' +
+        '<div class="timeline-version">' + e.ver + '</div>' +
+        '<div class="timeline-date">' + e.date + '</div>' +
+        '<div class="timeline-title" onclick="toggleDetail(this)">' +
+          '<span class="summary-text">' + e.summaryLine + '</span>' +
+          '<span class="expand-icon">&#9660;</span>' +
+        '</div>' +
+        '<div class="timeline-detail">' +
+          '<div class="timeline-detail-inner">' + e.detailHtml + '</div>' +
+        '</div>';
+      container.appendChild(item);
+      requestAnimationFrame(() => { item.classList.add("visible"); });
+    });
+  } catch (e) {
+    container.innerHTML = "<div class=\"loading-text\">⚠ Error loading development log</div>";
+  }
+})();
+
+function toggleDetail(el) {
+  const detail = el.parentElement.querySelector(".timeline-detail");
+  const icon = el.querySelector(".expand-icon");
+  if (!detail) return;
+  const isOpen = detail.classList.contains("open");
+  detail.classList.toggle("open");
+  if (icon) icon.classList.toggle("open");
+}
