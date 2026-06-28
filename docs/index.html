@@ -226,8 +226,10 @@ nav .links a:hover{color:#fff}
   transform:translateY(-2px);box-shadow:0 8px 30px rgba(0,0,0,.3);
 }
 .timeline-item.right{justify-content:flex-end}
-.timeline-item.open.left .timeline-version-badge,.timeline-item.open.left .timeline-dot{left:calc(100% - 7px);transform:translateX(0)}
-.timeline-item.open.right .timeline-version-badge,.timeline-item.open.right .timeline-dot{left:0;transform:translateX(0)}
+.timeline-item.open.left .timeline-version-badge,.timeline-item.open.left .timeline-dot{left:calc(100% - 7px)}
+.timeline-item.open.right .timeline-version-badge,.timeline-item.open.right .timeline-dot{left:0}
+.timeline.open-left::before{left:calc(50% + 200px)}
+.timeline.open-right::before{left:calc(50% - 200px)}
 .timeline-item.open .timeline-version-badge{top:22px}
 .timeline-item.open .timeline-dot{top:24px}
 .timeline-item.right .timeline-item-inner{margin-right:0}
@@ -677,6 +679,9 @@ try { medium = marked.parse(mediumRawFinal); } catch(e) { medium = mediumRawFina
 function toggleTimeline(btn) {
   const item = btn.closest('.timeline-item');
   const wrap = item.querySelector('.timeline-detail-wrap');
+  const timeline = item.closest('.timeline');
+  // 先清除所有方向偏移
+  timeline.classList.remove('open-left', 'open-right');
   if (item.classList.contains('full')) {
     // 第三段：收起
     item.classList.remove('open', 'full');
@@ -689,12 +694,14 @@ function toggleTimeline(btn) {
     wrap.classList.add('full');
     btn.classList.add('full');
     btn.innerHTML = '收起 <svg viewBox="0 0 12 12" fill="currentColor"><polygon points="3,4.5 6,7.5 9,4.5"/></svg>';
+    timeline.classList.add(item.classList.contains('left') ? 'open-left' : 'open-right');
   } else {
     // 第一段：展开概述
     item.classList.add('open');
     wrap.classList.add('open');
     btn.classList.add('open');
     btn.innerHTML = '完整日志 <svg viewBox="0 0 12 12" fill="currentColor"><polygon points="3,4.5 6,7.5 9,4.5"/></svg>';
+    timeline.classList.add(item.classList.contains('left') ? 'open-left' : 'open-right');
   }
 }
 // ===== LATEST VERSION FROM GITHUB API =====
