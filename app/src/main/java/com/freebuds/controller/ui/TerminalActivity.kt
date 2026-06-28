@@ -20,6 +20,7 @@ import com.freebuds.controller.R
 import com.freebuds.controller.bluetooth.BluetoothScanner
 import com.freebuds.controller.bluetooth.BatteryHandler
 import com.freebuds.controller.bluetooth.ScannedDevice
+import com.freebuds.controller.bluetooth.*
 import com.freebuds.controller.bluetooth.SppDriver
 import com.freebuds.controller.data.UpdateChecker
 import com.freebuds.controller.util.LogBuffer
