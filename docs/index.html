@@ -492,7 +492,7 @@ document.querySelectorAll('.reveal').forEach(el => observer.observe(el));
   const container = document.getElementById('timelineContainer');
   const logUrl = 'https://raw.githubusercontent.com/ct-yx/fxxkHilife/refactor/v2-alpha/DEVELOPMENT_LOG.md';
   try {
-    // 需要先把 docs/DEVELOPMENT_LOG.md 放到 repo
+    // 从 GitHub raw 拉取
     const resp = await fetch(logUrl);
     if(!resp.ok) throw new Error('HTTP ' + resp.status);
     const text = await resp.text();
