@@ -141,27 +141,31 @@ class SppDriver(private val device: BluetoothDevice) {
         }
     }
 
-    /** 初始化所有 Handler（对照 OfbDriverHandlerHuawei.init: 3s timeout, max 5 attempts） */
-    private suspend fun initHandlers() {
-        for (handler in handlers) {
-            var success = false
-            for (attempt in 0 until 5) {
-                try {
-                    withTimeout(3000) {
-                        handler.onInit(this@SppDriver)
+    /** 初始化所有 Handler（并行发起，每个 Handler 最多 5 次重试 × 3s 超时，全局超时 12s） */
+    private suspend fun initHandlers() = withTimeout(12000) {
+        coroutineScope {
+        handlers.map { handler ->
+            launch {
+                var success = false
+                for (attempt in 0 until 5) {
+                    try {
+                        withTimeout(3000) {
+                            handler.onInit(this@SppDriver)
+                        }
+                        success = true
+                        LogBuffer.i("SPP", "Init ${handler.id} success (attempt=${attempt + 1})")
+                        break
+                    } catch (e: TimeoutCancellationException) {
+                        LogBuffer.w("SPP", "Init ${handler.id} timeout (attempt=${attempt + 1})")
+                    } catch (e: Exception) {
+                        LogBuffer.w("SPP", "Init ${handler.id} failed (attempt=${attempt + 1}): ${e.message}")
                     }
-                    success = true
-                    LogBuffer.i("SPP", "Init ${handler.id} success (attempt=${attempt + 1})")
-                    break
-                } catch (e: TimeoutCancellationException) {
-                    LogBuffer.w("SPP", "Init ${handler.id} timeout (attempt=${attempt + 1})")
-                } catch (e: Exception) {
-                    LogBuffer.w("SPP", "Init ${handler.id} failed (attempt=${attempt + 1}): ${e.message}")
+                }
+                if (!success) {
+                    LogBuffer.w("SPP", "Can't initialize ${handler.id}. Skipping.")
                 }
             }
-            if (!success) {
-                LogBuffer.w("SPP", "Can't initialize ${handler.id}. Skipping.")
-            }
+        }.joinAll()
         }
     }
 
