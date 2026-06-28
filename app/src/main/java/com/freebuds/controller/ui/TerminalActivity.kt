@@ -367,6 +367,7 @@ class TerminalActivity : AppCompatActivity(), OnLogUpdateListener {
         sppDriver = driver
         if (driver.connect()) {
             LogBuffer.i("BT", "Connected to ${sd.displayName}")
+            printProps()
         } else {
             LogBuffer.e("BT", "Connection failed"); sppDriver = null
         }
