@@ -15,7 +15,7 @@ import com.freebuds.controller.data.ConnectionState
 import com.freebuds.controller.data.DeviceProps
 import com.freebuds.controller.data.DeviceViewModel
 
-// ── 中文映射 ──────────────────────────────────────────────────────────────
+// ── 中文映射（DeviceScreen 专用）──────────────────────────────────────────
 
 fun chineseAncMode(raw: String?): String = when (raw) {
     "normal" -> "关闭"
@@ -39,31 +39,7 @@ fun chineseSoundQuality(raw: String?): String = when (raw) {
     else -> raw ?: "未知"
 }
 
-// GestureScreen 引用这些映射
-internal fun chineseTap(raw: String?): String = when (raw) {
-    "tap_action_pause" -> "播放/暂停"
-    "tap_action_next" -> "下一首"
-    "tap_action_prev" -> "上一首"
-    "tap_action_assistant" -> "语音助手"
-    "tap_action_off" -> "关闭"
-    "tap_action_answer" -> "接听/挂断"
-    else -> raw ?: "未知"
-}
-
-internal fun chineseSwipe(raw: String?): String = when (raw) {
-    "tap_action_change_volume" -> "音量调节"
-    "tap_action_off" -> "关闭"
-    else -> raw ?: "未知"
-}
-
-internal fun chineseLongTap(raw: String?): String = when (raw) {
-    "noise_control_disabled" -> "关闭降噪切换"
-    "noise_control_off_on" -> "降噪切换"
-    "noise_control_off_on_aw" -> "降噪/透传切换"
-    "noise_control_on_aw" -> "透传切换"
-    "noise_control_off_an" -> "仅降噪"
-    else -> raw ?: "未知"
-}
+// 手势映射已移至 GestureScreen.kt（chineseTap/chineseSwipe/chineseLongTap）
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
