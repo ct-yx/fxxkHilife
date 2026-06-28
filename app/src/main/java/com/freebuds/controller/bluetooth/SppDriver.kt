@@ -143,6 +143,7 @@ class SppDriver(private val device: BluetoothDevice) {
 
     /** 初始化所有 Handler（并行发起，每个 Handler 最多 5 次重试 × 3s 超时，全局超时 12s） */
     private suspend fun initHandlers() = withTimeout(12000) {
+        LogBuffer.i("SPP", "Starting parallel init for ${handlers.size} handlers (timeout=12s)")
         coroutineScope {
         handlers.map { handler ->
             launch {
@@ -167,6 +168,7 @@ class SppDriver(private val device: BluetoothDevice) {
             }
         }.joinAll()
         }
+        LogBuffer.i("SPP", "Parallel init completed")
     }
 
     /** 发送包并等响应（对照 send_package） */
@@ -187,7 +189,7 @@ class SppDriver(private val device: BluetoothDevice) {
             sendNowait(pkg)
             return withTimeout(timeout) { deferred.await() }
         } catch (e: Exception) {
-            LogBuffer.w("SPP", "Timeout waiting for response to cmd=${pkg.commandId.toHex()}")
+            LogBuffer.w("SPP", "Timeout waiting for response to cmd=${pkg.commandId.toHex()} (respId=$respId, pending=[${pendingResponses.keys.joinToString(",")}])")
             return null
         } finally {
             pendingMutex.withLock { pendingResponses.remove(respId) }
@@ -255,11 +257,13 @@ class SppDriver(private val device: BluetoothDevice) {
     private suspend fun handlePackage(data: ByteArray) {
         val pkg = HuaweiSppPackage.fromBytes(data) ?: return
         val cmdKey = pkg.commandId.toHex()
-        LogBuffer.d("SPP", "RX: ${data.toHex()}")
+        val paramsKeys = pkg.parameters.keys.joinToString(",") { it.toString() }
+        LogBuffer.d("SPP", "RX: ${data.toHex()} | cmd=$cmdKey resp=${pkg.responseId.toHex()} params=[$paramsKeys]")
 
         pendingMutex.withLock {
             val deferred = pendingResponses[cmdKey]
             if (deferred != null && !deferred.isCompleted) {
+                LogBuffer.d("SPP", "RX → pendingResponses consumed cmd=$cmdKey")
                 deferred.complete(pkg)
                 return
             }
@@ -268,10 +272,11 @@ class SppDriver(private val device: BluetoothDevice) {
         if (packageHandlers.containsKey(cmdKey)) {
             val handler = packageHandlers[cmdKey]
             if (handler != null) {
+                LogBuffer.d("SPP", "RX → onDriverPackage handler=${handler.id} cmd=$cmdKey")
                 handler.onDriverPackage(this, pkg)
             }
         } else {
-            LogBuffer.d("SPP", "No handler for cmd=${pkg.commandId.toHex()}")
+            LogBuffer.d("SPP", "No handler for cmd=$cmdKey (pending=${pendingResponses.keys.joinToString(",")})")
         }
     }
 
