@@ -8,6 +8,7 @@ import androidx.compose.ui.platform.LocalContext
 import com.freebuds.controller.data.ConnectionState
 import com.freebuds.controller.data.DeviceViewModel
 import com.freebuds.controller.ui.theme.loadThemeMode
+import com.freebuds.controller.ui.theme.ThemeMode
 import com.freebuds.controller.ui.loadWallpaperScope
 
 enum class Screen {
