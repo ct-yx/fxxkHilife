@@ -141,19 +141,19 @@ class SppDriver(private val device: BluetoothDevice) {
         }
     }
 
-    /** 初始化所有 Handler（交错发射：每个间隔 150ms，每个 Handler 最多 5 次重试 × 3s 超时，全局超时 15s） */
+    /** 初始化所有 Handler（交错发射：每个间隔 80ms，每个 Handler 最多 3 次重试 × 1.5s 超时，全局超时 10s） */
     private suspend fun initHandlers() {
         try {
-            withTimeout(15000) {
-                LogBuffer.i("SPP", "Starting staggered init for ${handlers.size} handlers (gap=150ms, timeout=15s)")
+            withTimeout(10000) {
+                LogBuffer.i("SPP", "Starting staggered init for ${handlers.size} handlers (gap=80ms, perHandler=1.5s×3, timeout=10s)")
                 coroutineScope {
                     handlers.mapIndexed { index, handler ->
                         launch {
-                            if (index > 0) delay(index * 150L)
+                            if (index > 0) delay(index * 80L)
                             var success = false
-                            for (attempt in 0 until 5) {
+                            for (attempt in 0 until 3) {
                                 try {
-                                    withTimeout(3000) {
+                                    withTimeout(1500) {
                                         handler.onInit(this@SppDriver)
                                     }
                                     success = true
@@ -179,7 +179,7 @@ class SppDriver(private val device: BluetoothDevice) {
     }
 
     /** 发送包并等响应（对照 send_package） */
-    suspend fun sendPackage(pkg: HuaweiSppPackage, timeout: Long = 5000): HuaweiSppPackage? {
+    suspend fun sendPackage(pkg: HuaweiSppPackage, timeout: Long = 1500): HuaweiSppPackage? {
         val respId = pkg.responseId.toHex()
         if (respId.isEmpty()) {
             sendNowait(pkg)
