@@ -8,7 +8,7 @@
   <b>A lightweight offline controller for HUAWEI FreeBuds / HONOR Earbuds</b>
 </p>
 
-> **v2.2.0** — Full Material 3 Compose UI rewrite: permission guide, auto‑connect, device persistence, background retry, timed polling, settings screen, log sharing.
+> **v2.3.0** — UI/UX overhaul: 3s polling, instant ANC refresh, gesture sub‑page, saved‑device home, full chinese labels, five‑screen routing.
 >
 > Controls your earbuds directly via classic Bluetooth SPP — no login, no ads, fully offline.
 
@@ -30,14 +30,20 @@ cd fxxkHilife
 
 ## Project Status
 
-Current version: **v2.2.0**
+Current version: **v2.3.0**
 
 ### Completed
-- **Compose UI rewrite**: four‑screen navigation (Permission Guide → Scan → Device ↔ Settings)
+- **Five‑screen navigation**: Home (saved devices + collapsible scan) → Device → Gesture sub‑page → QR Scan → Settings
+- **Saved‑device home**: auto‑persist connected device addresses (StringSet), tap to reconnect, scan collapsed below
+- **Gesture sub‑page**: double‑tap / triple‑tap / swipe / long‑press in dedicated screen with full chinese labels
+- **Instant ANC / Low‑Latency refresh**: setProperty writes expected value first then sends command, no polling wait
+- **Faster polling**: property sync 10s → 3s, setProperty adds 100ms delay + syncProps
+- **Disconnect guard**: SppDriver recvLoop sets isConnected=false on exit, prevents Broken pipe
+- **Full chinese label mapping**: Noise cancel / Transparency / Off, Sound quality / Connection first, Play/Pause / Next track etc.
+- **QR code page**: placeholder for camera‑based scan connection (CameraX TBD)
 - **Connection persistence**: save device address via SharedPreferences, stay connected on back‑navigation
 - **Auto‑connect**: automatically connect to discovered Huawei/Honor devices
 - **Background retry**: failed init handlers retried every 30s until successful
-- **Timed polling**: properties synced every 10s, battery on passive push + 45s fallback
 - **Settings screen**: global top‑right entry with version, saved device, debug terminal, log sharing
 - **Log sharing**: one‑tap export current SPP logs as a text file
 - 13 functional Handlers (info/battery/anc/double_tap/triple_tap/swipe/long_tap/auto_pause/low_latency/sound_quality/voice_language/in_ear/logs)

@@ -8,7 +8,7 @@
   <b>HUAWEI FreeBuds / HONOR Earbuds 的轻量离线控制 App</b>
 </p>
 
-> **v2.2.0** — Material 3 Compose UI 完整重构：权限引导、自动连接、持久化、后台重试、定时轮询、全局设置页、分享日志。
+> **v2.3.0** — UI/UX 全面修复：3s 轮询、ANC 即时刷新、手势折叠子页、已保存设备主页、全中文映射、五屏导航。
 >
 > 通过蓝牙 SPP 直接控制耳机，无需登录、无广告、完全离线。
 
@@ -30,14 +30,20 @@ cd fxxkHilife
 
 ## 项目状态
 
-当前版本：**v2.2.0**
+当前版本：**v2.3.0**
 
 ### 已完成
-- **Compose UI 完整重构**：四屏导航（权限引导 → 扫描 → 设备详情 ↔ 全局设置）
-- **连接持久化**：连接后自动保存设备地址（SharedPreferences），返回扫描页不断连
+- **五屏导航**：首页（已保存设备列表 + 扫描折叠区）→ 设备详情 → 手势子页面 → 扫码 → 全局设置
+- **已保存设备主页**：自动持久化连接过的设备地址（StringSet），点击直接连接，扫描折叠在下
+- **手势设置子页面**：双击 / 三击 / 滑动手势 / 长按独立页面，全部中文选项
+- **ANC / 低延迟即时刷新**：setProperty 先写预期值再发命令，无需等待轮询
+- **轮询提速**：属性轮询 10s → 3s，setProperty 后 100ms delay + syncProps
+- **断连保护**：SppDriver recvLoop 退出时设 isConnected=false，防止 Broken pipe
+- **全属性中文映射**：降噪模式、通透、关闭 / 声音优先、连接优先 / 播放暂停、下一首等
+- **二维码页面**：扫码连接占位（CameraX 待集成）
+- **连接持久化**：连接后自动保存设备地址（SharedPreferences），返回首页不断连
 - **自动连接**：扫描到华为/荣耀设备自动连接
 - **后台重试**：初始化失败的 Handler 每 30 秒后台重试直至成功
-- **定时轮询**：属性每 10 秒同步，电池被动推送 + 45 秒兜底
 - **设置界面**：全局右上角入口，含版本信息、已保存设备、调试终端入口、分享日志
 - **分享日志**：一键导出当前 SPP 日志为文本文件
 - 13 个功能 Handler（info/battery/anc/double_tap/triple_tap/swipe/long_tap/auto_pause/low_latency/sound_quality/voice_language/in_ear/logs）

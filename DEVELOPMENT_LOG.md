@@ -141,65 +141,43 @@
 ### 编译修复
 - TerminalActivity 类型推断歧义修复
 
-## v2.2.0 (2026-06-28)
+## v2.3.0 (2026-06-28)
 
-### Compose UI 完整重构
+### UI/UX 全面修复
 
-**四屏导航架构**：
-```
-AppNavHost
-├── PermissionGuideScreen  ← 无权限时自动显示
-├── ScanScreen             ← 扫描/自动连接 + 右上角设置入口
-├── DeviceScreen           ← 连接后自动进入，返回不断连
-└── SettingsScreen         ← 全局设置（版本/设备/终端/分享日志）
-```
+**用户驱动改进**：基于 FreeBuds 6i SPP 连接日志和实际使用反馈，修复 8 项用户体验问题。
 
-**新增屏幕**：
-- `PermissionGuideScreen.kt` — 初次使用蓝牙权限引导
-- `SettingsScreen.kt` — 版本信息、已保存设备、调试终端入口、分享日志
-- `AppNavHost.kt` — 四屏路由枚举，权限检测 + 连接状态自动导航
+**底层修复**：
+- **轮询提速**：属性轮询 10s → 3s（`DeviceRepository.startPolling` delay 3000ms）
+- **ANC / 低延迟即时刷新**：`AncHandler.setProperty` 和 `LowLatencyHandler.setProperty` 先 `putProperty` 写入预期值再 `sendPackage`，UI 无需等待轮询即可看到新值
+- **断连保护**：`SppDriver.recvLoop` 退出时设 `isConnected = false`，防止退出的 recvLoop 后 `pollJob` / `retryJob` 继续 TX 导致 Broken pipe
+- **setProperty 响应优化**：增加 `delay(100)` 等硬件响应后 `syncProps()`
 
-**连接持久化**：
-- `DeviceRepository` 新增 `SharedPreferences` 持久化设备地址（`last_device_address`）
-- `getSavedAddress()` 读取已保存地址
-- 返回扫描页时不再调用 `disconnect()`，状态保持 `Connected`
+**UI 重构**：
+- **五屏导航**：`AppNavHost` 重写，支持 Home / Device / Gesture / QrCode / Settings 五屏路由
+- **主页改为已保存设备列表**：新建 `HomeScreen.kt`，显示所有已保存设备（`StringSet` 持久化），点击直接连接，扫描折叠在下
+- **手势子页面**：新建 `GestureScreen.kt`，双击/三击/滑动手势/长按独立页面，全部中文选项（如 tap_action_pause → "播放/暂停"）
+- **二维码页面**：新建 `QrCodeScreen.kt`，扫码连接占位（CameraX 待集成）
+- **全属性中文映射**：`DeviceScreen.kt` 重写，ANC 模式（降噪/透传/关闭）、音质（声音优先/连接优先）、手势入口等全部显示中文
+- 连接断开自动退回 Home 页
 
-**自动连接**：
-- `DeviceViewModel.startScan()` 扫描完成后自动检测 `isHuaweiOrHonor` 并调 `connect()`
-- `autoConnectSaved()` 接口（启动时可用，待接入）
-
-**后台重试失败 Handler**：
-- `SppDriver.initHandlers()` 记录 `failedHandlerIds`
-- `DeviceRepository.retryFailedHandlers()` 每 30s 尝试重新初始化失败的 Handler
-- `SppDriver.getHandlerById()` 按 id 检索 Handler 实例
-
-**定时轮询**：
-- `DeviceRepository.startPolling()` — 每 10s 同步全部属性
-- 电池 45s 兜底（被动推送为主）
-
-**分享日志**：
-- `DeviceRepository.shareLog()` — 通过 `FileProvider` 导出日志文本并调系统分享
-
-**UI 改进**：
-- `ScanScreen` 顶栏加设置按钮，已连接状态绿色横幅
-- `DeviceScreen` 顶栏加返回按钮 + 设置按钮，双击/三击 options 从 `DeviceProps` 动态读取
-- `MainActivity` 精简（权限逻辑移入 `AppNavHost`）
-
-**双击/三击选项**：
-- `DeviceProps` 新增 `doubleTapOptions` / `tripleTapOptions`
-- `syncProps()` 从 prop store 读取 `action.double_tap_options` / `action.triple_tap_options`
+**数据层改进**：
+- 持久化从单地址 `putString` → 多设备 `StringSet`（`saved_devices`），支持 `getSavedAddresses()` 和 `removeSavedDevice()`
+- `DeviceViewModel` 暴露 `autoConnectSaved(address)` 按地址连接
+- `ScanScreen.kt` 改为子面板，由 `HomeScreen` 折叠区调用
 
 ### 文件变更统计
 | 文件 | 变更 |
 |------|------|
-| `HilifeApplication.kt` | +1 — `repo.init(this)` |
-| `SppDriver.kt` | +7/-1 — `failedHandlerIds` + `getHandlerById()` |
-| `DeviceRepository.kt` | +108/-7 — 持久化/重试/轮询/分享 |
-| `DeviceViewModel.kt` | +24/-1 — `shareLog`/`getSavedAddress`/`autoConnectSaved`/自动连接 |
-| `AppNavHost.kt` | +51/-3 — 四屏路由 + 权限检测 + 连接状态自动导航 |
-| `DeviceScreen.kt` | +23/-1 — 返回/设置按钮 + options |
-| `MainActivity.kt` | -34 — 权限逻辑移入 AppNavHost |
-| `ScanScreen.kt` | +27/-2 — 设置按钮 + 已连接横幅 |
-| `PermissionGuideScreen.kt` | 新增 — 权限引导 |
-| `SettingsScreen.kt` | 新增 — 全局设置 |
-| **合计** | **+425/-51 行** |
+| `SppDriver.kt` | +2 — recvLoop 退出设 isConnected=false |
+| `DeviceRepository.kt` | +18/-3 — 轮询 3s + setProperty delay + StringSet 持久化 |
+| `DeviceViewModel.kt` | +9/-3 — autoConnectSaved + getSavedAddresses + removeSavedDevice |
+| `OpenFreebudsHandlers.kt` | +3 — AncHandler/LowLatencyHandler 先写后发 |
+| `AppNavHost.kt` | +35/-14 — 五屏路由 + 断连退回 Home |
+| `DeviceScreen.kt` | +159/-108 — 手势入口 + 全中文映射 |
+| `GestureScreen.kt` | 新建 — 手势子页面 + 中文选项 |
+| `HomeScreen.kt` | 新建 — 已保存设备主页 + 扫描折叠区 |
+| `QrCodeScreen.kt` | 新建 — 二维码扫码占位 |
+| **合计** | **+744/-108 行** |
+
+
