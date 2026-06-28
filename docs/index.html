@@ -201,21 +201,16 @@ nav .links a:hover{color:#fff}
 /* ===== TIMELINE ===== */
 .timeline{position:relative;max-width:800px;margin:0 auto;padding:10px 0}
 .timeline::before{
-  content:'';position:absolute;left:50%;top:0;bottom:0;
-  width:2px;transform:translateX(-50%);
+  content:'';position:absolute;left:20px;top:0;bottom:0;
+  width:2px;
   background:linear-gradient(to bottom,rgba(124,124,240,.5),rgba(124,124,240,.2),transparent);
-  transition:all .6s cubic-bezier(.16,1,.3,1);
-}
-/* 展开状态：版本号徽章发光 */
-.timeline-item.open .timeline-version-badge{
-  box-shadow:0 0 28px rgba(124,124,240,.45);
 }
 .timeline-item{
-  position:relative;margin-bottom:40px;width:100%;
-  display:flex;justify-content:flex-start;
+  position:relative;margin-bottom:40px;padding-left:52px;
+  animation:fadeUp .6s cubic-bezier(.16,1,.3,1) both;
 }
 .timeline-item-inner{
-  width:calc(50% - 40px);position:relative;
+  position:relative;
   padding:20px 24px;border-radius:16px;
   background:rgba(255,255,255,.015);
   border:1px solid rgba(255,255,255,.04);
@@ -225,36 +220,19 @@ nav .links a:hover{color:#fff}
   background:rgba(124,124,240,.04);border-color:rgba(124,124,240,.12);
   transform:translateY(-2px);box-shadow:0 8px 30px rgba(0,0,0,.3);
 }
-.timeline-item.right{justify-content:flex-end}
-.timeline-item.open.left .timeline-version-badge,.timeline-item.open.left .timeline-dot{left:calc(100% - 7px)}
-.timeline-item.open.right .timeline-version-badge,.timeline-item.open.right .timeline-dot{left:0}
-.timeline.open-left::before{left:calc(50% + 200px)}
-.timeline.open-right::before{left:calc(50% - 200px)}
-.timeline-item.open .timeline-version-badge{top:22px}
-.timeline-item.open .timeline-dot{top:24px}
-.timeline-item.right .timeline-item-inner{margin-right:0}
-.timeline-item .timeline-version-badge{
-  position:absolute;top:22px;left:50%;transform:translateX(-50%);
-  z-index:2;pointer-events:none;
-  background:linear-gradient(135deg,#7c7cf0,#5c5ce0);
+.timeline-version-badge{
+  position:absolute;left:0;top:22px;transform:translateX(-50%);
+  z-index:2;background:linear-gradient(135deg,#7c7cf0,#5c5ce0);
   color:#fff;font-size:11px;font-weight:700;letter-spacing:.5px;
   padding:4px 12px;border-radius:20px;
   box-shadow:0 0 16px rgba(124,124,240,.25);
   white-space:nowrap;
-  transition:all .5s cubic-bezier(.16,1,.3,1);
 }
 .timeline-item.open .timeline-version-badge{
   box-shadow:0 0 28px rgba(124,124,240,.45);
 }
 .timeline-dot{
-  position:absolute;top:24px;left:50%;transform:translateX(-50%);
-  width:14px;height:14px;border-radius:50%;z-index:1;
-  background:rgba(124,124,240,.15);
-  border:3px solid #7c7cf0;
-  transition:all .5s cubic-bezier(.16,1,.3,1);
-}
-.timeline-item:hover .timeline-dot{
-  background:#7c7cf0;box-shadow:0 0 24px rgba(124,124,240,.5);
+  display:none;
 }
 .timeline-date{font-size:11px;color:rgba(255,255,255,.25);margin-bottom:4px;letter-spacing:.3px}
 .timeline-title{font-size:16px;font-weight:600;color:#e8e8ed;margin-bottom:6px;line-height:1.4}
@@ -269,9 +247,6 @@ nav .links a:hover{color:#fff}
 .timeline-detail{
   overflow:hidden;
   font-size:13px;color:rgba(255,255,255,.45);line-height:1.7;
-}
-.timeline-detail-inner{
-  padding-top:10px;min-height:0;
 }
 .timeline-detail-medium,.timeline-detail-full{padding-top:10px;min-height:0}
 .timeline-detail-full{display:none}
@@ -301,18 +276,9 @@ nav .links a:hover{color:#fff}
 .timeline-toggle.open svg{transform:rotate(180deg)}
 .timeline-loading{text-align:center;padding:40px;color:rgba(255,255,255,.2);font-size:14px}
 @media(max-width:640px){
-  .timeline::before{left:20px;transform:none}
-  .timeline-item,.timeline-item.right{justify-content:flex-start}
-  .timeline-item-inner,.timeline-item.right .timeline-item-inner{width:calc(100% - 52px);margin-left:52px}
-  .timeline-item .timeline-version-badge{left:20px;top:20px;transform:none;font-size:10px;padding:3px 10px}
-  .timeline-dot{left:20px;transform:none;width:12px;height:12px;border-width:2px}
-  /* 窄屏下展开时不偏移中线/版本号/圆点 */
-  .timeline.open-left::before,.timeline.open-right::before{left:20px}
-  .timeline-item.open.left .timeline-version-badge,.timeline-item.open.right .timeline-version-badge,
-  .timeline-item.open.left .timeline-dot,.timeline-item.open.right .timeline-dot{left:20px;top:20px}
+  .timeline-item{padding-left:32px}
+  .timeline-version-badge{font-size:10px;padding:3px 10px}
 }
-}</pre>
-
 
 /* ===== PHILOSOPHY ===== */
 .philosophy{
@@ -566,9 +532,8 @@ document.querySelectorAll('.reveal').forEach(el => observer.observe(el));
     if(items.length === 0) throw new Error('No releases found');
     // parseDevelopmentLog 已按版本号倒序；交替左右布局
     container.innerHTML = items.map((item, i) => `
-      <div class="timeline-item ${i % 2 === 0 ? 'left' : 'right'}" style="animation:fadeUp .6s ${i * 0.08}s both cubic-bezier(.16,1,.3,1)">
+      <div class="timeline-item" style="animation-delay:${i * 0.08}s">
         <div class="timeline-version-badge">${item.version}</div>
-        <div class="timeline-dot"></div>
         <div class="timeline-item-inner">
           <div class="timeline-date">${item.date}</div>
           <div class="timeline-title">${item.title}</div>
@@ -684,9 +649,6 @@ try { medium = marked.parse(mediumRawFinal); } catch(e) { medium = mediumRawFina
 function toggleTimeline(btn) {
   const item = btn.closest('.timeline-item');
   const wrap = item.querySelector('.timeline-detail-wrap');
-  const timeline = item.closest('.timeline');
-  // 先清除所有方向偏移
-  timeline.classList.remove('open-left', 'open-right');
   if (item.classList.contains('full')) {
     // 第三段：收起
     item.classList.remove('open', 'full');
@@ -699,14 +661,12 @@ function toggleTimeline(btn) {
     wrap.classList.add('full');
     btn.classList.add('full');
     btn.innerHTML = '收起 <svg viewBox="0 0 12 12" fill="currentColor"><polygon points="3,4.5 6,7.5 9,4.5"/></svg>';
-    timeline.classList.add(item.classList.contains('left') ? 'open-left' : 'open-right');
   } else {
     // 第一段：展开概述
     item.classList.add('open');
     wrap.classList.add('open');
     btn.classList.add('open');
     btn.innerHTML = '完整日志 <svg viewBox="0 0 12 12" fill="currentColor"><polygon points="3,4.5 6,7.5 9,4.5"/></svg>';
-    timeline.classList.add(item.classList.contains('left') ? 'open-left' : 'open-right');
   }
 }
 // ===== LATEST VERSION FROM GITHUB API =====
