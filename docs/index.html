@@ -204,6 +204,11 @@ nav .links a:hover{color:#fff}
   content:'';position:absolute;left:50%;top:0;bottom:0;
   width:2px;transform:translateX(-50%);
   background:linear-gradient(to bottom,rgba(124,124,240,.5),rgba(124,124,240,.2),transparent);
+}
+/* 展开状态：版本号徽章发光 */
+.timeline-item.open .timeline-version-badge{
+  box-shadow:0 0 28px rgba(124,124,240,.45);
+}
   transition:left .6s cubic-bezier(.16,1,.3,1),transform .6s cubic-bezier(.16,1,.3,1);
 }
 .timeline-item{
@@ -568,7 +573,7 @@ document.querySelectorAll('.reveal').forEach(el => observer.observe(el));
           <div class="timeline-date">${item.date}</div>
           <div class="timeline-title">${item.title}</div>
           <div class="timeline-desc">${item.summary}</div>
-          <span class="timeline-toggle" onclick="var p=this.closest('.timeline-item');var w=this.closest('.timeline-item-inner').querySelector('.timeline-detail-wrap');var b=this;if(p.classList.contains('full')){p.classList.remove('open','full');w.classList.remove('open','full');b.classList.remove('open','full');b.innerHTML='展开详情 <svg viewBox="0 0 12 12" fill="currentColor"><polygon points="3,4.5 6,7.5 9,4.5"/></svg>';}else if(p.classList.contains('open')){p.classList.add('full');w.classList.add('full');b.classList.add('full');b.innerHTML='收起 <svg viewBox="0 0 12 12" fill="currentColor"><polygon points="3,4.5 6,7.5 9,4.5"/></svg>';}else{p.classList.add('open');w.classList.add('open');b.classList.add('open');b.innerHTML='完整日志 <svg viewBox="0 0 12 12" fill="currentColor"><polygon points="3,4.5 6,7.5 9,4.5"/></svg>';}">展开详情 <svg viewBox='0 0 12 12' fill='currentColor'><polygon points='3,4.5 6,7.5 9,4.5'/></svg></span>
+          <span class="timeline-toggle" onclick="toggleTimeline(this)">展开详情 <svg viewBox='0 0 12 12' fill='currentColor'><polygon points='3,4.5 6,7.5 9,4.5'/></svg></span>
           <div class="timeline-detail-wrap">
             <div class="timeline-detail">
               <div class="timeline-detail-medium">${item.medium}</div>
@@ -675,6 +680,30 @@ try { medium = marked.parse(mediumRawFinal); } catch(e) { medium = mediumRawFina
   return versions;
 }
 
+// ===== TIMELINE TOGGLE: 三段式展开 =====
+function toggleTimeline(btn) {
+  const item = btn.closest('.timeline-item');
+  const wrap = item.querySelector('.timeline-detail-wrap');
+  if (item.classList.contains('full')) {
+    // 第三段：收起
+    item.classList.remove('open', 'full');
+    wrap.classList.remove('open', 'full');
+    btn.classList.remove('open', 'full');
+    btn.innerHTML = '展开详情 <svg viewBox="0 0 12 12" fill="currentColor"><polygon points="3,4.5 6,7.5 9,4.5"/></svg>';
+  } else if (item.classList.contains('open')) {
+    // 第二段：完整日志
+    item.classList.add('full');
+    wrap.classList.add('full');
+    btn.classList.add('full');
+    btn.innerHTML = '收起 <svg viewBox="0 0 12 12" fill="currentColor"><polygon points="3,4.5 6,7.5 9,4.5"/></svg>';
+  } else {
+    // 第一段：展开概述
+    item.classList.add('open');
+    wrap.classList.add('open');
+    btn.classList.add('open');
+    btn.innerHTML = '完整日志 <svg viewBox="0 0 12 12" fill="currentColor"><polygon points="3,4.5 6,7.5 9,4.5"/></svg>';
+  }
+}
 // ===== LATEST VERSION FROM GITHUB API =====
 (async function fetchLatestRelease() {
   const btn = document.getElementById('downloadBtn');
