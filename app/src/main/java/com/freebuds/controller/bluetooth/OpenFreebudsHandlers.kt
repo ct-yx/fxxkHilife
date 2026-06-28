@@ -186,7 +186,7 @@ class AncLegacyChangeHandler : HuaweiDeviceHandler {
     override suspend fun onDriverPackage(driver: SppDriver, pkg: HuaweiSppPackage) {
         val data = pkg.findParam(1)
         if (data.size == 1 && data[0].toInt() in 0..2) {
-            driver.sendPackage(HuaweiSppPackage(b(0x2b, 0x2a), parameters = mapOf(1 to byteArrayOf())))
+            driver.sendPackage(HuaweiSppPackage(b(0x2b, 0x2a), parameters = mutableMapOf(1 to byteArrayOf())))
         }
     }
 }
