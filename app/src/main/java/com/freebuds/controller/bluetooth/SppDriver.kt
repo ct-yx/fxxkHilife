@@ -21,11 +21,8 @@ import kotlin.coroutines.resume
 class SppDriver(private val device: BluetoothDevice) {
 
     companion object {
-        /** SPP 服务 UUID — 标准 Serial Port Profile */
-        private val SPP_UUID = java.util.UUID.fromString("00001101-0000-1000-8000-00805f9b34fb")
-
-        /** SPP 端口号 fallback，当 UUID 方式不可用时 */
-        var sppServicePort: Int = 1
+        /** SPP 端口号，对照 OpenFreebuds 型号配置的 _spp_service_port */
+        const val SPP_SERVICE_PORT = 1
     }
 
     var isConnected: Boolean = false
@@ -60,14 +57,14 @@ class SppDriver(private val device: BluetoothDevice) {
             return@withContext true
         }
 
-        LogBuffer.i("SPP", "Connecting to ${device.name} (${device.address}) via SPP UUID=$SPP_UUID...")
+        LogBuffer.i("SPP", "Connecting to ${device.name} (${device.address}) via RFCOMM port=$SPP_SERVICE_PORT...")
         try {
-            // 使用标准 SPP UUID 创建 RFCOMM 连接 (Android 官方方式)
+            // 使用端口号连接（对照 OpenFreebuds _spp_service_port）
             val sockClass = Class.forName("android.bluetooth.BluetoothSocket")
             val createMethod = device.javaClass.getMethod(
-                "createRfcommSocketToServiceRecord", java.util.UUID::class.java
+                "createRfcommSocket", Int::class.javaPrimitiveType
             )
-            socket = createMethod.invoke(device, SPP_UUID)
+            socket = createMethod.invoke(device, SPP_SERVICE_PORT)
 
             val connectMethod = sockClass.getMethod("connect")
             closeMethod = sockClass.getMethod("close")

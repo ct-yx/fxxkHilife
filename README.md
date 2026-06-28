@@ -8,7 +8,7 @@
   <b>HUAWEI FreeBuds / HONOR Earbuds 的轻量离线控制 App</b>
 </p>
 
-> **v2.0.0-stable.1** — 回归 RFCOMM SPP（严格对照 OpenFreebuds），修复包解析与电池读取。
+> **v2.0.0-stable.2** — 端口号方式恢复，修复粘包同步与电池解析。
 >
 > 通过蓝牙 SPP 直接控制耳机，无需登录、无广告、完全离线。
 
@@ -30,7 +30,7 @@ cd fxxkHilife
 
 ## 项目状态
 
-当前版本：**v2.0.0-stable.1**
+当前版本：**v2.0.0-stable.2**
 
 - 旧 v1.7.3 版本已归档（分支 `main-archived`）
 - 已完成：项目骨架、终端界面、签名统一、更新检查、屏幕适配、快捷按钮栏、协议命令词典、设备能力表（12型号）、蓝牙扫描、SPP驱动、Handler接口

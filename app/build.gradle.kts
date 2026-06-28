@@ -11,8 +11,8 @@ android {
         applicationId = "com.freebuds.controller"
         minSdk = 26
         targetSdk = 35
-        versionCode = 7
-        versionName = "2.0.0-stable.1"
+        versionCode = 8
+        versionName = "2.0.0-stable.2"
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
     }
