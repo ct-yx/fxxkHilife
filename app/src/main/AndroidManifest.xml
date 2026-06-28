@@ -22,8 +22,9 @@
         android:supportsRtl="true"
         android:theme="@style/Theme.FxxkHilife">
 
+        <!-- 主入口：Compose 设备控制界面 -->
         <activity
-            android:name=".ui.TerminalActivity"
+            android:name=".ui.MainActivity"
             android:exported="true"
             android:label="@string/app_name">
             <intent-filter>
@@ -32,10 +33,11 @@
             </intent-filter>
         </activity>
 
+        <!-- 调试终端（从设置页进入） -->
         <activity
-            android:name=".ui.MainActivity"
+            android:name=".ui.TerminalActivity"
             android:exported="false"
-            android:label="@string/app_name" />
+            android:label="调试终端" />
 
         <service
             android:name=".service.BluetoothService"

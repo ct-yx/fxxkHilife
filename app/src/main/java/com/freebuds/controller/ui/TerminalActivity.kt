@@ -1,9 +1,6 @@
 package com.freebuds.controller.ui
 
-import android.Manifest
 import android.content.Intent
-import android.content.pm.PackageManager
-import android.os.Build
 import android.os.Bundle
 import android.text.SpannableString
 import android.text.Spanned
@@ -12,20 +9,10 @@ import android.view.inputmethod.EditorInfo
 import android.widget.Button
 import android.widget.ScrollView
 import android.widget.TextView
-import androidx.activity.result.contract.ActivityResultContracts
 import androidx.appcompat.app.AppCompatActivity
 import androidx.core.content.FileProvider
-import com.freebuds.controller.BuildConfig
+import com.freebuds.controller.HilifeApplication
 import com.freebuds.controller.R
-import com.freebuds.controller.bluetooth.BluetoothScanner
-import com.freebuds.controller.bluetooth.BatteryHandler
-import com.freebuds.controller.bluetooth.ScannedDevice
-import com.freebuds.controller.bluetooth.*
-import com.freebuds.controller.bluetooth.SppDriver
-import com.freebuds.controller.protocol.HuaweiModel
-import com.freebuds.controller.protocol.HuaweiCapability
-import com.freebuds.controller.protocol.modelCapabilities
-import com.freebuds.controller.data.UpdateChecker
 import com.freebuds.controller.util.LogBuffer
 import com.freebuds.controller.util.LogBuffer.OnLogUpdateListener
 import kotlinx.coroutines.CoroutineScope
@@ -33,70 +20,25 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import java.io.File
 
+/**
+ * 调试终端 —— 只负责日志展示和 props/set 命令。
+ * 连接/断开由 DeviceRepository 统一管理，Terminal 不持有 SppDriver。
+ */
 class TerminalActivity : AppCompatActivity(), OnLogUpdateListener {
 
     private lateinit var outputView: TextView
     private lateinit var inputView: TextView
     private lateinit var scrollView: ScrollView
-    private var currentFilter: String? = null
     private val scope = CoroutineScope(Dispatchers.Main)
-
-    private var bluetoothScanner: BluetoothScanner? = null
-    private var sppDriver: SppDriver? = null
-    private var scannedDevices: List<ScannedDevice> = emptyList()
-
-    // 收集所有需要运行时申请的权限
-    private val requiredPermissions: List<String> by lazy {
-        val list = mutableListOf<String>()
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
-            list.add(Manifest.permission.BLUETOOTH_CONNECT)
-            list.add(Manifest.permission.BLUETOOTH_SCAN)
-        }
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
-            list.add(Manifest.permission.POST_NOTIFICATIONS)
-        }
-        list
-    }
-
-    // 权限弹窗回调后自动重试的操作
-    private var pendingAction: (() -> Unit)? = null
-
-    private val permissionLauncher = registerForActivityResult(
-        ActivityResultContracts.RequestMultiplePermissions()
-    ) { result ->
-        val granted = result.filter { it.value }.keys
-        val denied = result.filter { !it.value }.keys
-        if (granted.isNotEmpty()) {
-            LogBuffer.i("Perm", "Granted: ${granted.joinToString(", ")}")
-        }
-        if (denied.isNotEmpty()) {
-            LogBuffer.w("Perm", "Denied: ${denied.joinToString(", ")}")
-            // 检查是否被永久拒绝（不再询问）
-            val permanentlyDenied = denied.any {
-                !shouldShowRequestPermissionRationale(it)
-            }
-            if (permanentlyDenied) {
-                LogBuffer.w("Perm", "Permission permanently denied — please enable in Settings")
-                pendingAction = null
-                return@registerForActivityResult
-            }
-        }
-        val allGranted = requiredPermissions.all {
-            checkSelfPermission(it) == PackageManager.PERMISSION_GRANTED
-        }
-        if (allGranted) {
-            pendingAction?.invoke()
-            pendingAction = null
-        }
-    }
+    private val repo get() = HilifeApplication.instance.deviceRepository
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         setContentView(R.layout.activity_terminal)
-        title = "fxxkHilife Terminal"
+        title = "调试终端"
 
         outputView = findViewById(R.id.terminal_output)
-        inputView = findViewById(R.id.terminal_input)
+        inputView  = findViewById(R.id.terminal_input)
         scrollView = findViewById(R.id.terminal_scroll)
 
         inputView.setOnEditorActionListener { _, action, _ ->
@@ -108,89 +50,88 @@ class TerminalActivity : AppCompatActivity(), OnLogUpdateListener {
         }
 
         findViewById<Button>(R.id.btn_clear).setOnClickListener { handleCommand("clear") }
-        findViewById<Button>(R.id.btn_scan).setOnClickListener { handleCommand("scan") }
-        findViewById<Button>(R.id.btn_share).setOnClickListener { handleCommand("share") }
-        findViewById<Button>(R.id.btn_list).setOnClickListener { handleCommand("list") }
+        // scan/list/disconnect 按钮不再有意义，复用为 props/set/share/help
+        findViewById<Button>(R.id.btn_scan).setOnClickListener { handleCommand("props") }
+        findViewById<Button>(R.id.btn_list).setOnClickListener { handleCommand("help") }
         findViewById<Button>(R.id.btn_disconnect).setOnClickListener { handleCommand("disconnect") }
-        findViewById<Button>(R.id.btn_perm).setOnClickListener { handleCommand("perm") }
+        findViewById<Button>(R.id.btn_share).setOnClickListener { handleCommand("share") }
+        findViewById<Button>(R.id.btn_perm).setOnClickListener { handleCommand("props") }
         findViewById<Button>(R.id.btn_help).setOnClickListener { handleCommand("help") }
 
         LogBuffer.registerListener(this)
-        printBanner()
-        checkPermissions()
+        LogBuffer.i("Terminal", "调试终端 — 连接管理请返回主界面")
+        LogBuffer.i("Terminal", "可用命令：clear | props | set <group.prop> <value> | share | disconnect | help")
         renderAll()
-    }
-
-    private fun printBanner() {
-        LogBuffer.i("Terminal", "fxxkHilife v2 Terminal — ${BuildConfig.VERSION_NAME}")
-        LogBuffer.i("Terminal", "Commands: clear | share | perm | scan | list | connect <n> | disconnect | props | set <group.prop> <value> | help")
-        LogBuffer.i("Terminal", "---")
-    }
-
-    private fun checkPermissions() {
-        val missing = requiredPermissions.filter {
-            checkSelfPermission(it) != PackageManager.PERMISSION_GRANTED
-        }
-        if (missing.isEmpty()) {
-            LogBuffer.i("Perm", "All required permissions already granted")
-            return
-        }
-        LogBuffer.i("Perm", "Requesting permissions: ${missing.joinToString(", ")}")
-        permissionLauncher.launch(missing.toTypedArray())
     }
 
     private fun handleCommand(cmd: String) {
         val trimmed = cmd.trim()
         LogBuffer.i(">", trimmed)
-
         when {
-            trimmed.equals("clear", ignoreCase = true) -> LogBuffer.clear()
-            trimmed.equals("share", ignoreCase = true) -> shareLog()
-            trimmed.equals("perm", ignoreCase = true) -> checkPermissions()
-            trimmed.equals("scan", ignoreCase = true) -> scanDevices()
-            trimmed.startsWith("connect", ignoreCase = true) -> connectDevice(trimmed.removePrefix("connect").trim())
-            trimmed.equals("disconnect", ignoreCase = true) -> disconnectDevice()
-            trimmed.equals("list", ignoreCase = true) -> listDevices()
-            trimmed.equals("props", ignoreCase = true) -> printProps()
-            trimmed.startsWith("set ", ignoreCase = true) -> setProp(trimmed.removePrefix("set").trim())
-            trimmed.equals("help", ignoreCase = true) -> {
-                LogBuffer.i("Terminal", "Available commands:")
-                LogBuffer.i("Terminal", "  clear        — clear screen")
-                LogBuffer.i("Terminal", "  share        — export log as text file")
-                LogBuffer.i("Terminal", "  perm         — re-check permissions")
-                LogBuffer.i("Terminal", "  scan         — scan BT devices")
-                LogBuffer.i("Terminal", "  list         — list scanned devices")
-                LogBuffer.i("Terminal", "  connect <n>  — connect to device #n")
-                LogBuffer.i("Terminal", "  disconnect   — disconnect device")
-                LogBuffer.i("Terminal", "  props        — print OpenFreebuds property store")
-                LogBuffer.i("Terminal", "  set <group.prop> <value> — write OpenFreebuds property")
-                LogBuffer.i("Terminal", "  help         — this message")
+            trimmed.equals("clear", true)      -> LogBuffer.clear()
+            trimmed.equals("share", true)      -> shareLog()
+            trimmed.equals("props", true)      -> printProps()
+            trimmed.startsWith("set ", true)   -> setProp(trimmed.removePrefix("set").trim())
+            trimmed.equals("disconnect", true) -> { repo.disconnect(); finish() }
+            trimmed.equals("help", true)       -> {
+                LogBuffer.i("Terminal", "clear        — 清屏")
+                LogBuffer.i("Terminal", "props        — 查看所有属性")
+                LogBuffer.i("Terminal", "set g.p v    — 写入属性")
+                LogBuffer.i("Terminal", "share        — 导出日志")
+                LogBuffer.i("Terminal", "disconnect   — 断开连接并返回")
             }
-            else -> LogBuffer.w("Terminal", "Unknown command: $trimmed — type help")
+            else -> LogBuffer.w("Terminal", "未知命令：$trimmed")
         }
     }
 
+    private fun printProps() {
+        scope.launch {
+            val driver = repo.getDriver()
+            if (driver == null) { LogBuffer.w("Prop", "未连接"); return@launch }
+            val text = driver.getProperty() ?: ""
+            if (text.isBlank()) LogBuffer.i("Prop", "暂无属性")
+            else text.lines().forEach { LogBuffer.i("Prop", it) }
+        }
+    }
+
+    private fun setProp(payload: String) {
+        val firstSpace = payload.indexOf(' ')
+        val key   = if (firstSpace > 0) payload.substring(0, firstSpace) else payload
+        val value = if (firstSpace > 0) payload.substring(firstSpace + 1) else ""
+        val dot   = key.indexOf('.')
+        if (dot <= 0 || dot == key.lastIndex) {
+            LogBuffer.w("Prop", "用法：set <group.prop> <value>"); return
+        }
+        scope.launch { repo.setProperty(key.substring(0, dot), key.substring(dot + 1), value) }
+    }
+
+    private fun shareLog() {
+        val file = File(cacheDir, "fxxkHilife_log_${System.currentTimeMillis()}.txt")
+        file.writeText(LogBuffer.getSnapshotText())
+        val uri = FileProvider.getUriForFile(this, "$packageName.fileprovider", file)
+        startActivity(Intent.createChooser(
+            Intent(Intent.ACTION_SEND).apply {
+                type = "text/plain"
+                putExtra(Intent.EXTRA_STREAM, uri)
+                addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
+            }, "导出日志"
+        ))
+    }
 
     override fun onLogUpdate() = runOnUiThread { renderAll() }
 
     private fun renderAll() {
-        if (currentFilter != null) {
-            outputView.text = colorize(LogBuffer.getSnapshotText(currentFilter))
-        } else {
-            outputView.text = colorize(LogBuffer.getSnapshotText())
-        }
+        outputView.text = colorize(LogBuffer.getSnapshotText())
         scrollView.post { scrollView.fullScroll(ScrollView.FOCUS_DOWN) }
     }
 
     private fun colorize(text: String): SpannableString {
         val ss = SpannableString(text)
-        val lines = text.lines()
         var offset = 0
-        for (line in lines) {
+        for (line in text.lines()) {
             val bracket = line.indexOf('[')
             if (bracket >= 0 && bracket + 2 < line.length) {
-                val lvl = line[bracket + 1]
-                val color = when (lvl) {
+                val color = when (line[bracket + 1]) {
                     'E' -> 0xFFFF4444.toInt()
                     'W' -> 0xFFFFBB33.toInt()
                     'I' -> 0xFF99CC00.toInt()
@@ -204,184 +145,7 @@ class TerminalActivity : AppCompatActivity(), OnLogUpdateListener {
         return ss
     }
 
-    private fun shareLog() {
-        val text = LogBuffer.getSnapshotText(currentFilter)
-        val file = File(cacheDir, "fxxkHilife_log_${System.currentTimeMillis()}.txt")
-        file.writeText(text)
-
-        val uri = FileProvider.getUriForFile(this, "${packageName}.fileprovider", file)
-        val intent = Intent(Intent.ACTION_SEND).apply {
-            type = "text/plain"
-            putExtra(Intent.EXTRA_STREAM, uri)
-            addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
-        }
-        startActivity(Intent.createChooser(intent, "Share Log"))
-    }
-
-    private fun scanDevices() {
-        val missing = requiredPermissions.filter {
-            checkSelfPermission(it) != PackageManager.PERMISSION_GRANTED
-        }
-        if (missing.isNotEmpty()) {
-            LogBuffer.w("Perm", "Missing permissions for BT scan: ${missing.joinToString(", ")}")
-            pendingAction = { scanDevices() }
-            LogBuffer.i("Perm", "Requesting permissions...")
-            permissionLauncher.launch(missing.toTypedArray())
-            return
-        }
-        bluetoothScanner = BluetoothScanner(this)
-        bluetoothScanner?.startScan { success ->
-            if (success) {
-                scannedDevices = bluetoothScanner!!.found.toList()
-                val hwCount = scannedDevices.count { it.isHuaweiOrHonor }
-                LogBuffer.i("Scan", "Found ${scannedDevices.size} devices ($hwCount Huawei/Honor). Type 'list' to see them")
-            } else {
-                LogBuffer.w("Scan", "Scan failed or cancelled")
-            }
-        }
-        // startScan 内部已经同步了已配对设备到 found，直接同步过来触发自动连接
-        scannedDevices = bluetoothScanner!!.found.toList()
-        val hwDevice = scannedDevices.firstOrNull { it.isHuaweiOrHonor }
-        if (hwDevice != null) {
-            LogBuffer.i("Scan", "Auto-connecting to ${hwDevice.displayName}...")
-            scope.launch { connectToDevice(hwDevice) }
-        }
-    }
-
-    private fun listDevices() {
-        if (scannedDevices.isEmpty()) {
-            LogBuffer.i("BT", "No devices scanned yet. Type 'scan' first")
-            return
-        }
-        LogBuffer.i("BT", "--- Scanned devices ---")
-        scannedDevices.forEachIndexed { i, d ->
-            val tag = if (d.isHuaweiOrHonor) "🔹 " else "  "
-            val rssiStr = if (d.rssi != 0) " RSSI:${d.rssi}" else ""
-            val bondedStr = if (d.isBonded) " [paired]" else ""
-            LogBuffer.i("BT", "  $tag[$i] ${d.displayName}  ${d.address}$rssiStr$bondedStr")
-        }
-        LogBuffer.i("BT", "Use 'connect <n>' to connect")
-    }
-
-    private fun printProps() {
-        val driver = sppDriver
-        if (driver == null) {
-            LogBuffer.w("Prop", "Not connected")
-            return
-        }
-        scope.launch {
-            val text = driver.getProperty() ?: ""
-            if (text.isBlank()) LogBuffer.i("Prop", "No properties yet")
-            else text.lines().forEach { LogBuffer.i("Prop", it) }
-        }
-    }
-
-    private fun setProp(payload: String) {
-        val driver = sppDriver
-        if (driver == null) {
-            LogBuffer.w("Prop", "Not connected")
-            return
-        }
-        val firstSpace = payload.indexOf(' ')
-        val key = if (firstSpace > 0) payload.substring(0, firstSpace) else payload
-        val value = if (firstSpace > 0) payload.substring(firstSpace + 1) else ""
-        val dot = key.indexOf('.')
-        if (dot <= 0 || dot == key.lastIndex) {
-            LogBuffer.w("Prop", "Usage: set <group.prop> <value>")
-            return
-        }
-        scope.launch {
-            driver.setProperty(key.substring(0, dot), key.substring(dot + 1), value)
-        }
-    }
-
-    private fun connectDevice(indexStr: String) {
-        val missing = requiredPermissions.filter {
-            checkSelfPermission(it) != PackageManager.PERMISSION_GRANTED
-        }
-        if (missing.isNotEmpty()) {
-            LogBuffer.w("Perm", "Missing permissions for BT connect: ${missing.joinToString(", ")}")
-            pendingAction = { connectDevice(indexStr) }
-            LogBuffer.i("Perm", "Requesting permissions...")
-            permissionLauncher.launch(missing.toTypedArray())
-            return
-        }
-        val index = indexStr.toIntOrNull()
-        if (index == null || index !in scannedDevices.indices) {
-            LogBuffer.w("BT", "Invalid index. Type 'list' to see devices")
-            return
-        }
-        scope.launch { connectToDevice(scannedDevices[index]) }
-    }
-
-    private fun registerOpenFreebudsHandlers(driver: SppDriver, name: String) {
-        // 确定设备型号
-        val model = when {
-            name.contains("FreeBuds 6i", true) -> HuaweiModel.BUDS_6I
-            name.contains("FreeBuds Pro 4", true) || name.contains("FreeBuds Pro 3", true) || name.contains("FreeClip", true) -> HuaweiModel.BUDS_PRO_3
-            name.contains("FreeBuds Pro 2", true) -> HuaweiModel.BUDS_PRO_2
-            name.contains("FreeBuds Pro ", true) -> HuaweiModel.BUDS_PRO
-            name.contains("FreeBuds Studio", true) -> HuaweiModel.STUDIO
-            name.contains("FreeBuds SE 4", true) -> HuaweiModel.BUDS_SE_4
-            name.contains("FreeBuds SE 2", true) -> HuaweiModel.BUDS_SE_2
-            name.contains("FreeBuds SE", true) -> HuaweiModel.BUDS_SE
-            name.contains("FreeBuds 5i", true) -> HuaweiModel.BUDS_5I
-            name.contains("FreeBuds 4i", true) -> HuaweiModel.BUDS_4I
-            name.contains("FreeLace Pro 2", true) -> HuaweiModel.LACE_PRO_2
-            name.contains("FreeLace Pro", true) -> HuaweiModel.LACE_PRO
-            name.contains("Earbuds 2", true) || name.contains("Earbuds 2 Lite", true) || name.contains("Earbuds 2 SE", true) || name.contains("Earbuds SE", true) -> HuaweiModel.BUDS_4I
-            else -> null
-        }
-        val caps = if (model != null) modelCapabilities[model]?.toSet() ?: emptySet() else emptySet()
-        fun hasCap(needle: HuaweiCapability): Boolean = caps.isEmpty() || needle in caps
-        val battery = BatteryHandler()
-        battery.setOnBatteryUpdate { LogBuffer.i("Battery", "Update") }
-        val allHandlers = listOf(
-            0 to { LogsHandler() },
-            HuaweiCapability.INFO to { InfoHandler() },
-            HuaweiCapability.WEAR_DETECT to { InEarHandler() },
-            HuaweiCapability.BATTERY to { battery },
-            HuaweiCapability.ANC_LEGACY to { AncLegacyChangeHandler() },
-            HuaweiCapability.ANC to { AncHandler() },
-            HuaweiCapability.ACTION_DOUBLE_TAP to { DoubleTapHandler() },
-            HuaweiCapability.ACTION_TRIPLE_TAP to { TripleTapHandler() },
-            HuaweiCapability.ACTION_LONG_TAP_SPLIT to { LongTapHandler() },
-            HuaweiCapability.ACTION_SWIPE to { SwipeGestureHandler() },
-            HuaweiCapability.ACTION_POWER_BUTTON to { PowerButtonHandler() },
-            HuaweiCapability.AUTO_PAUSE to { AutoPauseHandler() },
-            HuaweiCapability.LOW_LATENCY to { LowLatencyHandler() },
-            HuaweiCapability.SOUND_QUALITY to { SoundQualityHandler() },
-            HuaweiCapability.VOICE_LANGUAGE to { VoiceLanguageHandler() },
-        )
-        for ((needle, factory) in allHandlers) {
-                if (needle is HuaweiCapability && hasCap(needle)) driver.registerHandler(factory())
-                else if (needle is Int) driver.registerHandler(factory())
-        }
-    }
-
-    /** 连接设备并注册所有 Handler（可供 scan 自动连接调用） */
-    private suspend fun connectToDevice(sd: ScannedDevice) {
-        LogBuffer.i("BT", "Connecting to ${sd.displayName}...")
-        val driver = SppDriver(sd.device)
-        registerOpenFreebudsHandlers(driver, sd.displayName)
-        sppDriver = driver
-        if (driver.connect()) {
-            LogBuffer.i("BT", "Connected to ${sd.displayName}")
-            printProps()
-        } else {
-            LogBuffer.e("BT", "Connection failed"); sppDriver = null
-        }
-    }
-
-    private fun disconnectDevice() {
-        sppDriver?.disconnect()
-        sppDriver = null
-        LogBuffer.i("BT", "Disconnected")
-    }
-
     override fun onDestroy() {
-        bluetoothScanner?.stopScan()
-        sppDriver?.disconnect()
         LogBuffer.unregisterListener(this)
         super.onDestroy()
     }

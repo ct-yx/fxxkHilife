@@ -1,0 +1,141 @@
+package com.freebuds.controller.ui
+
+import androidx.compose.foundation.clickable
+import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.items
+import androidx.compose.material3.*
+import androidx.compose.runtime.*
+import androidx.compose.ui.Alignment
+import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.unit.dp
+import com.freebuds.controller.bluetooth.ScannedDevice
+import com.freebuds.controller.data.ConnectionState
+import com.freebuds.controller.data.DeviceViewModel
+
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+fun ScanScreen(viewModel: DeviceViewModel) {
+    val context = LocalContext.current
+    val scanState by viewModel.scanState.collectAsState()
+    val connState by viewModel.connectionState.collectAsState()
+
+    Scaffold(
+        topBar = {
+            TopAppBar(
+                title = { Text("fxxkHilife") },
+                colors = TopAppBarDefaults.topAppBarColors(
+                    containerColor = MaterialTheme.colorScheme.surface
+                )
+            )
+        }
+    ) { padding ->
+        Column(
+            modifier = Modifier
+                .fillMaxSize()
+                .padding(padding)
+        ) {
+            // 状态横幅
+            if (connState is ConnectionState.Connecting) {
+                StatusBanner("正在连接 ${(connState as ConnectionState.Connecting).deviceName}…")
+            }
+            if (connState is ConnectionState.Failed) {
+                StatusBanner("连接失败：${(connState as ConnectionState.Failed).reason}", isError = true)
+            }
+
+            // 扫描按钮
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(horizontal = 16.dp, vertical = 12.dp),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Text(
+                    "附近设备",
+                    style = MaterialTheme.typography.titleSmall,
+                    color = MaterialTheme.colorScheme.primary
+                )
+                if (scanState.isScanning) {
+                    Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                        CircularProgressIndicator(modifier = Modifier.size(16.dp), strokeWidth = 2.dp)
+                        Text("扫描中", style = MaterialTheme.typography.bodySmall)
+                    }
+                } else {
+                    TextButton(onClick = { viewModel.startScan(context) }) { Text("重新扫描") }
+                }
+            }
+
+            HorizontalDivider()
+
+            if (scanState.devices.isEmpty() && !scanState.isScanning) {
+                Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+                    Text("未发现设备", color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.5f))
+                }
+            } else {
+                val huawei = scanState.devices.filter { it.isHuaweiOrHonor }
+                val others = scanState.devices.filter { !it.isHuaweiOrHonor }
+
+                LazyColumn {
+                    if (huawei.isNotEmpty()) {
+                        item {
+                            SectionHeader("华为 / 荣耀设备")
+                        }
+                        items(huawei) { DeviceItem(it) { viewModel.connect(it.device) } }
+                    }
+                    if (others.isNotEmpty()) {
+                        item { SectionHeader("其他设备") }
+                        items(others) { DeviceItem(it) { viewModel.connect(it.device) } }
+                    }
+                }
+            }
+        }
+    }
+}
+
+@Composable
+private fun SectionHeader(text: String) {
+    Text(
+        text,
+        modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp),
+        style = MaterialTheme.typography.labelMedium,
+        color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.6f)
+    )
+}
+
+@Composable
+private fun DeviceItem(device: ScannedDevice, onClick: () -> Unit) {
+    ListItem(
+        headlineContent = { Text(device.displayName, fontWeight = FontWeight.Medium) },
+        supportingContent = {
+            Text(
+                buildString {
+                    append(device.address)
+                    if (device.isBonded) append(" · 已配对")
+                    if (device.rssi != 0) append(" · ${device.rssi} dBm")
+                },
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.6f)
+            )
+        },
+        modifier = Modifier.clickable(onClick = onClick)
+    )
+    HorizontalDivider(modifier = Modifier.padding(start = 16.dp))
+}
+
+@Composable
+private fun StatusBanner(text: String, isError: Boolean = false) {
+    Surface(
+        color = if (isError) MaterialTheme.colorScheme.errorContainer
+        else MaterialTheme.colorScheme.primaryContainer,
+        modifier = Modifier.fillMaxWidth()
+    ) {
+        Text(
+            text,
+            modifier = Modifier.padding(horizontal = 16.dp, vertical = 10.dp),
+            style = MaterialTheme.typography.bodyMedium
+        )
+    }
+}
