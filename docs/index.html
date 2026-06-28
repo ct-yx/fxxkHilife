@@ -22,32 +22,38 @@ img{max-width:100%;display:block}
 /* ===== PROGRESS NAV ===== */
 .progress-nav{
   position:fixed;right:0;top:50%;transform:translateY(-50%);
-  z-index:99;display:flex;flex-direction:column;gap:6px;
-  padding:16px 8px;opacity:.25;transition:opacity .3s;
+  z-index:99;display:flex;flex-direction:column;align-items:flex-end;
+  padding:8px 8px;opacity:.2;transition:opacity .3s;
+  height:300px;width:60px;justify-content:center;
 }
 .progress-nav:hover{opacity:1}
 .progress-nav.hidden{opacity:0;pointer-events:none}
-.progress-item{
-  display:flex;align-items:center;justify-content:flex-end;gap:6px;
-  cursor:pointer;transition:all .3s;padding:2px 0;
-  border:none;background:none;color:rgba(255,255,255,.4);
-  font-size:11px;font-family:inherit;text-align:right;
-  width:auto;white-space:nowrap;
+.progress-track{
+  position:relative;width:3px;height:100%;
+  background:rgba(255,255,255,.12);border-radius:2px;
+  cursor:pointer;
 }
-.progress-item:hover{color:#fff}
-.progress-item .dot{
-  width:3px;height:18px;border-radius:3px;flex-shrink:0;
-  background:rgba(255,255,255,.2);transition:all .3s;
+.progress-thumb{
+  position:absolute;left:50%;transform:translate(-50%,-50%);
+  width:14px;height:14px;border-radius:50%;
+  background:#7c7cf0;border:2px solid #0a0a0f;
+  box-shadow:0 0 6px rgba(124,124,240,.4);
+  cursor:grab;transition:width .2s,height .2s;
+  z-index:2;
 }
-.progress-item.active{color:#7c7cf0}
-.progress-item.active .dot{background:#7c7cf0;border-color:#7c7cf0;box-shadow:0 0 8px rgba(124,124,240,.4)}
-.progress-item .label{display:none}
-.progress-item.active .label,.progress-nav:hover .progress-item .label{display:inline}
+.progress-thumb:active{cursor:grabbing;width:18px;height:18px}
+.progress-label{
+  position:absolute;right:20px;transform:translateY(-50%);
+  font-size:11px;color:#7c7cf0;white-space:nowrap;
+  pointer-events:none;opacity:0;transition:opacity .2s;
+}
+.progress-nav:hover .progress-label{opacity:1}
 @media(max-width:640px){
-  .progress-nav{right:4px;padding:10px 4px;gap:4px}
-  .progress-item{font-size:10px}
-  .progress-item .dot{width:3px;height:14px}
-  .progress-item .label{display:inline;max-width:60px;overflow:hidden;text-overflow:ellipsis}
+  .progress-nav{height:200px;width:44px;padding:4px 4px}
+  .progress-track{width:2px}
+  .progress-thumb{width:10px;height:10px}
+  .progress-thumb:active{width:14px;height:14px}
+  .progress-label{font-size:10px;right:16px}
 }
 
 /* ===== ANIMATIONS ===== */
@@ -308,14 +314,14 @@ nav .links a:hover{color:#fff}
 .timeline-toggle.open svg{transform:rotate(180deg)}
 .timeline-loading{text-align:center;padding:40px;color:rgba(255,255,255,.2);font-size:14px}
 @media(max-width:640px){
-  .timeline-item{padding-left:0}
-  .timeline::before{left:10px}
+  .timeline::before{display:none}
+  .timeline-item{padding-left:0;margin-bottom:24px}
+  .timeline-item-inner{padding:14px 16px;border-left:2px solid rgba(124,124,240,.3)}
   .timeline-version-badge{
-    position:relative;left:10px;top:0;transform:none;
+    position:relative;left:0;top:0;transform:none;
     display:inline-block;margin-bottom:8px;
     font-size:10px;padding:3px 10px;
   }
-  .timeline-item-inner{padding:14px 16px}
   .timeline-dot{display:none}
 }
 
@@ -383,12 +389,10 @@ footer .spacer{display:inline-block;margin:0 8px;color:rgba(255,255,255,.1)}
 
 <!-- === PROGRESS NAV === -->
 <div id="progressNav" class="progress-nav">
-  <button class="progress-item" data-section="hero"><span class="label">首页</span><span class="dot"></span></button>
-  <button class="progress-item" data-section="name"><span class="label">名字</span><span class="dot"></span></button>
-  <button class="progress-item" data-section="philosophy"><span class="label">理念</span><span class="dot"></span></button>
-  <button class="progress-item" data-section="features"><span class="label">特性</span><span class="dot"></span></button>
-  <button class="progress-item" data-section="screenshots"><span class="label">截屏</span><span class="dot"></span></button>
-  <button class="progress-item" data-section="timeline"><span class="label">历程</span><span class="dot"></span></button>
+  <div class="progress-track" id="progressTrack">
+    <div class="progress-thumb" id="progressThumb"></div>
+    <div class="progress-label" id="progressLabel">首页</div>
+  </div>
 </div>
 
 <!-- === HERO === -->
@@ -445,7 +449,7 @@ footer .spacer{display:inline-block;margin:0 8px;color:rgba(255,255,255,.1)}
 </section>
 
 <!-- === PHILOSOPHY === -->
-<section class="philosophy reveal">
+<section id="philosophy" class="philosophy reveal">
   <h2 class="section-title" data-i18n="section_philosophy">项目理念</h2>
   <blockquote>
     你的耳机，你的控制权。<br><br>
@@ -641,35 +645,127 @@ function switchLang() {
 // ===== PROGRESS NAV =====
 (function(){
   const nav = document.getElementById('progressNav');
-  if(!nav) return;
-  const items = nav.querySelectorAll('.progress-item');
+  const track = document.getElementById('progressTrack');
+  const thumb = document.getElementById('progressThumb');
+  const label = document.getElementById('progressLabel');
+  if(!nav || !track) return;
   const sections = ['hero','name','philosophy','features','screenshots','timeline'];
-  let lastActive = -1;
+  const labels = ['首页','名字','理念','特性','截屏','历程'];
+  let isDragging = false;
   let hideTimer = null;
 
-  function updateProgress(){
-    const scrollY = window.scrollY + window.innerHeight * 0.3;
-    let activeIdx = 0;
-    for(let i = 0; i < sections.length; i++){
-      const el = document.getElementById(sections[i]);
-      if(el && el.offsetTop <= scrollY) activeIdx = i;
-    }
-    if(activeIdx !== lastActive){
-      items.forEach((d,i) => d.classList.toggle('active', i === activeIdx));
-      lastActive = activeIdx;
-    }
+  function getSectionOffsets(){
+    return sections.map(id => {
+      const el = document.getElementById(id);
+      return el ? el.offsetTop : 0;
+    });
   }
 
-  items.forEach((item,i) => {
-    item.addEventListener('click', () => {
-      const el = document.getElementById(sections[i]);
-      if(el) el.scrollIntoView({behavior:'smooth', block:'start'});
+  function updateProgress(){
+    if(isDragging) return;
+    const scrollY = window.scrollY + window.innerHeight * 0.2;
+    const offsets = getSectionOffsets();
+    const total = document.documentElement.scrollHeight - window.innerHeight;
+    if(total <= 0) return;
+    let ratio = Math.max(0, Math.min(1, scrollY / total));
+    // 吸附：找到最近的章节
+    let nearest = 0, minDist = Infinity;
+    offsets.forEach((off,i) => {
+      const r = Math.max(0, Math.min(1, off / total));
+      if(Math.abs(r - ratio) < minDist){
+        minDist = Math.abs(r - ratio);
+        nearest = i;
+      }
     });
-  });
+    // 如果在章节附近5%内则吸附
+    const snapThreshold = 0.05;
+    const snapRatio = Math.max(0, Math.min(1, offsets[nearest] / total));
+    if(Math.abs(snapRatio - ratio) < snapThreshold) ratio = snapRatio;
+    thumb.style.top = (ratio * 100) + '%';
+    label.textContent = labels[nearest];
+  }
 
-  // 自动隐藏：滚动停止后 2s 隐藏，滚动时显示
-  function showNav(){ nav.classList.remove('hidden'); clearTimeout(hideTimer); hideTimer = setTimeout(() => nav.classList.add('hidden'), 2000); }
-  window.addEventListener('scroll', () => { nav.classList.remove('hidden'); clearTimeout(hideTimer); hideTimer = setTimeout(() => nav.classList.add('hidden'), 2000); updateProgress(); }, {passive:true});
+  function scrollToRatio(ratio){
+    const total = document.documentElement.scrollHeight - window.innerHeight;
+    window.scrollTo({top: ratio * total, behavior:'smooth'});
+  }
+
+  function getTrackRatio(e){
+    const rect = track.getBoundingClientRect();
+    let y = (e.clientY || (e.touches && e.touches[0].clientY)) - rect.top;
+    return Math.max(0, Math.min(1, y / rect.height));
+  }
+
+  function onDragStart(e){
+    isDragging = true;
+    const ratio = getTrackRatio(e);
+    thumb.style.top = (ratio * 100) + '%';
+    // 找到最近的章节标签
+    const offsets = getSectionOffsets();
+    const total = document.documentElement.scrollHeight - window.innerHeight;
+    let nearest = 0, minDist = Infinity;
+    offsets.forEach((off,i) => {
+      const r = Math.max(0, Math.min(1, off / total));
+      if(Math.abs(r - ratio) < minDist){ minDist = Math.abs(r - ratio); nearest = i; }
+    });
+    label.textContent = labels[nearest];
+    e.preventDefault();
+  }
+
+  function onDragMove(e){
+    if(!isDragging) return;
+    const ratio = getTrackRatio(e);
+    thumb.style.top = (ratio * 100) + '%';
+    // 吸附检测
+    const offsets = getSectionOffsets();
+    const total = document.documentElement.scrollHeight - window.innerHeight;
+    let nearest = 0, minDist = Infinity;
+    offsets.forEach((off,i) => {
+      const r = Math.max(0, Math.min(1, off / total));
+      if(Math.abs(r - ratio) < minDist){ minDist = Math.abs(r - ratio); nearest = i; }
+    });
+    label.textContent = labels[nearest];
+    const snapThreshold = 0.05;
+    const snapRatio = Math.max(0, Math.min(1, offsets[nearest] / total));
+    if(Math.abs(snapRatio - ratio) < snapThreshold){
+      thumb.style.top = (snapRatio * 100) + '%';
+    }
+    e.preventDefault();
+  }
+
+  function onDragEnd(e){
+    if(!isDragging) return;
+    isDragging = false;
+    const rect = track.getBoundingClientRect();
+    const ratio = getTrackRatio(e);
+    // 吸附到最近的章节
+    const offsets = getSectionOffsets();
+    const total = document.documentElement.scrollHeight - window.innerHeight;
+    let nearest = 0, minDist = Infinity;
+    offsets.forEach((off,i) => {
+      const r = Math.max(0, Math.min(1, off / total));
+      if(Math.abs(r - ratio) < minDist){ minDist = Math.abs(r - ratio); nearest = i; }
+    });
+    const snapRatio = Math.max(0, Math.min(1, offsets[nearest] / total));
+    thumb.style.top = (snapRatio * 100) + '%';
+    scrollToRatio(snapRatio);
+  }
+
+  track.addEventListener('mousedown', onDragStart);
+  document.addEventListener('mousemove', onDragMove);
+  document.addEventListener('mouseup', onDragEnd);
+  track.addEventListener('touchstart', onDragStart, {passive:false});
+  document.addEventListener('touchmove', onDragMove, {passive:false});
+  document.addEventListener('touchend', onDragEnd);
+
+  // 自动隐藏
+  window.addEventListener('scroll', () => {
+    nav.classList.remove('hidden');
+    clearTimeout(hideTimer);
+    hideTimer = setTimeout(() => nav.classList.add('hidden'), 2000);
+    updateProgress();
+  }, {passive:true});
+
   updateProgress();
 })();
 
