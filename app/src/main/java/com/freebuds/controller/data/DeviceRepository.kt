@@ -332,7 +332,7 @@ class DeviceRepository {
         if (has(HuaweiCapability.INFO))               d.registerHandler(InfoHandler())
         if (has(HuaweiCapability.WEAR_DETECT))        d.registerHandler(InEarHandler())
         if (has(HuaweiCapability.BATTERY)) {
-            val bh = BatteryHandler()
+            val bh = BatteryHandler(wTws = model?.hasTwsBattery ?: true)
             bh.setOnBatteryUpdate { scope.launch { syncProps() } }
             d.registerHandler(bh)
         }

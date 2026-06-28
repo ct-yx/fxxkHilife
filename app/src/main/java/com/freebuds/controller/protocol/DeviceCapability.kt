@@ -181,6 +181,7 @@ val modelCapabilities: Map<HuaweiModel, List<HuaweiCapability>> = mapOf(
         HuaweiCapability.ACTION_DOUBLE_TAP_IN_CALL,
         HuaweiCapability.ACTION_TRIPLE_TAP,
         HuaweiCapability.ACTION_LONG_TAP_SPLIT,
+        HuaweiCapability.ACTION_LONG_TAP_RIGHT,
         HuaweiCapability.ACTION_LONG_TAP_IN_CALL,
         HuaweiCapability.EQ_PRESET,
         HuaweiCapability.LOW_LATENCY,
@@ -204,6 +205,7 @@ val modelCapabilities: Map<HuaweiModel, List<HuaweiCapability>> = mapOf(
     ),
     HuaweiModel.STUDIO to listOf(
         HuaweiCapability.INFO,
+        HuaweiCapability.BATTERY,
         HuaweiCapability.ANC,
         HuaweiCapability.ANC_LEVEL,
         HuaweiCapability.ANC_DYNAMIC,
@@ -224,6 +226,7 @@ val modelCapabilities: Map<HuaweiModel, List<HuaweiCapability>> = mapOf(
     ),
     HuaweiModel.LACE_PRO_2 to listOf(
         HuaweiCapability.INFO,
+        HuaweiCapability.BATTERY,
         HuaweiCapability.ANC,
         HuaweiCapability.ANC_LEVEL,
         HuaweiCapability.ANC_DYNAMIC,
