@@ -100,7 +100,6 @@ val modelCapabilities: Map<HuaweiModel, List<HuaweiCapability>> = mapOf(
         HuaweiCapability.ANC_DYNAMIC,
         HuaweiCapability.ACTION_DOUBLE_TAP,
         HuaweiCapability.ACTION_DOUBLE_TAP_IN_CALL,
-        HuaweiCapability.ACTION_TRIPLE_TAP,
         HuaweiCapability.ACTION_LONG_TAP_SPLIT,
         HuaweiCapability.ACTION_LONG_TAP_RIGHT,
         HuaweiCapability.ACTION_SWIPE,

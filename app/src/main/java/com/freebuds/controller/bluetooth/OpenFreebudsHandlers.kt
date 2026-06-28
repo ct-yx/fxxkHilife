@@ -197,7 +197,7 @@ class AncHandler(
     private val wVoiceBoost: Boolean = true,
 ) : HuaweiDeviceHandler {
     override val id = "anc_global"
-    override val commandIds = listOf(b(0x2b, 0x2a))
+    override val commandIds = listOf(b(0x2b, 0x2a), b(0x2b, 0x2c))
     override val ignoreCommandIds = listOf(b(0x2b, 0x04))
     override val properties = listOf("anc" to "mode", "anc" to "level")
     override val capabilities = listOf(HuaweiCapability.ANC, HuaweiCapability.ANC_LEVEL, HuaweiCapability.ANC_DYNAMIC, HuaweiCapability.VOICE_BOOST)
@@ -217,9 +217,10 @@ class AncHandler(
 
     private suspend fun onPackage(pkg: HuaweiSppPackage, driver: SppDriver) {
         val data = pkg.findParam(1)
-        if (data.size == 2) {
-            val level = data[0].toInt() and 0xFF
-            val mode = data[1].toInt() and 0xFF
+        if (data.size >= 1) {
+            val modeByte = if (data.size == 2) data[1] else data[0]
+            val level = if (data.size == 2) data[0].toInt() and 0xFF else 0
+            val mode = modeByte.toInt() and 0xFF
             activeMode = mode
             val out = linkedMapOf(
                 "mode" to (modeOptions[mode] ?: mode.toString()),

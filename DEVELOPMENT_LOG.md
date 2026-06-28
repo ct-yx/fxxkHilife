@@ -109,7 +109,20 @@
 - `OfbHuaweiDualConnectHandler`（双连模式）
 - 需要后续迭代补充
 
-## v2.1.1 (2026-06-28)
+## v2.1.2 (2026-06-28)
+
+### 性能优化
+- **并行 Handler 初始化**：`initHandlers()` 改为 `coroutineScope` + `launch` 并行发起所有 Handler 的 `onInit`，`joinAll()` 等待全部完成，12s 全局超时兜底。不再串行阻塞，与官方 App 连接速度体感一致。
+
+### 新增功能
+- **ANC 被动通知 (`2b2c`)**：AncHandler 新增 `2b2c` 命令支持，处理 6i 主动推送的 ANC 模式变更通知（单字节 param 格式）。
+
+### 缺陷修复
+- **6i 能力表修正**：去除 FreeBuds 6i 的 `TRIPLE_TAP`，实测 `0126` 请求不响应。
+- **AncHandler `onPackage` 双格式兼容**：`2b2a` 响应（2字节 param）和 `2b2c` 推送（1字节 param）统一处理。
+
+### 其他
+- 版本文档更新：README.md、README_EN.md、DEVELOPMENT_LOG.md、strings.xml
 
 ### 编译修复
 - TerminalActivity 中 `needle is Int || hasCap(needle)` 类型推断歧义改为显式分支判断
