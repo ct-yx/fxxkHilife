@@ -1,5 +1,6 @@
 package com.freebuds.controller.ui
 
+import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
@@ -320,6 +321,7 @@ private fun SettingsGroupHeader(text: String) {
     }
 }
 
+@OptIn(ExperimentalLayoutApi::class)
 @Composable
 private fun DeviceOptionItem(
     displayMode: UiDisplayMode,
@@ -331,29 +333,51 @@ private fun DeviceOptionItem(
     rawOptions: List<String>,
     onSelect: (String) -> Unit,
 ) {
-    var expanded by remember { mutableStateOf(false) }
+    var expanded by remember(title) { mutableStateOf(false) }
     AdaptiveCard(
         displayMode = displayMode,
         hazeState = hazeState,
         modifier = Modifier
             .fillMaxWidth()
             .padding(horizontal = 16.dp, vertical = 5.dp)
-            .clickable(enabled = options.isNotEmpty()) { expanded = true },
+            .clickable(enabled = options.isNotEmpty()) { expanded = !expanded },
     ) {
         Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(14.dp)) {
             Icon(icon, contentDescription = null)
             Column(Modifier.weight(1f)) {
-                Text(title)
+                Text(title, style = MaterialTheme.typography.titleSmall)
                 if (current != null) Text(current, style = MaterialTheme.typography.bodySmall)
             }
-            if (options.isNotEmpty()) Icon(Icons.Default.ChevronRight, contentDescription = null)
+            if (options.isNotEmpty()) {
+                Icon(
+                    if (expanded) Icons.Default.ExpandLess else Icons.Default.ExpandMore,
+                    contentDescription = null,
+                )
+            }
         }
-    }
-    if (expanded && options.isNotEmpty()) {
-        OptionsDialog(title, options, rawOptions, onDismiss = { expanded = false }, onSelect = {
-            onSelect(it)
-            expanded = false
-        })
+        AnimatedVisibility(visible = expanded && options.isNotEmpty()) {
+            FlowRow(
+                modifier = Modifier.padding(top = 14.dp),
+                horizontalArrangement = Arrangement.spacedBy(8.dp),
+                verticalArrangement = Arrangement.spacedBy(8.dp),
+            ) {
+                options.forEachIndexed { index, label ->
+                    val raw = rawOptions.getOrNull(index) ?: return@forEachIndexed
+                    val selected = label == current
+                    FilterChip(
+                        selected = selected,
+                        onClick = {
+                            onSelect(raw)
+                            expanded = false
+                        },
+                        label = { Text(label) },
+                        leadingIcon = if (selected) {
+                            { Icon(Icons.Default.Check, contentDescription = null, modifier = Modifier.size(18.dp)) }
+                        } else null,
+                    )
+                }
+            }
+        }
     }
 }
 
@@ -403,35 +427,6 @@ private fun InfoItem(displayMode: UiDisplayMode, hazeState: HazeState?, icon: Im
             }
         }
     }
-}
-
-@Composable
-private fun OptionsDialog(title: String, options: List<String>, rawOptions: List<String>, onDismiss: () -> Unit, onSelect: (String) -> Unit) {
-    AlertDialog(
-        onDismissRequest = onDismiss,
-        title = { Text(title) },
-        text = {
-            Column {
-                options.forEachIndexed { idx, opt ->
-                    Text(
-                        opt,
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .clickable { onSelect(rawOptions[idx]) }
-                            .padding(vertical = 12.dp),
-                        style = MaterialTheme.typography.bodyLarge
-                    )
-                }
-                Spacer(Modifier.height(8.dp))
-                HorizontalDivider()
-                TextButton(
-                    onClick = onDismiss,
-                    modifier = Modifier.fillMaxWidth()
-                ) { Text("取消") }
-            }
-        },
-        confirmButton = { } // 取消已移到内容区
-    )
 }
 
 // ── ANC 模式分段选择器 ──────────────────────────────────────────────
