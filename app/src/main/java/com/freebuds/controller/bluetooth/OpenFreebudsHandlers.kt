@@ -223,6 +223,8 @@ class AncHandler(
     override val capabilities = listOf(HuaweiCapability.ANC, HuaweiCapability.ANC_LEVEL, HuaweiCapability.ANC_DYNAMIC, HuaweiCapability.VOICE_BOOST)
 
     private var activeMode = 0
+    private var pendingMode: Int? = null
+    private var pendingModeUntil: Long = 0L
     private val modeOptions = mapOf(0 to "normal", 1 to "cancellation", 2 to "awareness")
     private val cancelOptions = linkedMapOf(1 to "comfort", 0 to "normal", 2 to "ultra", 3 to "dynamic")
     private val awarenessOptions = mapOf(1 to "voice_boost", 2 to "normal")
@@ -241,6 +243,16 @@ class AncHandler(
             val modeByte = if (data.size == 2) data[1] else data[0]
             val level = if (data.size == 2) data[0].toInt() and 0xFF else 0
             val mode = modeByte.toInt() and 0xFF
+            val now = System.currentTimeMillis()
+            val targetMode = pendingMode
+            if (targetMode != null && now < pendingModeUntil && mode != targetMode) {
+                com.freebuds.controller.util.LogBuffer.d("SPP", "Ignore stale ANC state mode=$mode while pending=$targetMode")
+                return
+            }
+            if (targetMode != null && mode == targetMode) {
+                pendingMode = null
+                pendingModeUntil = 0L
+            }
             activeMode = mode
             val out = linkedMapOf(
                 "mode" to (modeOptions[mode] ?: mode.toString()),
@@ -275,6 +287,8 @@ class AncHandler(
         // 切换主模式时同步刷新子模式/选项，避免“降噪强度/通透模式”混用旧 options。
         if (prop == "mode") {
             activeMode = valueByte
+            pendingMode = valueByte
+            pendingModeUntil = System.currentTimeMillis() + 2_500L
             val out = linkedMapOf(
                 "mode" to value,
                 "mode_options" to options(modeOptions),

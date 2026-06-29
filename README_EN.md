@@ -16,8 +16,8 @@
   <a href="https://github.com/ct-yx/fxxkHilife/issues">Report / Join testing</a>
 </p>
 
-> **Current version: v2.7.4**
-> Fixes first-toggle sync for sound quality preference, ANC cancellation/awareness sub-mode option mix-ups, and adds notification plus background/autostart guidance to the permission screen.
+> **Current version: v2.7.5**
+> Fixes ANC mode jumping caused by stale async state packets after switching, while keeping sound-quality sync, ANC sub-mode display, and permission-guide fixes.
 
 ---
 
@@ -33,7 +33,7 @@ The project is still evolving quickly. Testers with more earbud models are very 
 
 ## Key features
 
-- **v2.7.4 fixes**: sound quality preference now syncs after the first toggle; ANC awareness mode shows the correct sub-mode title/options; the permission screen now includes notification permission plus background/autostart setting shortcuts.
+- **v2.7.5 fixes**: sound quality preference now syncs after the first toggle; ANC awareness mode shows the correct sub-mode title/options; the permission screen now includes notification permission plus background/autostart setting shortcuts.
 
 - **Connection and auto-connect**: scan HUAWEI / HONOR earbuds, save known devices, auto-connect on app launch / boot / foreground service; auto-connect is gated by system Bluetooth connection state before opening SPP.
 - **ANC / Awareness / Off**: switch ANC modes from the in-app pill slider, Quick Settings Tile, or persistent notification actions.
