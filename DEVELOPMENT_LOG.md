@@ -787,3 +787,17 @@
 - versionName: 2.12.3
 - tag: v2.12.3
 
+## v2.13.0 (2026-06-29)
+
+### 最新液态玻璃视觉增强
+- 传统液态玻璃实现不再继续打磨，仅保留代码与个性化入口中的“传统”兜底方案。
+- “最新”渲染方案开始参考 Flowmix 的边缘光学方向实现：背景仍由 Haze 2.0 `blurEffect` 采样，视觉增强集中在边缘而不是整块白色覆盖层。
+- 在 `LiquidGlassCard` 最新模式中新增 Flowmix-inspired 边缘层：normal-like 高光、ambient rim、细微 chromatic edge。
+- `LiquidGlassPanel` 同步接入最新模式边缘光学，并进一步降低白色 tint / background alpha，避免恢复白板感。
+- 保持与 Flowmix 不同版本 API 的边界：不直接使用其反编译内部 Haze 类，仅迁移视觉思路，避免因 API 差异导致编译风险。
+
+### 发布
+- versionCode: 45
+- versionName: 2.13.0
+- tag: v2.13.0
+

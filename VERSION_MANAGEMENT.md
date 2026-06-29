@@ -3,17 +3,17 @@
 > 版本号统一修改入口，按清单逐一更新。
 
 ## 当前版本
-- **v2.12.3** (versionCode=44, 2026-06-29)
+- **v2.13.0** (versionCode=45, 2026-06-29)
 
 ## 版本号位置
 
 | 位置 | 当前值 |
 |------|--------|
-| `app/build.gradle.kts` | versionCode=44, versionName="2.12.3" |
-| `app/src/main/res/values/strings.xml` | version_name=2.12.3 |
-| `README.md` | v2.12.3 |
-| `README_EN.md` | v2.12.3 |
-| `DEVELOPMENT_LOG.md` | v2.12.3 (末尾) |
+| `app/build.gradle.kts` | versionCode=45, versionName="2.13.0" |
+| `app/src/main/res/values/strings.xml` | version_name=2.13.0 |
+| `README.md` | v2.13.0 |
+| `README_EN.md` | v2.13.0 |
+| `DEVELOPMENT_LOG.md` | v2.13.0 (末尾) |
 
 ## 一键版本更新脚本
 
@@ -37,6 +37,7 @@ python3 scripts/bump_version.py <versionName> <versionCode> "修复说明"
 
 | 版本 | Code | 日期 | 主要变更 |
 |------|------|------|---------|
+| v2.13.0 | 45 | 2026-06-29 | 增强最新液态玻璃 Flowmix 风格边缘光学 |
 | v2.12.3 | 44 | 2026-06-29 | 迁移 Kotlin compilerOptions DSL |
 | v2.12.2 | 43 | 2026-06-29 | 修复 Haze 2.0 Kotlin 版本兼容性 |
 | v2.12.1 | 42 | 2026-06-29 | 修复 Haze 2.0 构建链兼容性 |

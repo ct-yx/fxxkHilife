@@ -91,11 +91,11 @@ fun AdaptiveCard(
  * }
  * ```
  *
- * Haze 1.6.7 does not expose the newer `liquidGlassEffect {}` API described by
- * recent Haze examples, so this implementation keeps CI-compatible
- * `hazeSource` + `hazeEffect` and simulates liquid-glass refraction through:
- * strong blur, layered translucent tints, Fresnel-like edge strokes, top-left
- * specular highlights, and diagonal refraction ribbons.
+ * Haze 2.0 is used as the blur pipeline, while the official `haze-liquidglass`
+ * artifact is still unpublished. The latest renderer therefore keeps
+ * `hazeSource` + `hazeEffect { blurEffect { ... } }` and layers Flowmix-inspired
+ * edge optics on top: normal-like edge highlights, ambient rims, subtle chromatic
+ * edges, and no full-card white overlay.
  *
  * Performance notes:
  * - Android 12+ has the best blur/render-effect path.
@@ -153,6 +153,7 @@ fun LiquidGlassCard(
                 depth = safeDepth,
                 surfaceProfile = effectiveSurfaceProfile,
                 drawInteriorAccents = legacyOptics,
+                flowmixInspired = !legacyOptics,
             ),
         shape = effectiveShape,
         color = Color.White.copy(alpha = 0.004f + 0.010f * safeDepth),
@@ -175,6 +176,8 @@ fun LiquidGlassPanel(
     content: @Composable BoxScope.() -> Unit,
 ) {
     val shape = RoundedCornerShape(28.dp)
+    val config = LocalLiquidGlassConfig.current
+    val legacyOptics = config.rendererMode == GlassRendererMode.LEGACY_COMPAT
     if (displayMode == UiDisplayMode.LIQUID_GLASS && hazeState != null) {
         Box(
             modifier = modifier
@@ -183,7 +186,7 @@ fun LiquidGlassPanel(
                     blurEffect {
                         blurRadius = 26.dp
                         noiseFactor = 0.052f
-                        colorEffects = listOf(HazeColorEffect.tint(Color.White.copy(alpha = 0.035f)))
+                        colorEffects = listOf(HazeColorEffect.tint(Color.White.copy(alpha = if (legacyOptics) 0.035f else 0.018f)))
                     }
                 }
                 .liquidGlassOptics(
@@ -191,8 +194,10 @@ fun LiquidGlassPanel(
                     refractionStrength = 0.66f,
                     depth = 0.34f,
                     surfaceProfile = GlassSurfaceProfile.Rounded,
+                    drawInteriorAccents = legacyOptics,
+                    flowmixInspired = !legacyOptics,
                 )
-                .background(Color.White.copy(alpha = 0.008f), shape)
+                .background(Color.White.copy(alpha = if (legacyOptics) 0.008f else 0.003f), shape)
                 .padding(4.dp),
             content = content,
         )
@@ -207,6 +212,7 @@ private fun Modifier.liquidGlassOptics(
     depth: Float,
     surfaceProfile: GlassSurfaceProfile,
     drawInteriorAccents: Boolean = true,
+    flowmixInspired: Boolean = false,
 ): Modifier = this.drawWithCache {
     val minSide = min(size.width, size.height)
     val radiusPx = when (surfaceProfile) {
@@ -255,6 +261,35 @@ private fun Modifier.liquidGlassOptics(
         start = Offset(size.width * 0.25f, size.height * 0.25f),
         end = Offset(size.width, size.height),
     )
+    val flowmixNormalHighlight = Brush.linearGradient(
+        colors = listOf(
+            Color.White.copy(alpha = 0.50f * refractionStrength),
+            Color.White.copy(alpha = 0.18f * refractionStrength),
+            Color.Transparent,
+            Color.Black.copy(alpha = 0.05f * depth),
+        ),
+        start = Offset.Zero,
+        end = Offset(size.width, size.height),
+    )
+    val flowmixAmbientEdge = Brush.linearGradient(
+        colors = listOf(
+            Color.White.copy(alpha = 0.26f * depth),
+            Color.Transparent,
+            Color.Black.copy(alpha = 0.08f * depth),
+        ),
+        start = Offset(size.width * 0.12f, size.height * 0.02f),
+        end = Offset(size.width * 0.92f, size.height * 0.96f),
+    )
+    val flowmixChromaticEdge = Brush.linearGradient(
+        colors = listOf(
+            Color(0xFFC8FBFF).copy(alpha = 0.22f * refractionStrength),
+            Color.White.copy(alpha = 0.18f * refractionStrength),
+            Color(0xFFFF9AD8).copy(alpha = 0.16f * refractionStrength),
+            Color.Transparent,
+        ),
+        start = Offset(size.width * 0.04f, size.height * 0.02f),
+        end = Offset(size.width * 0.98f, size.height * 0.92f),
+    )
 
     onDrawWithContent {
         drawContent()
@@ -274,6 +309,23 @@ private fun Modifier.liquidGlassOptics(
                 end = Offset(size.width * 0.96f, size.height * 0.26f),
                 strokeWidth = mainStroke * 1.15f,
                 cap = StrokeCap.Round,
+            )
+        }
+        if (flowmixInspired) {
+            drawRoundRect(
+                brush = flowmixAmbientEdge,
+                cornerRadius = radius,
+                style = Stroke(width = mainStroke * 2.15f),
+            )
+            drawRoundRect(
+                brush = flowmixNormalHighlight,
+                cornerRadius = radius,
+                style = Stroke(width = mainStroke * 1.45f),
+            )
+            drawRoundRect(
+                brush = flowmixChromaticEdge,
+                cornerRadius = radius,
+                style = Stroke(width = hairline * 1.35f),
             )
         }
         drawRoundRect(
