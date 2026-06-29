@@ -45,6 +45,7 @@ enum class HuaweiModel(
     BUDS_4I("HUAWEI FreeBuds 4i / HONOR Earbuds 2/2 Lite/SE"),
     BUDS_5I("HUAWEI FreeBuds 5i"),
     BUDS_6I("HUAWEI FreeBuds 6i", sppPort = 1),
+    BUDS_7I("HUAWEI FreeBuds 7i", sppPort = 1),
     BUDS_PRO("HUAWEI FreeBuds Pro", sppPort = 1),
     BUDS_PRO_2("HUAWEI FreeBuds Pro 2", sppPort = 1),
     BUDS_PRO_3("HUAWEI FreeBuds Pro 3 / Pro 4 / FreeClip", sppPort = 1),
@@ -112,6 +113,22 @@ val modelCapabilities: Map<HuaweiModel, List<HuaweiCapability>> = mapOf(
         HuaweiCapability.EQ_CUSTOM,
         HuaweiCapability.VOICE_LANGUAGE,
         HuaweiCapability.DUAL_CONNECT,
+    ),
+    // Temporary conservative profile for FreeBuds 7i.
+    // Full 7i adaptation is planned for the next major compatibility round.
+    HuaweiModel.BUDS_7I to listOf(
+        HuaweiCapability.INFO,
+        HuaweiCapability.WEAR_DETECT,
+        HuaweiCapability.BATTERY,
+        HuaweiCapability.BATTERY_TWS,
+        HuaweiCapability.ANC,
+        HuaweiCapability.ANC_LEVEL,
+        HuaweiCapability.ANC_DYNAMIC,
+        HuaweiCapability.ACTION_TRIPLE_TAP,
+        HuaweiCapability.AUTO_PAUSE,
+        HuaweiCapability.SOUND_QUALITY,
+        HuaweiCapability.LOW_LATENCY,
+        HuaweiCapability.VOICE_LANGUAGE,
     ),
     HuaweiModel.BUDS_PRO to listOf(
         HuaweiCapability.INFO,

@@ -506,3 +506,21 @@
 - versionName: 2.7.6
 - tag: v2.7.6
 
+## v2.7.7 (2026-06-29)
+
+### FreeBuds 7i 临时适配
+- 新增 `HuaweiModel.BUDS_7I`，匹配 `FreeBuds 7i`，SPP 端口为 1。
+- 为 FreeBuds 7i 增加临时保守能力表，避免未知型号走通用全量 Handler 导致 15 个 Handler 同时初始化、pending 堆积和大量 timeout。
+- 7i 临时能力表保留核心功能：INFO / WEAR_DETECT / BATTERY / ANC / TRIPLE_TAP / AUTO_PAUSE / SOUND_QUALITY / LOW_LATENCY / VOICE_LANGUAGE。
+- 暂时不启用长按、滑动、Power Button、EQ、双设备等更容易拖慢初始化或仍需验证的能力。
+- 说明：这不是 FreeBuds 7i 完整体适配，只是为了降低初始化压力、改善连接后等待时间的临时修复。
+
+### 后续计划
+- FreeBuds 7i 将在下一轮大版本中继续与测试者协作完整适配。
+- 下一轮大版本会同步推进更多不同型号、更多不同厂商耳机的兼容性适配。
+
+### 发布
+- versionCode: 26
+- versionName: 2.7.7
+- tag: v2.7.7
+

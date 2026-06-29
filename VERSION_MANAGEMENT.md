@@ -3,22 +3,23 @@
 > 版本号统一修改入口，按清单逐一更新。
 
 ## 当前版本
-- **v2.7.6** (versionCode=25, 2026-06-29)
+- **v2.7.7** (versionCode=26, 2026-06-29)
 
 ## 版本号位置
 
 | 位置 | 当前值 |
 |------|--------|
-| `app/build.gradle.kts` | versionCode=25, versionName="2.7.6" |
-| `app/src/main/res/values/strings.xml` | version_name=2.7.6 |
-| `README.md` | v2.7.6 |
-| `README_EN.md` | v2.7.6 |
-| `DEVELOPMENT_LOG.md` | v2.7.6 (末尾) |
+| `app/build.gradle.kts` | versionCode=26, versionName="2.7.7" |
+| `app/src/main/res/values/strings.xml` | version_name=2.7.7 |
+| `README.md` | v2.7.7 |
+| `README_EN.md` | v2.7.7 |
+| `DEVELOPMENT_LOG.md` | v2.7.7 (末尾) |
 
 ## 一键版本更新脚本
 
 ```bash
-python3 scripts/bump_version.py 2.7.6 25 "修复说明"
+python3 scripts/bump_version.py <versionName> <versionCode> "修复说明"
+# 例如：python3 scripts/bump_version.py 2.7.8 27 "修复说明"
 ```
 
 脚本会同步更新：
@@ -36,6 +37,7 @@ python3 scripts/bump_version.py 2.7.6 25 "修复说明"
 
 | 版本 | Code | 日期 | 主要变更 |
 |------|------|------|---------|
+| v2.7.7 | 26 | 2026-06-29 | FreeBuds 7i 临时保守能力表 / 标记后续大版本多型号适配计划 |
 | v2.7.6 | 25 | 2026-06-29 | 修复首次切到降噪旧状态包乱跳 / 恢复充电盒 100% 电量显示 / 增加一键版本更新脚本 |
 | v2.7.2 | 21 | 2026-06-29 | ANC/主题长条胶囊滑块 / ANC 圆形图标滑块 / 全局壁纸背景修复 |
 | v2.7.1 | 20 | 2026-06-29 | 常驻通知保活 / 电池与实时状态显示 / 打开应用/系统自启动自动连接已保存耳机 / 清理旧 ACL 自动连接残留 |

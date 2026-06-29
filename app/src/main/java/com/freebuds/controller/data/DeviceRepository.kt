@@ -446,6 +446,7 @@ class DeviceRepository {
     }
 
     private fun detectModel(name: String): HuaweiModel? = when {
+        name.contains("FreeBuds 7i", true)    -> HuaweiModel.BUDS_7I
         name.contains("FreeBuds 6i", true)    -> HuaweiModel.BUDS_6I
         name.contains("FreeBuds Pro 4", true) ||
         name.contains("FreeBuds Pro 3", true) ||
