@@ -5,11 +5,9 @@ import android.app.NotificationChannel
 import android.app.NotificationManager
 import android.app.PendingIntent
 import android.app.Service
-import android.bluetooth.BluetoothDevice
-import android.content.BroadcastReceiver
+import android.bluetooth.BluetoothAdapter
 import android.content.Context
 import android.content.Intent
-import android.content.IntentFilter
 import android.os.Build
 import android.os.IBinder
 import androidx.core.app.NotificationCompat
@@ -17,8 +15,10 @@ import com.freebuds.controller.HilifeApplication
 import com.freebuds.controller.R
 import com.freebuds.controller.data.ConnectionState
 import com.freebuds.controller.ui.MainActivity
+import kotlinx.coroutines.Job
 import kotlinx.coroutines.MainScope
 import kotlinx.coroutines.delay
+import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
 
 class BluetoothService : Service() {
@@ -26,49 +26,25 @@ class BluetoothService : Service() {
     companion object {
         const val CHANNEL_ID = "bluetooth_service"
         const val NOTIFICATION_ID = 1001
-        const val PREF_AUTO_LOW_LATENCY = "auto_low_latency"
         private val PACKAGE = BluetoothService::class.java.`package`?.name ?: ""
-        val ACTION_CONNECT = "$PACKAGE.action.CONNECT"
         val ACTION_DISCONNECT = "$PACKAGE.action.DISCONNECT"
-        val EXTRA_DEVICE = "$PACKAGE.extra.DEVICE"
+        val ACTION_AUTO_CONNECT_LAST = "$PACKAGE.action.AUTO_CONNECT_LAST"
         val ACTION_ANC_NORMAL = "$PACKAGE.action.ANC_NORMAL"
         val ACTION_ANC_CANCEL = "$PACKAGE.action.ANC_CANCEL"
         val ACTION_ANC_AWARE = "$PACKAGE.action.ANC_AWARE"
     }
 
     private val scope = MainScope()
-    private var propsJob: kotlinx.coroutines.Job? = null
+    private var propsJob: Job? = null
+    private var notificationTickerJob: Job? = null
 
-    private val aclReceiver = object : BroadcastReceiver() {
-        override fun onReceive(context: Context?, intent: Intent?) {
-            val device = if (android.os.Build.VERSION.SDK_INT >= 33) {
-                intent?.getParcelableExtra(BluetoothDevice.EXTRA_DEVICE, BluetoothDevice::class.java)
-            } else {
-                @Suppress("DEPRECATION")
-                intent?.getParcelableExtra(BluetoothDevice.EXTRA_DEVICE)
-            }
-            when (intent?.action) {
-                BluetoothDevice.ACTION_ACL_CONNECTED -> {
-                    device?.let { onDeviceConnected(it) }
-                }
-                BluetoothDevice.ACTION_ACL_DISCONNECTED -> {
-                    device?.let { onDeviceDisconnected(it) }
-                }
-            }
-        }
-    }
 
     override fun onCreate() {
         super.onCreate()
         createNotificationChannelIfNeeded()
         startForeground(NOTIFICATION_ID, createNotification())
         startPropsObserver()
-
-        val filter = IntentFilter().apply {
-            addAction(BluetoothDevice.ACTION_ACL_CONNECTED)
-            addAction(BluetoothDevice.ACTION_ACL_DISCONNECTED)
-        }
-        registerReceiver(aclReceiver, filter)
+        startNotificationTicker()
     }
 
     private fun createNotificationChannelIfNeeded() {
@@ -85,15 +61,7 @@ class BluetoothService : Service() {
 
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
         when (intent?.action) {
-            ACTION_CONNECT -> {
-                val device = if (android.os.Build.VERSION.SDK_INT >= 33) {
-                    intent.getParcelableExtra(EXTRA_DEVICE, BluetoothDevice::class.java)
-                } else {
-                    @Suppress("DEPRECATION")
-                    intent.getParcelableExtra(EXTRA_DEVICE)
-                }
-                device?.let { connect(it) }
-            }
+            null, ACTION_AUTO_CONNECT_LAST -> autoConnectLastSavedDevice()
             ACTION_DISCONNECT -> disconnect()
             ACTION_ANC_NORMAL -> setAncMode("normal")
             ACTION_ANC_CANCEL -> setAncMode("cancellation")
@@ -130,37 +98,19 @@ class BluetoothService : Service() {
             .build()
     }
 
-    private fun onDeviceConnected(device: BluetoothDevice) {
-        val repo = HilifeApplication.instance.deviceRepository
-        val saved = repo.getSavedAddresses()
-        if (device.address in saved) {
-            repo.connect(device)
-            val autoLowLatency = getSharedPreferences("settings", Context.MODE_PRIVATE)
-                .getBoolean(PREF_AUTO_LOW_LATENCY, true)
-            if (autoLowLatency) {
-                MainScope().launch {
-                    delay(3000) // 等连接稳定
-                    if (repo.connectionState.value is ConnectionState.Connected) {
-                        repo.setProperty("config", "low_latency", "true")
-                    }
-                }
-            }
-        }
-    }
-
-    private fun onDeviceDisconnected(device: BluetoothDevice) {
-        val repo = HilifeApplication.instance.deviceRepository
-        if (repo.connectionState.value is com.freebuds.controller.data.ConnectionState.Connected) {
-            repo.disconnect()
-        }
-    }
-
-    private fun connect(device: BluetoothDevice) {
-        HilifeApplication.instance.deviceRepository.connect(device)
-    }
-
     private fun disconnect() {
         HilifeApplication.instance.deviceRepository.disconnect()
+    }
+
+    private fun autoConnectLastSavedDevice() {
+        val repo = HilifeApplication.instance.deviceRepository
+        if (repo.connectionState.value is ConnectionState.Connected ||
+            repo.connectionState.value is ConnectionState.Connecting) return
+
+        val address = repo.getSavedAddress() ?: return
+        val adapter = BluetoothAdapter.getDefaultAdapter() ?: return
+        val device = runCatching { adapter.getRemoteDevice(address) }.getOrNull() ?: return
+        repo.connect(device)
     }
 
     private fun setAncMode(mode: String) {
@@ -177,7 +127,22 @@ class BluetoothService : Service() {
         propsJob?.cancel()
         propsJob = scope.launch {
             HilifeApplication.instance.deviceRepository.props.collect { props ->
+                // 属性变化时立即刷新：ANC / 低延迟 / 音质模式实时更新
                 updateNotification(props)
+            }
+        }
+    }
+
+    private fun startNotificationTicker() {
+        notificationTickerJob?.cancel()
+        notificationTickerJob = scope.launch {
+            while (isActive) {
+                delay(60_000)
+                val repo = HilifeApplication.instance.deviceRepository
+                if (repo.connectionState.value is ConnectionState.Connected) {
+                    // 听音时长随时间变化，需低频刷新；不重新查询设备，避免增加蓝牙压力
+                    updateNotification(repo.props.value)
+                }
             }
         }
     }
@@ -196,6 +161,17 @@ class BluetoothService : Service() {
             else -> props.ancMode
         }
         if (ancLabel != null) lines.add("ANC：$ancLabel")
+
+        // 电池电量：只展示 props 中已有数据，不额外触发查询；电量随仓库轮询低频更新
+        val batteryParts = mutableListOf<String>()
+        props.batteryLeft?.let { batteryParts.add("左${it}%") }
+        props.batteryRight?.let { batteryParts.add("右${it}%") }
+        props.batteryCase?.let { batteryParts.add("盒${it}%") }
+        if (batteryParts.isNotEmpty()) {
+            lines.add("电量：${batteryParts.joinToString("/")}")
+        } else {
+            props.batteryGlobal?.let { lines.add("电量：${it}%") }
+        }
 
         // 音质模式
         val sqLabel = when (props.soundQuality) {
@@ -226,6 +202,7 @@ class BluetoothService : Service() {
         val notification = NotificationCompat.Builder(this, CHANNEL_ID)
             .setContentTitle(getString(R.string.service_notification_title))
             .setContentText(contentText)
+            .setStyle(NotificationCompat.BigTextStyle().bigText(contentText))
             .setSmallIcon(android.R.drawable.ic_menu_search)
             .setContentIntent(
                 PendingIntent.getActivity(this, 0,
@@ -252,8 +229,8 @@ class BluetoothService : Service() {
 
     override fun onDestroy() {
         propsJob?.cancel()
-        try { unregisterReceiver(aclReceiver) } catch (_: Exception) {}
-        disconnect()
+        notificationTickerJob?.cancel()
+        // 前台服务被系统回收/重建时不要主动断开耳机；手动断连只走 ACTION_DISCONNECT
         super.onDestroy()
     }
 }

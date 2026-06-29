@@ -7,7 +7,7 @@
 <p align="center">
   <b>A lightweight offline controller for HUAWEI FreeBuds / HONOR Earbuds</b>
 </p>
-> **v2.7.0** — Source-level optimistic update: DeviceRepository setProperty updates StateFlow instantly, Tile reactive refresh, NotificationChannel adaptation, Auto-release with existing tag override.
+> **v2.7.1** — Persistent notification keep-alive fix: app launch / system auto-start starts the foreground service and reconnects the saved earbuds; notification shows listening duration / battery / ANC / low-latency / sound-quality state, with stale ACL auto-connect code removed.
 
 >
 > Controls your earbuds directly via classic Bluetooth SPP — no login, no ads, fully offline.
@@ -30,14 +30,14 @@ cd fxxkHilife
 
 ## Project Status
 
-Current version: **v2.6.0**
+Current version: **v2.7.1**
 
 ### Completed
 - **Adaptive polling**: 800ms foreground high-frequency, 5s background low-frequency, driven by Activity lifecycle
 - **Tri-state theme**: Follow system / Dark / Light with Material3 native segmented selector
 - **Wallpaper system**: Import custom image wallpaper (coil AsyncImage), scope selector (All / Home only / Settings only)
 - **Notification ANC quick-switch**: Toggle ANC mode directly from notification bar (Off / ANC / Awareness), three Action buttons
-- **Notification live status**: Display current ANC mode, sound quality, low‑latency, and usage duration (auto‑timed)
+- **Notification live status**: Persistent notification shows ANC mode, sound quality, low‑latency, and listening duration (instant property refresh plus 60s duration refresh; battery uses existing low-frequency repository data)
 - **Log control**: Configurable log retention lines (500/1000/2000/5000/10000)
 - **Navigation refactor**: Disconnect button moved to saved-device list on Home, red delete icon
 - **ANC segmented control**: Material3 Surface + Row native segment selector (Off / ANC / Awareness), reactive instant switching
@@ -50,7 +50,7 @@ Current version: **v2.6.0**
 - **Disconnect guard**: SppDriver recvLoop sets isConnected=false on exit, prevents Broken pipe
 - **Full chinese label mapping**: Noise cancel / Transparency / Off, Sound quality / Connection first, Play/Pause / Next track etc.
 - **Connection persistence**: save device address via SharedPreferences, stay connected on back‑navigation
-- **Auto‑connect**: automatically connect to discovered Huawei/Honor devices
+- **Auto‑connect**: app launch reconnects the last saved earbuds; scan page still supports manual device selection
 - **Background retry**: failed init handlers retried every 30s until successful
 - **Settings screen**: global top‑right entry with version, saved device, debug terminal, log sharing
 - **Log sharing**: one‑tap export current SPP logs as a text file

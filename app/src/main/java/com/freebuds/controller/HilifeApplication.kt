@@ -26,9 +26,12 @@ class HilifeApplication : Application() {
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
             val channel = NotificationChannel(
                 BluetoothService.CHANNEL_ID,
-                "蓝牙连接",
-                NotificationManager.IMPORTANCE_DEFAULT
-            ).apply { description = "FreeBuds 后台连接服务" }
+                "蓝牙连接与 ANC 状态",
+                NotificationManager.IMPORTANCE_LOW
+            ).apply {
+                description = "显示当前 ANC 模式、听音时长、低延迟/音质状态"
+                setShowBadge(false)
+            }
             getSystemService(NotificationManager::class.java)
                 .createNotificationChannel(channel)
         }

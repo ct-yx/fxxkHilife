@@ -14,6 +14,7 @@ import androidx.core.content.ContextCompat
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.LifecycleEventObserver
 import com.freebuds.controller.data.DeviceViewModel
+import com.freebuds.controller.service.BluetoothService
 import com.freebuds.controller.ui.theme.FxxkHilifeTheme
 import com.freebuds.controller.ui.theme.ThemeMode
 import com.freebuds.controller.ui.theme.loadThemeMode
@@ -43,10 +44,16 @@ class MainActivity : ComponentActivity() {
             }
         }
 
+        // 打开应用即启动常驻通知服务，并通过服务尝试连接上次保存的耳机
+        startBluetoothForegroundServiceIfAllowed(autoConnect = true)
+
         // 前后台感知
         lifecycle.addObserver(LifecycleEventObserver { _, event ->
             when (event) {
-                Lifecycle.Event.ON_RESUME -> viewModel.setAppInForeground(true)
+                Lifecycle.Event.ON_RESUME -> {
+                    viewModel.setAppInForeground(true)
+                    startBluetoothForegroundServiceIfAllowed(autoConnect = true)
+                }
                 Lifecycle.Event.ON_PAUSE -> viewModel.setAppInForeground(false)
                 else -> {}
             }
@@ -65,6 +72,24 @@ class MainActivity : ComponentActivity() {
                     },
                 )
             }
+        }
+    }
+
+    private fun hasBluetoothConnectPermission(): Boolean {
+        return Build.VERSION.SDK_INT < Build.VERSION_CODES.S ||
+            ContextCompat.checkSelfPermission(this, Manifest.permission.BLUETOOTH_CONNECT) ==
+            PackageManager.PERMISSION_GRANTED
+    }
+
+    private fun startBluetoothForegroundServiceIfAllowed(autoConnect: Boolean = false) {
+        if (!hasBluetoothConnectPermission()) return
+        val intent = Intent(this, BluetoothService::class.java).apply {
+            if (autoConnect) action = BluetoothService.ACTION_AUTO_CONNECT_LAST
+        }
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+            startForegroundService(intent)
+        } else {
+            startService(intent)
         }
     }
 

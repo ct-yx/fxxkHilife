@@ -327,6 +327,21 @@
 - `getSavedAddresses()` now shows all saved device addresses with total count
 - Removed `firstOrNull{isHuaweiOrHonor}` auto-connect logic from `DeviceViewModel.startScan()`
 
+
+## v2.7.1 (2026-06-29)
+
+### Persistent Notification Keep-alive
+- `MainActivity` now starts `BluetoothService` as a foreground service on app launch, so the ongoing notification is created immediately.
+- App launch and boot/package-replaced auto-start automatically reconnect the last saved earbuds when not already connected/connecting.
+- `BluetoothService` keeps notification ANC actions (`关闭` / `降噪` / `透传`) available while the service is alive, even when the app UI is not open.
+- Notification content updates immediately from `DeviceRepository.props.collect` for ANC mode, low-latency mode, and sound-quality mode.
+- Listening duration is refreshed by a lightweight 60s ticker without polling the device again; battery display reuses existing repository data and does not increase query frequency.
+- Removed stale ACL broadcast auto-connect / auto-low-latency code to avoid conflicts with the new app-launch reconnect flow.
+- NotificationChannel is unified to `IMPORTANCE_LOW` with no badge for a stable persistent status notification.
+
+### Version Bump
+- `versionCode` 19 → 20, `versionName` "2.7.0" → "2.7.1"
+
 ## v2.7.0 (2026-06-28)
 
 ### Source-Level Optimistic Update

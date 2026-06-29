@@ -3,22 +3,23 @@
 > 版本号统一修改入口，按清单逐一更新。
 
 ## 当前版本
-- **v2.7.0** (versionCode=19, 2026-06-28)
+- **v2.7.1** (versionCode=20, 2026-06-29)
 
 ## 版本号位置
 
 | 位置 | 当前值 |
 |------|--------|
-| `app/build.gradle.kts` | versionCode=19, versionName="2.7.0" |
-| `app/src/main/res/values/strings.xml` | version_name=2.7.0 |
-| `README.md` | v2.7.0 |
-| `README_EN.md` | v2.7.0 |
-| `DEVELOPMENT_LOG.md` | v2.7.0 (末尾) |
+| `app/build.gradle.kts` | versionCode=20, versionName="2.7.1" |
+| `app/src/main/res/values/strings.xml` | version_name=2.7.1 |
+| `README.md` | v2.7.1 |
+| `README_EN.md` | v2.7.1 |
+| `DEVELOPMENT_LOG.md` | v2.7.1 (末尾) |
 
 ## 历史版本
 
 | 版本 | Code | 日期 | 主要变更 |
 |------|------|------|---------|
+| v2.7.1 | 20 | 2026-06-29 | 常驻通知保活 / 电池与实时状态显示 / 打开应用/系统自启动自动连接已保存耳机 / 清理旧 ACL 自动连接残留 |
 | v2.7.0 | 19 | 2026-06-28 | 源头乐观更新 / Tile 响应式刷新 / NotificationChannel 适配 / CI 自动发版 |
 | v2.6.0 | 18 | 2026-06-28 | 导航重构 / ANC 乐观更新 / 低延迟可配置 / 已保存设备修复 |
 | v2.5.0 | 17 | 2026-06-28 | Haze 移除 / Material3 分段控件 / QuickSettings Tile ANC 切换 / 重试策略优化 |
