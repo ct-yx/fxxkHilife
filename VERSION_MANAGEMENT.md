@@ -3,22 +3,40 @@
 > 版本号统一修改入口，按清单逐一更新。
 
 ## 当前版本
-- **v2.7.5** (versionCode=24, 2026-06-29)
+- **v2.7.6** (versionCode=25, 2026-06-29)
 
 ## 版本号位置
 
 | 位置 | 当前值 |
 |------|--------|
-| `app/build.gradle.kts` | versionCode=24, versionName="2.7.5" |
-| `app/src/main/res/values/strings.xml` | version_name=2.7.5 |
-| `README.md` | v2.7.5 |
-| `README_EN.md` | v2.7.5 |
-| `DEVELOPMENT_LOG.md` | v2.7.5 (末尾) |
+| `app/build.gradle.kts` | versionCode=25, versionName="2.7.6" |
+| `app/src/main/res/values/strings.xml` | version_name=2.7.6 |
+| `README.md` | v2.7.6 |
+| `README_EN.md` | v2.7.6 |
+| `DEVELOPMENT_LOG.md` | v2.7.6 (末尾) |
+
+## 一键版本更新脚本
+
+```bash
+python3 scripts/bump_version.py 2.7.6 25 "修复说明"
+```
+
+脚本会同步更新：
+- `app/build.gradle.kts`
+- `app/src/main/res/values/strings.xml`
+- `README.md`
+- `README_EN.md`
+- `docs/index.html`
+- `VERSION_MANAGEMENT.md`
+- `DEVELOPMENT_LOG.md`
+
+> 脚本只负责统一替换版本号和插入基础发布记录；具体变更说明仍建议人工补充到 `DEVELOPMENT_LOG.md`。
 
 ## 历史版本
 
 | 版本 | Code | 日期 | 主要变更 |
 |------|------|------|---------|
+| v2.7.6 | 25 | 2026-06-29 | 修复首次切到降噪旧状态包乱跳 / 恢复充电盒 100% 电量显示 / 增加一键版本更新脚本 |
 | v2.7.2 | 21 | 2026-06-29 | ANC/主题长条胶囊滑块 / ANC 圆形图标滑块 / 全局壁纸背景修复 |
 | v2.7.1 | 20 | 2026-06-29 | 常驻通知保活 / 电池与实时状态显示 / 打开应用/系统自启动自动连接已保存耳机 / 清理旧 ACL 自动连接残留 |
 | v2.7.0 | 19 | 2026-06-28 | 源头乐观更新 / Tile 响应式刷新 / NotificationChannel 适配 / CI 自动发版 |

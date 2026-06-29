@@ -383,13 +383,7 @@ class DeviceRepository {
         suspend fun opts(group: String, prop: String) =
             get(group, prop)?.split(",")?.filter { it.isNotBlank() } ?: emptyList()
 
-        val caseRaw = get("battery", "case")?.toIntOrNull()
-        // 充电盒值为 0x64(=100) 且耳机没有盒连接时，视为无效数据，显示 0
-        val batteryCase = when {
-            caseRaw == null -> null
-            caseRaw == 100 -> 0 // 默认 100 说明无盒，显示 0
-            else -> caseRaw
-        }
+        val batteryCase = get("battery", "case")?.toIntOrNull()
 
         _props.value = DeviceProps(
             batteryGlobal    = get("battery", "global")?.toIntOrNull(),

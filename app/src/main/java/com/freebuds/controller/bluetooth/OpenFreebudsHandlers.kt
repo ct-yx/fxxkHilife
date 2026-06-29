@@ -245,14 +245,17 @@ class AncHandler(
             val mode = modeByte.toInt() and 0xFF
             val now = System.currentTimeMillis()
             val targetMode = pendingMode
+            if (targetMode != null && now >= pendingModeUntil) {
+                pendingMode = null
+                pendingModeUntil = 0L
+            }
             if (targetMode != null && now < pendingModeUntil && mode != targetMode) {
                 com.freebuds.controller.util.LogBuffer.d("SPP", "Ignore stale ANC state mode=$mode while pending=$targetMode")
                 return
             }
-            if (targetMode != null && mode == targetMode) {
-                pendingMode = null
-                pendingModeUntil = 0L
-            }
+            // Keep the pending guard for the whole short window even after the first
+            // target confirmation. Some earbuds send a correct 2b2a first and then
+            // a stale 2b2c from the previous mode, which otherwise causes UI jump.
             activeMode = mode
             val out = linkedMapOf(
                 "mode" to (modeOptions[mode] ?: mode.toString()),
@@ -288,7 +291,7 @@ class AncHandler(
         if (prop == "mode") {
             activeMode = valueByte
             pendingMode = valueByte
-            pendingModeUntil = System.currentTimeMillis() + 2_500L
+            pendingModeUntil = System.currentTimeMillis() + 4_000L
             val out = linkedMapOf(
                 "mode" to value,
                 "mode_options" to options(modeOptions),

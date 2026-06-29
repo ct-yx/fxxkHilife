@@ -489,3 +489,20 @@
 - versionName: 2.7.5
 - tag: v2.7.5
 
+## v2.7.6 (2026-06-29)
+
+### Bug 修复
+- 修复从任意 ANC 模式第一次切换到“降噪”时按钮乱跳的问题。
+- 根因：耳机在 `2b04` 写入后可能先回目标 `2b2a`，随后继续推送上一模式的旧 `2b2c`，v2.7.5 在收到首个目标包后过早解除 pending，导致旧包仍可覆盖 UI。
+- 修复：ANC 主模式写入后保留完整 4s pending 窗口；窗口内只接受目标模式状态包，不匹配的旧 `2b2a/2b2c` 全部忽略。
+- 修复充电盒 100% 电量无法正常显示的问题：移除 `case == 100` 强制当作无效值显示 0 的旧逻辑，真实显示设备返回的 100%。
+
+### 工程改进
+- 新增 `scripts/bump_version.py`，用于一键同步 versionCode/versionName、README、README_EN、docs/index.html、VERSION_MANAGEMENT 和 DEVELOPMENT_LOG。
+- `VERSION_MANAGEMENT.md` 增加脚本用法说明，方便后续发版。
+
+### 发布
+- versionCode: 25
+- versionName: 2.7.6
+- tag: v2.7.6
+
