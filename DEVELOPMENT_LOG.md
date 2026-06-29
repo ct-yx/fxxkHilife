@@ -750,3 +750,17 @@
 - versionName: 2.12.0
 - tag: v2.12.0
 
+## v2.12.1 (2026-06-29)
+
+### CI 构建链修复
+- 修复 v2.12.0 CI `checkReleaseAarMetadata` 失败：Haze 2.0-alpha03 及其传递 AndroidX 依赖要求 `compileSdk >= 36` 与 `AGP >= 8.9.1`。
+- `compileSdk` 从 35 升级到 36，`targetSdk` 暂时保持 35。
+- Android Gradle Plugin 从 8.7.3 升级到 8.9.1。
+- Gradle Wrapper 从 8.9 升级到 8.11.1。
+- CI 工作流显式安装 `platforms;android-36` 与 `build-tools;36.0.0`。
+
+### 发布
+- versionCode: 42
+- versionName: 2.12.1
+- tag: v2.12.1
+

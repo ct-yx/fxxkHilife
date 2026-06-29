@@ -6,14 +6,14 @@ plugins {
 
 android {
     namespace = "com.freebuds.controller"
-    compileSdk = 35
+    compileSdk = 36
 
     defaultConfig {
         applicationId = "com.freebuds.controller"
         minSdk = 26
         targetSdk = 35
-        versionCode = 41
-        versionName = "2.12.0"
+        versionCode = 42
+        versionName = "2.12.1"
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
     }
