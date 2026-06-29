@@ -610,3 +610,16 @@
 - versionName: 2.9.0
 - tag: v2.9.0
 
+## v2.9.1 (2026-06-29)
+
+### CI 编译修复
+- 修复 v2.9.0 `AdaptiveGlass.kt` 中 Haze effect lambda 内直接访问 `MaterialTheme.colorScheme` 导致的 Compose 编译错误。
+- 报错：`@Composable invocations can only happen from the context of a @Composable function`。
+- 处理：在 Composable 上下文提前计算 `primaryTint`，再传入 `hazeEffect` 的非 Composable 配置 lambda。
+- 删除本地临时 Haze 源码副本后，将 `.gitignore` 中 `third_party/haze/` 调整为 `third_party/`，防止后续参考仓库误提交。
+
+### 发布
+- versionCode: 32
+- versionName: 2.9.1
+- tag: v2.9.1
+

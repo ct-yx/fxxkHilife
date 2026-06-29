@@ -3,17 +3,17 @@
 > 版本号统一修改入口，按清单逐一更新。
 
 ## 当前版本
-- **v2.9.0** (versionCode=31, 2026-06-29)
+- **v2.9.1** (versionCode=32, 2026-06-29)
 
 ## 版本号位置
 
 | 位置 | 当前值 |
 |------|--------|
-| `app/build.gradle.kts` | versionCode=31, versionName="2.9.0" |
-| `app/src/main/res/values/strings.xml` | version_name=2.9.0 |
-| `README.md` | v2.9.0 |
-| `README_EN.md` | v2.9.0 |
-| `DEVELOPMENT_LOG.md` | v2.9.0 (末尾) |
+| `app/build.gradle.kts` | versionCode=32, versionName="2.9.1" |
+| `app/src/main/res/values/strings.xml` | version_name=2.9.1 |
+| `README.md` | v2.9.1 |
+| `README_EN.md` | v2.9.1 |
+| `DEVELOPMENT_LOG.md` | v2.9.1 (末尾) |
 
 ## 一键版本更新脚本
 
@@ -37,6 +37,7 @@ python3 scripts/bump_version.py <versionName> <versionCode> "修复说明"
 
 | 版本 | Code | 日期 | 主要变更 |
 |------|------|------|---------|
+| v2.9.1 | 32 | 2026-06-29 | 修复 v2.9.0 Haze 组件 CI 编译错误 |
 | v2.9.0 | 31 | 2026-06-29 | Glass/Haze 基础组件与 Home/Device 双模式改造 |
 | v2.8.3 | 30 | 2026-06-29 | 修复自动暂停写入确认 / 暂停 FreeBuds 7i 自动暂停选项 |
 | v2.8.2 | 29 | 2026-06-29 | 修复耳机蓝牙断开后应用连接状态未更新 |

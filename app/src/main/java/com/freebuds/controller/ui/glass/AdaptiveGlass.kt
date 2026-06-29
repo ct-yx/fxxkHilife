@@ -59,6 +59,7 @@ fun LiquidGlassCard(
     content: @Composable ColumnScope.() -> Unit,
 ) {
     val shape = RoundedCornerShape(30.dp)
+    val primaryTint = MaterialTheme.colorScheme.primary.copy(alpha = 0.08f)
     Surface(
         modifier = modifier
             .clip(shape)
@@ -67,7 +68,7 @@ fun LiquidGlassCard(
                 noiseFactor = 0.08f
                 tints = listOf(
                     HazeTint(Color.White.copy(alpha = 0.12f)),
-                    HazeTint(MaterialTheme.colorScheme.primary.copy(alpha = 0.08f)),
+                    HazeTint(primaryTint),
                 )
             }
             .liquidGlassBorder(shapeRadiusPx = 30f),
