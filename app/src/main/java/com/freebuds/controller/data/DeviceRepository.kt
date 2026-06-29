@@ -1,6 +1,9 @@
 package com.freebuds.controller.data
 
+import android.bluetooth.BluetoothAdapter
 import android.bluetooth.BluetoothDevice
+import android.bluetooth.BluetoothManager
+import android.bluetooth.BluetoothProfile
 import android.content.Context
 import android.content.Intent
 import android.content.SharedPreferences
@@ -72,6 +75,7 @@ class DeviceRepository {
 
     private var driver: SppDriver? = null
     private var prefs: SharedPreferences? = null
+    private var appContext: Context? = null
     private val failedHandlers = mutableSetOf<String>()
     private var retryJob: Job? = null
     private var pollJob: Job? = null
@@ -99,6 +103,7 @@ class DeviceRepository {
     // ── 初始化 SharedPreferences ─────────────────────────────────────────
 
     fun init(context: Context) {
+        appContext = context.applicationContext
         prefs = context.getSharedPreferences("fxxk_device", Context.MODE_PRIVATE)
         deviceInfoFetched = false // 每次进程启动重置
     }
@@ -124,6 +129,7 @@ class DeviceRepository {
                 startPolling()
                 if (foregroundMode) startFastPolling()
                 retryFailedHandlers()
+                applyAutoLowLatencyIfEnabled()
             } else {
                 driver = null
                 _connectionState.value = ConnectionState.Failed("连接失败")
@@ -158,6 +164,56 @@ class DeviceRepository {
     }
 
     fun getSavedAddress(): String? = getSavedAddresses().lastOrNull()
+
+    private fun getSystemConnectedDevice(address: String): BluetoothDevice? {
+        val adapterDevice = runCatching {
+            BluetoothAdapter.getDefaultAdapter()?.getRemoteDevice(address)
+        }.getOrNull()
+
+        val isConnectedByDevice = adapterDevice?.let { device ->
+            runCatching {
+                val method = device.javaClass.getMethod("isConnected")
+                method.invoke(device) as? Boolean
+            }.getOrNull()
+        } == true
+        if (isConnectedByDevice) return adapterDevice
+
+        val context = appContext ?: return null
+        val manager = context.getSystemService(BluetoothManager::class.java) ?: return null
+        val connectedDevices = buildList {
+            addAll(runCatching { manager.getConnectedDevices(BluetoothProfile.HEADSET) }.getOrDefault(emptyList()))
+            addAll(runCatching { manager.getConnectedDevices(BluetoothProfile.A2DP) }.getOrDefault(emptyList()))
+        }
+        return connectedDevices.firstOrNull { it.address == address }
+    }
+
+    fun autoConnectSaved(address: String): Boolean {
+        if (_connectionState.value is ConnectionState.Connecting ||
+            _connectionState.value is ConnectionState.Connected) return true
+
+        val device = getSystemConnectedDevice(address) ?: return false
+        connect(device)
+        return true
+    }
+
+    fun autoConnectLastSaved(): Boolean {
+        val address = getSavedAddress() ?: return false
+        return autoConnectSaved(address)
+    }
+
+    private fun applyAutoLowLatencyIfEnabled() {
+        val enabled = appContext
+            ?.getSharedPreferences("settings", Context.MODE_PRIVATE)
+            ?.getBoolean("auto_low_latency", true) ?: true
+        if (!enabled) return
+
+        scope.launch {
+            delay(1500)
+            if (_connectionState.value is ConnectionState.Connected) {
+                setProperty("config", "low_latency", "true")
+            }
+        }
+    }
 
     fun removeSavedDevice(address: String) {
         val p = prefs ?: return

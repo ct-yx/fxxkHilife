@@ -50,18 +50,9 @@ class DeviceViewModel : ViewModel() {
     fun setAppInForeground(foreground: Boolean) = repo.setAppInForeground(foreground)
 
     // ── 自动连接已保存设备 ────────────────────────────────────────────────────
-    fun autoConnectSaved(address: String) {
-        val adapter = android.bluetooth.BluetoothAdapter.getDefaultAdapter()
-        val device = adapter?.getRemoteDevice(address)
-        if (device != null) {
-            repo.connect(device)
-        }
-    }
+    fun autoConnectSaved(address: String): Boolean = repo.autoConnectSaved(address)
 
-    fun autoConnectLast(context: Context) {
-        val addr = getSavedAddress() ?: return
-        autoConnectSaved(addr)
-    }
+    fun autoConnectLast(context: Context): Boolean = repo.autoConnectLastSaved()
 
     // ── 扫描 ──────────────────────────────────────────────────────────────────
     fun startScan(context: Context) {

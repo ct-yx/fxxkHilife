@@ -5,7 +5,6 @@ import android.app.NotificationChannel
 import android.app.NotificationManager
 import android.app.PendingIntent
 import android.app.Service
-import android.bluetooth.BluetoothAdapter
 import android.content.Context
 import android.content.Intent
 import android.os.Build
@@ -103,14 +102,7 @@ class BluetoothService : Service() {
     }
 
     private fun autoConnectLastSavedDevice() {
-        val repo = HilifeApplication.instance.deviceRepository
-        if (repo.connectionState.value is ConnectionState.Connected ||
-            repo.connectionState.value is ConnectionState.Connecting) return
-
-        val address = repo.getSavedAddress() ?: return
-        val adapter = BluetoothAdapter.getDefaultAdapter() ?: return
-        val device = runCatching { adapter.getRemoteDevice(address) }.getOrNull() ?: return
-        repo.connect(device)
+        HilifeApplication.instance.deviceRepository.autoConnectLastSaved()
     }
 
     private fun setAncMode(mode: String) {

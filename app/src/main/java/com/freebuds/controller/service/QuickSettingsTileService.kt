@@ -1,6 +1,5 @@
 package com.freebuds.controller.service
 
-import android.bluetooth.BluetoothAdapter
 import android.content.Intent
 import android.graphics.drawable.Icon
 import android.os.Build
@@ -93,22 +92,17 @@ class QuickSettingsTileService : TileService() {
 
     private fun connectLastSavedOrOpenApp() {
         val repo = HilifeApplication.instance.deviceRepository
-        val address = repo.getSavedAddress()
-        val adapter = BluetoothAdapter.getDefaultAdapter()
-        val device = runCatching { address?.let { adapter?.getRemoteDevice(it) } }.getOrNull()
-
-        if (device != null) {
+        if (repo.autoConnectLastSaved()) {
             qsTile?.apply {
                 label = "ANC"
                 subtitle = "正在连接耳机…"
                 icon = tileIconForMode("normal")
                 state = Tile.STATE_UNAVAILABLE
                 if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
-                    stateDescription = "正在连接上次保存的耳机"
+                    stateDescription = "正在连接已和手机蓝牙连接的耳机"
                 }
                 updateTile()
             }
-            repo.connect(device)
         } else {
             startActivityAndCollapse(Intent(this, MainActivity::class.java).apply {
                 addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
