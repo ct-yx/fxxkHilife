@@ -4,9 +4,12 @@ import android.bluetooth.BluetoothAdapter
 import android.bluetooth.BluetoothDevice
 import android.bluetooth.BluetoothManager
 import android.bluetooth.BluetoothProfile
+import android.content.BroadcastReceiver
 import android.content.Context
 import android.content.Intent
+import android.content.IntentFilter
 import android.content.SharedPreferences
+import android.os.Build
 import androidx.core.content.FileProvider
 import com.freebuds.controller.bluetooth.*
 import com.freebuds.controller.protocol.HuaweiCapability
@@ -82,6 +85,8 @@ class DeviceRepository {
     private var fastPollJob: Job? = null
     private var autoLowLatencyJob: Job? = null
     private var foregroundMode: Boolean = false
+    private var connectedAddress: String? = null
+    private var aclReceiver: BroadcastReceiver? = null
 
     // 设备信息是否已获取（本次进程生命周期内）
     private var deviceInfoFetched: Boolean = false
@@ -107,6 +112,7 @@ class DeviceRepository {
         appContext = context.applicationContext
         prefs = context.getSharedPreferences("fxxk_device", Context.MODE_PRIVATE)
         deviceInfoFetched = false // 每次进程启动重置
+        registerAclDisconnectReceiver(context.applicationContext)
     }
 
     // ── 连接 ─────────────────────────────────────────────────────────────────
@@ -123,11 +129,15 @@ class DeviceRepository {
                     if (driver === d) syncProps()
                 }
             }
+            d.onDisconnected = {
+                scope.launch { handleRemoteDisconnected(d, "SPP receive loop ended") }
+            }
             registerHandlers(d, device.name ?: "")
             driver = d
             if (d.connect()) {
                 _connectionState.value = ConnectionState.Connected(device.name ?: device.address)
                 connectedAt = System.currentTimeMillis()
+                connectedAddress = device.address
                 saveDeviceAddress(device.address)
                 syncProps()
                 deviceInfoFetched = false // 新连接：允许重新获取设备信息
@@ -138,6 +148,7 @@ class DeviceRepository {
                 applyAutoLowLatencyIfEnabled()
             } else {
                 driver = null
+                connectedAddress = null
                 _connectionState.value = ConnectionState.Failed("连接失败")
             }
         }
@@ -150,10 +161,48 @@ class DeviceRepository {
         autoLowLatencyJob?.cancel()
         driver?.disconnect()
         driver = null
+        connectedAddress = null
         deviceInfoFetched = false
         _connectionState.value = ConnectionState.Disconnected
         _props.value = DeviceProps()
         connectedAt = 0
+    }
+
+    private fun handleRemoteDisconnected(sourceDriver: SppDriver?, reason: String) {
+        if (sourceDriver != null && driver !== sourceDriver) return
+        if (_connectionState.value !is ConnectionState.Connected && driver == null) return
+        LogBuffer.w("SPP", "Remote disconnected: $reason")
+        pollJob?.cancel()
+        fastPollJob?.cancel()
+        retryJob?.cancel()
+        autoLowLatencyJob?.cancel()
+        driver = null
+        connectedAddress = null
+        deviceInfoFetched = false
+        _connectionState.value = ConnectionState.Disconnected
+        _props.value = DeviceProps()
+        connectedAt = 0
+    }
+
+    private fun registerAclDisconnectReceiver(context: Context) {
+        if (aclReceiver != null) return
+        aclReceiver = object : BroadcastReceiver() {
+            override fun onReceive(ctx: Context?, intent: Intent?) {
+                if (intent?.action != BluetoothDevice.ACTION_ACL_DISCONNECTED) return
+                val device = intent.getParcelableExtra<BluetoothDevice>(BluetoothDevice.EXTRA_DEVICE)
+                val address = device?.address ?: return
+                if (address == connectedAddress) {
+                    scope.launch { handleRemoteDisconnected(driver, "Bluetooth ACL disconnected") }
+                }
+            }
+        }
+        val filter = IntentFilter(BluetoothDevice.ACTION_ACL_DISCONNECTED)
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+            context.registerReceiver(aclReceiver, filter, Context.RECEIVER_NOT_EXPORTED)
+        } else {
+            @Suppress("DEPRECATION")
+            context.registerReceiver(aclReceiver, filter)
+        }
     }
 
     // ── 持久化设备地址（集合）───────────────────────────────────────────

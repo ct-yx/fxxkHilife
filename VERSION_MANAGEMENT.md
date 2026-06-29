@@ -3,17 +3,17 @@
 > 版本号统一修改入口，按清单逐一更新。
 
 ## 当前版本
-- **v2.8.1** (versionCode=28, 2026-06-29)
+- **v2.8.2** (versionCode=29, 2026-06-29)
 
 ## 版本号位置
 
 | 位置 | 当前值 |
 |------|--------|
-| `app/build.gradle.kts` | versionCode=28, versionName="2.8.1" |
-| `app/src/main/res/values/strings.xml` | version_name=2.8.1 |
-| `README.md` | v2.8.1 |
-| `README_EN.md` | v2.8.1 |
-| `DEVELOPMENT_LOG.md` | v2.8.1 (末尾) |
+| `app/build.gradle.kts` | versionCode=29, versionName="2.8.2" |
+| `app/src/main/res/values/strings.xml` | version_name=2.8.2 |
+| `README.md` | v2.8.2 |
+| `README_EN.md` | v2.8.2 |
+| `DEVELOPMENT_LOG.md` | v2.8.2 (末尾) |
 
 ## 一键版本更新脚本
 
@@ -37,6 +37,7 @@ python3 scripts/bump_version.py <versionName> <versionCode> "修复说明"
 
 | 版本 | Code | 日期 | 主要变更 |
 |------|------|------|---------|
+| v2.8.2 | 29 | 2026-06-29 | 修复耳机蓝牙断开后应用连接状态未更新 |
 | v2.8.1 | 28 | 2026-06-29 | 修复初始化 ANC 状态未实时同步到 UI / 通知 / 快捷开关 |
 | v2.8.0 | 27 | 2026-06-29 | UI 导航系统重构 / 展示模式基础 / 传统与液态玻璃模式切换入口 |
 | v2.7.7 | 26 | 2026-06-29 | FreeBuds 7i 临时保守能力表 / 标记后续大版本多型号适配计划 |

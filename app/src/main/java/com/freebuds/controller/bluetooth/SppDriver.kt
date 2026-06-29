@@ -50,6 +50,9 @@ class SppDriver(private val device: BluetoothDevice) {
     /** Called whenever a handler updates the property store. */
     var onPropertyChanged: (() -> Unit)? = null
 
+    /** Called when RFCOMM receive loop ends unexpectedly. */
+    var onDisconnected: (() -> Unit)? = null
+
     fun registerHandler(handler: HuaweiDeviceHandler) {
         handlers.add(handler)
         for (cmd in handler.commandIds) {
@@ -266,9 +269,11 @@ class SppDriver(private val device: BluetoothDevice) {
                 LogBuffer.e("SPP", "Recv loop error: ${e.message}")
             }
         }
-        // recv loop 退出，标记断开
+        // recv loop 退出，标记断开并通知上层刷新连接状态
+        val wasConnected = isConnected
         isConnected = false
         LogBuffer.i("SPP", "Recv loop ended")
+        if (wasConnected) onDisconnected?.invoke()
     }
 
     /** 处理收到的包（对照 _handle_raw_pkg） */

@@ -560,3 +560,17 @@
 - versionName: 2.8.1
 - tag: v2.8.1
 
+## v2.8.2 (2026-06-29)
+
+### 连接状态同步修复
+- 修复耳机与手机蓝牙断开后，应用仍停留在 `Connected` 状态的问题。
+- `SppDriver` 新增 `onDisconnected` 回调：RFCOMM 接收循环结束、流关闭或异常退出后通知 `DeviceRepository`。
+- `DeviceRepository` 新增远端断开处理：取消轮询/重试/自动低延迟任务，清空 driver、props、connectedSince，并将连接状态切回 `Disconnected`。
+- 新增系统 `BluetoothDevice.ACTION_ACL_DISCONNECTED` 动态广播监听作为兜底，手机蓝牙层断开目标耳机时立即刷新应用状态。
+- 修复后 UI、通知栏、Quick Settings Tile 都会跟随仓库连接状态同步更新。
+
+### 发布
+- versionCode: 29
+- versionName: 2.8.2
+- tag: v2.8.2
+
