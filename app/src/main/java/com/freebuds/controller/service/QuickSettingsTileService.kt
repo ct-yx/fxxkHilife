@@ -2,11 +2,13 @@ package com.freebuds.controller.service
 
 import android.bluetooth.BluetoothAdapter
 import android.content.Intent
+import android.graphics.drawable.Icon
 import android.os.Build
 import android.service.quicksettings.Tile
 import android.service.quicksettings.TileService
 import androidx.annotation.RequiresApi
 import com.freebuds.controller.HilifeApplication
+import com.freebuds.controller.R
 import com.freebuds.controller.data.ConnectionState
 import com.freebuds.controller.ui.MainActivity
 import kotlinx.coroutines.MainScope
@@ -29,6 +31,7 @@ class QuickSettingsTileService : TileService() {
         super.onTileAdded()
         qsTile?.apply {
             label = "ANC"
+            icon = tileIconForMode("normal")
             state = Tile.STATE_INACTIVE
             updateTile()
         }
@@ -73,6 +76,7 @@ class QuickSettingsTileService : TileService() {
         qsTile?.apply {
             label = "ANC: ${ancLabel(nextMode)}"
             subtitle = "正在切换…"
+            icon = tileIconForMode(nextMode)
             state = Tile.STATE_ACTIVE
             if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
                 stateDescription = "正在切换到${ancLabel(nextMode)}模式"
@@ -97,6 +101,7 @@ class QuickSettingsTileService : TileService() {
             qsTile?.apply {
                 label = "ANC"
                 subtitle = "正在连接耳机…"
+                icon = tileIconForMode("normal")
                 state = Tile.STATE_UNAVAILABLE
                 if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
                     stateDescription = "正在连接上次保存的耳机"
@@ -121,6 +126,7 @@ class QuickSettingsTileService : TileService() {
                     val nextMode = nextAncMode(currentMode)
                     label = "ANC: ${ancLabel(currentMode)}"
                     subtitle = "点按切到${ancLabel(nextMode)}"
+                    icon = tileIconForMode(currentMode)
                     state = Tile.STATE_ACTIVE
                     if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
                         stateDescription = "当前${ancLabel(currentMode)}模式，点按切到${ancLabel(nextMode)}模式"
@@ -129,6 +135,7 @@ class QuickSettingsTileService : TileService() {
                 is ConnectionState.Connecting -> {
                     label = "ANC"
                     subtitle = "连接中…"
+                    icon = tileIconForMode("normal")
                     state = Tile.STATE_UNAVAILABLE
                     if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
                         stateDescription = "耳机连接中"
@@ -137,6 +144,7 @@ class QuickSettingsTileService : TileService() {
                 is ConnectionState.Failed -> {
                     label = "ANC"
                     subtitle = "连接失败，点按重试"
+                    icon = tileIconForMode("normal")
                     state = Tile.STATE_INACTIVE
                     if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
                         stateDescription = "连接失败，点按重新连接耳机"
@@ -145,6 +153,7 @@ class QuickSettingsTileService : TileService() {
                 else -> {
                     label = "ANC"
                     subtitle = if (repo.getSavedAddress() != null) "点按连接耳机" else "先在应用内添加耳机"
+                    icon = tileIconForMode("normal")
                     state = Tile.STATE_INACTIVE
                     if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
                         stateDescription = subtitle.toString()
@@ -168,6 +177,16 @@ class QuickSettingsTileService : TileService() {
         "normal" -> "关闭"
         else -> "关闭"
     }
+
+    private fun tileIconForMode(mode: String?): Icon = Icon.createWithResource(
+        this,
+        when (mode) {
+            "cancellation" -> R.drawable.ic_anc_cancellation
+            "awareness" -> R.drawable.ic_anc_awareness
+            "normal" -> R.drawable.ic_anc_normal
+            else -> R.drawable.ic_anc_normal
+        }
+    )
 
     override fun onDestroy() {
         super.onDestroy()
