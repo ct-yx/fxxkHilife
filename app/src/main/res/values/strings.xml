@@ -3,7 +3,7 @@
     <string name="app_name">fxxkHilife</string>
     <string name="service_notification_title">fxxkHilife</string>
     <string name="service_notification_text">耳机服务运行中</string>
-    <string name="version_name">2.8.0</string>
+    <string name="version_name">2.8.1</string>
     <string name="back">Back</string>
     <string name="saved_devices_count">%d saved devices</string>
     <string name="connection_preferences">Connection Preferences</string>

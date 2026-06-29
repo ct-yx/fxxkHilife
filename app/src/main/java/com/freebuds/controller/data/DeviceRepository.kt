@@ -118,6 +118,11 @@ class DeviceRepository {
         scope.launch {
             _connectionState.value = ConnectionState.Connecting(device.name ?: device.address)
             val d = SppDriver(device)
+            d.onPropertyChanged = {
+                scope.launch {
+                    if (driver === d) syncProps()
+                }
+            }
             registerHandlers(d, device.name ?: "")
             driver = d
             if (d.connect()) {

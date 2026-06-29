@@ -47,6 +47,9 @@ class SppDriver(private val device: BluetoothDevice) {
     private val store = mutableMapOf<String, MutableMap<String, String>>()
     private val storeMutex = Mutex()
 
+    /** Called whenever a handler updates the property store. */
+    var onPropertyChanged: (() -> Unit)? = null
+
     fun registerHandler(handler: HuaweiDeviceHandler) {
         handlers.add(handler)
         for (cmd in handler.commandIds) {
@@ -77,6 +80,7 @@ class SppDriver(private val device: BluetoothDevice) {
             }
         }
         LogBuffer.i("Prop", if (prop == null) "$group=*" else "$group.$prop=${value ?: "null"}")
+        onPropertyChanged?.invoke()
     }
 
     suspend fun getProperty(group: String? = null, prop: String? = null, fallback: String? = null): String? {

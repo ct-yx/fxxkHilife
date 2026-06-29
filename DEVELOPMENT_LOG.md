@@ -547,3 +547,16 @@
 - versionName: 2.8.0
 - tag: v2.8.0
 
+## v2.8.1 (2026-06-29)
+
+### ANC 状态同步修复
+- 修复耳机初始化阶段已经收到 ANC 状态包，但应用 UI 仍显示默认“关闭”的问题。
+- 根因：`AncHandler` 已经通过 `SppDriver.putProperty("anc", ...)` 写入属性仓库，但 `DeviceRepository.props` 只在连接完成、轮询或手动写入后同步，初始化期间的被动属性更新没有立即推送到 StateFlow。
+- `SppDriver` 新增 `onPropertyChanged` 回调，任意 Handler 更新属性仓库后通知 Repository 立即 `syncProps()`。
+- 统一修复所有 ANC 入口：详情页 ANC 按钮、通知栏 ANC 按钮、Quick Settings Tile 快捷开关都读取同一个实时 `DeviceRepository.props`。
+
+### 发布
+- versionCode: 28
+- versionName: 2.8.1
+- tag: v2.8.1
+
