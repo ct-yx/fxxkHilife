@@ -764,3 +764,15 @@
 - versionName: 2.12.1
 - tag: v2.12.1
 
+## v2.12.2 (2026-06-29)
+
+### Kotlin 版本兼容性修复
+- 修复 v2.12.1 CI `compileReleaseKotlin` 失败：Haze 2.0-alpha03 产物使用 Kotlin metadata 2.3.0 编译，项目 Kotlin 2.1.0 无法读取。
+- Kotlin Gradle Plugin 从 2.1.0 升级到 2.3.21。
+- Compose Compiler Gradle Plugin 从 2.1.0 升级到 2.3.21。
+
+### 发布
+- versionCode: 43
+- versionName: 2.12.2
+- tag: v2.12.2
+
