@@ -687,3 +687,20 @@
 - versionName: 2.9.6
 - tag: v2.9.6
 
+## v2.10.0 (2026-06-29)
+
+### 液态玻璃材质增强
+- 重构 `AdaptiveGlass.kt`，将 `LiquidGlassCard` 升级为可参数化的增强版玻璃组件。
+- 新增 `tint`、`refractionStrength`、`depth`、`shape`、`cornerRadius`、`surfaceProfile` 等参数，用于控制染色、折射感、厚度、形状与表面轮廓。
+- 新增 `GlassSurfaceProfile`：`Rounded` / `Squircle` / `Circle`，用于不同卡片轮廓下的边缘高光与厚度表现。
+- 在 Haze 1.6.7 可用 API 上实现兼容方案：继续使用 `hazeSource` + `hazeEffect`，不直接调用当前依赖中未确认存在的 `liquidGlassEffect`。
+- 增强玻璃视觉：更低实体背景、更强背景模糊、半透明 tint、左上镜面高光、Fresnel 暗边、彩色细边框和内部折射光带。
+- `LiquidGlassPanel` 同步使用新的光学边缘处理，让 ANC 滑块等面板与卡片材质保持一致。
+- 添加 `LiquidGlassCardPreview`，展示父级 `rememberHazeState()`、背景 `.hazeSource(hazeState)` 和多个液态玻璃卡片叠加效果。
+- 在组件注释中补充使用示例、Android 12+ 效果最佳、避免大量重叠 `hazeEffect`、低端机降低折射/深度/卡片数量等性能说明。
+
+### 发布
+- versionCode: 38
+- versionName: 2.10.0
+- tag: v2.10.0
+
