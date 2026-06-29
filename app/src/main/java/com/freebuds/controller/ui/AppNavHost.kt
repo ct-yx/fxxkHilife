@@ -168,6 +168,8 @@ fun AppNavHost(
                 GestureScreen(
                     props = viewModel.props.collectAsState().value,
                     viewModel = viewModel,
+                    displayMode = displayMode,
+                    hazeState = hazeState,
                     onBack = { navController.popBackStack() },
                 )
             }
@@ -186,6 +188,7 @@ fun AppNavHost(
                     wallpaperScope = wallpaperScope,
                     onWallpaperScopeChange = { wallpaperScope = it },
                     displayMode = displayMode,
+                    hazeState = hazeState,
                     onDisplayModeChange = { mode ->
                         displayMode = mode
                         saveUiDisplayMode(context, mode)

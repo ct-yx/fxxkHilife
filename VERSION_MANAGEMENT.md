@@ -3,17 +3,17 @@
 > 版本号统一修改入口，按清单逐一更新。
 
 ## 当前版本
-- **v2.9.3** (versionCode=34, 2026-06-29)
+- **v2.9.4** (versionCode=35, 2026-06-29)
 
 ## 版本号位置
 
 | 位置 | 当前值 |
 |------|--------|
-| `app/build.gradle.kts` | versionCode=34, versionName="2.9.3" |
-| `app/src/main/res/values/strings.xml` | version_name=2.9.3 |
-| `README.md` | v2.9.3 |
-| `README_EN.md` | v2.9.3 |
-| `DEVELOPMENT_LOG.md` | v2.9.3 (末尾) |
+| `app/build.gradle.kts` | versionCode=35, versionName="2.9.4" |
+| `app/src/main/res/values/strings.xml` | version_name=2.9.4 |
+| `README.md` | v2.9.4 |
+| `README_EN.md` | v2.9.4 |
+| `DEVELOPMENT_LOG.md` | v2.9.4 (末尾) |
 
 ## 一键版本更新脚本
 
@@ -37,6 +37,7 @@ python3 scripts/bump_version.py <versionName> <versionCode> "修复说明"
 
 | 版本 | Code | 日期 | 主要变更 |
 |------|------|------|---------|
+| v2.9.4 | 35 | 2026-06-29 | 补全手势与设置页面液态玻璃卡片适配 |
 | v2.9.3 | 34 | 2026-06-29 | 修正传统/液态玻璃模式卡片边界与玻璃双层结构 |
 | v2.9.2 | 33 | 2026-06-29 | 修复液态玻璃卡片双层色块并扩展卡片适配 |
 | v2.9.1 | 32 | 2026-06-29 | 修复 v2.9.0 Haze 组件 CI 编译错误 |

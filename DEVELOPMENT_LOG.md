@@ -653,3 +653,16 @@
 - versionName: 2.9.3
 - tag: v2.9.3
 
+## v2.9.4 (2026-06-29)
+
+### 液态玻璃适配补全
+- `GestureScreen` 接入 `displayMode` / `hazeState`，双击、三击、滑动、长按等手势二级设置项改为 `AdaptiveCard`。
+- `SettingsScreen` 接入 `hazeState`，主题、展示模式、壁纸、壁纸范围、关于、连接偏好、调试、应用详情、其他贡献等设置区改为液态玻璃卡片。
+- 新增设置页通用 `SettingsCard`，传统模式继续保持单层 Material3 卡片，液态玻璃模式切换为玻璃卡片。
+- 日志保留、分享日志、调试终端等二级设置入口也统一纳入玻璃卡片体系。
+
+### 发布
+- versionCode: 35
+- versionName: 2.9.4
+- tag: v2.9.4
+

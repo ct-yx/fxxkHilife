@@ -12,12 +12,16 @@ import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.unit.dp
 import com.freebuds.controller.data.DeviceProps
 import com.freebuds.controller.data.DeviceViewModel
+import com.freebuds.controller.ui.glass.AdaptiveCard
+import dev.chrisbanes.haze.HazeState
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun GestureScreen(
     props: DeviceProps,
     viewModel: DeviceViewModel,
+    displayMode: UiDisplayMode,
+    hazeState: HazeState?,
     onBack: () -> Unit,
 ) {
     Scaffold(
@@ -42,6 +46,8 @@ fun GestureScreen(
             if (props.doubleTapLeft != null) {
                 item {
                     OptionSettingItem(
+                        displayMode = displayMode,
+                        hazeState = hazeState,
                         icon = Icons.Default.TouchApp,
                         title = "双击 · 左",
                         current = chineseTap(props.doubleTapLeft),
@@ -54,6 +60,8 @@ fun GestureScreen(
             if (props.doubleTapRight != null) {
                 item {
                     OptionSettingItem(
+                        displayMode = displayMode,
+                        hazeState = hazeState,
                         icon = Icons.Default.TouchApp,
                         title = "双击 · 右",
                         current = chineseTap(props.doubleTapRight),
@@ -66,6 +74,8 @@ fun GestureScreen(
             if (props.tripleTapLeft != null) {
                 item {
                     OptionSettingItem(
+                        displayMode = displayMode,
+                        hazeState = hazeState,
                         icon = Icons.Default.TouchApp,
                         title = "三击 · 左",
                         current = chineseTap(props.tripleTapLeft),
@@ -78,6 +88,8 @@ fun GestureScreen(
             if (props.tripleTapRight != null) {
                 item {
                     OptionSettingItem(
+                        displayMode = displayMode,
+                        hazeState = hazeState,
                         icon = Icons.Default.TouchApp,
                         title = "三击 · 右",
                         current = chineseTap(props.tripleTapRight),
@@ -90,6 +102,8 @@ fun GestureScreen(
             if (props.swipeGesture != null) {
                 item {
                     OptionSettingItem(
+                        displayMode = displayMode,
+                        hazeState = hazeState,
                         icon = Icons.Default.Swipe,
                         title = "滑动手势",
                         current = chineseSwipe(props.swipeGesture),
@@ -102,6 +116,8 @@ fun GestureScreen(
             if (props.longTap != null) {
                 item {
                     OptionSettingItem(
+                        displayMode = displayMode,
+                        hazeState = hazeState,
                         icon = Icons.Default.PanTool,
                         title = "长按",
                         current = chineseLongTap(props.longTap),
@@ -146,6 +162,8 @@ internal fun chineseLongTap(raw: String?): String = when (raw) {
 
 @Composable
 internal fun OptionSettingItem(
+    displayMode: UiDisplayMode,
+    hazeState: HazeState?,
     icon: ImageVector,
     title: String,
     current: String?,
@@ -154,16 +172,27 @@ internal fun OptionSettingItem(
     onSelect: (String) -> Unit,
 ) {
     var expanded by remember { mutableStateOf(false) }
-    ListItem(
-        headlineContent = { Text(title) },
-        supportingContent = { if (current != null) Text(current) },
-        leadingContent = { Icon(icon, contentDescription = null) },
-        trailingContent = {
+    AdaptiveCard(
+        displayMode = displayMode,
+        hazeState = hazeState,
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(horizontal = 16.dp, vertical = 6.dp)
+            .clickable(enabled = options.isNotEmpty()) { expanded = true },
+    ) {
+        Row(verticalAlignment = Alignment.CenterVertically) {
+            Icon(icon, contentDescription = null)
+            Spacer(Modifier.width(16.dp))
+            Column(modifier = Modifier.weight(1f)) {
+                Text(title, style = MaterialTheme.typography.titleSmall)
+                if (current != null) {
+                    Spacer(Modifier.height(3.dp))
+                    Text(current, style = MaterialTheme.typography.bodyMedium)
+                }
+            }
             if (options.isNotEmpty()) Icon(Icons.Default.ChevronRight, contentDescription = null)
-        },
-        modifier = Modifier.clickable(enabled = options.isNotEmpty()) { expanded = true }
-    )
-    HorizontalDivider(modifier = Modifier.padding(start = 56.dp))
+        }
+    }
     if (expanded && options.isNotEmpty()) {
         OptionsDialog2(title, options, rawOptions, onDismiss = { expanded = false }, onSelect = {
             onSelect(it)

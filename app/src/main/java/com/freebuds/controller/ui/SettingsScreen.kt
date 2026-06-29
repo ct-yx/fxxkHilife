@@ -28,7 +28,9 @@ import coil.compose.AsyncImage
 import com.freebuds.controller.BuildConfig
 import com.freebuds.controller.data.DeviceViewModel
 import com.freebuds.controller.util.LogBuffer
+import com.freebuds.controller.ui.glass.AdaptiveCard
 import com.freebuds.controller.ui.theme.ThemeMode
+import dev.chrisbanes.haze.HazeState
 import com.freebuds.controller.ui.theme.saveThemeMode
 
 enum class WallpaperScope { ALL, HOME, SETTINGS }
@@ -51,6 +53,7 @@ fun SettingsScreen(
     wallpaperScope: WallpaperScope,
     onWallpaperScopeChange: (WallpaperScope) -> Unit,
     displayMode: UiDisplayMode,
+    hazeState: HazeState?,
     onDisplayModeChange: (UiDisplayMode) -> Unit,
 ) {
     val context = LocalContext.current
@@ -124,6 +127,8 @@ fun SettingsScreen(
             item { SettingsHeader("主题") }
             item {
                 ThemeSelector(
+                    displayMode = displayMode,
+                    hazeState = hazeState,
                     current = themeMode,
                     onSelect = { mode ->
                         onThemeChange(mode)
@@ -133,6 +138,8 @@ fun SettingsScreen(
             }
             item {
                 DisplayModeSelector(
+                    displayMode = displayMode,
+                    hazeState = hazeState,
                     current = displayMode,
                     onSelect = { mode ->
                         if (mode == UiDisplayMode.LIQUID_GLASS && wallpaperUri == null) {
@@ -148,6 +155,8 @@ fun SettingsScreen(
             item { SettingsHeader("壁纸") }
             item {
                 WallpaperPicker(
+                    displayMode = displayMode,
+                    hazeState = hazeState,
                     uri = wallpaperUri,
                     onPick = { imagePicker.launch("image/*") },
                     onClear = {
@@ -160,6 +169,8 @@ fun SettingsScreen(
             if (wallpaperUri != null) {
                 item {
                     WallpaperScopeSelector(
+                        displayMode = displayMode,
+                        hazeState = hazeState,
                         current = wallpaperScope,
                         onSelect = {
                             onWallpaperScopeChange(it)
@@ -173,23 +184,25 @@ fun SettingsScreen(
             // ── 关于 ──
             item { SettingsHeader("关于") }
             item {
-                ListItem(
+                SettingsCard(
+                    displayMode = displayMode,
+                    hazeState = hazeState,
                     headlineContent = { Text("版本") },
                     supportingContent = { Text(BuildConfig.VERSION_NAME) },
-                    leadingContent = { Icon(Icons.Default.Info, contentDescription = null) }
+                    leadingContent = { Icon(Icons.Default.Info, contentDescription = null) },
                 )
-                HorizontalDivider()
             }
             item {
                 val savedAddresses = viewModel.getSavedAddresses()
-                ListItem(
+                SettingsCard(
+                    displayMode = displayMode,
+                    hazeState = hazeState,
                     headlineContent = { Text("已保存的设备（${savedAddresses.size}）") },
                     supportingContent = {
                         Text(if (savedAddresses.isEmpty()) "无" else savedAddresses.joinToString("\n"))
                     },
-                    leadingContent = { Icon(Icons.Default.Devices, contentDescription = null) }
+                    leadingContent = { Icon(Icons.Default.Devices, contentDescription = null) },
                 )
-                HorizontalDivider()
             }
 
             // ── 连接偏好 ──
@@ -199,7 +212,9 @@ fun SettingsScreen(
                 var autoLowLatency by remember {
                     mutableStateOf(prefs.getBoolean("auto_low_latency", true))
                 }
-                ListItem(
+                SettingsCard(
+                    displayMode = displayMode,
+                    hazeState = hazeState,
                     headlineContent = { Text("自动低延迟模式") },
                     supportingContent = { Text("连接已保存耳机后自动开启低延迟") },
                     leadingContent = { Icon(Icons.Default.Speed, contentDescription = null) },
@@ -211,105 +226,116 @@ fun SettingsScreen(
                                 prefs.edit().putBoolean("auto_low_latency", it).apply()
                             }
                         )
-                    }
+                    },
                 )
-                HorizontalDivider()
             }
 
             // ── 调试 ──
             item { SettingsHeader("调试") }
             if (isConnected) {
                 item {
-                    ListItem(
+                    SettingsCard(
+                        displayMode = displayMode,
+                        hazeState = hazeState,
                         headlineContent = { Text("调试终端") },
                         supportingContent = { Text("查看 SPP 原始日志 / 发送命令") },
                         leadingContent = { Icon(Icons.Default.Terminal, contentDescription = null) },
                         trailingContent = { Icon(Icons.Default.ChevronRight, contentDescription = null) },
-                        modifier = Modifier.clickable {
-                            context.startActivity(Intent(context, TerminalActivity::class.java))
-                        }
+                        onClick = { context.startActivity(Intent(context, TerminalActivity::class.java)) },
                     )
-                    HorizontalDivider(modifier = Modifier.padding(start = 56.dp))
                 }
                 item {
-                    ListItem(
+                    SettingsCard(
+                        displayMode = displayMode,
+                        hazeState = hazeState,
                         headlineContent = { Text("分享日志") },
                         supportingContent = { Text("导出当前日志为文本文件") },
                         leadingContent = { Icon(Icons.Default.Share, contentDescription = null) },
-                        modifier = Modifier.clickable { viewModel.shareLog(context) }
+                        onClick = { viewModel.shareLog(context) },
                     )
-                    HorizontalDivider(modifier = Modifier.padding(start = 56.dp))
                 }
                 item {
-                    LogRetentionSelector()
-                    HorizontalDivider(modifier = Modifier.padding(start = 56.dp))
+                    LogRetentionSelector(displayMode = displayMode, hazeState = hazeState)
                 }
             } else {
                 item {
-                    ListItem(
+                    SettingsCard(
+                        displayMode = displayMode,
+                        hazeState = hazeState,
                         headlineContent = { Text("调试功能需连接耳机后使用") },
                         leadingContent = { Icon(Icons.Default.Lock, contentDescription = null) },
                     )
-                    HorizontalDivider()
                 }
             }
 
             // ── 应用详情 ──────────────────────────────────────────────────────
             item { SettingsHeader("应用详情") }
             item {
-                ListItem(
+                SettingsCard(
+                    displayMode = displayMode,
+                    hazeState = hazeState,
                     headlineContent = { Text("项目理念", fontWeight = FontWeight.Bold) },
                     supportingContent = { Text("为华为 FreeBuds 系列耳机提供第三方开源控制面板，还原官方 App 的完整功能，同时保持轻量与高效。") },
-                    leadingContent = { Icon(Icons.Default.Lightbulb, contentDescription = null) }
+                    leadingContent = { Icon(Icons.Default.Lightbulb, contentDescription = null) },
                 )
-                HorizontalDivider()
             }
             item {
-                ListItem(
+                SettingsCard(
+                    displayMode = displayMode,
+                    hazeState = hazeState,
                     headlineContent = { Text("GitHub") },
                     supportingContent = { Text("github.com/ct-yx/fxxkHilife") },
                     leadingContent = { Icon(Icons.Default.Code, contentDescription = null) },
                     trailingContent = { Icon(Icons.Default.OpenInNew, contentDescription = null) },
-                    modifier = Modifier.clickable {
+                    onClick = {
                         val intent = Intent(Intent.ACTION_VIEW, Uri.parse("https://github.com/ct-yx/fxxkHilife"))
                         context.startActivity(intent)
-                    }
+                    },
                 )
-                HorizontalDivider()
             }
             item {
-                ListItem(
+                SettingsCard(
+                    displayMode = displayMode,
+                    hazeState = hazeState,
                     headlineContent = { Text("更新地址") },
                     supportingContent = { Text("github.com/ct-yx/fxxkHilife/releases") },
                     leadingContent = { Icon(Icons.Default.SystemUpdate, contentDescription = null) },
                     trailingContent = { Icon(Icons.Default.OpenInNew, contentDescription = null) },
-                    modifier = Modifier.clickable {
+                    onClick = {
                         val intent = Intent(Intent.ACTION_VIEW, Uri.parse("https://github.com/ct-yx/fxxkHilife/releases"))
                         context.startActivity(intent)
-                    }
+                    },
                 )
-                HorizontalDivider()
             }
 
             // ── 其他贡献 ──────────────────────────────────────────────────────
             item { SettingsHeader("其他贡献") }
             item {
                 var expanded by remember { mutableStateOf(false) }
-                Column {
-                    ListItem(
-                        headlineContent = { Text("第三方图标", fontWeight = FontWeight.Bold) },
-                        supportingContent = { Text("点击展开图标来源与授权信息") },
-                        leadingContent = {
-                            Icon(painter = painterResource(com.freebuds.controller.R.drawable.ic_anc_awareness),
-                                contentDescription = null)
-                        },
-                        trailingContent = {
-                            Icon(if (expanded) Icons.Default.ExpandLess else Icons.Default.ExpandMore,
-                                contentDescription = null)
-                        },
-                        modifier = Modifier.clickable { expanded = !expanded }
-                    )
-                    HorizontalDivider()
+                AdaptiveCard(
+                    displayMode = displayMode,
+                    hazeState = hazeState,
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(horizontal = 16.dp, vertical = 6.dp),
+                ) {
+                    Row(
+                        modifier = Modifier.clickable { expanded = !expanded },
+                        verticalAlignment = Alignment.CenterVertically,
+                    ) {
+                        Icon(
+                            painter = painterResource(com.freebuds.controller.R.drawable.ic_anc_awareness),
+                            contentDescription = null,
+                            modifier = Modifier.size(40.dp),
+                        )
+                        Spacer(Modifier.width(12.dp))
+                        Column(modifier = Modifier.weight(1f)) {
+                            Text("第三方图标", fontWeight = FontWeight.Bold)
+                            Spacer(Modifier.height(3.dp))
+                            Text("点击展开图标来源与授权信息")
+                        }
+                        Icon(if (expanded) Icons.Default.ExpandLess else Icons.Default.ExpandMore, contentDescription = null)
+                    }
                     AnimatedVisibility(visible = expanded) {
                         Column(modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp)) {
                             // 降噪
@@ -367,7 +393,48 @@ private fun SettingsHeader(text: String) {
 }
 
 @Composable
+private fun SettingsCard(
+    displayMode: UiDisplayMode,
+    hazeState: HazeState?,
+    modifier: Modifier = Modifier,
+    onClick: (() -> Unit)? = null,
+    leadingContent: @Composable (() -> Unit)? = null,
+    headlineContent: @Composable () -> Unit,
+    supportingContent: @Composable (() -> Unit)? = null,
+    trailingContent: @Composable (() -> Unit)? = null,
+) {
+    AdaptiveCard(
+        displayMode = displayMode,
+        hazeState = hazeState,
+        modifier = modifier
+            .fillMaxWidth()
+            .padding(horizontal = 16.dp, vertical = 6.dp)
+            .then(onClick?.let { callback -> Modifier.clickable { callback() } } ?: Modifier),
+    ) {
+        Row(verticalAlignment = Alignment.CenterVertically) {
+            if (leadingContent != null) {
+                Box(modifier = Modifier.size(40.dp), contentAlignment = Alignment.Center) { leadingContent() }
+                Spacer(Modifier.width(12.dp))
+            }
+            Column(modifier = Modifier.weight(1f)) {
+                headlineContent()
+                if (supportingContent != null) {
+                    Spacer(Modifier.height(3.dp))
+                    supportingContent()
+                }
+            }
+            if (trailingContent != null) {
+                Spacer(Modifier.width(12.dp))
+                trailingContent()
+            }
+        }
+    }
+}
+
+@Composable
 private fun ThemeSelector(
+    displayMode: UiDisplayMode,
+    hazeState: HazeState?,
     current: ThemeMode,
     onSelect: (ThemeMode) -> Unit,
 ) {
@@ -377,13 +444,12 @@ private fun ThemeSelector(
         Triple(ThemeMode.LIGHT, "浅色", Icons.Default.LightMode),
     )
 
-    Surface(
+    AdaptiveCard(
+        displayMode = displayMode,
+        hazeState = hazeState,
         modifier = Modifier
             .fillMaxWidth()
             .padding(horizontal = 16.dp, vertical = 8.dp),
-        shape = RoundedCornerShape(28.dp),
-        color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.72f),
-        tonalElevation = 2.dp,
     ) {
         Row(
             modifier = Modifier.padding(4.dp),
@@ -436,15 +502,21 @@ private fun ThemeSelector(
 
 @Composable
 private fun DisplayModeSelector(
+    displayMode: UiDisplayMode,
+    hazeState: HazeState?,
     current: UiDisplayMode,
     onSelect: (UiDisplayMode) -> Unit,
 ) {
-    Column(
+    AdaptiveCard(
+        displayMode = displayMode,
+        hazeState = hazeState,
         modifier = Modifier
             .fillMaxWidth()
             .padding(horizontal = 16.dp, vertical = 8.dp),
-        verticalArrangement = Arrangement.spacedBy(8.dp),
     ) {
+        Column(
+            verticalArrangement = Arrangement.spacedBy(8.dp),
+        ) {
         Text(
             "展示模式",
             style = MaterialTheme.typography.labelLarge,
@@ -484,14 +556,24 @@ private fun DisplayModeSelector(
         }
     }
 }
+}
 
 @Composable
 private fun WallpaperPicker(
+    displayMode: UiDisplayMode,
+    hazeState: HazeState?,
     uri: String?,
     onPick: () -> Unit,
     onClear: () -> Unit,
 ) {
-    Column(modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp)) {
+    AdaptiveCard(
+        displayMode = displayMode,
+        hazeState = hazeState,
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(horizontal = 16.dp, vertical = 8.dp),
+    ) {
+        Column {
         if (uri != null) {
             Box(
                 modifier = Modifier
@@ -520,9 +602,12 @@ private fun WallpaperPicker(
         }
     }
 }
+}
 
 @Composable
 private fun WallpaperScopeSelector(
+    displayMode: UiDisplayMode,
+    hazeState: HazeState?,
     current: WallpaperScope,
     onSelect: (WallpaperScope) -> Unit,
 ) {
@@ -531,24 +616,31 @@ private fun WallpaperScopeSelector(
         WallpaperScope.HOME to "仅主页",
         WallpaperScope.SETTINGS to "仅设置",
     )
-    Row(
-        modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp),
-        horizontalArrangement = Arrangement.spacedBy(8.dp)
+    AdaptiveCard(
+        displayMode = displayMode,
+        hazeState = hazeState,
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(horizontal = 16.dp, vertical = 6.dp),
     ) {
-        Text("展示范围：", style = MaterialTheme.typography.bodySmall,
-            modifier = Modifier.align(Alignment.CenterVertically))
-        options.forEach { (scope, label) ->
-            FilterChip(
-                selected = scope == current,
-                onClick = { onSelect(scope) },
-                label = { Text(label, style = MaterialTheme.typography.labelSmall) }
-            )
+        Row(
+            horizontalArrangement = Arrangement.spacedBy(8.dp),
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            Text("展示范围：", style = MaterialTheme.typography.bodySmall)
+            options.forEach { (scope, label) ->
+                FilterChip(
+                    selected = scope == current,
+                    onClick = { onSelect(scope) },
+                    label = { Text(label, style = MaterialTheme.typography.labelSmall) }
+                )
+            }
         }
     }
 }
 
 @Composable
-private fun LogRetentionSelector() {
+private fun LogRetentionSelector(displayMode: UiDisplayMode, hazeState: HazeState?) {
     val context = LocalContext.current
     val prefs = context.getSharedPreferences("fxxk_theme", android.content.Context.MODE_PRIVATE)
     var maxLines by remember {
@@ -557,28 +649,33 @@ private fun LogRetentionSelector() {
 
     val options = listOf(500 to "500 行", 1000 to "1000 行", 2000 to "2000 行", 5000 to "5000 行", 10000 to "10000 行")
 
-    Row(
+    AdaptiveCard(
+        displayMode = displayMode,
+        hazeState = hazeState,
         modifier = Modifier
             .fillMaxWidth()
-            .padding(horizontal = 16.dp, vertical = 8.dp),
-        horizontalArrangement = Arrangement.spacedBy(4.dp),
-        verticalAlignment = Alignment.CenterVertically
+            .padding(horizontal = 16.dp, vertical = 6.dp),
     ) {
-        Text(
-            "日志保留：",
-            style = MaterialTheme.typography.bodySmall,
-            color = MaterialTheme.colorScheme.onSurface
-        )
-        options.forEach { (value, label) ->
-            FilterChip(
-                selected = maxLines == value,
-                onClick = {
-                    maxLines = value
-                    LogBuffer.setMaxLines(value)
-                    prefs.edit().putInt("log_max_lines", value).apply()
-                },
-                label = { Text(label, style = MaterialTheme.typography.labelSmall) }
+        Row(
+            horizontalArrangement = Arrangement.spacedBy(4.dp),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Text(
+                "日志保留：",
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurface
             )
+            options.forEach { (value, label) ->
+                FilterChip(
+                    selected = maxLines == value,
+                    onClick = {
+                        maxLines = value
+                        LogBuffer.setMaxLines(value)
+                        prefs.edit().putInt("log_max_lines", value).apply()
+                    },
+                    label = { Text(label, style = MaterialTheme.typography.labelSmall) }
+                )
+            }
         }
     }
 }
