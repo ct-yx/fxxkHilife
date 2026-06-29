@@ -511,7 +511,7 @@
 ### FreeBuds 7i 临时适配
 - 新增 `HuaweiModel.BUDS_7I`，匹配 `FreeBuds 7i`，SPP 端口为 1。
 - 为 FreeBuds 7i 增加临时保守能力表，避免未知型号走通用全量 Handler 导致 15 个 Handler 同时初始化、pending 堆积和大量 timeout。
-- 7i 临时能力表保留核心功能：INFO / WEAR_DETECT / BATTERY / ANC / TRIPLE_TAP / AUTO_PAUSE / SOUND_QUALITY / LOW_LATENCY / VOICE_LANGUAGE。
+- 7i 临时能力表保留核心功能：INFO / WEAR_DETECT / BATTERY / ANC / TRIPLE_TAP / SOUND_QUALITY / LOW_LATENCY / VOICE_LANGUAGE。v2.8.3 起暂时移除 7i 上未确认可用的 AUTO_PAUSE。
 - 暂时不启用长按、滑动、Power Button、EQ、双设备等更容易拖慢初始化或仍需验证的能力。
 - 说明：这不是 FreeBuds 7i 完整体适配，只是为了降低初始化压力、改善连接后等待时间的临时修复。
 
@@ -573,4 +573,18 @@
 - versionCode: 29
 - versionName: 2.8.2
 - tag: v2.8.2
+
+## v2.8.3 (2026-06-29)
+
+### 自动暂停处理
+- 对照上游 OpenFreebuds，当前 `AutoPauseHandler` 使用的协议命令与上游一致：读取 `2b11`、写入 `2b10`、确认参数 `127`。
+- 测试日志显示 FreeBuds 7i 可以读取自动暂停状态，但写入 `2b10` 后经常超时或仅返回异常/泛化 ACK，实际功能未生效。
+- `AutoPauseHandler` 改为写入后再次读取 `2b11` 做确认，只有读回状态与目标一致时才更新 `config.auto_pause`，避免 UI 误报写入成功。
+- 从 FreeBuds 7i 临时保守能力表中暂时移除 `AUTO_PAUSE`，避免在 7i 上展示当前未确认可用的“摘下自动暂停”选项。
+- 该能力后续留到 4.x 多型号/多厂商适配阶段与测试者继续验证。
+
+### 发布
+- versionCode: 30
+- versionName: 2.8.3
+- tag: v2.8.3
 

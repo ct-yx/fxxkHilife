@@ -125,7 +125,6 @@ val modelCapabilities: Map<HuaweiModel, List<HuaweiCapability>> = mapOf(
         HuaweiCapability.ANC_LEVEL,
         HuaweiCapability.ANC_DYNAMIC,
         HuaweiCapability.ACTION_TRIPLE_TAP,
-        HuaweiCapability.AUTO_PAUSE,
         HuaweiCapability.SOUND_QUALITY,
         HuaweiCapability.LOW_LATENCY,
         HuaweiCapability.VOICE_LANGUAGE,

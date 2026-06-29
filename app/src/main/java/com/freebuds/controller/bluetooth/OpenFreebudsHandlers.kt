@@ -3,6 +3,7 @@ package com.freebuds.controller.bluetooth
 import com.freebuds.controller.protocol.HuaweiCapability
 import com.freebuds.controller.protocol.HuaweiSppCommand
 import com.freebuds.controller.protocol.HuaweiSppPackage
+import kotlinx.coroutines.delay
 import java.nio.charset.Charset
 
 private fun b(vararg values: Int): ByteArray = values.map { it.toByte() }.toByteArray()
@@ -102,8 +103,26 @@ class AutoPauseHandler : HuaweiDeviceHandler {
     }
 
     override suspend fun setProperty(driver: SppDriver, group: String, prop: String, value: String) {
-        val resp = driver.sendPackage(HuaweiSppPackage.changeRequest(HuaweiSppCommand.AUTO_PAUSE_WRITE, 1 to b(if (value == "true") 1 else 0)))
-        if (resp?.findParam(127) != null) driver.putProperty(group, prop, value)
+        val target = value == "true"
+        val resp = driver.sendPackage(
+            HuaweiSppPackage.changeRequest(
+                HuaweiSppCommand.AUTO_PAUSE_WRITE,
+                1 to b(if (target) 1 else 0),
+            )
+        )
+        if (resp?.findParam(127) == null) return
+
+        // Upstream treats param 127 as write ACK. Some newer earbuds still return this
+        // ACK even when the setting is not actually applied, so verify by reading back.
+        delay(120)
+        val confirm = driver.sendPackage(HuaweiSppPackage.readRequest(HuaweiSppCommand.AUTO_PAUSE_READ, 1))
+        val confirmed = confirm?.findParam(1)?.firstOrNull()?.let { (it.toInt() == 1) == target } == true
+        if (confirmed) {
+            driver.putProperty(group, prop, value)
+        } else {
+            com.freebuds.controller.util.LogBuffer.w("SPP", "Auto pause write was not confirmed by read-back")
+            onInit(driver)
+        }
     }
 }
 
