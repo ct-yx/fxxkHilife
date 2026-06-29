@@ -640,3 +640,16 @@
 - versionName: 2.9.2
 - tag: v2.9.2
 
+## v2.9.3 (2026-06-29)
+
+### 展示模式边界修复
+- 明确传统模式与液态玻璃模式的组件边界：传统模式保持单层 Material3 Card，不继承玻璃容器结构。
+- 恢复液态玻璃卡片的“外层玻璃折射 + 内层柔和内容层”双层结构，但只在 `LIQUID_GLASS` 模式启用。
+- `LiquidGlassPanel` 在传统模式下不再额外绘制 surfaceVariant 背景，只直接渲染原始内容，避免传统模式出现类似玻璃卡片的双层视觉。
+- 调整玻璃 tint / inner layer alpha，让双层玻璃有层次但不再变成突兀的深色外圈。
+
+### 发布
+- versionCode: 34
+- versionName: 2.9.3
+- tag: v2.9.3
+

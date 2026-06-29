@@ -71,19 +71,29 @@ fun LiquidGlassCard(
                 blurRadius = 26.dp
                 noiseFactor = 0.08f
                 tints = listOf(
-                    HazeTint(Color.White.copy(alpha = 0.12f)),
+                    HazeTint(Color.White.copy(alpha = 0.11f)),
                     HazeTint(primaryTint),
                 )
             }
             .liquidGlassBorder(shapeRadiusPx = 30f),
         shape = shape,
-        color = Color.White.copy(alpha = 0.055f),
+        color = Color.White.copy(alpha = 0.065f),
         border = BorderStroke(0.6.dp, Color.White.copy(alpha = 0.18f)),
         tonalElevation = 0.dp,
         shadowElevation = 0.dp,
     ) {
         Column(
-            modifier = Modifier.padding(16.dp),
+            modifier = Modifier
+                .background(
+                    brush = Brush.verticalGradient(
+                        listOf(
+                            Color.White.copy(alpha = 0.095f),
+                            Color.White.copy(alpha = 0.035f),
+                        )
+                    ),
+                    shape = RoundedCornerShape(24.dp),
+                )
+                .padding(16.dp),
             content = content,
         )
     }
@@ -97,26 +107,23 @@ fun LiquidGlassPanel(
     content: @Composable BoxScope.() -> Unit,
 ) {
     val shape = RoundedCornerShape(28.dp)
-    Box(
-        modifier = modifier
-            .clip(shape)
-            .then(
-                if (displayMode == UiDisplayMode.LIQUID_GLASS && hazeState != null) {
-                    Modifier
-                        .hazeEffect(state = hazeState) {
-                            blurRadius = 22.dp
-                            noiseFactor = 0.06f
-                            tints = listOf(HazeTint(Color.White.copy(alpha = 0.10f)))
-                        }
-                        .liquidGlassBorder(shapeRadiusPx = 28f)
-                        .background(Color.White.copy(alpha = 0.07f), shape)
-                } else {
-                    Modifier.background(MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.72f), shape)
+    if (displayMode == UiDisplayMode.LIQUID_GLASS && hazeState != null) {
+        Box(
+            modifier = modifier
+                .clip(shape)
+                .hazeEffect(state = hazeState) {
+                    blurRadius = 22.dp
+                    noiseFactor = 0.06f
+                    tints = listOf(HazeTint(Color.White.copy(alpha = 0.10f)))
                 }
-            )
-            .padding(4.dp),
-        content = content,
-    )
+                .liquidGlassBorder(shapeRadiusPx = 28f)
+                .background(Color.White.copy(alpha = 0.07f), shape)
+                .padding(4.dp),
+            content = content,
+        )
+    } else {
+        Box(modifier = modifier, content = content)
+    }
 }
 
 private fun Modifier.liquidGlassBorder(shapeRadiusPx: Float): Modifier = this.drawWithCache {
