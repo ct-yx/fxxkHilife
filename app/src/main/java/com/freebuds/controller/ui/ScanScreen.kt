@@ -17,11 +17,15 @@ import androidx.compose.ui.unit.dp
 import com.freebuds.controller.bluetooth.ScannedDevice
 import com.freebuds.controller.data.ConnectionState
 import com.freebuds.controller.data.DeviceViewModel
+import com.freebuds.controller.ui.glass.AdaptiveCard
+import dev.chrisbanes.haze.HazeState
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun ScanScreen(
     viewModel: DeviceViewModel,
+    displayMode: UiDisplayMode,
+    hazeState: HazeState?,
     onBack: () -> Unit,
     onDeviceSelected: (String) -> Unit,
 ) {
@@ -40,7 +44,7 @@ fun ScanScreen(
                     }
                 },
                 colors = TopAppBarDefaults.topAppBarColors(
-                    containerColor = MaterialTheme.colorScheme.surface
+                    containerColor = if (displayMode == UiDisplayMode.LIQUID_GLASS) androidx.compose.ui.graphics.Color.Transparent else MaterialTheme.colorScheme.surface
                 )
             )
         }
@@ -100,11 +104,11 @@ fun ScanScreen(
                         item {
                             SectionHeader("华为 / 荣耀设备")
                         }
-                        items(huawei) { DeviceItem(it) { onDeviceSelected(it.device.address) } }
+                        items(huawei) { DeviceItem(it, displayMode, hazeState) { onDeviceSelected(it.device.address) } }
                     }
                     if (others.isNotEmpty()) {
                         item { SectionHeader("其他设备") }
-                        items(others) { DeviceItem(it) { onDeviceSelected(it.device.address) } }
+                        items(others) { DeviceItem(it, displayMode, hazeState) { onDeviceSelected(it.device.address) } }
                     }
                 }
             }
@@ -123,23 +127,26 @@ private fun SectionHeader(text: String) {
 }
 
 @Composable
-private fun DeviceItem(device: ScannedDevice, onClick: () -> Unit) {
-    ListItem(
-        headlineContent = { Text(device.displayName, fontWeight = FontWeight.Medium) },
-        supportingContent = {
-            Text(
-                buildString {
-                    append(device.address)
-                    if (device.isBonded) append(" · 已配对")
-                    if (device.rssi != 0) append(" · ${device.rssi} dBm")
-                },
-                style = MaterialTheme.typography.bodySmall,
-                color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.6f)
-            )
-        },
-        modifier = Modifier.clickable(onClick = onClick)
-    )
-    HorizontalDivider(modifier = Modifier.padding(start = 16.dp))
+private fun DeviceItem(device: ScannedDevice, displayMode: UiDisplayMode, hazeState: HazeState?, onClick: () -> Unit) {
+    AdaptiveCard(
+        displayMode = displayMode,
+        hazeState = hazeState,
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(horizontal = 16.dp, vertical = 6.dp)
+            .clickable(onClick = onClick),
+    ) {
+        Text(device.displayName, fontWeight = FontWeight.Medium)
+        Text(
+            buildString {
+                append(device.address)
+                if (device.isBonded) append(" · 已配对")
+                if (device.rssi != 0) append(" · ${device.rssi} dBm")
+            },
+            style = MaterialTheme.typography.bodySmall,
+            color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.62f),
+        )
+    }
 }
 
 @Composable

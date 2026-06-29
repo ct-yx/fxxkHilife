@@ -150,6 +150,8 @@ fun DeviceScreen(
                 if (props.ancLevel != null && displayAncMode != "normal") {
                     item {
                         DeviceOptionItem(
+                            displayMode = displayMode,
+                            hazeState = hazeState,
                             icon = Icons.Default.Tune,
                             title = ancLevelTitle(displayAncMode),
                             current = chineseAncLevel(props.ancLevel, displayAncMode),
@@ -168,6 +170,8 @@ fun DeviceScreen(
                 if (props.soundQuality != null) {
                     item {
                         DeviceOptionItem(
+                            displayMode = displayMode,
+                            hazeState = hazeState,
                             icon = Icons.Default.GraphicEq,
                             title = "音质偏好",
                             current = chineseSoundQuality(props.soundQuality),
@@ -180,6 +184,8 @@ fun DeviceScreen(
                 if (props.autoPause != null) {
                     item {
                         SwitchSettingItem(
+                            displayMode = displayMode,
+                            hazeState = hazeState,
                             icon = Icons.Default.PauseCircle,
                             title = "摘下自动暂停",
                             checked = props.autoPause,
@@ -190,6 +196,8 @@ fun DeviceScreen(
                 if (props.lowLatency != null) {
                     item {
                         SwitchSettingItem(
+                            displayMode = displayMode,
+                            hazeState = hazeState,
                             icon = Icons.Default.Speed,
                             title = "低延迟模式",
                             checked = props.lowLatency,
@@ -204,14 +212,23 @@ fun DeviceScreen(
             if (hasGesture) {
                 item { SettingsGroupHeader("手势") }
                 item {
-                    ListItem(
-                        headlineContent = { Text("手势设置") },
-                        supportingContent = { Text("双击 / 三击 / 滑动 / 长按") },
-                        leadingContent = { Icon(Icons.Default.TouchApp, contentDescription = null) },
-                        trailingContent = { Icon(Icons.Default.ChevronRight, contentDescription = null) },
-                        modifier = Modifier.clickable(onClick = onGesture)
-                    )
-                    HorizontalDivider()
+                    AdaptiveCard(
+                        displayMode = displayMode,
+                        hazeState = hazeState,
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(horizontal = 16.dp, vertical = 5.dp)
+                            .clickable(onClick = onGesture),
+                    ) {
+                        Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(14.dp)) {
+                            Icon(Icons.Default.TouchApp, contentDescription = null)
+                            Column(Modifier.weight(1f)) {
+                                Text("手势设置")
+                                Text("双击 / 三击 / 滑动 / 长按", style = MaterialTheme.typography.bodySmall)
+                            }
+                            Icon(Icons.Default.ChevronRight, contentDescription = null)
+                        }
+                    }
                 }
             }
 
@@ -219,23 +236,32 @@ fun DeviceScreen(
             item { SettingsGroupHeader("关于") }
             if (props.deviceModel != null) {
                 item {
-                    InfoItem(Icons.Default.Info, "型号", props.deviceModel!!)
+                    InfoItem(displayMode, hazeState, Icons.Default.Info, "型号", props.deviceModel!!)
                 }
             }
             if (props.firmwareVersion != null) {
                 item {
-                    InfoItem(Icons.Default.SystemUpdate, "固件版本", props.firmwareVersion!!)
+                    InfoItem(displayMode, hazeState, Icons.Default.SystemUpdate, "固件版本", props.firmwareVersion!!)
                 }
             }
             item {
-                ListItem(
-                    headlineContent = { Text("调试终端") },
-                    supportingContent = { Text("查看 SPP 原始日志 / 发送命令") },
-                    leadingContent = { Icon(Icons.Default.Terminal, contentDescription = null) },
-                    trailingContent = { Icon(Icons.Default.ChevronRight, contentDescription = null) },
-                    modifier = Modifier.clickable(onClick = onOpenTerminal)
-                )
-                HorizontalDivider()
+                AdaptiveCard(
+                    displayMode = displayMode,
+                    hazeState = hazeState,
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(horizontal = 16.dp, vertical = 5.dp)
+                        .clickable(onClick = onOpenTerminal),
+                ) {
+                    Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(14.dp)) {
+                        Icon(Icons.Default.Terminal, contentDescription = null)
+                        Column(Modifier.weight(1f)) {
+                            Text("调试终端")
+                            Text("查看 SPP 原始日志 / 发送命令", style = MaterialTheme.typography.bodySmall)
+                        }
+                        Icon(Icons.Default.ChevronRight, contentDescription = null)
+                    }
+                }
             }
         }
     }
@@ -296,6 +322,8 @@ private fun SettingsGroupHeader(text: String) {
 
 @Composable
 private fun DeviceOptionItem(
+    displayMode: UiDisplayMode,
+    hazeState: HazeState?,
     icon: ImageVector,
     title: String,
     current: String?,
@@ -304,16 +332,23 @@ private fun DeviceOptionItem(
     onSelect: (String) -> Unit,
 ) {
     var expanded by remember { mutableStateOf(false) }
-    ListItem(
-        headlineContent = { Text(title) },
-        supportingContent = { if (current != null) Text(current) },
-        leadingContent = { Icon(icon, contentDescription = null) },
-        trailingContent = {
+    AdaptiveCard(
+        displayMode = displayMode,
+        hazeState = hazeState,
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(horizontal = 16.dp, vertical = 5.dp)
+            .clickable(enabled = options.isNotEmpty()) { expanded = true },
+    ) {
+        Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(14.dp)) {
+            Icon(icon, contentDescription = null)
+            Column(Modifier.weight(1f)) {
+                Text(title)
+                if (current != null) Text(current, style = MaterialTheme.typography.bodySmall)
+            }
             if (options.isNotEmpty()) Icon(Icons.Default.ChevronRight, contentDescription = null)
-        },
-        modifier = Modifier.clickable(enabled = options.isNotEmpty()) { expanded = true }
-    )
-    HorizontalDivider(modifier = Modifier.padding(start = 56.dp))
+        }
+    }
     if (expanded && options.isNotEmpty()) {
         OptionsDialog(title, options, rawOptions, onDismiss = { expanded = false }, onSelect = {
             onSelect(it)
@@ -324,34 +359,50 @@ private fun DeviceOptionItem(
 
 @Composable
 private fun SwitchSettingItem(
+    displayMode: UiDisplayMode,
+    hazeState: HazeState?,
     icon: ImageVector,
     title: String,
     checked: Boolean?,
     onCheckedChange: (Boolean) -> Unit,
 ) {
-    ListItem(
-        headlineContent = { Text(title) },
-        leadingContent = { Icon(icon, contentDescription = null) },
-        trailingContent = {
+    AdaptiveCard(
+        displayMode = displayMode,
+        hazeState = hazeState,
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(horizontal = 16.dp, vertical = 5.dp)
+            .clickable(enabled = checked != null) { onCheckedChange(!(checked ?: false)) },
+    ) {
+        Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(14.dp)) {
+            Icon(icon, contentDescription = null)
+            Text(title, modifier = Modifier.weight(1f))
             Switch(
                 checked = checked ?: false,
                 onCheckedChange = onCheckedChange,
-                enabled = checked != null
+                enabled = checked != null,
             )
-        },
-        modifier = Modifier.clickable(enabled = checked != null) { onCheckedChange(!(checked ?: false)) }
-    )
-    HorizontalDivider(modifier = Modifier.padding(start = 56.dp))
+        }
+    }
 }
 
 @Composable
-private fun InfoItem(icon: ImageVector, label: String, value: String) {
-    ListItem(
-        headlineContent = { Text(label) },
-        supportingContent = { Text(value) },
-        leadingContent = { Icon(icon, contentDescription = null) }
-    )
-    HorizontalDivider(modifier = Modifier.padding(start = 56.dp))
+private fun InfoItem(displayMode: UiDisplayMode, hazeState: HazeState?, icon: ImageVector, label: String, value: String) {
+    AdaptiveCard(
+        displayMode = displayMode,
+        hazeState = hazeState,
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(horizontal = 16.dp, vertical = 5.dp),
+    ) {
+        Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(14.dp)) {
+            Icon(icon, contentDescription = null)
+            Column {
+                Text(label)
+                Text(value, style = MaterialTheme.typography.bodySmall)
+            }
+        }
+    }
 }
 
 @Composable

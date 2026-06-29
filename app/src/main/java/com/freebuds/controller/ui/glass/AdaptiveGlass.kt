@@ -44,11 +44,15 @@ fun AdaptiveCard(
         Card(
             modifier = modifier,
             colors = CardDefaults.cardColors(
-                containerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.72f),
+                containerColor = MaterialTheme.colorScheme.surfaceVariant,
             ),
             elevation = CardDefaults.cardElevation(defaultElevation = 1.dp),
-            content = content,
-        )
+        ) {
+            Column(
+                modifier = Modifier.padding(16.dp),
+                content = content,
+            )
+        }
     }
 }
 
@@ -73,22 +77,13 @@ fun LiquidGlassCard(
             }
             .liquidGlassBorder(shapeRadiusPx = 30f),
         shape = shape,
-        color = Color.White.copy(alpha = 0.08f),
-        border = BorderStroke(0.7.dp, Color.White.copy(alpha = 0.22f)),
+        color = Color.White.copy(alpha = 0.055f),
+        border = BorderStroke(0.6.dp, Color.White.copy(alpha = 0.18f)),
         tonalElevation = 0.dp,
         shadowElevation = 0.dp,
     ) {
         Column(
-            modifier = Modifier
-                .background(
-                    Brush.verticalGradient(
-                        listOf(
-                            Color.White.copy(alpha = 0.12f),
-                            Color.White.copy(alpha = 0.035f),
-                        )
-                    )
-                )
-                .padding(16.dp),
+            modifier = Modifier.padding(16.dp),
             content = content,
         )
     }

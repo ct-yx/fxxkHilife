@@ -140,6 +140,8 @@ fun AppNavHost(
             composable(Route.Scan) {
                 ScanScreen(
                     viewModel = viewModel,
+                    displayMode = displayMode,
+                    hazeState = hazeState,
                     onBack = { navController.popBackStack() },
                     onDeviceSelected = { address ->
                         viewModel.autoConnectSaved(address)
