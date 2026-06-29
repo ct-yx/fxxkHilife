@@ -1,7 +1,10 @@
 package com.freebuds.controller.ui
 
+import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.*
@@ -75,6 +78,7 @@ fun DeviceScreen(
     }
 
     Scaffold(
+        containerColor = androidx.compose.ui.graphics.Color.Transparent,
         topBar = {
             TopAppBar(
                 title = { Text(deviceName) },
@@ -362,56 +366,66 @@ private fun AncModeSlider(
     options: List<String>,
     onSelect: (String) -> Unit,
 ) {
-    Row(
+    val visibleOptions = options.filter { it in setOf("normal", "cancellation", "awareness") }.ifEmpty {
+        listOf("normal", "cancellation", "awareness")
+    }
+    Surface(
         modifier = Modifier
             .fillMaxWidth()
             .padding(horizontal = 16.dp, vertical = 8.dp),
-        horizontalArrangement = Arrangement.spacedBy(8.dp)
+        shape = RoundedCornerShape(28.dp),
+        color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.72f),
+        tonalElevation = 2.dp,
     ) {
-        options.forEach { raw ->
-            val label = chineseAncMode(raw)
-            val isSelected = raw == current
-            val iconId = when (raw) {
-                "normal" -> R.drawable.ic_anc_normal
-                "cancellation" -> R.drawable.ic_anc_cancellation
-                "awareness" -> R.drawable.ic_anc_awareness
-                else -> null
-            }
-            Surface(
-                modifier = Modifier
-                    .weight(1f)
-                    .clickable { onSelect(raw) },
-                shape = MaterialTheme.shapes.small,
-                color = if (isSelected)
-                    MaterialTheme.colorScheme.primary
-                else
-                    MaterialTheme.colorScheme.surfaceVariant,
-                tonalElevation = if (isSelected) 2.dp else 0.dp,
-            ) {
-                Column(
-                    modifier = Modifier.padding(vertical = 8.dp),
-                    horizontalAlignment = Alignment.CenterHorizontally
-                ) {
-                    if (iconId != null) {
-                        Icon(
-                            painter = painterResource(iconId),
-                            contentDescription = label,
-                            modifier = Modifier.size(24.dp),
-                            tint = if (isSelected)
-                                MaterialTheme.colorScheme.onPrimary
-                            else
-                                MaterialTheme.colorScheme.onSurface
+        Row(
+            modifier = Modifier.padding(4.dp),
+            horizontalArrangement = Arrangement.spacedBy(4.dp)
+        ) {
+            visibleOptions.forEach { raw ->
+                val label = chineseAncMode(raw)
+                val isSelected = raw == current
+                val iconId = when (raw) {
+                    "normal" -> R.drawable.ic_anc_normal
+                    "cancellation" -> R.drawable.ic_anc_cancellation
+                    "awareness" -> R.drawable.ic_anc_awareness
+                    else -> R.drawable.ic_anc_normal
+                }
+                Row(
+                    modifier = Modifier
+                        .weight(1f)
+                        .background(
+                            color = if (isSelected) MaterialTheme.colorScheme.primary else androidx.compose.ui.graphics.Color.Transparent,
+                            shape = RoundedCornerShape(24.dp)
                         )
+                        .clickable { onSelect(raw) }
+                        .padding(horizontal = 8.dp, vertical = 6.dp),
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.Center
+                ) {
+                    Surface(
+                        shape = CircleShape,
+                        color = if (isSelected) MaterialTheme.colorScheme.onPrimary.copy(alpha = 0.18f)
+                        else MaterialTheme.colorScheme.surface.copy(alpha = 0.78f),
+                        modifier = Modifier.size(34.dp)
+                    ) {
+                        Box(contentAlignment = Alignment.Center) {
+                            Icon(
+                                painter = painterResource(iconId),
+                                contentDescription = label,
+                                modifier = Modifier.size(20.dp),
+                                tint = if (isSelected) MaterialTheme.colorScheme.onPrimary
+                                else MaterialTheme.colorScheme.onSurface
+                            )
+                        }
                     }
+                    Spacer(Modifier.width(8.dp))
                     Text(
                         label,
                         textAlign = TextAlign.Center,
                         style = MaterialTheme.typography.labelLarge,
                         fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Normal,
-                        color = if (isSelected)
-                            MaterialTheme.colorScheme.onPrimary
-                        else
-                            MaterialTheme.colorScheme.onSurface,
+                        color = if (isSelected) MaterialTheme.colorScheme.onPrimary
+                        else MaterialTheme.colorScheme.onSurface,
                     )
                 }
             }

@@ -2,9 +2,18 @@ package com.freebuds.controller.ui
 
 import android.Manifest
 import android.content.pm.PackageManager
+import android.net.Uri
 import android.os.Build
+import androidx.compose.foundation.background
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.material3.MaterialTheme
+import androidx.compose.ui.draw.alpha
 import androidx.compose.runtime.*
+import androidx.compose.ui.Modifier
+import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
+import coil.compose.AsyncImage
 import com.freebuds.controller.data.ConnectionState
 import com.freebuds.controller.data.DeviceViewModel
 import com.freebuds.controller.ui.theme.loadThemeMode
@@ -64,7 +73,29 @@ fun AppNavHost(
         }
     }
 
-    when (currentScreen) {
+    val showWallpaper = wallpaperUri != null && when (wallpaperScope) {
+        WallpaperScope.ALL -> true
+        WallpaperScope.HOME -> currentScreen == Screen.Home
+        WallpaperScope.SETTINGS -> currentScreen == Screen.Settings
+    }
+
+    Box(
+        modifier = Modifier
+            .fillMaxSize()
+            .background(MaterialTheme.colorScheme.background)
+    ) {
+        if (showWallpaper) {
+            AsyncImage(
+                model = Uri.parse(wallpaperUri),
+                contentDescription = null,
+                modifier = Modifier
+                    .fillMaxSize()
+                    .alpha(0.35f),
+                contentScale = ContentScale.Crop,
+            )
+        }
+
+        when (currentScreen) {
         Screen.PermissionGuide -> PermissionGuideScreen(
             onGranted = { currentScreen = Screen.Home }
         )
@@ -120,5 +151,6 @@ fun AppNavHost(
             wallpaperScope = wallpaperScope,
             onWallpaperScopeChange = { wallpaperScope = it },
         )
+        }
     }
 }

@@ -30,6 +30,7 @@ fun ScanScreen(
     val connState by viewModel.connectionState.collectAsState()
 
     Scaffold(
+        containerColor = androidx.compose.ui.graphics.Color.Transparent,
         topBar = {
             TopAppBar(
                 title = { Text("扫描设备") },

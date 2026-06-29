@@ -4,10 +4,12 @@ import android.content.Intent
 import android.net.Uri
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
+import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.*
 import androidx.compose.material3.*
@@ -67,6 +69,7 @@ fun SettingsScreen(
     }
 
     Scaffold(
+        containerColor = androidx.compose.ui.graphics.Color.Transparent,
         topBar = {
             TopAppBar(
                 title = { Text("设置") },
@@ -324,37 +327,63 @@ private fun ThemeSelector(
     onSelect: (ThemeMode) -> Unit,
 ) {
     val options = listOf(
-        ThemeMode.SYSTEM to "跟随系统",
-        ThemeMode.DARK to "深色",
-        ThemeMode.LIGHT to "浅色",
+        Triple(ThemeMode.SYSTEM, "跟随", Icons.Default.BrightnessAuto),
+        Triple(ThemeMode.DARK, "深色", Icons.Default.DarkMode),
+        Triple(ThemeMode.LIGHT, "浅色", Icons.Default.LightMode),
     )
 
-    Row(
+    Surface(
         modifier = Modifier
             .fillMaxWidth()
             .padding(horizontal = 16.dp, vertical = 8.dp),
-        horizontalArrangement = Arrangement.spacedBy(8.dp)
+        shape = RoundedCornerShape(28.dp),
+        color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.72f),
+        tonalElevation = 2.dp,
     ) {
-        options.forEach { (mode, label) ->
-            val selected = mode == current
-            Surface(
-                modifier = Modifier
-                    .weight(1f)
-                    .clickable { onSelect(mode) },
-                shape = MaterialTheme.shapes.small,
-                color = if (selected) MaterialTheme.colorScheme.primary
-                else MaterialTheme.colorScheme.surfaceVariant,
-                tonalElevation = if (selected) 2.dp else 0.dp,
-            ) {
-                Text(
-                    label,
-                    modifier = Modifier.padding(vertical = 12.dp),
-                    textAlign = TextAlign.Center,
-                    style = MaterialTheme.typography.labelLarge,
-                    fontWeight = if (selected) FontWeight.Bold else FontWeight.Normal,
-                    color = if (selected) MaterialTheme.colorScheme.onPrimary
-                    else MaterialTheme.colorScheme.onSurface,
-                )
+        Row(
+            modifier = Modifier.padding(4.dp),
+            horizontalArrangement = Arrangement.spacedBy(4.dp)
+        ) {
+            options.forEach { (mode, label, icon) ->
+                val selected = mode == current
+                Row(
+                    modifier = Modifier
+                        .weight(1f)
+                        .background(
+                            color = if (selected) MaterialTheme.colorScheme.primary else androidx.compose.ui.graphics.Color.Transparent,
+                            shape = RoundedCornerShape(24.dp)
+                        )
+                        .clickable { onSelect(mode) }
+                        .padding(horizontal = 8.dp, vertical = 7.dp),
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.Center
+                ) {
+                    Surface(
+                        shape = CircleShape,
+                        color = if (selected) MaterialTheme.colorScheme.onPrimary.copy(alpha = 0.18f)
+                        else MaterialTheme.colorScheme.surface.copy(alpha = 0.78f),
+                        modifier = Modifier.size(32.dp)
+                    ) {
+                        Box(contentAlignment = Alignment.Center) {
+                            Icon(
+                                icon,
+                                contentDescription = null,
+                                modifier = Modifier.size(18.dp),
+                                tint = if (selected) MaterialTheme.colorScheme.onPrimary
+                                else MaterialTheme.colorScheme.onSurface
+                            )
+                        }
+                    }
+                    Spacer(Modifier.width(8.dp))
+                    Text(
+                        label,
+                        textAlign = TextAlign.Center,
+                        style = MaterialTheme.typography.labelLarge,
+                        fontWeight = if (selected) FontWeight.Bold else FontWeight.Normal,
+                        color = if (selected) MaterialTheme.colorScheme.onPrimary
+                        else MaterialTheme.colorScheme.onSurface,
+                    )
+                }
             }
         }
     }

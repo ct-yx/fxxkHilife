@@ -21,6 +21,7 @@ fun GestureScreen(
     onBack: () -> Unit,
 ) {
     Scaffold(
+        containerColor = androidx.compose.ui.graphics.Color.Transparent,
         topBar = {
             TopAppBar(
                 title = { Text("手势设置") },
