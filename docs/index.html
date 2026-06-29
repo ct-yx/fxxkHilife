@@ -4,7 +4,7 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
 <title>fxxkHilife — 破茧 · 自由的听感</title>
-<meta name="description" content="HUAWEI FreeBuds / HONOR Earbuds 的轻量离线控制 App。无需登录、无广告、完全离线。">
+<meta name="description" content="HUAWEI FreeBuds / HONOR Earbuds 的开源离线控制 App。支持 ANC、低延迟、手势、电量、常驻通知与日志导出，正在招募更多型号测试者。">
 <style>
 /* ===== RESET & BASE ===== */
 *,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
@@ -95,6 +95,11 @@ border:1px solid rgba(255,255,255,.08);
 .reveal-delay-3{transition-delay:.3s}
 .reveal-delay-4{transition-delay:.4s}
 .reveal-delay-5{transition-delay:.5s}
+@media(prefers-reduced-motion:reduce){
+  html{scroll-behavior:auto}
+  *,*::before,*::after{animation:none!important;transition:none!important}
+  .reveal{opacity:1!important;transform:none!important}
+}
 
 /* ===== BACKGROUND BLURB ===== */
 .blur-bg{position:fixed;inset:0;overflow:hidden;pointer-events:none;z-index:0}
@@ -235,6 +240,19 @@ nav .links a:hover{color:#fff}
 }
 .feature-card h3{font-size:16px;font-weight:600;margin-bottom:8px;color:#e8e8ed}
 .feature-card p{font-size:13px;color:rgba(255,255,255,.45);line-height:1.7}
+
+/* ===== SUPPORTED DEVICES / TESTERS ===== */
+.device-table{width:100%;border-collapse:separate;border-spacing:0 10px;font-size:13px}
+.device-table th{text-align:left;color:rgba(255,255,255,.45);font-weight:500;padding:0 12px 2px}
+.device-table td{background:rgba(255,255,255,.025);border-top:1px solid rgba(255,255,255,.06);border-bottom:1px solid rgba(255,255,255,.06);padding:12px;color:rgba(255,255,255,.58);vertical-align:top}
+.device-table td:first-child{border-left:1px solid rgba(255,255,255,.06);border-radius:12px 0 0 12px;color:#e8e8ed;font-weight:600}
+.device-table td:last-child{border-right:1px solid rgba(255,255,255,.06);border-radius:0 12px 12px 0}
+.status-pill{display:inline-block;padding:2px 9px;border-radius:999px;border:1px solid rgba(255,255,255,.12);font-size:11px;white-space:nowrap}
+.status-tested{background:rgba(98,211,148,.08);border-color:rgba(98,211,148,.28);color:#9ee6bd}
+.status-need{background:rgba(255,209,102,.08);border-color:rgba(255,209,102,.28);color:#ffd98a}
+.tester-card{max-width:820px;margin:0 auto;background:linear-gradient(135deg,rgba(124,124,240,.08),rgba(179,136,255,.05));border:1px solid rgba(124,124,240,.14);border-radius:20px;padding:30px;color:rgba(255,255,255,.62)}
+.tester-card ul{margin:16px 0 0 20px}.tester-card li{margin-bottom:6px}.tester-actions{display:flex;gap:12px;flex-wrap:wrap;margin-top:22px}.tester-actions a{display:inline-flex;padding:10px 16px;border-radius:10px;background:rgba(124,124,240,.12);border:1px solid rgba(124,124,240,.22);font-size:13px;color:#e8e8ed}
+@media(max-width:640px){.device-table,.device-table tbody,.device-table tr,.device-table td{display:block}.device-table thead{display:none}.device-table tr{margin-bottom:12px}.device-table td{border-left:1px solid rgba(255,255,255,.06);border-right:1px solid rgba(255,255,255,.06);border-radius:0}.device-table td:first-child{border-radius:12px 12px 0 0}.device-table td:last-child{border-radius:0 0 12px 12px}.device-table td::before{content:attr(data-label);display:block;color:rgba(255,255,255,.35);font-size:11px;margin-bottom:3px}}
 
 /* ===== SCREENSHOTS ===== */
 .screenshots-grid{
@@ -391,6 +409,8 @@ footer .spacer{display:inline-block;margin:0 8px;color:rgba(255,255,255,.1)}
   <div class="logo">✦ fxxkHilife</div>
   <div class="links">
     <a href="#features" data-i18n="nav_features">特性</a>
+    <a href="#devices" data-i18n="nav_devices">设备</a>
+    <a href="#testers" data-i18n="nav_testers">测试</a>
     <a href="#screenshots" data-i18n="nav_screenshots">截屏</a>
     <a href="#name" data-i18n="nav_name">名字</a>
     <a href="#timeline" data-i18n="nav_timeline">历程</a>
@@ -427,7 +447,7 @@ footer .spacer{display:inline-block;margin:0 8px;color:rgba(255,255,255,.1)}
   <p class="tagline">HUAWEI FreeBuds / HONOR Earbuds 的轻量离线控制 App</p>
   <p class="sub">无需登录 · 无广告 · 完全离线 · 开源</p>
   <div class="hero-badges">
-    <span id="heroVersion"><span id="heroVersionText">v2.5.0</span></span>
+    <span id="heroVersion"><span id="heroVersionText">v2.7.4</span></span>
     <span>Kotlin + Jetpack Compose</span>
     <span>Bluetooth SPP</span>
     <span>Material3</span>
@@ -542,6 +562,41 @@ footer .spacer{display:inline-block;margin:0 8px;color:rgba(255,255,255,.1)}
   </div>
 </section>
 
+<!-- === SUPPORTED DEVICES === -->
+<section id="devices" style="scroll-margin-top:72px" class="reveal">
+  <h2 class="section-title" data-i18n="section_devices">已支持 / 待验证设备</h2>
+  <p class="section-sub" data-i18n="section_devices_sub">已有型号识别与能力表；不同固件和系统蓝牙栈可能影响实际表现，欢迎提交日志帮助校准</p>
+  <table class="device-table">
+    <thead><tr><th>设备</th><th>状态</th><th>说明</th></tr></thead>
+    <tbody>
+      <tr><td data-label="设备">HUAWEI FreeBuds 6i</td><td data-label="状态"><span class="status-pill status-tested">已实测</span></td><td data-label="说明">当前主要开发设备，ANC / 手势 / 电量 / 低延迟 / 音质偏好持续调优中。</td></tr>
+      <tr><td data-label="设备">HUAWEI FreeBuds 5i</td><td data-label="状态"><span class="status-pill status-need">待更多实测</span></td><td data-label="说明">能力表已覆盖 ANC、ANC 强度、手势、音质偏好、低延迟等。</td></tr>
+      <tr><td data-label="设备">HUAWEI FreeBuds 4i / HONOR Earbuds 2 / 2 Lite / SE</td><td data-label="状态"><span class="status-pill status-need">待更多实测</span></td><td data-label="说明">基础能力：ANC、电量、佩戴检测、双击/长按、自动暂停等。</td></tr>
+      <tr><td data-label="设备">HUAWEI FreeBuds Pro / Pro 2 / Pro 3 / Pro 4 / FreeClip</td><td data-label="状态"><span class="status-pill status-need">重点招募</span></td><td data-label="说明">Pro 系列和 FreeClip 能力较多，尤其需要测试者确认不同固件表现。</td></tr>
+      <tr><td data-label="设备">HUAWEI FreeBuds SE / SE 2 / SE 4</td><td data-label="状态"><span class="status-pill status-need">待更多实测</span></td><td data-label="说明">SE 系列型号差异较大，需要日志校准能力表。</td></tr>
+      <tr><td data-label="设备">HUAWEI FreeBuds Studio / FreeLace Pro / FreeLace Pro 2</td><td data-label="状态"><span class="status-pill status-need">待更多实测</span></td><td data-label="说明">头戴式/颈挂式设备部分 TWS 能力不适用，需要单独验证。</td></tr>
+    </tbody>
+  </table>
+</section>
+
+<!-- === TESTERS === -->
+<section id="testers" style="scroll-margin-top:72px" class="reveal">
+  <h2 class="section-title" data-i18n="section_testers">正在招募测试者</h2>
+  <p class="section-sub" data-i18n="section_testers_sub">如果你有 FreeBuds 5i、Pro 系列、SE 系列、FreeClip 或 FreeLace，欢迎帮助测试</p>
+  <div class="tester-card">
+    <p>反馈时请尽量提供：耳机型号与固件、手机型号与 Android/ROM、App 版本、异常功能描述，以及应用内“分享日志”导出的日志文件。v2.7.4 起日志会自动包含版本号，便于定位问题来源。</p>
+    <ul>
+      <li>连接问题：请说明系统蓝牙里是否已显示耳机连接。</li>
+      <li>功能问题：请说明 ANC、电量、手势、低延迟、音质偏好等哪些正常/异常。</li>
+      <li>未知型号：也可以尝试扫描连接，通用 Handler 的日志非常有价值。</li>
+    </ul>
+    <div class="tester-actions">
+      <a href="https://github.com/ct-yx/fxxkHilife/issues" target="_blank">提交 Issue / 测试反馈</a>
+      <a href="https://github.com/ct-yx/fxxkHilife/releases/latest" target="_blank">下载最新版</a>
+    </div>
+  </div>
+</section>
+
 <!-- === SCREENSHOTS === -->
 <section id="screenshots" style="scroll-margin-top:72px" class="reveal">
   <h2 class="section-title" data-i18n="section_screenshots">应用截屏</h2>
@@ -594,6 +649,8 @@ footer .spacer{display:inline-block;margin:0 8px;color:rgba(255,255,255,.1)}
 const i18n = {
   'zh': {
     'nav_features': '特性',
+    'nav_devices': '设备',
+    'nav_testers': '测试',
     'nav_screenshots': '截屏',
     'nav_name': '名字',
     'nav_timeline': '历程',
@@ -601,6 +658,10 @@ const i18n = {
     'hero_sub': '无需登录 · 无广告 · 完全离线 · 开源',
     'section_features': '核心特性',
     'section_features_sub': '一个纯粹的离线控制工具，只做一件事，把它做到极致',
+    'section_devices': '已支持 / 待验证设备',
+    'section_devices_sub': '已有型号识别与能力表；不同固件和系统蓝牙栈可能影响实际表现，欢迎提交日志帮助校准',
+    'section_testers': '正在招募测试者',
+    'section_testers_sub': '如果你有 FreeBuds 5i、Pro 系列、SE 系列、FreeClip 或 FreeLace，欢迎帮助测试',
     'section_screenshots': '应用截屏',
     'section_screenshots_sub': 'FreeBuds 6i 实机运行的 fxxkHilife',
     'section_name': '名字的意味',
@@ -614,6 +675,8 @@ const i18n = {
   },
   'en': {
     'nav_features': 'Features',
+    'nav_devices': 'Devices',
+    'nav_testers': 'Testers',
     'nav_screenshots': 'Screenshots',
     'nav_name': 'Name',
     'nav_timeline': 'History',
@@ -621,6 +684,10 @@ const i18n = {
     'hero_sub': 'No login · No ads · Fully offline · Open source',
     'section_features': 'Core Features',
     'section_features_sub': 'A pure offline control tool — does one thing, does it well',
+    'section_devices': 'Supported / To-be-verified Devices',
+    'section_devices_sub': 'Model detection and capability tables are ready; firmware and Android Bluetooth stacks may affect behavior, logs are welcome',
+    'section_testers': 'Testers Wanted',
+    'section_testers_sub': 'If you own FreeBuds 5i, Pro series, SE series, FreeClip or FreeLace, your feedback is welcome',
     'section_screenshots': 'Screenshots',
     'section_screenshots_sub': 'fxxkHilife running on FreeBuds 6i',
     'section_name': 'The Meaning',
@@ -650,6 +717,10 @@ function switchLang() {
   if(t.hero_sub) document.querySelector('.hero .sub').textContent = t.hero_sub;
   if(t.section_features) document.querySelector('#features .section-title').textContent = t.section_features;
   if(t.section_features_sub) document.querySelector('#features .section-sub').textContent = t.section_features_sub;
+  if(t.section_devices) document.querySelector('#devices .section-title').textContent = t.section_devices;
+  if(t.section_devices_sub) document.querySelector('#devices .section-sub').textContent = t.section_devices_sub;
+  if(t.section_testers) document.querySelector('#testers .section-title').textContent = t.section_testers;
+  if(t.section_testers_sub) document.querySelector('#testers .section-sub').textContent = t.section_testers_sub;
   if(t.section_screenshots) document.querySelector('#screenshots .section-title').textContent = t.section_screenshots;
   if(t.section_screenshots_sub) document.querySelector('#screenshots .section-sub').textContent = t.section_screenshots_sub;
   if(t.section_name) document.querySelector('#name .section-title').textContent = t.section_name;
@@ -793,7 +864,7 @@ document.querySelectorAll('.reveal').forEach(el => observer.observe(el));
     if(items.length === 0) throw new Error('No releases found');
     // parseDevelopmentLog 已按版本号倒序；交替左右布局
     container.innerHTML = items.map((item, i) => `
-      <div class="timeline-item" style="animation-delay:${i * 0.08}s">
+      <div class="timeline-item reveal" style="transition-delay:${Math.min(i * 0.04, 0.28)}s">
         <div class="timeline-version-badge">${item.version}</div>
         <div class="timeline-item-inner">
           <div class="timeline-date">${item.date}</div>

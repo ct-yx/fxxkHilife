@@ -141,6 +141,10 @@ class SoundQualityHandler : HuaweiDeviceHandler {
         driver.sendPackage(HuaweiSppPackage.readRequest(b(0x2b, 0xa3), 1))?.let { onPackage(it, driver) }
     }
 
+    override suspend fun onDriverPackage(driver: SppDriver, pkg: HuaweiSppPackage) {
+        onPackage(pkg, driver)
+    }
+
     private suspend fun onPackage(pkg: HuaweiSppPackage, driver: SppDriver) {
         val value = pkg.findParam(2)
         if (value.size == 1) {
@@ -150,8 +154,23 @@ class SoundQualityHandler : HuaweiDeviceHandler {
     }
 
     override suspend fun setProperty(driver: SppDriver, group: String, prop: String, value: String) {
-        driver.sendPackage(HuaweiSppPackage.changeRequest(b(0x2b, 0xa2), 1 to b(reverseOption(opts, value))))
-        onInit(driver)
+        val target = reverseOption(opts, value)
+        driver.putProperty(group, prop, value)
+        driver.putProperty("sound", "quality_preference_options", options(opts))
+
+        // FreeBuds 6i often answers a 2ba2 write with an async 2ba3 state packet
+        // instead of a direct 2ba2 ACK. Do not block on 2ba2, otherwise the first
+        // switch looks delayed and repeated toggles are needed before UI catches up.
+        driver.sendNowait(HuaweiSppPackage.changeRequest(b(0x2b, 0xa2), 1 to b(target)))
+
+        repeat(3) {
+            kotlinx.coroutines.delay(250)
+            val confirmed = driver.sendPackage(HuaweiSppPackage.readRequest(b(0x2b, 0xa3), 1), timeout = 700)
+            if (confirmed != null) {
+                onPackage(confirmed, driver)
+                if (driver.getProperty("sound", "quality_preference") == value) return
+            }
+        }
     }
 }
 
@@ -233,6 +252,9 @@ class AncHandler(
             } else if (mode == 2 && wVoiceBoost) {
                 out["level"] = awarenessOptions[level] ?: level.toString()
                 out["level_options"] = options(awarenessOptions)
+            } else {
+                out["level"] = ""
+                out["level_options"] = ""
             }
             driver.putProperty("anc", null, out.entries.joinToString("\n") { "${it.key}=${it.value}" })
         }
@@ -249,8 +271,32 @@ class AncHandler(
         } else {
             b(activeMode, valueByte)
         }
-        // 先直接写入目标值，防止 onInit 读请求超时而 UI 无反馈
-        driver.putProperty(group, prop, value)
+        // 先直接写入目标值，防止 onInit 读请求超时而 UI 无反馈。
+        // 切换主模式时同步刷新子模式/选项，避免“降噪强度/通透模式”混用旧 options。
+        if (prop == "mode") {
+            activeMode = valueByte
+            val out = linkedMapOf(
+                "mode" to value,
+                "mode_options" to options(modeOptions),
+            )
+            when (valueByte) {
+                1 -> {
+                    out["level"] = "normal"
+                    out["level_options"] = options(cancelOptions)
+                }
+                2 -> {
+                    out["level"] = "normal"
+                    out["level_options"] = options(awarenessOptions)
+                }
+                else -> {
+                    out["level"] = ""
+                    out["level_options"] = ""
+                }
+            }
+            driver.putProperty("anc", null, out.entries.joinToString("\n") { "${it.key}=${it.value}" })
+        } else {
+            driver.putProperty(group, prop, value)
+        }
         driver.sendPackage(HuaweiSppPackage.changeRequest(b(0x2b, 0x04), 1 to data))
         onInit(driver)
     }

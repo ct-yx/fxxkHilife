@@ -45,12 +45,15 @@ fun AppNavHost(
     val savedScope = remember { loadWallpaperScope(context) }
     var wallpaperScope by remember { mutableStateOf(savedScope) }
 
-    // 检查蓝牙权限
+    // 检查权限：蓝牙为必需；Android 13+ 通知权限缺失时也展示引导页，但允许用户稍后继续。
     val hasPermissions = remember {
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
+        val bluetoothGranted = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
             listOf(Manifest.permission.BLUETOOTH_CONNECT, Manifest.permission.BLUETOOTH_SCAN)
                 .all { context.checkSelfPermission(it) == PackageManager.PERMISSION_GRANTED }
         } else true
+        val notificationGranted = Build.VERSION.SDK_INT < 33 ||
+            context.checkSelfPermission(Manifest.permission.POST_NOTIFICATIONS) == PackageManager.PERMISSION_GRANTED
+        bluetoothGranted && notificationGranted
     }
 
     var currentScreen by remember { mutableStateOf(

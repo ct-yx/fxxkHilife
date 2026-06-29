@@ -32,13 +32,26 @@ fun chineseAncMode(raw: String?): String = when (raw) {
     else -> raw ?: "未知"
 }
 
-fun chineseAncLevel(raw: String?): String = when (raw) {
-    "comfort" -> "舒适"
-    "normal" -> "透传模式"
-    "ultra" -> "深度"
-    "dynamic" -> "动态"
-    "voice_boost" -> "人声增强"
+fun chineseAncLevel(raw: String?, mode: String?): String = when (mode) {
+    "cancellation" -> when (raw) {
+        "comfort" -> "舒适"
+        "normal" -> "均衡"
+        "ultra" -> "深度"
+        "dynamic" -> "动态"
+        else -> raw ?: "未知"
+    }
+    "awareness" -> when (raw) {
+        "normal" -> "普通透传"
+        "voice_boost" -> "人声增强"
+        else -> raw ?: "未知"
+    }
     else -> raw ?: "未知"
+}
+
+fun ancLevelTitle(mode: String?): String = when (mode) {
+    "cancellation" -> "降噪强度"
+    "awareness" -> "通透模式"
+    else -> "ANC 子模式"
 }
 
 fun chineseSoundQuality(raw: String?): String = when (raw) {
@@ -123,13 +136,13 @@ fun DeviceScreen(
                         },
                     )
                 }
-                if (props.ancLevel != null) {
+                if (props.ancLevel != null && displayAncMode != "normal") {
                     item {
                         DeviceOptionItem(
                             icon = Icons.Default.Tune,
-                            title = "降噪强度",
-                            current = chineseAncLevel(props.ancLevel),
-                            options = props.ancLevelOptions.map(::chineseAncLevel),
+                            title = ancLevelTitle(displayAncMode),
+                            current = chineseAncLevel(props.ancLevel, displayAncMode),
+                            options = props.ancLevelOptions.map { chineseAncLevel(it, displayAncMode) },
                             rawOptions = props.ancLevelOptions,
                             onSelect = { viewModel.setProperty("anc", "level", it) }
                         )

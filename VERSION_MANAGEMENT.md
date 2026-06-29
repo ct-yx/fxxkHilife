@@ -3,17 +3,17 @@
 > 版本号统一修改入口，按清单逐一更新。
 
 ## 当前版本
-- **v2.7.3** (versionCode=22, 2026-06-29)
+- **v2.7.4** (versionCode=23, 2026-06-29)
 
 ## 版本号位置
 
 | 位置 | 当前值 |
 |------|--------|
-| `app/build.gradle.kts` | versionCode=22, versionName="2.7.3" |
-| `app/src/main/res/values/strings.xml` | version_name=2.7.3 |
-| `README.md` | v2.7.3 |
-| `README_EN.md` | v2.7.3 |
-| `DEVELOPMENT_LOG.md` | v2.7.3 (末尾) |
+| `app/build.gradle.kts` | versionCode=23, versionName="2.7.4" |
+| `app/src/main/res/values/strings.xml` | version_name=2.7.4 |
+| `README.md` | v2.7.4 |
+| `README_EN.md` | v2.7.4 |
+| `DEVELOPMENT_LOG.md` | v2.7.4 (末尾) |
 
 ## 历史版本
 

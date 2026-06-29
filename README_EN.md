@@ -5,16 +5,93 @@
 <h1 align="center">fxxkHilife</h1>
 
 <p align="center">
-  <b>A lightweight offline controller for HUAWEI FreeBuds / HONOR Earbuds</b>
+  <b>An open-source offline controller for HUAWEI FreeBuds / HONOR Earbuds</b><br>
+  <sub>No HUAWEI account · No ads · No cloud dependency · Direct Bluetooth SPP control</sub>
 </p>
-> **v2.7.3** — Auto-connect and low-latency fix: auto-connect now checks system Bluetooth connection first; auto low-latency/game mode starts immediately after connection initialization and retries until confirmed; logs include version header.
 
->
-> Controls your earbuds directly via classic Bluetooth SPP — no login, no ads, fully offline.
+<p align="center">
+  <a href="https://ct-yx.github.io/fxxkHilife/"><b>Project Home</b></a> ·
+  <a href="./README.md">中文</a> ·
+  <a href="https://github.com/ct-yx/fxxkHilife/releases/latest">Download latest</a> ·
+  <a href="https://github.com/ct-yx/fxxkHilife/issues">Report / Join testing</a>
+</p>
 
-**[Project Home](https://ct-yx.github.io/fxxkHilife/) · [中文](./README.md) | English**
+> **Current version: v2.7.4**
+> Fixes first-toggle sync for sound quality preference, ANC cancellation/awareness sub-mode option mix-ups, and adds notification plus background/autostart guidance to the permission screen.
 
-This project references protocol reverse engineering work from [OpenFreebuds](https://github.com/melianmiko/OpenFreebuds).
+---
+
+## What is this?
+
+fxxkHilife is a third-party, open-source, offline control panel for HUAWEI FreeBuds / HONOR Earbuds. It aims to restore everyday earbud controls without requiring account login, vendor ecosystem services, network access, ads, or data upload.
+
+It communicates with earbuds directly through classic Bluetooth **SPP / RFCOMM**. The protocol work is based on [OpenFreebuds](https://github.com/melianmiko/OpenFreebuds), with an Android / Jetpack Compose interface built on top.
+
+The project is still evolving quickly. Testers with more earbud models are very welcome to help verify protocol compatibility.
+
+---
+
+## Key features
+
+- **v2.7.4 fixes**: sound quality preference now syncs after the first toggle; ANC awareness mode shows the correct sub-mode title/options; the permission screen now includes notification permission plus background/autostart setting shortcuts.
+
+- **Connection and auto-connect**: scan HUAWEI / HONOR earbuds, save known devices, auto-connect on app launch / boot / foreground service; auto-connect is gated by system Bluetooth connection state before opening SPP.
+- **ANC / Awareness / Off**: switch ANC modes from the in-app pill slider, Quick Settings Tile, or persistent notification actions.
+- **Low-latency / game mode**: manual switch plus optional auto low-latency; after SPP initialization, the app starts immediately and retries every 500ms for up to 30s until confirmed.
+- **Battery and wearing state**: left/right/case battery levels, charging state, wearing detection, auto-pause.
+- **Gestures and audio preferences**: double tap, triple tap, long press, swipe gestures, sound quality vs connectivity preference, voice prompt language read/write.
+- **Persistent notification and logs**: notification shows ANC, low-latency, sound quality, battery, and listening duration; debug terminal can inspect raw SPP logs, export logs, and write properties.
+- **UI experience**: Material3 + Jetpack Compose, dark/light/system themes, wallpaper scope, Chinese option mapping, multi-screen navigation.
+
+---
+
+## Supported / planned-to-verify devices
+
+> “Supported” means the app already has model detection and capability tables. Actual behavior may vary by firmware, region, and Android Bluetooth stack.
+> **Main tested device: FreeBuds 6i. Other models need tester feedback.**
+
+| Device | Status | Notes |
+|--------|--------|-------|
+| HUAWEI FreeBuds 6i | Tested | Main development device; ANC, gestures, battery, low-latency, and sound preference are being continuously tuned |
+| HUAWEI FreeBuds 5i | Capability table ready, needs testing | ANC, ANC level, gestures, sound preference, low-latency |
+| HUAWEI FreeBuds 4i / HONOR Earbuds 2 / 2 Lite / SE | Capability table ready, needs testing | Basic ANC, battery, wear detection, double/long tap, auto-pause |
+| HUAWEI FreeBuds Pro | Capability table ready, needs testing | ANC, voice boost, swipe/long press, dual-connect capabilities may vary |
+| HUAWEI FreeBuds Pro 2 | Capability table ready, needs testing | ANC, gestures, sound preference, EQ, dual-connect need verification |
+| HUAWEI FreeBuds Pro 3 / Pro 4 / FreeClip | Capability table ready, needs testing | Newer devices with more capabilities; tester feedback is especially useful |
+| HUAWEI FreeBuds SE / SE 2 / SE 4 | Capability table ready, needs testing | SE models differ significantly in available capabilities |
+| HUAWEI FreeBuds Studio | Capability table ready, needs testing | Headphones; battery and wearing behavior differ from TWS earbuds |
+| HUAWEI FreeLace Pro / Pro 2 | Capability table ready, needs testing | Neckband devices; some TWS features do not apply |
+| Other HUAWEI / HONOR Earbuds | Can try generic connection | Unknown models use generic handlers; logs are welcome |
+
+---
+
+## Testers wanted
+
+If you own any of the devices above, especially **FreeBuds 5i / Pro series / SE series / FreeClip / FreeLace**, testing feedback is very helpful.
+
+Please include:
+
+1. Earbud model and firmware version
+2. Phone model, Android version / ROM
+3. App version (v2.7.3+ logs include it automatically)
+4. Which features work and which do not
+5. Exported log from the in-app “Share log” action
+6. For connection issues, whether Android system Bluetooth already shows the earbuds as connected
+
+Feedback:
+
+- GitHub Issues: <https://github.com/ct-yx/fxxkHilife/issues>
+- Releases: <https://github.com/ct-yx/fxxkHilife/releases>
+
+---
+
+## Known limitations
+
+- The control channel currently depends on classic Bluetooth SPP; some Android ROMs may restrict background Bluetooth behavior.
+- Different firmware versions may respond differently to the same commands; untested models may have partial handler initialization failures.
+- Battery, ANC, and gesture capabilities are filtered by model, but the capability table still needs calibration from real devices.
+- EQ Preset / Custom EQ and Dual Connect are known protocol/capability targets, but UI and stable write flows are not complete yet.
+- This is not an official app and does not guarantee feature parity with the official HiLife / AI Life app.
 
 ---
 
@@ -26,54 +103,11 @@ cd fxxkHilife
 ./gradlew :app:assembleDebug
 ```
 
----
-
-## Project Status
-
-Current version: **v2.7.3**
-
-### Completed
-- **Auto low-latency fix**: starts immediately after connection initialization, retries every 500ms, and times out after 30s if not confirmed.
-- **Auto-connect gate**: all auto-connect paths verify the earbuds are already connected by system Bluetooth before opening the SPP control channel.
-- **Log version header**: startup logs include versionName/versionCode for easier log provenance.
-- **Pill sliders**: ANC mode and theme mode use long pill-shaped slider controls; ANC keeps circular icons for all three modes.
-- **Global wallpaper fix**: wallpaper scope (All / Home only / Settings only) is now actually rendered as page background.
-- **Adaptive polling**: 800ms foreground high-frequency, 5s background low-frequency, driven by Activity lifecycle
-- **Tri-state theme**: Follow system / Dark / Light with long pill-shaped slider selector
-- **Wallpaper system**: Import custom image wallpaper (coil AsyncImage), scope selector (All / Home only / Settings only)
-- **Notification ANC quick-switch**: Toggle ANC mode directly from notification bar (Off / ANC / Awareness), three Action buttons
-- **Notification live status**: Persistent notification shows ANC mode, sound quality, low‑latency, and listening duration (instant property refresh plus 60s duration refresh; battery uses existing low-frequency repository data)
-- **Log control**: Configurable log retention lines (500/1000/2000/5000/10000)
-- **Navigation refactor**: Disconnect button moved to saved-device list on Home, red delete icon
-- **ANC pill slider**: Off / ANC / Awareness long slider with circular icon bases, reactive instant switching
-- **Settings overhaul**: Theme switch, wallpaper import + scope, app details (project idea / GitHub / update link)
-- **Five-screen navigation**: Permission Guide → Home (saved devices + collapsible scan) → Device → Gesture sub‑page → Settings
-- **Saved‑device home**: auto‑persist connected device addresses (StringSet), tap to reconnect, scan collapsed below
-- **Gesture sub‑page**: double‑tap / triple‑tap / swipe / long‑press in dedicated screen with full chinese labels
-- **Instant ANC / Low‑Latency refresh**: setProperty writes expected value first then sends command, no polling wait
-- **Faster polling**: property sync 10s → 3s, setProperty adds 100ms delay + syncProps
-- **Disconnect guard**: SppDriver recvLoop sets isConnected=false on exit, prevents Broken pipe
-- **Full chinese label mapping**: Noise cancel / Transparency / Off, Sound quality / Connection first, Play/Pause / Next track etc.
-- **Connection persistence**: save device address via SharedPreferences, stay connected on back‑navigation
-- **Auto‑connect**: app launch reconnects the last saved earbuds; scan page still supports manual device selection
-- **Background retry**: failed init handlers retried every 30s until successful
-- **Settings screen**: global top‑right entry with version, saved device, debug terminal, log sharing
-- **Log sharing**: one‑tap export current SPP logs as a text file
-- 13 functional Handlers (info/battery/anc/double_tap/triple_tap/swipe/long_tap/auto_pause/low_latency/sound_quality/voice_language/in_ear/logs)
-- Staggered parallel init (80ms gap, 1.5s fast‑fail, 3 retries, 10s global timeout)
-- ANC dual notification (active 2b2a + passive push 2b2c)
-- Full battery parsing (L/R/Case/charging status)
-- Capability‑table per‑model Handler filtering
-- FreeBuds 6i verified: 9/13 handlers init in ~5.5s
-- CI auto‑builds and publishes Release
-
-### Known Issues
-- 6i Bluetooth channel congestion: device_info/gesture_double/gesture_swipe/voice_language may fail init (auto‑retried every 30s)
-- EQ Preset/Custom and Dual Connect: not yet implemented
-- FileProvider registration needed in AndroidManifest.xml for log sharing
+Release APKs are built and published automatically by GitHub CI.
 
 ---
 
-## License
+## Disclaimer
 
-For educational and personal research purposes only. Commercial use prohibited.
+For educational and personal research purposes only. Commercial use is prohibited.
+Use at your own risk. This project is not affiliated with HUAWEI or HONOR.
