@@ -265,8 +265,10 @@ nav .links a:hover{color:#fff}
   transition:all .5s cubic-bezier(.16,1,.3,1);
 }
 .screenshot-card:hover{transform:translateY(-6px) scale(1.01);box-shadow:0 20px 60px rgba(0,0,0,.4);border-color:rgba(124,124,240,.2);}
-.screenshot-card img{width:100%;height:auto;display:block}
+.screenshot-card img,.screenshot-card video{width:100%;height:auto;display:block;background:#050508}
+.screenshot-card video{aspect-ratio:9/16;object-fit:cover}
 .screenshot-card .caption{padding:14px 18px 18px;font-size:13px;color:rgba(255,255,255,.4);text-align:center}
+.screenshot-card .caption strong{display:block;color:rgba(255,255,255,.72);font-size:14px;margin-bottom:3px}
 
 /* ===== TIMELINE ===== */
 .timeline{position:relative;max-width:800px;margin:0 auto;padding:10px 0}
@@ -599,16 +601,24 @@ footer .spacer{display:inline-block;margin:0 8px;color:rgba(255,255,255,.1)}
 
 <!-- === SCREENSHOTS === -->
 <section id="screenshots" style="scroll-margin-top:72px" class="reveal">
-  <h2 class="section-title" data-i18n="section_screenshots">应用截屏</h2>
-  <p class="section-sub" data-i18n="section_screenshots_sub">FreeBuds 6i 实机运行的 fxxkHilife</p>
+  <h2 class="section-title" data-i18n="section_screenshots">功能展示</h2>
+  <p class="section-sub" data-i18n="section_screenshots_sub">FreeBuds 6i 实机录制：初次进入、常驻通知、自动低延迟与不打开应用切换 ANC</p>
   <div class="screenshots-grid">
     <div class="screenshot-card reveal reveal-delay-1">
-      <img src="./screenshot_home.jpg" alt="fxxkHilife 主页" loading="lazy">
-      <div class="caption">主页 · 已保存设备列表 + 扫描新设备</div>
+      <video src="./demo_first_launch.mp4" controls preload="metadata" playsinline muted></video>
+      <div class="caption"><strong>初次进入应用展示</strong>权限引导、设备扫描与主界面流程。</div>
     </div>
     <div class="screenshot-card reveal reveal-delay-2">
-      <img src="./screenshot_device.jpg" alt="fxxkHilife 设备详情" loading="lazy">
-      <div class="caption">设备详情 · ANC 控制 / 手势 / 音频偏好</div>
+      <img src="./notification_status.jpg" alt="常驻通知信息显示展示" loading="lazy">
+      <div class="caption"><strong>常驻通知 · 信息显示</strong>展示 ANC、低延迟、音质、电量与听音时长。</div>
+    </div>
+    <div class="screenshot-card reveal reveal-delay-3">
+      <video src="./demo_auto_low_latency.mp4" controls preload="metadata" playsinline muted></video>
+      <div class="caption"><strong>重新连接后自动开启低延迟</strong>耳机重新连接手机后自动进入游戏/低延迟模式。</div>
+    </div>
+    <div class="screenshot-card reveal reveal-delay-4">
+      <video src="./demo_anc_without_app.mp4" controls preload="metadata" playsinline muted></video>
+      <div class="caption"><strong>不打开应用切换 ANC</strong>通过常驻通知 / 快捷入口切换 ANC 模式。</div>
     </div>
   </div>
 </section>
@@ -662,8 +672,8 @@ const i18n = {
     'section_devices_sub': '已有型号识别与能力表；不同固件和系统蓝牙栈可能影响实际表现，欢迎提交日志帮助校准',
     'section_testers': '正在招募测试者',
     'section_testers_sub': '如果你有 FreeBuds 5i、Pro 系列、SE 系列、FreeClip 或 FreeLace，欢迎帮助测试',
-    'section_screenshots': '应用截屏',
-    'section_screenshots_sub': 'FreeBuds 6i 实机运行的 fxxkHilife',
+    'section_screenshots': '功能展示',
+    'section_screenshots_sub': 'FreeBuds 6i 实机录制：初次进入、常驻通知、自动低延迟与不打开应用切换 ANC',
     'section_name': '名字的意味',
     'section_name_sub': '一个名字背后的清醒与温柔',
     'section_philosophy': '项目理念',
@@ -688,8 +698,8 @@ const i18n = {
     'section_devices_sub': 'Model detection and capability tables are ready; firmware and Android Bluetooth stacks may affect behavior, logs are welcome',
     'section_testers': 'Testers Wanted',
     'section_testers_sub': 'If you own FreeBuds 5i, Pro series, SE series, FreeClip or FreeLace, your feedback is welcome',
-    'section_screenshots': 'Screenshots',
-    'section_screenshots_sub': 'fxxkHilife running on FreeBuds 6i',
+    'section_screenshots': 'Demos',
+    'section_screenshots_sub': 'Recorded on FreeBuds 6i: first launch, persistent notification, auto low-latency, and ANC switching without opening the app',
     'section_name': 'The Meaning',
     'section_name_sub': 'The clarity and gentleness behind a name',
     'section_philosophy': 'Philosophy',

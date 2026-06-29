@@ -45,6 +45,19 @@ The project is still evolving quickly. Testers with more earbud models are very 
 
 ---
 
+## Demos
+
+> Recorded on FreeBuds 6i. More previews are available on the [project home page](https://ct-yx.github.io/fxxkHilife/).
+
+| Demo | File |
+|------|------|
+| First launch: permission guide, scan, and home flow | [`docs/demo_first_launch.mp4`](./docs/demo_first_launch.mp4) |
+| Persistent notification status: ANC, low-latency, sound quality, battery, listening duration | [`docs/notification_status.jpg`](./docs/notification_status.jpg) |
+| Auto low-latency / game mode after reconnecting to phone | [`docs/demo_auto_low_latency.mp4`](./docs/demo_auto_low_latency.mp4) |
+| Switch ANC without opening the app | [`docs/demo_anc_without_app.mp4`](./docs/demo_anc_without_app.mp4) |
+
+---
+
 ## Supported / planned-to-verify devices
 
 > “Supported” means the app already has model detection and capability tables. Actual behavior may vary by firmware, region, and Android Bluetooth stack.

@@ -45,6 +45,19 @@ fxxkHilife 是一个第三方、开源、离线的耳机控制面板，目标是
 
 ---
 
+## 功能展示
+
+> 以下素材为 FreeBuds 6i 实机录制，更多展示见 [项目主页](https://ct-yx.github.io/fxxkHilife/)。
+
+| 展示 | 文件 |
+|------|------|
+| 初次进入应用：权限引导、扫描与主界面 | [`docs/demo_first_launch.mp4`](./docs/demo_first_launch.mp4) |
+| 常驻通知信息显示：ANC、低延迟、音质、电量、听音时长 | [`docs/notification_status.jpg`](./docs/notification_status.jpg) |
+| 重新连接手机后自动开启低延迟 / 游戏模式 | [`docs/demo_auto_low_latency.mp4`](./docs/demo_auto_low_latency.mp4) |
+| 不打开应用切换 ANC 模式 | [`docs/demo_anc_without_app.mp4`](./docs/demo_anc_without_app.mp4) |
+
+---
+
 ## 已支持 / 计划验证的设备
 
 > “支持”表示项目中已有型号识别与能力表，实际功能会因耳机固件、地区版本、系统蓝牙栈而有差异。
