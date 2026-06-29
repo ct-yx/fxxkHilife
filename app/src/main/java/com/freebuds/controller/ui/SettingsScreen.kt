@@ -50,6 +50,8 @@ fun SettingsScreen(
     onWallpaperChange: (String?) -> Unit,
     wallpaperScope: WallpaperScope,
     onWallpaperScopeChange: (WallpaperScope) -> Unit,
+    displayMode: UiDisplayMode,
+    onDisplayModeChange: (UiDisplayMode) -> Unit,
 ) {
     val context = LocalContext.current
     val connState by viewModel.connectionState.collectAsState()
@@ -96,6 +98,12 @@ fun SettingsScreen(
                         onThemeChange(mode)
                         saveThemeMode(context, mode)
                     }
+                )
+            }
+            item {
+                DisplayModeSelector(
+                    current = displayMode,
+                    onSelect = onDisplayModeChange,
                 )
             }
 
@@ -383,6 +391,57 @@ private fun ThemeSelector(
                         color = if (selected) MaterialTheme.colorScheme.onPrimary
                         else MaterialTheme.colorScheme.onSurface,
                     )
+                }
+            }
+        }
+    }
+}
+
+@Composable
+private fun DisplayModeSelector(
+    current: UiDisplayMode,
+    onSelect: (UiDisplayMode) -> Unit,
+) {
+    Column(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(horizontal = 16.dp, vertical = 8.dp),
+        verticalArrangement = Arrangement.spacedBy(8.dp),
+    ) {
+        Text(
+            "展示模式",
+            style = MaterialTheme.typography.labelLarge,
+            color = MaterialTheme.colorScheme.onSurface,
+            fontWeight = FontWeight.SemiBold,
+        )
+        Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+            UiDisplayMode.entries.forEach { mode ->
+                val selected = mode == current
+                Surface(
+                    modifier = Modifier
+                        .weight(1f)
+                        .clickable { onSelect(mode) },
+                    shape = RoundedCornerShape(22.dp),
+                    color = if (selected) MaterialTheme.colorScheme.primaryContainer
+                    else MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.72f),
+                    tonalElevation = if (selected) 3.dp else 1.dp,
+                ) {
+                    Column(Modifier.padding(14.dp)) {
+                        Text(
+                            mode.label,
+                            style = MaterialTheme.typography.titleSmall,
+                            fontWeight = FontWeight.Bold,
+                            color = if (selected) MaterialTheme.colorScheme.onPrimaryContainer
+                            else MaterialTheme.colorScheme.onSurfaceVariant,
+                        )
+                        Spacer(Modifier.height(4.dp))
+                        Text(
+                            mode.description,
+                            style = MaterialTheme.typography.bodySmall,
+                            color = if (selected) MaterialTheme.colorScheme.onPrimaryContainer.copy(alpha = 0.76f)
+                            else MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.76f),
+                        )
+                    }
                 }
             }
         }

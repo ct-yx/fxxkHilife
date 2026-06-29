@@ -3,17 +3,17 @@
 > 版本号统一修改入口，按清单逐一更新。
 
 ## 当前版本
-- **v2.7.7** (versionCode=26, 2026-06-29)
+- **v2.8.0** (versionCode=27, 2026-06-29)
 
 ## 版本号位置
 
 | 位置 | 当前值 |
 |------|--------|
-| `app/build.gradle.kts` | versionCode=26, versionName="2.7.7" |
-| `app/src/main/res/values/strings.xml` | version_name=2.7.7 |
-| `README.md` | v2.7.7 |
-| `README_EN.md` | v2.7.7 |
-| `DEVELOPMENT_LOG.md` | v2.7.7 (末尾) |
+| `app/build.gradle.kts` | versionCode=27, versionName="2.8.0" |
+| `app/src/main/res/values/strings.xml` | version_name=2.8.0 |
+| `README.md` | v2.8.0 |
+| `README_EN.md` | v2.8.0 |
+| `DEVELOPMENT_LOG.md` | v2.8.0 (末尾) |
 
 ## 一键版本更新脚本
 
@@ -37,6 +37,7 @@ python3 scripts/bump_version.py <versionName> <versionCode> "修复说明"
 
 | 版本 | Code | 日期 | 主要变更 |
 |------|------|------|---------|
+| v2.8.0 | 27 | 2026-06-29 | UI 导航系统重构 / 展示模式基础 / 传统与液态玻璃模式切换入口 |
 | v2.7.7 | 26 | 2026-06-29 | FreeBuds 7i 临时保守能力表 / 标记后续大版本多型号适配计划 |
 | v2.7.6 | 25 | 2026-06-29 | 修复首次切到降噪旧状态包乱跳 / 恢复充电盒 100% 电量显示 / 增加一键版本更新脚本 |
 | v2.7.2 | 21 | 2026-06-29 | ANC/主题长条胶囊滑块 / ANC 圆形图标滑块 / 全局壁纸背景修复 |

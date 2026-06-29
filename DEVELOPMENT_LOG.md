@@ -524,3 +524,26 @@
 - versionName: 2.7.7
 - tag: v2.7.7
 
+## v2.8.0 (2026-06-29)
+
+### UI 导航系统重构
+- `AppNavHost` 从手动 `currentScreen` 状态切换迁移为 Navigation Compose `NavHost` / `rememberNavController`。
+- 修复从设备详情返回主页后，点击已保存耳机只触发连接但无法进入详情页的问题。
+- 修复设置页返回依赖连接状态导致来源混乱的问题，改为标准返回栈 `popBackStack()`。
+- 手势页、扫描页、设置页统一使用导航返回栈，系统边缘返回可回到上一级页面，不再直接退到桌面。
+
+### 展示模式基础
+- 新增 `UiDisplayMode`：`CLASSIC` 传统展示、`LIQUID_GLASS` 液态玻璃。
+- 新增 `loadUiDisplayMode()` / `saveUiDisplayMode()`，通过 `fxxk_ui.display_mode` 持久化展示模式。
+- 设置页新增“展示模式”切换入口，为后续液态玻璃 UI 重构提供开关。
+- 当前默认仍为传统展示模式，液态玻璃模式先作为后续页面改造的入口，不强制替换现有 UI。
+
+### 依赖
+- 新增 `androidx.navigation:navigation-compose:2.8.5`。
+- Haze 依赖已存在，后续液态玻璃组件将基于 `dev.chrisbanes.haze` 与本地 `third_party/haze` 参考实现继续推进。
+
+### 发布
+- versionCode: 27
+- versionName: 2.8.0
+- tag: v2.8.0
+

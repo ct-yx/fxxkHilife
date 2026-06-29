@@ -8,20 +8,28 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.ui.draw.alpha
 import androidx.compose.runtime.*
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
+import androidx.navigation.compose.NavHost
+import androidx.navigation.compose.composable
+import androidx.navigation.compose.currentBackStackEntryAsState
+import androidx.navigation.compose.rememberNavController
 import coil.compose.AsyncImage
 import com.freebuds.controller.data.ConnectionState
 import com.freebuds.controller.data.DeviceViewModel
-import com.freebuds.controller.ui.theme.loadThemeMode
 import com.freebuds.controller.ui.theme.ThemeMode
-import com.freebuds.controller.ui.loadWallpaperScope
+import com.freebuds.controller.ui.theme.loadThemeMode
 
-enum class Screen {
-    PermissionGuide, Home, Scan, Device, Gesture, Settings
+private object Route {
+    const val PermissionGuide = "permission_guide"
+    const val Home = "home"
+    const val Scan = "scan"
+    const val Device = "device"
+    const val Gesture = "gesture"
+    const val Settings = "settings"
 }
 
 @Composable
@@ -32,11 +40,13 @@ fun AppNavHost(
 ) {
     val context = LocalContext.current
     val connState by viewModel.connectionState.collectAsState()
+    val navController = rememberNavController()
+    val backStackEntry by navController.currentBackStackEntryAsState()
+    val currentRoute = backStackEntry?.destination?.route
 
-    // 主题由 MainActivity 管理，AppNavHost 通过 onThemeChange 回调通知 MainActivity
-    // currentTheme 从 SharedPreferences 加载初始值，后续由 SettingsScreen 回调更新
     val initialTheme = remember { loadThemeMode(context) }
     var currentTheme by remember { mutableStateOf(initialTheme) }
+
     val savedWallpaper = remember {
         context.getSharedPreferences("fxxk_theme", android.content.Context.MODE_PRIVATE)
             .getString("wallpaper_uri", null)
@@ -45,7 +55,9 @@ fun AppNavHost(
     val savedScope = remember { loadWallpaperScope(context) }
     var wallpaperScope by remember { mutableStateOf(savedScope) }
 
-    // 检查权限：蓝牙为必需；Android 13+ 通知权限缺失时也展示引导页，但允许用户稍后继续。
+    val initialDisplayMode = remember { loadUiDisplayMode(context) }
+    var displayMode by remember { mutableStateOf(initialDisplayMode) }
+
     val hasPermissions = remember {
         val bluetoothGranted = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
             listOf(Manifest.permission.BLUETOOTH_CONNECT, Manifest.permission.BLUETOOTH_SCAN)
@@ -56,30 +68,18 @@ fun AppNavHost(
         bluetoothGranted && notificationGranted
     }
 
-    var currentScreen by remember { mutableStateOf(
-        if (!hasPermissions) Screen.PermissionGuide else Screen.Home
-    ) }
+    val startDestination = remember { if (!hasPermissions) Route.PermissionGuide else Route.Home }
 
     LaunchedEffect(connState) {
-        if (connState is ConnectionState.Connected) {
-            currentScreen = Screen.Device
-        }
-    }
-
-    LaunchedEffect(connState) {
-        if (connState is ConnectionState.Disconnected &&
-            currentScreen != Screen.Home &&
-            currentScreen != Screen.Scan &&
-            currentScreen != Screen.PermissionGuide &&
-            !currentScreen.name.startsWith(Screen.Gesture.name)) {
-            currentScreen = Screen.Home
+        if (connState is ConnectionState.Connected && currentRoute != Route.Device) {
+            navController.navigate(Route.Device) { launchSingleTop = true }
         }
     }
 
     val showWallpaper = wallpaperUri != null && when (wallpaperScope) {
         WallpaperScope.ALL -> true
-        WallpaperScope.HOME -> currentScreen == Screen.Home
-        WallpaperScope.SETTINGS -> currentScreen == Screen.Settings
+        WallpaperScope.HOME -> currentRoute == Route.Home
+        WallpaperScope.SETTINGS -> currentRoute == Route.Settings
     }
 
     Box(
@@ -93,67 +93,95 @@ fun AppNavHost(
                 contentDescription = null,
                 modifier = Modifier
                     .fillMaxSize()
-                    .alpha(0.35f),
+                    .alpha(if (displayMode == UiDisplayMode.LIQUID_GLASS) 0.5f else 0.35f),
                 contentScale = ContentScale.Crop,
             )
         }
 
-        when (currentScreen) {
-        Screen.PermissionGuide -> PermissionGuideScreen(
-            onGranted = { currentScreen = Screen.Home }
-        )
-        Screen.Home -> HomeScreen(
-            viewModel = viewModel,
-            onDeviceClick = { address ->
-                viewModel.autoConnectSaved(address)
-            },
-            onRemoveDevice = { address ->
-                viewModel.removeSavedDevice(address)
-                if (viewModel.connectionState.value is ConnectionState.Connected) {
-                    viewModel.disconnect()
-                }
-            },
-            onSettings = { currentScreen = Screen.Settings },
-            onScan = { currentScreen = Screen.Scan },
-        )
-        Screen.Scan -> ScanScreen(
-            viewModel = viewModel,
-            onBack = { currentScreen = Screen.Home },
-            onDeviceSelected = { address ->
-                viewModel.autoConnectSaved(address)
-                currentScreen = Screen.Device
-            },
-        )
-        Screen.Device -> DeviceScreen(
-            viewModel = viewModel,
-            onBack = { currentScreen = Screen.Home },
-            onGesture = { currentScreen = Screen.Gesture },
-            onSettings = { currentScreen = Screen.Settings },
-            onOpenTerminal = onOpenTerminal,
-        )
-        Screen.Gesture -> GestureScreen(
-            props = viewModel.props.collectAsState().value,
-            viewModel = viewModel,
-            onBack = { currentScreen = Screen.Device },
-        )
-        Screen.Settings -> SettingsScreen(
-            viewModel = viewModel,
-            onBack = {
-                currentScreen = when (connState) {
-                    is ConnectionState.Connected -> Screen.Device
-                    else -> Screen.Home
-                }
-            },
-            themeMode = currentTheme,
-            onThemeChange = { mode ->
-                currentTheme = mode
-                onThemeChange(mode)
-            },
-            wallpaperUri = wallpaperUri,
-            onWallpaperChange = { wallpaperUri = it },
-            wallpaperScope = wallpaperScope,
-            onWallpaperScopeChange = { wallpaperScope = it },
-        )
+        NavHost(
+            navController = navController,
+            startDestination = startDestination,
+        ) {
+            composable(Route.PermissionGuide) {
+                PermissionGuideScreen(
+                    onGranted = {
+                        navController.navigate(Route.Home) {
+                            popUpTo(Route.PermissionGuide) { inclusive = true }
+                            launchSingleTop = true
+                        }
+                    }
+                )
+            }
+
+            composable(Route.Home) {
+                HomeScreen(
+                    viewModel = viewModel,
+                    onDeviceClick = { address ->
+                        viewModel.autoConnectSaved(address)
+                        navController.navigate(Route.Device) { launchSingleTop = true }
+                    },
+                    onRemoveDevice = { address ->
+                        viewModel.removeSavedDevice(address)
+                        if (viewModel.connectionState.value is ConnectionState.Connected) {
+                            viewModel.disconnect()
+                        }
+                    },
+                    onSettings = { navController.navigate(Route.Settings) { launchSingleTop = true } },
+                    onScan = { navController.navigate(Route.Scan) { launchSingleTop = true } },
+                )
+            }
+
+            composable(Route.Scan) {
+                ScanScreen(
+                    viewModel = viewModel,
+                    onBack = { navController.popBackStack() },
+                    onDeviceSelected = { address ->
+                        viewModel.autoConnectSaved(address)
+                        navController.navigate(Route.Device) { launchSingleTop = true }
+                    },
+                )
+            }
+
+            composable(Route.Device) {
+                DeviceScreen(
+                    viewModel = viewModel,
+                    onBack = {
+                        navController.popBackStack(Route.Home, inclusive = false)
+                    },
+                    onGesture = { navController.navigate(Route.Gesture) { launchSingleTop = true } },
+                    onSettings = { navController.navigate(Route.Settings) { launchSingleTop = true } },
+                    onOpenTerminal = onOpenTerminal,
+                )
+            }
+
+            composable(Route.Gesture) {
+                GestureScreen(
+                    props = viewModel.props.collectAsState().value,
+                    viewModel = viewModel,
+                    onBack = { navController.popBackStack() },
+                )
+            }
+
+            composable(Route.Settings) {
+                SettingsScreen(
+                    viewModel = viewModel,
+                    onBack = { navController.popBackStack() },
+                    themeMode = currentTheme,
+                    onThemeChange = { mode ->
+                        currentTheme = mode
+                        onThemeChange(mode)
+                    },
+                    wallpaperUri = wallpaperUri,
+                    onWallpaperChange = { wallpaperUri = it },
+                    wallpaperScope = wallpaperScope,
+                    onWallpaperScopeChange = { wallpaperScope = it },
+                    displayMode = displayMode,
+                    onDisplayModeChange = { mode ->
+                        displayMode = mode
+                        saveUiDisplayMode(context, mode)
+                    },
+                )
+            }
         }
     }
 }
