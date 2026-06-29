@@ -11,9 +11,11 @@ import kotlinx.coroutines.delay
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
+import com.freebuds.controller.R
 import com.freebuds.controller.data.ConnectionState
 import com.freebuds.controller.data.DeviceProps
 import com.freebuds.controller.data.DeviceViewModel
@@ -369,6 +371,12 @@ private fun AncModeSlider(
         options.forEach { raw ->
             val label = chineseAncMode(raw)
             val isSelected = raw == current
+            val iconId = when (raw) {
+                "normal" -> R.drawable.ic_anc_normal
+                "cancellation" -> R.drawable.ic_anc_cancellation
+                "awareness" -> R.drawable.ic_anc_awareness
+                else -> null
+            }
             Surface(
                 modifier = Modifier
                     .weight(1f)
@@ -380,17 +388,32 @@ private fun AncModeSlider(
                     MaterialTheme.colorScheme.surfaceVariant,
                 tonalElevation = if (isSelected) 2.dp else 0.dp,
             ) {
-                Text(
-                    label,
-                    modifier = Modifier.padding(vertical = 12.dp),
-                    textAlign = TextAlign.Center,
-                    style = MaterialTheme.typography.labelLarge,
-                    fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Normal,
-                    color = if (isSelected)
-                        MaterialTheme.colorScheme.onPrimary
-                    else
-                        MaterialTheme.colorScheme.onSurface,
-                )
+                Column(
+                    modifier = Modifier.padding(vertical = 8.dp),
+                    horizontalAlignment = Alignment.CenterHorizontally
+                ) {
+                    if (iconId != null) {
+                        Icon(
+                            painter = painterResource(iconId),
+                            contentDescription = label,
+                            modifier = Modifier.size(24.dp),
+                            tint = if (isSelected)
+                                MaterialTheme.colorScheme.onPrimary
+                            else
+                                MaterialTheme.colorScheme.onSurface
+                        )
+                    }
+                    Text(
+                        label,
+                        textAlign = TextAlign.Center,
+                        style = MaterialTheme.typography.labelLarge,
+                        fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Normal,
+                        color = if (isSelected)
+                            MaterialTheme.colorScheme.onPrimary
+                        else
+                            MaterialTheme.colorScheme.onSurface,
+                    )
+                }
             }
         }
     }

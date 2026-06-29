@@ -16,10 +16,12 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
+import androidx.compose.animation.AnimatedVisibility
 import coil.compose.AsyncImage
 import com.freebuds.controller.BuildConfig
 import com.freebuds.controller.data.DeviceViewModel
@@ -239,6 +241,63 @@ fun SettingsScreen(
                     }
                 )
                 HorizontalDivider()
+            }
+
+            // ── 其他贡献 ──────────────────────────────────────────────────────
+            item { SettingsHeader("其他贡献") }
+            item {
+                var expanded by remember { mutableStateOf(false) }
+                Column {
+                    ListItem(
+                        headlineContent = { Text("第三方图标", fontWeight = FontWeight.Bold) },
+                        supportingContent = { Text("点击展开图标来源与授权信息") },
+                        leadingContent = {
+                            Icon(painter = painterResource(com.freebuds.controller.R.drawable.ic_anc_awareness),
+                                contentDescription = null)
+                        },
+                        trailingContent = {
+                            Icon(if (expanded) Icons.Default.ExpandLess else Icons.Default.ExpandMore,
+                                contentDescription = null)
+                        },
+                        modifier = Modifier.clickable { expanded = !expanded }
+                    )
+                    HorizontalDivider()
+                    AnimatedVisibility(visible = expanded) {
+                        Column(modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp)) {
+                            // 降噪
+                            Icon(painter = painterResource(com.freebuds.controller.R.drawable.ic_anc_cancellation),
+                                contentDescription = null,
+                                modifier = Modifier.size(20.dp))
+                            Spacer(Modifier.height(4.dp))
+                            Text(
+                                "降噪模式：noise canceling by Vanicon studio from Noun Project (CC BY 3.0)",
+                                style = MaterialTheme.typography.bodySmall
+                            )
+                            Spacer(Modifier.height(12.dp))
+
+                            // 通透
+                            Icon(painter = painterResource(com.freebuds.controller.R.drawable.ic_anc_awareness),
+                                contentDescription = null,
+                                modifier = Modifier.size(20.dp))
+                            Spacer(Modifier.height(4.dp))
+                            Text(
+                                "通透模式：noise canceling by Gregor Cresnar from Noun Project (CC BY 3.0)",
+                                style = MaterialTheme.typography.bodySmall
+                            )
+                            Spacer(Modifier.height(12.dp))
+
+                            // 关闭
+                            Icon(painter = painterResource(com.freebuds.controller.R.drawable.ic_anc_normal),
+                                contentDescription = null,
+                                modifier = Modifier.size(20.dp))
+                            Spacer(Modifier.height(4.dp))
+                            Text(
+                                "ANC关闭：Wireless headset by Berkah Icon from Noun Project (CC BY 3.0)",
+                                style = MaterialTheme.typography.bodySmall
+                            )
+                        }
+                    }
+                }
             }
         }
     }
