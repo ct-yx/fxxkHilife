@@ -704,3 +704,18 @@
 - versionName: 2.10.0
 - tag: v2.10.0
 
+## v2.10.1 (2026-06-29)
+
+### 液态玻璃个性化设置
+- 新增 `LiquidGlassConfig` 与 `LocalLiquidGlassConfig`，支持全局读取并持久化液态玻璃参数。
+- 设置页新增“个性化”分组，默认只显示折叠入口，避免设置页过长。
+- 展开后提供类似 Flowmix 的分段预设：玻璃模糊强度、边缘折射、深度效果、可读性增强。
+- “高级模式”作为二级折叠区域，提供 Tint、Refraction、Depth、Radius 滑杆和表面轮廓选择。
+- `AppNavHost` 负责加载/保存配置，并通过 CompositionLocal 让所有 `LiquidGlassCard` / `LiquidGlassPanel` 实时使用最新参数。
+- `LiquidGlassCard` 的参数改为可选值：未显式指定时自动读取用户个性化配置；Preview/特殊卡片仍可单独覆盖。
+
+### 发布
+- versionCode: 39
+- versionName: 2.10.1
+- tag: v2.10.1
+

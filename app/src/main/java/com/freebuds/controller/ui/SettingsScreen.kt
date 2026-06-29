@@ -29,6 +29,8 @@ import com.freebuds.controller.BuildConfig
 import com.freebuds.controller.data.DeviceViewModel
 import com.freebuds.controller.util.LogBuffer
 import com.freebuds.controller.ui.glass.AdaptiveCard
+import com.freebuds.controller.ui.glass.GlassSurfaceProfile
+import com.freebuds.controller.ui.glass.LiquidGlassConfig
 import com.freebuds.controller.ui.theme.ThemeMode
 import dev.chrisbanes.haze.HazeState
 import com.freebuds.controller.ui.theme.saveThemeMode
@@ -54,6 +56,8 @@ fun SettingsScreen(
     onWallpaperScopeChange: (WallpaperScope) -> Unit,
     displayMode: UiDisplayMode,
     hazeState: HazeState?,
+    glassConfig: LiquidGlassConfig,
+    onGlassConfigChange: (LiquidGlassConfig) -> Unit,
     onDisplayModeChange: (UiDisplayMode) -> Unit,
 ) {
     val context = LocalContext.current
@@ -148,6 +152,17 @@ fun SettingsScreen(
                             onDisplayModeChange(mode)
                         }
                     },
+                )
+            }
+
+            // ── 个性化 ──
+            item { SettingsHeader("个性化") }
+            item {
+                LiquidGlassPersonalizationCard(
+                    displayMode = displayMode,
+                    hazeState = hazeState,
+                    config = glassConfig,
+                    onConfigChange = onGlassConfigChange,
                 )
             }
 
@@ -428,6 +443,183 @@ private fun SettingsCard(
                 trailingContent()
             }
         }
+    }
+}
+
+@Composable
+private fun LiquidGlassPersonalizationCard(
+    displayMode: UiDisplayMode,
+    hazeState: HazeState?,
+    config: LiquidGlassConfig,
+    onConfigChange: (LiquidGlassConfig) -> Unit,
+) {
+    var expanded by remember { mutableStateOf(false) }
+    var advancedExpanded by remember { mutableStateOf(false) }
+    AdaptiveCard(
+        displayMode = displayMode,
+        hazeState = hazeState,
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(horizontal = 16.dp, vertical = 6.dp),
+    ) {
+        Row(
+            modifier = Modifier.clickable { expanded = !expanded },
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            Icon(Icons.Default.AutoAwesome, contentDescription = null)
+            Spacer(Modifier.width(12.dp))
+            Column(modifier = Modifier.weight(1f)) {
+                Text("液态玻璃个性化", fontWeight = FontWeight.Bold)
+                Text("调节模糊、边缘折射、深度与可读性", style = MaterialTheme.typography.bodySmall)
+            }
+            Icon(if (expanded) Icons.Default.ExpandLess else Icons.Default.ExpandMore, contentDescription = null)
+        }
+
+        AnimatedVisibility(visible = expanded) {
+            Column(modifier = Modifier.padding(top = 14.dp), verticalArrangement = Arrangement.spacedBy(14.dp)) {
+                ConfigSegmentRow(
+                    title = "玻璃模糊强度",
+                    subtitle = "调整玻璃效果的透明与朦胧程度",
+                    options = listOf(
+                        "通透" to config.copy(tintAlpha = 0.08f, refractionStrength = 0.58f),
+                        "默认" to config.copy(tintAlpha = 0.12f, refractionStrength = 0.72f),
+                        "朦胧" to config.copy(tintAlpha = 0.16f, refractionStrength = 0.86f),
+                    ),
+                    selectedIndex = when {
+                        config.tintAlpha < 0.10f -> 0
+                        config.tintAlpha > 0.14f -> 2
+                        else -> 1
+                    },
+                    onSelect = onConfigChange,
+                )
+                ConfigSegmentRow(
+                    title = "液态玻璃边缘折射",
+                    subtitle = "一种 Lens 效果，增强边缘厚度与折射感",
+                    options = listOf(
+                        "关闭" to config.copy(refractionStrength = 0.35f),
+                        "默认" to config.copy(refractionStrength = 0.72f),
+                        "增强" to config.copy(refractionStrength = 0.92f),
+                    ),
+                    selectedIndex = when {
+                        config.refractionStrength < 0.50f -> 0
+                        config.refractionStrength > 0.82f -> 2
+                        else -> 1
+                    },
+                    onSelect = onConfigChange,
+                )
+                ConfigSegmentRow(
+                    title = "液态玻璃深度效果",
+                    subtitle = "增强玻璃厚度、暗边与层次",
+                    options = listOf(
+                        "关闭" to config.copy(depth = 0.16f),
+                        "默认" to config.copy(depth = 0.42f),
+                        "增强" to config.copy(depth = 0.64f),
+                    ),
+                    selectedIndex = when {
+                        config.depth < 0.25f -> 0
+                        config.depth > 0.55f -> 2
+                        else -> 1
+                    },
+                    onSelect = onConfigChange,
+                )
+                ConfigSegmentRow(
+                    title = "液态玻璃可读性增强",
+                    subtitle = "浅色壁纸下可提高文字背景稳定性",
+                    options = listOf(
+                        "较低" to config.copy(tintAlpha = 0.09f, depth = 0.30f),
+                        "默认" to config.copy(tintAlpha = 0.12f, depth = 0.42f),
+                        "较高" to config.copy(tintAlpha = 0.17f, depth = 0.58f),
+                    ),
+                    selectedIndex = when {
+                        config.tintAlpha < 0.105f -> 0
+                        config.tintAlpha > 0.15f -> 2
+                        else -> 1
+                    },
+                    onSelect = onConfigChange,
+                )
+
+                Row(
+                    modifier = Modifier.clickable { advancedExpanded = !advancedExpanded },
+                    verticalAlignment = Alignment.CenterVertically,
+                ) {
+                    Icon(Icons.Default.Tune, contentDescription = null)
+                    Spacer(Modifier.width(12.dp))
+                    Text("高级模式", modifier = Modifier.weight(1f), fontWeight = FontWeight.SemiBold)
+                    Icon(if (advancedExpanded) Icons.Default.ExpandLess else Icons.Default.ExpandMore, contentDescription = null)
+                }
+                AnimatedVisibility(visible = advancedExpanded) {
+                    Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
+                        GlassSliderRow("Tint", config.tintAlpha, 0.04f..0.20f) {
+                            onConfigChange(config.copy(tintAlpha = it))
+                        }
+                        GlassSliderRow("Refraction", config.refractionStrength, 0.30f..1.00f) {
+                            onConfigChange(config.copy(refractionStrength = it))
+                        }
+                        GlassSliderRow("Depth", config.depth, 0.10f..0.80f) {
+                            onConfigChange(config.copy(depth = it))
+                        }
+                        GlassSliderRow("Radius", config.cornerRadiusDp, 16f..42f) {
+                            onConfigChange(config.copy(cornerRadiusDp = it))
+                        }
+                        ConfigSegmentRow(
+                            title = "表面轮廓",
+                            subtitle = "影响玻璃边缘高光形态",
+                            options = listOf(
+                                "圆角" to config.copy(surfaceProfile = GlassSurfaceProfile.Rounded),
+                                "柔方" to config.copy(surfaceProfile = GlassSurfaceProfile.Squircle),
+                                "圆形" to config.copy(surfaceProfile = GlassSurfaceProfile.Circle),
+                            ),
+                            selectedIndex = when (config.surfaceProfile) {
+                                GlassSurfaceProfile.Rounded -> 0
+                                GlassSurfaceProfile.Squircle -> 1
+                                GlassSurfaceProfile.Circle -> 2
+                            },
+                            onSelect = onConfigChange,
+                        )
+                    }
+                }
+            }
+        }
+    }
+}
+
+@Composable
+private fun ConfigSegmentRow(
+    title: String,
+    subtitle: String,
+    options: List<Pair<String, LiquidGlassConfig>>,
+    selectedIndex: Int,
+    onSelect: (LiquidGlassConfig) -> Unit,
+) {
+    Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+        Text(title, fontWeight = FontWeight.SemiBold)
+        Text(subtitle, style = MaterialTheme.typography.bodySmall)
+        Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+            options.forEachIndexed { index, option ->
+                FilterChip(
+                    selected = index == selectedIndex,
+                    onClick = { onSelect(option.second) },
+                    label = { Text(option.first) },
+                    modifier = Modifier.weight(1f),
+                )
+            }
+        }
+    }
+}
+
+@Composable
+private fun GlassSliderRow(
+    title: String,
+    value: Float,
+    range: ClosedFloatingPointRange<Float>,
+    onValueChange: (Float) -> Unit,
+) {
+    Column {
+        Row(verticalAlignment = Alignment.CenterVertically) {
+            Text(title, modifier = Modifier.weight(1f), style = MaterialTheme.typography.bodySmall)
+            Text(String.format("%.2f", value), style = MaterialTheme.typography.labelSmall)
+        }
+        Slider(value = value, onValueChange = onValueChange, valueRange = range)
     }
 }
 

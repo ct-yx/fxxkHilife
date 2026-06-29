@@ -111,36 +111,43 @@ fun AdaptiveCard(
 fun LiquidGlassCard(
     hazeState: HazeState,
     modifier: Modifier = Modifier,
-    tint: Color = Color.White.copy(alpha = 0.12f),
-    refractionStrength: Float = 0.72f,
-    depth: Float = 0.42f,
-    shape: Shape = RoundedCornerShape(28.dp),
-    cornerRadius: Dp = 28.dp,
-    surfaceProfile: GlassSurfaceProfile = GlassSurfaceProfile.Squircle,
+    tint: Color? = null,
+    refractionStrength: Float? = null,
+    depth: Float? = null,
+    shape: Shape? = null,
+    cornerRadius: Dp? = null,
+    surfaceProfile: GlassSurfaceProfile? = null,
     content: @Composable ColumnScope.() -> Unit,
 ) {
-    val safeRefraction = refractionStrength.coerceIn(0f, 1f)
-    val safeDepth = depth.coerceIn(0f, 1f)
+    val config = LocalLiquidGlassConfig.current
+    val effectiveTint = tint ?: Color.White.copy(alpha = config.tintAlpha)
+    val effectiveRefraction = refractionStrength ?: config.refractionStrength
+    val effectiveDepth = depth ?: config.depth
+    val effectiveCornerRadius = cornerRadius ?: config.cornerRadiusDp.dp
+    val effectiveShape = shape ?: RoundedCornerShape(effectiveCornerRadius)
+    val effectiveSurfaceProfile = surfaceProfile ?: config.surfaceProfile
+    val safeRefraction = effectiveRefraction.coerceIn(0f, 1f)
+    val safeDepth = effectiveDepth.coerceIn(0f, 1f)
     val primaryTint = MaterialTheme.colorScheme.primary.copy(alpha = 0.05f * safeRefraction)
 
     Surface(
         modifier = modifier
-            .clip(shape)
+            .clip(effectiveShape)
             .hazeEffect(state = hazeState) {
                 blurRadius = (20 + 18 * safeRefraction).dp
                 noiseFactor = 0.035f + 0.075f * safeDepth
                 tints = listOf(
-                    HazeTint(tint),
+                    HazeTint(effectiveTint),
                     HazeTint(primaryTint),
                 )
             }
             .liquidGlassOptics(
-                cornerRadius = cornerRadius,
+                cornerRadius = effectiveCornerRadius,
                 refractionStrength = safeRefraction,
                 depth = safeDepth,
-                surfaceProfile = surfaceProfile,
+                surfaceProfile = effectiveSurfaceProfile,
             ),
-        shape = shape,
+        shape = effectiveShape,
         color = Color.White.copy(alpha = 0.025f + 0.04f * safeDepth),
         border = BorderStroke(0.45.dp, Color.White.copy(alpha = 0.12f + 0.12f * safeDepth)),
         tonalElevation = 0.dp,
@@ -155,7 +162,7 @@ fun LiquidGlassCard(
                             Color.White.copy(alpha = 0.018f + 0.035f * safeDepth),
                         )
                     ),
-                    shape = RoundedCornerShape(cornerRadius - 6.dp),
+                    shape = RoundedCornerShape(effectiveCornerRadius - 6.dp),
                 )
                 .padding(16.dp),
             content = content,

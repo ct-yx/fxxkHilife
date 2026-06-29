@@ -22,6 +22,10 @@ import dev.chrisbanes.haze.hazeSource
 import dev.chrisbanes.haze.rememberHazeState
 import com.freebuds.controller.data.ConnectionState
 import com.freebuds.controller.data.DeviceViewModel
+import com.freebuds.controller.ui.glass.LiquidGlassConfig
+import com.freebuds.controller.ui.glass.LocalLiquidGlassConfig
+import com.freebuds.controller.ui.glass.loadLiquidGlassConfig
+import com.freebuds.controller.ui.glass.saveLiquidGlassConfig
 import com.freebuds.controller.ui.theme.ThemeMode
 import com.freebuds.controller.ui.theme.loadThemeMode
 
@@ -59,6 +63,7 @@ fun AppNavHost(
 
     val initialDisplayMode = remember { loadUiDisplayMode(context) }
     var displayMode by remember { mutableStateOf(initialDisplayMode) }
+    var glassConfig by remember { mutableStateOf(loadLiquidGlassConfig(context)) }
     val hazeState = rememberHazeState()
 
     val hasPermissions = remember {
@@ -85,8 +90,9 @@ fun AppNavHost(
         WallpaperScope.SETTINGS -> currentRoute == Route.Settings
     }
 
-    Box(
-        modifier = Modifier
+    CompositionLocalProvider(LocalLiquidGlassConfig provides glassConfig) {
+        Box(
+            modifier = Modifier
             .fillMaxSize()
             .hazeSource(hazeState)
             .background(MaterialTheme.colorScheme.background)
@@ -189,6 +195,11 @@ fun AppNavHost(
                     onWallpaperScopeChange = { wallpaperScope = it },
                     displayMode = displayMode,
                     hazeState = hazeState,
+                    glassConfig = glassConfig,
+                    onGlassConfigChange = { config: LiquidGlassConfig ->
+                        glassConfig = config
+                        saveLiquidGlassConfig(context, config)
+                    },
                     onDisplayModeChange = { mode ->
                         displayMode = mode
                         saveUiDisplayMode(context, mode)
@@ -196,5 +207,6 @@ fun AppNavHost(
                 )
             }
         }
+    }
     }
 }
