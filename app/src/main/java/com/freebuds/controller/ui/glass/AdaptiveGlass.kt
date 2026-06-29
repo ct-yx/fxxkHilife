@@ -134,6 +134,7 @@ fun LiquidGlassCard(
     val effectiveTint = requestedTint.copy(alpha = min(requestedTint.alpha, 0.020f + 0.030f * safeRefraction))
     val primaryTint = MaterialTheme.colorScheme.primary.copy(alpha = 0.018f * safeRefraction)
     val legacyOptics = config.rendererMode == GlassRendererMode.LEGACY_COMPAT
+    val readability = if (legacyOptics) 0f else config.readabilityStrength.coerceIn(0f, 0.7f)
 
     Surface(
         modifier = modifier
@@ -158,7 +159,7 @@ fun LiquidGlassCard(
                 depth = safeDepth,
                 surfaceProfile = effectiveSurfaceProfile,
                 drawInteriorAccents = legacyOptics,
-                flowmixInspired = !legacyOptics,
+                advancedEdgeOptics = !legacyOptics,
             ),
         shape = effectiveShape,
         color = Color.White.copy(alpha = if (legacyOptics) 0.004f + 0.010f * safeDepth else 0f),
@@ -167,7 +168,9 @@ fun LiquidGlassCard(
         shadowElevation = 0.dp,
     ) {
         Column(
-            modifier = Modifier.padding(16.dp),
+            modifier = Modifier
+                .contentReadabilityVeil(readability)
+                .padding(16.dp),
             content = content,
         )
     }
@@ -204,7 +207,7 @@ fun LiquidGlassPanel(
                     depth = 0.34f,
                     surfaceProfile = GlassSurfaceProfile.Rounded,
                     drawInteriorAccents = legacyOptics,
-                    flowmixInspired = !legacyOptics,
+                    advancedEdgeOptics = !legacyOptics,
                 )
                 .background(Color.White.copy(alpha = if (legacyOptics) 0.008f else 0f), shape)
                 .padding(4.dp),
@@ -215,13 +218,36 @@ fun LiquidGlassPanel(
     }
 }
 
+private fun Modifier.contentReadabilityVeil(strength: Float): Modifier {
+    if (strength <= 0f) return this
+    return this.drawWithCache {
+        val safeStrength = strength.coerceIn(0f, 0.7f)
+        val veil = Brush.radialGradient(
+            colors = listOf(
+                Color.Black.copy(alpha = 0.020f * safeStrength),
+                Color.Black.copy(alpha = 0.055f * safeStrength),
+                Color.Transparent,
+            ),
+            center = Offset(size.width * 0.52f, size.height * 0.48f),
+            radius = min(size.width, size.height) * 0.95f,
+        )
+        onDrawWithContent {
+            drawRoundRect(
+                brush = veil,
+                cornerRadius = CornerRadius(20.dp.toPx(), 20.dp.toPx()),
+            )
+            drawContent()
+        }
+    }
+}
+
 private fun Modifier.liquidGlassOptics(
     cornerRadius: Dp,
     refractionStrength: Float,
     depth: Float,
     surfaceProfile: GlassSurfaceProfile,
     drawInteriorAccents: Boolean = true,
-    flowmixInspired: Boolean = false,
+    advancedEdgeOptics: Boolean = false,
 ): Modifier = this.drawWithCache {
     val minSide = min(size.width, size.height)
     val radiusPx = when (surfaceProfile) {
@@ -329,7 +355,7 @@ private fun Modifier.liquidGlassOptics(
                 cap = StrokeCap.Round,
             )
         }
-        if (flowmixInspired) {
+        if (advancedEdgeOptics) {
             drawOval(
                 brush = flowmixCaustic,
                 topLeft = Offset(-size.width * 0.18f, -size.height * 0.24f),

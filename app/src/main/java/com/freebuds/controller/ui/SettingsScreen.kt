@@ -480,14 +480,14 @@ private fun LiquidGlassPersonalizationCard(
             Column(modifier = Modifier.padding(top = 14.dp), verticalArrangement = Arrangement.spacedBy(14.dp)) {
                 ConfigSegmentRow(
                     title = "玻璃渲染方案",
-                    subtitle = "传统为当前兼容实现；最新使用 Haze 2.0 架构，后续会接入官方 liquid glass",
+                    subtitle = "最新为 3.0 主线；传统仅保留为兼容兜底",
                     options = listOf(
-                        "传统" to config.copy(rendererMode = GlassRendererMode.LEGACY_COMPAT),
                         "最新" to config.copy(rendererMode = GlassRendererMode.HAZE_2),
+                        "传统" to config.copy(rendererMode = GlassRendererMode.LEGACY_COMPAT),
                     ),
                     selectedIndex = when (config.rendererMode) {
-                        GlassRendererMode.LEGACY_COMPAT -> 0
-                        GlassRendererMode.HAZE_2 -> 1
+                        GlassRendererMode.HAZE_2 -> 0
+                        GlassRendererMode.LEGACY_COMPAT -> 1
                     },
                     onSelect = onConfigChange,
                 )
@@ -538,15 +538,15 @@ private fun LiquidGlassPersonalizationCard(
                 )
                 ConfigSegmentRow(
                     title = "液态玻璃可读性增强",
-                    subtitle = "浅色壁纸下可提高文字背景稳定性",
+                    subtitle = "复杂/浅色壁纸下保护文字，不改变玻璃主体透明度",
                     options = listOf(
-                        "较低" to config.copy(tintAlpha = 0.09f, depth = 0.30f),
-                        "默认" to config.copy(tintAlpha = 0.12f, depth = 0.42f),
-                        "较高" to config.copy(tintAlpha = 0.17f, depth = 0.58f),
+                        "较低" to config.copy(readabilityStrength = 0.12f),
+                        "默认" to config.copy(readabilityStrength = 0.28f),
+                        "较高" to config.copy(readabilityStrength = 0.48f),
                     ),
                     selectedIndex = when {
-                        config.tintAlpha < 0.105f -> 0
-                        config.tintAlpha > 0.15f -> 2
+                        config.readabilityStrength < 0.20f -> 0
+                        config.readabilityStrength > 0.40f -> 2
                         else -> 1
                     },
                     onSelect = onConfigChange,
@@ -563,8 +563,11 @@ private fun LiquidGlassPersonalizationCard(
                 }
                 AnimatedVisibility(visible = advancedExpanded) {
                     Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
-                        GlassSliderRow("Tint", config.tintAlpha, 0.04f..0.20f) {
+                        GlassSliderRow("Legacy Tint", config.tintAlpha, 0.04f..0.20f) {
                             onConfigChange(config.copy(tintAlpha = it))
+                        }
+                        GlassSliderRow("Readability", config.readabilityStrength, 0.00f..0.70f) {
+                            onConfigChange(config.copy(readabilityStrength = it))
                         }
                         GlassSliderRow("Refraction", config.refractionStrength, 0.30f..1.00f) {
                             onConfigChange(config.copy(refractionStrength = it))

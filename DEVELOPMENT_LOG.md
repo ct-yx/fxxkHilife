@@ -815,3 +815,19 @@
 - versionName: 2.13.1
 - tag: v2.13.1
 
+## v3.0.0 (2026-06-29)
+
+### Haze 2.0 液态玻璃 UI 正式主线
+- 3.0.0 将“最新”液态玻璃渲染方案确立为主线默认配置，传统兼容实现仅保留为兜底代码与设置入口。
+- `LiquidGlassConfig` 默认 `rendererMode` 从 `LEGACY_COMPAT` 切换为 `HAZE_2`。
+- 新增独立 `readabilityStrength` 配置，避免继续用白色 tint / depth 伪装可读性增强。
+- 最新模式下 `LiquidGlassCard` 增加轻量 `contentReadabilityVeil`，使用极低 alpha 暗色径向保护层提升复杂壁纸上的文字稳定性，不改变玻璃主体透明度。
+- 设置页“液态玻璃可读性增强”改为调节 `readabilityStrength`，高级模式新增 `Readability` 滑杆，并将 `Tint` 标记为 `Legacy Tint`。
+- 将临时 `flowmixInspired` 参数重命名为更正式的 `advancedEdgeOptics`，降低代码对参考 App 名称的耦合。
+- 保持 Haze 版本固定在 `2.0.0-alpha03`，等待官方 `haze-liquidglass` 或 Haze 2.0 稳定版发布后再进行下一轮底层迁移。
+
+### 发布
+- versionCode: 47
+- versionName: 3.0.0
+- tag: v3.0.0
+

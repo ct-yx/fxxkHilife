@@ -10,8 +10,9 @@ enum class GlassRendererMode {
 
 /** User-tunable liquid glass parameters persisted from Settings > Personalization. */
 data class LiquidGlassConfig(
-    val rendererMode: GlassRendererMode = GlassRendererMode.LEGACY_COMPAT,
+    val rendererMode: GlassRendererMode = GlassRendererMode.HAZE_2,
     val tintAlpha: Float = 0.12f,
+    val readabilityStrength: Float = 0.28f,
     val refractionStrength: Float = 0.72f,
     val depth: Float = 0.42f,
     val cornerRadiusDp: Float = 28f,
@@ -28,13 +29,14 @@ fun loadLiquidGlassConfig(context: Context): LiquidGlassConfig {
         ?: GlassSurfaceProfile.Squircle.name
     val profile = runCatching { GlassSurfaceProfile.valueOf(profileName) }
         .getOrDefault(GlassSurfaceProfile.Squircle)
-    val rendererName = prefs.getString("renderer_mode", GlassRendererMode.LEGACY_COMPAT.name)
-        ?: GlassRendererMode.LEGACY_COMPAT.name
+    val rendererName = prefs.getString("renderer_mode", GlassRendererMode.HAZE_2.name)
+        ?: GlassRendererMode.HAZE_2.name
     val rendererMode = runCatching { GlassRendererMode.valueOf(rendererName) }
-        .getOrDefault(GlassRendererMode.LEGACY_COMPAT)
+        .getOrDefault(GlassRendererMode.HAZE_2)
     return LiquidGlassConfig(
         rendererMode = rendererMode,
         tintAlpha = prefs.getFloat("tint_alpha", 0.12f).coerceIn(0.04f, 0.20f),
+        readabilityStrength = prefs.getFloat("readability_strength", 0.28f).coerceIn(0.00f, 0.70f),
         refractionStrength = prefs.getFloat("refraction_strength", 0.72f).coerceIn(0.30f, 1.00f),
         depth = prefs.getFloat("depth", 0.42f).coerceIn(0.10f, 0.80f),
         cornerRadiusDp = prefs.getFloat("corner_radius_dp", 28f).coerceIn(16f, 42f),
@@ -47,6 +49,7 @@ fun saveLiquidGlassConfig(context: Context, config: LiquidGlassConfig) {
         .edit()
         .putString("renderer_mode", config.rendererMode.name)
         .putFloat("tint_alpha", config.tintAlpha)
+        .putFloat("readability_strength", config.readabilityStrength)
         .putFloat("refraction_strength", config.refractionStrength)
         .putFloat("depth", config.depth)
         .putFloat("corner_radius_dp", config.cornerRadiusDp)
