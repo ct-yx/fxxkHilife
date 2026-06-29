@@ -22,6 +22,9 @@ import com.freebuds.controller.R
 import com.freebuds.controller.data.ConnectionState
 import com.freebuds.controller.data.DeviceProps
 import com.freebuds.controller.data.DeviceViewModel
+import com.freebuds.controller.ui.glass.AdaptiveCard
+import com.freebuds.controller.ui.glass.LiquidGlassPanel
+import dev.chrisbanes.haze.HazeState
 
 // ── 中文映射（DeviceScreen 专用）──────────────────────────────────────────
 
@@ -66,6 +69,8 @@ fun chineseSoundQuality(raw: String?): String = when (raw) {
 @Composable
 fun DeviceScreen(
     viewModel: DeviceViewModel,
+    displayMode: UiDisplayMode,
+    hazeState: HazeState?,
     onBack: () -> Unit,
     onSettings: () -> Unit,
     onOpenTerminal: () -> Unit,
@@ -106,7 +111,7 @@ fun DeviceScreen(
                     }
                 },
                 colors = TopAppBarDefaults.topAppBarColors(
-                    containerColor = MaterialTheme.colorScheme.surface
+                    containerColor = if (displayMode == UiDisplayMode.LIQUID_GLASS) androidx.compose.ui.graphics.Color.Transparent else MaterialTheme.colorScheme.surface
                 )
             )
         }
@@ -118,23 +123,29 @@ fun DeviceScreen(
             contentPadding = PaddingValues(bottom = 24.dp)
         ) {
             // ── 电池卡片 ─────────────────────────────────────────────────────
-            item { BatteryCard(props) }
+            item { BatteryCard(props, displayMode, hazeState) }
 
             // ── ANC ─────────────────────────────────────────────────────────
             if (props.ancMode != null || props.ancModeOptions.isNotEmpty()) {
                 item { SettingsGroupHeader("ANC模式") }
                 // haze 模糊滑块切换器
                 item {
-                    AncModeSlider(
-                        current = displayAncMode,
-                        options = props.ancModeOptions.ifEmpty {
-                            listOf("normal", "cancellation", "awareness")
-                        },
-                        onSelect = {
-                            optimisticAncMode = it
-                            viewModel.setProperty("anc", "mode", it)
-                        },
-                    )
+                    LiquidGlassPanel(
+                        displayMode = displayMode,
+                        hazeState = hazeState,
+                        modifier = Modifier.padding(horizontal = 16.dp, vertical = 6.dp),
+                    ) {
+                        AncModeSlider(
+                            current = displayAncMode,
+                            options = props.ancModeOptions.ifEmpty {
+                                listOf("normal", "cancellation", "awareness")
+                            },
+                            onSelect = {
+                                optimisticAncMode = it
+                                viewModel.setProperty("anc", "mode", it)
+                            },
+                        )
+                    }
                 }
                 if (props.ancLevel != null && displayAncMode != "normal") {
                     item {
@@ -233,15 +244,16 @@ fun DeviceScreen(
 // ── 组件 ──────────────────────────────────────────────────────────────────────
 
 @Composable
-private fun BatteryCard(props: DeviceProps) {
+private fun BatteryCard(props: DeviceProps, displayMode: UiDisplayMode, hazeState: HazeState?) {
     if (props.batteryGlobal == null && props.batteryLeft == null) return
-    Card(
+    AdaptiveCard(
+        displayMode = displayMode,
+        hazeState = hazeState,
         modifier = Modifier
             .fillMaxWidth()
             .padding(16.dp),
-        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.primaryContainer)
     ) {
-        Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+        Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
             Text("电量", style = MaterialTheme.typography.titleMedium)
             Row(horizontalArrangement = Arrangement.spacedBy(24.dp)) {
                 if (props.batteryLeft != null)

@@ -19,11 +19,15 @@ import androidx.compose.ui.unit.dp
 import com.freebuds.controller.bluetooth.ScannedDevice
 import com.freebuds.controller.data.ConnectionState
 import com.freebuds.controller.data.DeviceViewModel
+import com.freebuds.controller.ui.glass.AdaptiveCard
+import dev.chrisbanes.haze.HazeState
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun HomeScreen(
     viewModel: DeviceViewModel,
+    displayMode: UiDisplayMode,
+    hazeState: HazeState?,
     onDeviceClick: (address: String) -> Unit,
     onRemoveDevice: (address: String) -> Unit,
     onSettings: () -> Unit,
@@ -49,7 +53,7 @@ fun HomeScreen(
                     }
                 },
                 colors = TopAppBarDefaults.topAppBarColors(
-                    containerColor = MaterialTheme.colorScheme.surface
+                    containerColor = if (displayMode == UiDisplayMode.LIQUID_GLASS) androidx.compose.ui.graphics.Color.Transparent else MaterialTheme.colorScheme.surface
                 )
             )
         }
@@ -110,6 +114,8 @@ fun HomeScreen(
                     SavedDeviceItem(
                         address = addr,
                         adapter = BluetoothAdapter.getDefaultAdapter(),
+                        displayMode = displayMode,
+                        hazeState = hazeState,
                         onClick = { onDeviceClick(addr) },
                         onRemove = { onRemoveDevice(addr) }
                     )
@@ -119,11 +125,13 @@ fun HomeScreen(
             // 扫描卡片 → 导航到独立扫描页
             item {
                 Spacer(Modifier.height(8.dp))
-                ElevatedCard(
+                AdaptiveCard(
+                    displayMode = displayMode,
+                    hazeState = hazeState,
                     modifier = Modifier
                         .fillMaxWidth()
-                        .padding(horizontal = 16.dp),
-                    onClick = onScan
+                        .padding(horizontal = 16.dp)
+                        .clickable(onClick = onScan),
                 ) {
                     Row(
                         modifier = Modifier.padding(16.dp),
@@ -153,6 +161,8 @@ fun HomeScreen(
 private fun SavedDeviceItem(
     address: String,
     adapter: BluetoothAdapter?,
+    displayMode: UiDisplayMode,
+    hazeState: HazeState?,
     onClick: () -> Unit,
     onRemove: () -> Unit,
 ) {
@@ -162,40 +172,35 @@ private fun SavedDeviceItem(
         try { device?.bondState == android.bluetooth.BluetoothDevice.BOND_BONDED } catch (_: Exception) { false }
     }
 
-    ListItem(
-        headlineContent = { 
-            Text(name, fontWeight = FontWeight.Medium, modifier = Modifier.fillMaxWidth().clickable(onClick = onClick))
-        },
-        supportingContent = {
-            Text(
-                buildString {
-                    append(address)
-                    if (isBonded) append(" · 已配对")
-                },
-                style = MaterialTheme.typography.bodySmall,
-                color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.6f),
-                modifier = Modifier.fillMaxWidth().clickable(onClick = onClick)
-            )
-        },
-        leadingContent = {
-            Icon(
-                Icons.Default.Headphones,
-                contentDescription = null,
-                tint = MaterialTheme.colorScheme.primary,
-                modifier = Modifier.clickable(onClick = onClick)
-            )
-        },
-        trailingContent = {
-            IconButton(onClick = onRemove) {
-                Icon(
-                    Icons.Default.Delete,
-                    contentDescription = "删除",
-                    tint = MaterialTheme.colorScheme.error
+    AdaptiveCard(
+        displayMode = displayMode,
+        hazeState = hazeState,
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(horizontal = 16.dp, vertical = 6.dp)
+            .clickable(onClick = onClick),
+    ) {
+        Row(
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(14.dp),
+        ) {
+            Icon(Icons.Default.Headphones, contentDescription = null, tint = MaterialTheme.colorScheme.primary)
+            Column(Modifier.weight(1f)) {
+                Text(name, fontWeight = FontWeight.Medium)
+                Text(
+                    buildString {
+                        append(address)
+                        if (isBonded) append(" · 已配对")
+                    },
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.62f),
                 )
             }
-        },
-    )
-    HorizontalDivider(modifier = Modifier.padding(start = 16.dp))
+            IconButton(onClick = onRemove) {
+                Icon(Icons.Default.Delete, contentDescription = "删除", tint = MaterialTheme.colorScheme.error)
+            }
+        }
+    }
 }
 
 // ============================================================

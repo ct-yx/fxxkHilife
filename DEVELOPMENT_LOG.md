@@ -588,3 +588,25 @@
 - versionName: 2.8.3
 - tag: v2.8.3
 
+## v2.9.0 (2026-06-29)
+
+### Glass / Haze 基础组件
+- 新增 `ui/glass/AdaptiveGlass.kt`，提供 `AdaptiveCard`、`LiquidGlassCard`、`LiquidGlassPanel`。
+- 液态玻璃模式基于 Haze `1.6.7` 的 `hazeSource` / `hazeEffect` / `rememberHazeState` / `HazeTint` 实现。
+- 玻璃组件加入背景模糊、半透明 tint、细噪声、虹彩边缘和高光描边；传统模式仍回落到 Material3 Card。
+
+### Home / Device 双模式改造
+- `AppNavHost` 创建全局 `hazeState`，根背景作为 Haze source，传递到 Home / Device。
+- Home 页面已保存设备卡片、扫描入口卡片接入 `AdaptiveCard`。
+- Device 页面电池卡片、ANC 分段控制区域接入液态玻璃容器。
+- 传统展示模式保持原有 Material3 体验；液态玻璃模式在同一页面结构上启用玻璃视觉。
+
+### 壁纸引导
+- 设置页切换到“液态玻璃”且尚未设置壁纸时，会弹出非强制引导。
+- 用户可选择壁纸后自动开启液态玻璃，也可以选择“仍然开启”直接启用。
+
+### 发布
+- versionCode: 31
+- versionName: 2.9.0
+- tag: v2.9.0
+

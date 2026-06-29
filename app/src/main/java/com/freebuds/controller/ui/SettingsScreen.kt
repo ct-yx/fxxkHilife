@@ -57,6 +57,9 @@ fun SettingsScreen(
     val connState by viewModel.connectionState.collectAsState()
     val isConnected = connState is com.freebuds.controller.data.ConnectionState.Connected
 
+    var showGlassWallpaperGuide by remember { mutableStateOf(false) }
+    var enableGlassAfterWallpaperPick by remember { mutableStateOf(false) }
+
     val imagePicker = rememberLauncherForActivityResult(
         contract = ActivityResultContracts.GetContent()
     ) { uri ->
@@ -67,7 +70,35 @@ fun SettingsScreen(
             onWallpaperChange(uriStr)
             context.getSharedPreferences("fxxk_theme", android.content.Context.MODE_PRIVATE)
                 .edit().putString("wallpaper_uri", uriStr).apply()
+            if (enableGlassAfterWallpaperPick) {
+                enableGlassAfterWallpaperPick = false
+                onDisplayModeChange(UiDisplayMode.LIQUID_GLASS)
+            }
         }
+    }
+
+    if (showGlassWallpaperGuide) {
+        AlertDialog(
+            onDismissRequest = { showGlassWallpaperGuide = false },
+            title = { Text("建议先设置壁纸") },
+            text = { Text("液态玻璃需要背景色彩参与模糊与折射。你可以先选择一张壁纸，也可以继续直接开启。") },
+            confirmButton = {
+                TextButton(onClick = {
+                    showGlassWallpaperGuide = false
+                    enableGlassAfterWallpaperPick = true
+                    imagePicker.launch("image/*")
+                }) { Text("选择壁纸") }
+            },
+            dismissButton = {
+                Row {
+                    TextButton(onClick = {
+                        showGlassWallpaperGuide = false
+                        onDisplayModeChange(UiDisplayMode.LIQUID_GLASS)
+                    }) { Text("仍然开启") }
+                    TextButton(onClick = { showGlassWallpaperGuide = false }) { Text("取消") }
+                }
+            },
+        )
     }
 
     Scaffold(
@@ -103,7 +134,13 @@ fun SettingsScreen(
             item {
                 DisplayModeSelector(
                     current = displayMode,
-                    onSelect = onDisplayModeChange,
+                    onSelect = { mode ->
+                        if (mode == UiDisplayMode.LIQUID_GLASS && wallpaperUri == null) {
+                            showGlassWallpaperGuide = true
+                        } else {
+                            onDisplayModeChange(mode)
+                        }
+                    },
                 )
             }
 

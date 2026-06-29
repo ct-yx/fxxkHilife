@@ -18,6 +18,8 @@ import androidx.navigation.compose.composable
 import androidx.navigation.compose.currentBackStackEntryAsState
 import androidx.navigation.compose.rememberNavController
 import coil.compose.AsyncImage
+import dev.chrisbanes.haze.hazeSource
+import dev.chrisbanes.haze.rememberHazeState
 import com.freebuds.controller.data.ConnectionState
 import com.freebuds.controller.data.DeviceViewModel
 import com.freebuds.controller.ui.theme.ThemeMode
@@ -57,6 +59,7 @@ fun AppNavHost(
 
     val initialDisplayMode = remember { loadUiDisplayMode(context) }
     var displayMode by remember { mutableStateOf(initialDisplayMode) }
+    val hazeState = rememberHazeState()
 
     val hasPermissions = remember {
         val bluetoothGranted = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
@@ -85,6 +88,7 @@ fun AppNavHost(
     Box(
         modifier = Modifier
             .fillMaxSize()
+            .hazeSource(hazeState)
             .background(MaterialTheme.colorScheme.background)
     ) {
         if (showWallpaper) {
@@ -116,6 +120,8 @@ fun AppNavHost(
             composable(Route.Home) {
                 HomeScreen(
                     viewModel = viewModel,
+                    displayMode = displayMode,
+                    hazeState = hazeState,
                     onDeviceClick = { address ->
                         viewModel.autoConnectSaved(address)
                         navController.navigate(Route.Device) { launchSingleTop = true }
@@ -145,6 +151,8 @@ fun AppNavHost(
             composable(Route.Device) {
                 DeviceScreen(
                     viewModel = viewModel,
+                    displayMode = displayMode,
+                    hazeState = hazeState,
                     onBack = {
                         navController.popBackStack(Route.Home, inclusive = false)
                     },
