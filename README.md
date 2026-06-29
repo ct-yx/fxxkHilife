@@ -12,7 +12,7 @@
 >
 > 通过蓝牙 SPP 直接控制耳机，无需登录、无广告、完全离线。
 
-**[项目主页](https://github.com/ct-yx/fxxkHilife) · [English](./README_EN.md) | 中文**
+**[项目主页](https://ct-yx.github.io/fxxkHilife/) · [English](./README_EN.md) | 中文**
 
 本项目参考 [OpenFreebuds](https://github.com/melianmiko/OpenFreebuds) 的协议逆向工作。
 

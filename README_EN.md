@@ -12,7 +12,7 @@
 >
 > Controls your earbuds directly via classic Bluetooth SPP — no login, no ads, fully offline.
 
-**[Project Home](https://github.com/ct-yx/fxxkHilife) · [中文](./README.md) | English**
+**[Project Home](https://ct-yx.github.io/fxxkHilife/) · [中文](./README.md) | English**
 
 This project references protocol reverse engineering work from [OpenFreebuds](https://github.com/melianmiko/OpenFreebuds).
 
