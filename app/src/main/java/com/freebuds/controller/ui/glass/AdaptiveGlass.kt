@@ -26,6 +26,7 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.drawWithCache
 import androidx.compose.ui.geometry.CornerRadius
 import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.Shape
@@ -95,7 +96,7 @@ fun AdaptiveCard(
  * artifact is still unpublished. The latest renderer therefore keeps
  * `hazeSource` + `hazeEffect { blurEffect { ... } }` and layers Flowmix-inspired
  * edge optics on top: normal-like edge highlights, ambient rims, subtle chromatic
- * edges, and no full-card white overlay.
+ * edges, caustic-like refraction strokes, and no full-card white overlay.
  *
  * Performance notes:
  * - Android 12+ has the best blur/render-effect path.
@@ -141,10 +142,14 @@ fun LiquidGlassCard(
                 blurEffect {
                     blurRadius = (20 + 18 * safeRefraction).dp
                     noiseFactor = 0.035f + 0.075f * safeDepth
-                    colorEffects = listOf(
-                        HazeColorEffect.tint(effectiveTint),
-                        HazeColorEffect.tint(primaryTint),
-                    )
+                    colorEffects = if (legacyOptics) {
+                        listOf(
+                            HazeColorEffect.tint(effectiveTint),
+                            HazeColorEffect.tint(primaryTint),
+                        )
+                    } else {
+                        emptyList()
+                    }
                 }
             }
             .liquidGlassOptics(
@@ -156,8 +161,8 @@ fun LiquidGlassCard(
                 flowmixInspired = !legacyOptics,
             ),
         shape = effectiveShape,
-        color = Color.White.copy(alpha = 0.004f + 0.010f * safeDepth),
-        border = BorderStroke(0.45.dp, Color.White.copy(alpha = 0.10f + 0.10f * safeDepth)),
+        color = Color.White.copy(alpha = if (legacyOptics) 0.004f + 0.010f * safeDepth else 0f),
+        border = BorderStroke(0.45.dp, Color.White.copy(alpha = if (legacyOptics) 0.10f + 0.10f * safeDepth else 0.06f + 0.08f * safeDepth)),
         tonalElevation = 0.dp,
         shadowElevation = 0.dp,
     ) {
@@ -186,7 +191,11 @@ fun LiquidGlassPanel(
                     blurEffect {
                         blurRadius = 26.dp
                         noiseFactor = 0.052f
-                        colorEffects = listOf(HazeColorEffect.tint(Color.White.copy(alpha = if (legacyOptics) 0.035f else 0.018f)))
+                        colorEffects = if (legacyOptics) {
+                            listOf(HazeColorEffect.tint(Color.White.copy(alpha = 0.035f)))
+                        } else {
+                            emptyList()
+                        }
                     }
                 }
                 .liquidGlassOptics(
@@ -197,7 +206,7 @@ fun LiquidGlassPanel(
                     drawInteriorAccents = legacyOptics,
                     flowmixInspired = !legacyOptics,
                 )
-                .background(Color.White.copy(alpha = if (legacyOptics) 0.008f else 0.003f), shape)
+                .background(Color.White.copy(alpha = if (legacyOptics) 0.008f else 0f), shape)
                 .padding(4.dp),
             content = content,
         )
@@ -290,6 +299,15 @@ private fun Modifier.liquidGlassOptics(
         start = Offset(size.width * 0.04f, size.height * 0.02f),
         end = Offset(size.width * 0.98f, size.height * 0.92f),
     )
+    val flowmixCaustic = Brush.radialGradient(
+        colors = listOf(
+            Color.White.copy(alpha = 0.18f * refractionStrength),
+            Color(0xFFB7F5FF).copy(alpha = 0.08f * refractionStrength),
+            Color.Transparent,
+        ),
+        center = Offset(size.width * 0.18f, size.height * 0.12f),
+        radius = minSide * 0.72f,
+    )
 
     onDrawWithContent {
         drawContent()
@@ -312,6 +330,18 @@ private fun Modifier.liquidGlassOptics(
             )
         }
         if (flowmixInspired) {
+            drawOval(
+                brush = flowmixCaustic,
+                topLeft = Offset(-size.width * 0.18f, -size.height * 0.24f),
+                size = Size(size.width * 0.86f, size.height * 0.72f),
+                style = Stroke(width = mainStroke * 1.1f),
+            )
+            drawOval(
+                brush = flowmixCaustic,
+                topLeft = Offset(size.width * 0.48f, size.height * 0.54f),
+                size = Size(size.width * 0.70f, size.height * 0.54f),
+                style = Stroke(width = hairline * 1.4f),
+            )
             drawRoundRect(
                 brush = flowmixAmbientEdge,
                 cornerRadius = radius,

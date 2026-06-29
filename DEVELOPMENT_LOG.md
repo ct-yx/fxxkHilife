@@ -801,3 +801,17 @@
 - versionName: 2.13.0
 - tag: v2.13.0
 
+## v2.13.1 (2026-06-29)
+
+### 最新模式去白层与折射感增强
+- 明确苹果式液态玻璃方向：效果应来自背景模糊、折射、边缘扭曲和光线聚焦，而不是主体白色 tint。
+- 最新模式下 `LiquidGlassCard` 的 Haze `colorEffects` 改为空列表，只保留 blur/noise 背景采样。
+- 最新模式下 `Surface` 主体颜色 alpha 降为 0，避免背景上再套白色玻璃板。
+- 最新模式下 `LiquidGlassPanel` 移除白色 tint 与白色 background；传统模式保持原样兜底。
+- Flowmix-inspired 边缘层新增 caustic-like refraction strokes，用椭圆折射线模拟玻璃边缘光线聚焦/扭曲感。
+
+### 发布
+- versionCode: 46
+- versionName: 2.13.1
+- tag: v2.13.1
+
