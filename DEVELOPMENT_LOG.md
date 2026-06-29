@@ -776,3 +776,14 @@
 - versionName: 2.12.2
 - tag: v2.12.2
 
+## v2.12.3 (2026-06-29)
+
+### Kotlin 2.3 DSL 修复
+- 修复 v2.12.2 CI 配置阶段失败：Kotlin 2.3 已将 `kotlinOptions { jvmTarget = "17" }` 升级为错误。
+- 将 JVM target 配置迁移到新版 `kotlin { compilerOptions { jvmTarget.set(JvmTarget.JVM_17) } }` DSL。
+
+### 发布
+- versionCode: 44
+- versionName: 2.12.3
+- tag: v2.12.3
+
