@@ -36,7 +36,8 @@ import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import com.freebuds.controller.ui.UiDisplayMode
 import dev.chrisbanes.haze.HazeState
-import dev.chrisbanes.haze.HazeTint
+import dev.chrisbanes.haze.blur.HazeColorEffect
+import dev.chrisbanes.haze.blur.blurEffect
 import dev.chrisbanes.haze.hazeEffect
 import dev.chrisbanes.haze.hazeSource
 import dev.chrisbanes.haze.rememberHazeState
@@ -131,23 +132,27 @@ fun LiquidGlassCard(
     val safeDepth = effectiveDepth.coerceIn(0f, 1f)
     val effectiveTint = requestedTint.copy(alpha = min(requestedTint.alpha, 0.020f + 0.030f * safeRefraction))
     val primaryTint = MaterialTheme.colorScheme.primary.copy(alpha = 0.018f * safeRefraction)
+    val legacyOptics = config.rendererMode == GlassRendererMode.LEGACY_COMPAT
 
     Surface(
         modifier = modifier
             .clip(effectiveShape)
             .hazeEffect(state = hazeState) {
-                blurRadius = (20 + 18 * safeRefraction).dp
-                noiseFactor = 0.035f + 0.075f * safeDepth
-                tints = listOf(
-                    HazeTint(effectiveTint),
-                    HazeTint(primaryTint),
-                )
+                blurEffect {
+                    blurRadius = (20 + 18 * safeRefraction).dp
+                    noiseFactor = 0.035f + 0.075f * safeDepth
+                    colorEffects = listOf(
+                        HazeColorEffect.tint(effectiveTint),
+                        HazeColorEffect.tint(primaryTint),
+                    )
+                }
             }
             .liquidGlassOptics(
                 cornerRadius = effectiveCornerRadius,
                 refractionStrength = safeRefraction,
                 depth = safeDepth,
                 surfaceProfile = effectiveSurfaceProfile,
+                drawInteriorAccents = legacyOptics,
             ),
         shape = effectiveShape,
         color = Color.White.copy(alpha = 0.004f + 0.010f * safeDepth),
@@ -175,9 +180,11 @@ fun LiquidGlassPanel(
             modifier = modifier
                 .clip(shape)
                 .hazeEffect(state = hazeState) {
-                    blurRadius = 26.dp
-                    noiseFactor = 0.052f
-                    tints = listOf(HazeTint(Color.White.copy(alpha = 0.035f)))
+                    blurEffect {
+                        blurRadius = 26.dp
+                        noiseFactor = 0.052f
+                        colorEffects = listOf(HazeColorEffect.tint(Color.White.copy(alpha = 0.035f)))
+                    }
                 }
                 .liquidGlassOptics(
                     cornerRadius = 28.dp,
@@ -199,6 +206,7 @@ private fun Modifier.liquidGlassOptics(
     refractionStrength: Float,
     depth: Float,
     surfaceProfile: GlassSurfaceProfile,
+    drawInteriorAccents: Boolean = true,
 ): Modifier = this.drawWithCache {
     val minSide = min(size.width, size.height)
     val radiusPx = when (surfaceProfile) {
@@ -252,20 +260,22 @@ private fun Modifier.liquidGlassOptics(
         drawContent()
         // Draw optical accents only. Do not fill the whole card with white:
         // the background seen through haze must remain the main material.
-        drawLine(
-            brush = specularHighlight,
-            start = Offset(size.width * 0.08f, size.height * 0.10f),
-            end = Offset(size.width * 0.72f, size.height * 0.18f),
-            strokeWidth = mainStroke * 1.8f,
-            cap = StrokeCap.Round,
-        )
-        drawLine(
-            brush = refractedRibbon,
-            start = Offset(size.width * 0.10f, size.height * 0.92f),
-            end = Offset(size.width * 0.96f, size.height * 0.26f),
-            strokeWidth = mainStroke * 1.15f,
-            cap = StrokeCap.Round,
-        )
+        if (drawInteriorAccents) {
+            drawLine(
+                brush = specularHighlight,
+                start = Offset(size.width * 0.08f, size.height * 0.10f),
+                end = Offset(size.width * 0.72f, size.height * 0.18f),
+                strokeWidth = mainStroke * 1.8f,
+                cap = StrokeCap.Round,
+            )
+            drawLine(
+                brush = refractedRibbon,
+                start = Offset(size.width * 0.10f, size.height * 0.92f),
+                end = Offset(size.width * 0.96f, size.height * 0.26f),
+                strokeWidth = mainStroke * 1.15f,
+                cap = StrokeCap.Round,
+            )
+        }
         drawRoundRect(
             brush = darkFresnelEdge,
             cornerRadius = radius,

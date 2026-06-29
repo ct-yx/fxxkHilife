@@ -3,17 +3,17 @@
 > 版本号统一修改入口，按清单逐一更新。
 
 ## 当前版本
-- **v2.11.0** (versionCode=40, 2026-06-29)
+- **v2.12.0** (versionCode=41, 2026-06-29)
 
 ## 版本号位置
 
 | 位置 | 当前值 |
 |------|--------|
-| `app/build.gradle.kts` | versionCode=40, versionName="2.11.0" |
-| `app/src/main/res/values/strings.xml` | version_name=2.11.0 |
-| `README.md` | v2.11.0 |
-| `README_EN.md` | v2.11.0 |
-| `DEVELOPMENT_LOG.md` | v2.11.0 (末尾) |
+| `app/build.gradle.kts` | versionCode=41, versionName="2.12.0" |
+| `app/src/main/res/values/strings.xml` | version_name=2.12.0 |
+| `README.md` | v2.12.0 |
+| `README_EN.md` | v2.12.0 |
+| `DEVELOPMENT_LOG.md` | v2.12.0 (末尾) |
 
 ## 一键版本更新脚本
 
@@ -37,6 +37,7 @@ python3 scripts/bump_version.py <versionName> <versionCode> "修复说明"
 
 | 版本 | Code | 日期 | 主要变更 |
 |------|------|------|---------|
+| v2.12.0 | 41 | 2026-06-29 | 迁移 Haze 2.0 架构并新增玻璃渲染方案切换 |
 | v2.11.0 | 40 | 2026-06-29 | 重构液态玻璃为背景驱动折射视觉 |
 | v2.10.1 | 39 | 2026-06-29 | 新增液态玻璃个性化折叠设置与高级模式 |
 | v2.10.0 | 38 | 2026-06-29 | 增强液态玻璃材质系统与可参数化玻璃卡片 |

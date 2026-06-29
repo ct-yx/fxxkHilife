@@ -29,6 +29,7 @@ import com.freebuds.controller.BuildConfig
 import com.freebuds.controller.data.DeviceViewModel
 import com.freebuds.controller.util.LogBuffer
 import com.freebuds.controller.ui.glass.AdaptiveCard
+import com.freebuds.controller.ui.glass.GlassRendererMode
 import com.freebuds.controller.ui.glass.GlassSurfaceProfile
 import com.freebuds.controller.ui.glass.LiquidGlassConfig
 import com.freebuds.controller.ui.theme.ThemeMode
@@ -477,6 +478,19 @@ private fun LiquidGlassPersonalizationCard(
 
         AnimatedVisibility(visible = expanded) {
             Column(modifier = Modifier.padding(top = 14.dp), verticalArrangement = Arrangement.spacedBy(14.dp)) {
+                ConfigSegmentRow(
+                    title = "玻璃渲染方案",
+                    subtitle = "传统为当前兼容实现；最新使用 Haze 2.0 架构，后续会接入官方 liquid glass",
+                    options = listOf(
+                        "传统" to config.copy(rendererMode = GlassRendererMode.LEGACY_COMPAT),
+                        "最新" to config.copy(rendererMode = GlassRendererMode.HAZE_2),
+                    ),
+                    selectedIndex = when (config.rendererMode) {
+                        GlassRendererMode.LEGACY_COMPAT -> 0
+                        GlassRendererMode.HAZE_2 -> 1
+                    },
+                    onSelect = onConfigChange,
+                )
                 ConfigSegmentRow(
                     title = "玻璃模糊强度",
                     subtitle = "调整玻璃效果的透明与朦胧程度",

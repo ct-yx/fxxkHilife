@@ -3,8 +3,14 @@ package com.freebuds.controller.ui.glass
 import android.content.Context
 import androidx.compose.runtime.staticCompositionLocalOf
 
+enum class GlassRendererMode {
+    LEGACY_COMPAT,
+    HAZE_2,
+}
+
 /** User-tunable liquid glass parameters persisted from Settings > Personalization. */
 data class LiquidGlassConfig(
+    val rendererMode: GlassRendererMode = GlassRendererMode.LEGACY_COMPAT,
     val tintAlpha: Float = 0.12f,
     val refractionStrength: Float = 0.72f,
     val depth: Float = 0.42f,
@@ -22,7 +28,12 @@ fun loadLiquidGlassConfig(context: Context): LiquidGlassConfig {
         ?: GlassSurfaceProfile.Squircle.name
     val profile = runCatching { GlassSurfaceProfile.valueOf(profileName) }
         .getOrDefault(GlassSurfaceProfile.Squircle)
+    val rendererName = prefs.getString("renderer_mode", GlassRendererMode.LEGACY_COMPAT.name)
+        ?: GlassRendererMode.LEGACY_COMPAT.name
+    val rendererMode = runCatching { GlassRendererMode.valueOf(rendererName) }
+        .getOrDefault(GlassRendererMode.LEGACY_COMPAT)
     return LiquidGlassConfig(
+        rendererMode = rendererMode,
         tintAlpha = prefs.getFloat("tint_alpha", 0.12f).coerceIn(0.04f, 0.20f),
         refractionStrength = prefs.getFloat("refraction_strength", 0.72f).coerceIn(0.30f, 1.00f),
         depth = prefs.getFloat("depth", 0.42f).coerceIn(0.10f, 0.80f),
@@ -34,6 +45,7 @@ fun loadLiquidGlassConfig(context: Context): LiquidGlassConfig {
 fun saveLiquidGlassConfig(context: Context, config: LiquidGlassConfig) {
     context.getSharedPreferences(PREF_NAME, Context.MODE_PRIVATE)
         .edit()
+        .putString("renderer_mode", config.rendererMode.name)
         .putFloat("tint_alpha", config.tintAlpha)
         .putFloat("refraction_strength", config.refractionStrength)
         .putFloat("depth", config.depth)

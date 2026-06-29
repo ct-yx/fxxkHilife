@@ -735,3 +735,18 @@
 - versionName: 2.11.0
 - tag: v2.11.0
 
+## v2.12.0 (2026-06-29)
+
+### Haze 2.0 迁移测试
+- 将 Haze 依赖从 `haze:1.6.7` / `haze-materials:1.6.7` 迁移到 `haze:2.0.0-alpha03`、`haze-blur:2.0.0-alpha03`、`haze-blur-materials:2.0.0-alpha03`。
+- 按 Haze 2.0 迁移文档将 `HazeTint` / 直接 `blurRadius` / `tints` 写法改为 `blurEffect { colorEffects = listOf(HazeColorEffect.tint(...)) }`。
+- 新增 `GlassRendererMode`：`LEGACY_COMPAT` / `HAZE_2`，并将当前兼容实现作为“传统”方案保留。
+- 设置页“液态玻璃个性化”中新增“玻璃渲染方案”：传统 / 最新。
+- “最新”方案先运行在 Haze 2.0 blur pipeline 上，并禁用传统实现中的内部高光/折射光带；等官方 `haze-liquidglass` 发布后再接入真正 `liquidGlassEffect`。
+- `.gitignore` 新增 `reference/`，避免提交 APK 与逆向参考目录。
+
+### 发布
+- versionCode: 41
+- versionName: 2.12.0
+- tag: v2.12.0
+
