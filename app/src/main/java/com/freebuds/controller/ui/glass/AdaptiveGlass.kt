@@ -29,6 +29,7 @@ import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.Shape
+import androidx.compose.ui.graphics.StrokeCap
 import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.Dp
@@ -120,7 +121,7 @@ fun LiquidGlassCard(
     content: @Composable ColumnScope.() -> Unit,
 ) {
     val config = LocalLiquidGlassConfig.current
-    val effectiveTint = tint ?: Color.White.copy(alpha = config.tintAlpha)
+    val requestedTint = tint ?: Color.White.copy(alpha = config.tintAlpha)
     val effectiveRefraction = refractionStrength ?: config.refractionStrength
     val effectiveDepth = depth ?: config.depth
     val effectiveCornerRadius = cornerRadius ?: config.cornerRadiusDp.dp
@@ -128,7 +129,8 @@ fun LiquidGlassCard(
     val effectiveSurfaceProfile = surfaceProfile ?: config.surfaceProfile
     val safeRefraction = effectiveRefraction.coerceIn(0f, 1f)
     val safeDepth = effectiveDepth.coerceIn(0f, 1f)
-    val primaryTint = MaterialTheme.colorScheme.primary.copy(alpha = 0.05f * safeRefraction)
+    val effectiveTint = requestedTint.copy(alpha = min(requestedTint.alpha, 0.020f + 0.030f * safeRefraction))
+    val primaryTint = MaterialTheme.colorScheme.primary.copy(alpha = 0.018f * safeRefraction)
 
     Surface(
         modifier = modifier
@@ -148,23 +150,13 @@ fun LiquidGlassCard(
                 surfaceProfile = effectiveSurfaceProfile,
             ),
         shape = effectiveShape,
-        color = Color.White.copy(alpha = 0.025f + 0.04f * safeDepth),
-        border = BorderStroke(0.45.dp, Color.White.copy(alpha = 0.12f + 0.12f * safeDepth)),
+        color = Color.White.copy(alpha = 0.004f + 0.010f * safeDepth),
+        border = BorderStroke(0.45.dp, Color.White.copy(alpha = 0.10f + 0.10f * safeDepth)),
         tonalElevation = 0.dp,
         shadowElevation = 0.dp,
     ) {
         Column(
-            modifier = Modifier
-                .background(
-                    brush = Brush.verticalGradient(
-                        listOf(
-                            Color.White.copy(alpha = 0.055f + 0.05f * safeDepth),
-                            Color.White.copy(alpha = 0.018f + 0.035f * safeDepth),
-                        )
-                    ),
-                    shape = RoundedCornerShape(effectiveCornerRadius - 6.dp),
-                )
-                .padding(16.dp),
+            modifier = Modifier.padding(16.dp),
             content = content,
         )
     }
@@ -183,9 +175,9 @@ fun LiquidGlassPanel(
             modifier = modifier
                 .clip(shape)
                 .hazeEffect(state = hazeState) {
-                    blurRadius = 24.dp
-                    noiseFactor = 0.055f
-                    tints = listOf(HazeTint(Color.White.copy(alpha = 0.10f)))
+                    blurRadius = 26.dp
+                    noiseFactor = 0.052f
+                    tints = listOf(HazeTint(Color.White.copy(alpha = 0.035f)))
                 }
                 .liquidGlassOptics(
                     cornerRadius = 28.dp,
@@ -193,7 +185,7 @@ fun LiquidGlassPanel(
                     depth = 0.34f,
                     surfaceProfile = GlassSurfaceProfile.Rounded,
                 )
-                .background(Color.White.copy(alpha = 0.045f), shape)
+                .background(Color.White.copy(alpha = 0.008f), shape)
                 .padding(4.dp),
             content = content,
         )
@@ -258,16 +250,34 @@ private fun Modifier.liquidGlassOptics(
 
     onDrawWithContent {
         drawContent()
-        drawRoundRect(brush = refractedRibbon, cornerRadius = radius)
-        drawRoundRect(brush = specularHighlight, cornerRadius = radius)
-        drawRoundRect(brush = darkFresnelEdge, cornerRadius = radius)
+        // Draw optical accents only. Do not fill the whole card with white:
+        // the background seen through haze must remain the main material.
+        drawLine(
+            brush = specularHighlight,
+            start = Offset(size.width * 0.08f, size.height * 0.10f),
+            end = Offset(size.width * 0.72f, size.height * 0.18f),
+            strokeWidth = mainStroke * 1.8f,
+            cap = StrokeCap.Round,
+        )
+        drawLine(
+            brush = refractedRibbon,
+            start = Offset(size.width * 0.10f, size.height * 0.92f),
+            end = Offset(size.width * 0.96f, size.height * 0.26f),
+            strokeWidth = mainStroke * 1.15f,
+            cap = StrokeCap.Round,
+        )
+        drawRoundRect(
+            brush = darkFresnelEdge,
+            cornerRadius = radius,
+            style = Stroke(width = mainStroke * 1.25f),
+        )
         drawRoundRect(
             brush = chromaticEdge,
             cornerRadius = radius,
             style = Stroke(width = mainStroke),
         )
         drawRoundRect(
-            color = Color.White.copy(alpha = 0.20f + 0.12f * depth),
+            color = Color.White.copy(alpha = 0.16f + 0.10f * depth),
             cornerRadius = radius,
             style = Stroke(width = hairline),
         )
