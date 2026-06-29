@@ -666,3 +666,11 @@
 - versionName: 2.9.4
 - tag: v2.9.4
 
+## v2.9.5 (2026-06-29)
+
+### 发布
+- 修复手势页液态玻璃适配缺失 Alignment import 导致的 CI 编译错误
+- versionCode: 36
+- versionName: 2.9.5
+- tag: v2.9.5
+
