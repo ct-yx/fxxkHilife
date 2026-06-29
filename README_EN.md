@@ -7,7 +7,7 @@
 <p align="center">
   <b>A lightweight offline controller for HUAWEI FreeBuds / HONOR Earbuds</b>
 </p>
-> **v2.7.2** — Interaction and wallpaper fix: ANC mode and theme mode now use pill-shaped slider controls; ANC uses circular icon knobs, and global wallpaper is actually rendered behind pages.
+> **v2.7.3** — Auto-connect and low-latency fix: auto-connect now checks system Bluetooth connection first; auto low-latency/game mode starts immediately after connection initialization and retries until confirmed; logs include version header.
 
 >
 > Controls your earbuds directly via classic Bluetooth SPP — no login, no ads, fully offline.
@@ -30,19 +30,22 @@ cd fxxkHilife
 
 ## Project Status
 
-Current version: **v2.7.2**
+Current version: **v2.7.3**
 
 ### Completed
+- **Auto low-latency fix**: starts immediately after connection initialization, retries every 500ms, and times out after 30s if not confirmed.
+- **Auto-connect gate**: all auto-connect paths verify the earbuds are already connected by system Bluetooth before opening the SPP control channel.
+- **Log version header**: startup logs include versionName/versionCode for easier log provenance.
 - **Pill sliders**: ANC mode and theme mode use long pill-shaped slider controls; ANC keeps circular icons for all three modes.
 - **Global wallpaper fix**: wallpaper scope (All / Home only / Settings only) is now actually rendered as page background.
 - **Adaptive polling**: 800ms foreground high-frequency, 5s background low-frequency, driven by Activity lifecycle
-- **Tri-state theme**: Follow system / Dark / Light with Material3 native segmented selector
+- **Tri-state theme**: Follow system / Dark / Light with long pill-shaped slider selector
 - **Wallpaper system**: Import custom image wallpaper (coil AsyncImage), scope selector (All / Home only / Settings only)
 - **Notification ANC quick-switch**: Toggle ANC mode directly from notification bar (Off / ANC / Awareness), three Action buttons
 - **Notification live status**: Persistent notification shows ANC mode, sound quality, low‑latency, and listening duration (instant property refresh plus 60s duration refresh; battery uses existing low-frequency repository data)
 - **Log control**: Configurable log retention lines (500/1000/2000/5000/10000)
 - **Navigation refactor**: Disconnect button moved to saved-device list on Home, red delete icon
-- **ANC segmented control**: Material3 Surface + Row native segment selector (Off / ANC / Awareness), reactive instant switching
+- **ANC pill slider**: Off / ANC / Awareness long slider with circular icon bases, reactive instant switching
 - **Settings overhaul**: Theme switch, wallpaper import + scope, app details (project idea / GitHub / update link)
 - **Five-screen navigation**: Permission Guide → Home (saved devices + collapsible scan) → Device → Gesture sub‑page → Settings
 - **Saved‑device home**: auto‑persist connected device addresses (StringSet), tap to reconnect, scan collapsed below

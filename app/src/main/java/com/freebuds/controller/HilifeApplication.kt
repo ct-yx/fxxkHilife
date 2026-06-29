@@ -6,6 +6,7 @@ import android.app.NotificationManager
 import android.os.Build
 import com.freebuds.controller.data.DeviceRepository
 import com.freebuds.controller.service.BluetoothService
+import com.freebuds.controller.util.LogBuffer
 
 class HilifeApplication : Application() {
 
@@ -18,7 +19,8 @@ class HilifeApplication : Application() {
         // 从 SharedPreferences 加载日志保留行数
         val maxLines = getSharedPreferences("fxxk_theme", MODE_PRIVATE)
             .getInt("log_max_lines", 2000)
-        com.freebuds.controller.util.LogBuffer.setMaxLines(maxLines)
+        LogBuffer.setMaxLines(maxLines)
+        LogBuffer.i("App", "fxxkHilife ${BuildConfig.VERSION_NAME} (${BuildConfig.VERSION_CODE}) started")
         createNotificationChannel()
     }
 

@@ -80,6 +80,7 @@ class DeviceRepository {
     private var retryJob: Job? = null
     private var pollJob: Job? = null
     private var fastPollJob: Job? = null
+    private var autoLowLatencyJob: Job? = null
     private var foregroundMode: Boolean = false
 
     // 设备信息是否已获取（本次进程生命周期内）
@@ -141,6 +142,7 @@ class DeviceRepository {
         pollJob?.cancel()
         fastPollJob?.cancel()
         retryJob?.cancel()
+        autoLowLatencyJob?.cancel()
         driver?.disconnect()
         driver = null
         deviceInfoFetched = false
@@ -207,10 +209,28 @@ class DeviceRepository {
             ?.getBoolean("auto_low_latency", true) ?: true
         if (!enabled) return
 
-        scope.launch {
-            delay(1500)
-            if (_connectionState.value is ConnectionState.Connected) {
+        autoLowLatencyJob?.cancel()
+        autoLowLatencyJob = scope.launch {
+            val timeoutMs = 30_000L
+            val startedAt = System.currentTimeMillis()
+            var attempt = 0
+
+            while (isActive && _connectionState.value is ConnectionState.Connected) {
+                if (_props.value.lowLatency == true) {
+                    LogBuffer.i("SPP", "Auto low latency confirmed")
+                    return@launch
+                }
+
+                if (System.currentTimeMillis() - startedAt >= timeoutMs) break
+
+                attempt++
+                LogBuffer.i("SPP", "Auto low latency apply attempt $attempt")
                 setProperty("config", "low_latency", "true")
+                delay(500)
+            }
+
+            if (_connectionState.value is ConnectionState.Connected && _props.value.lowLatency != true) {
+                LogBuffer.w("SPP", "Auto low latency was not confirmed within ${timeoutMs / 1000}s")
             }
         }
     }

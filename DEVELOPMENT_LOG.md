@@ -440,3 +440,21 @@
 | `DEVELOPMENT_LOG.md` | +55 — v2.5.0 记录 |
 | **合计** | **~176/~147 行** |
 
+## v2.7.3 (2026-06-29)
+
+### 自动连接与低延迟修复
+- 所有自动连接入口统一走 `DeviceRepository.autoConnectSaved()` / `autoConnectLastSaved()`。
+- 自动连接前先确认耳机已与手机系统蓝牙连接：优先反射 `BluetoothDevice.isConnected()`，兜底 `BluetoothManager.getConnectedDevices(HEADSET/A2DP)`。
+- 自动低延迟/游戏模式在 SPP 连接和初始化流程完成后立即开始尝试开启，不再固定等待 1.5s。
+- 若首次写入失败，每 500ms 连续重试，最多 30s；确认 `config.low_latency=true` 后自动停止。
+- 断开连接时取消自动低延迟重试任务，避免残留协程继续写入。
+
+### 日志与版本定位
+- 应用启动时日志输出 `fxxkHilife <versionName> (<versionCode>) started`。
+- 便于从用户导出的 SPP 日志中直接判断版本来源。
+
+### 发布
+- versionCode: 22
+- versionName: 2.7.3
+- tag: v2.7.3
+
