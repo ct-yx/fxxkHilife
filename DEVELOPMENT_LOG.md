@@ -328,6 +328,18 @@
 - Removed `firstOrNull{isHuaweiOrHonor}` auto-connect logic from `DeviceViewModel.startScan()`
 
 
+
+## v2.7.2 (2026-06-29)
+
+### Interaction and Wallpaper Fixes
+- Reworked `AncModeSlider` into a long pill-shaped slider with circular icon handles for `关闭` / `降噪` / `透传`.
+- Reworked `ThemeSelector` into the same pill-shaped slider style for Follow / Dark / Light.
+- `AppNavHost` now renders the selected wallpaper as a real global background according to `WallpaperScope`.
+- Main page scaffolds use transparent containers so the global wallpaper is not hidden by default page backgrounds.
+
+### Version Bump
+- `versionCode` 20 → 21, `versionName` "2.7.1" → "2.7.2"
+
 ## v2.7.1 (2026-06-29)
 
 ### Persistent Notification Keep-alive

@@ -7,7 +7,7 @@
 <p align="center">
   <b>A lightweight offline controller for HUAWEI FreeBuds / HONOR Earbuds</b>
 </p>
-> **v2.7.1** — Persistent notification keep-alive fix: app launch / system auto-start starts the foreground service and reconnects the saved earbuds; notification shows listening duration / battery / ANC / low-latency / sound-quality state, with stale ACL auto-connect code removed.
+> **v2.7.2** — Interaction and wallpaper fix: ANC mode and theme mode now use pill-shaped slider controls; ANC uses circular icon knobs, and global wallpaper is actually rendered behind pages.
 
 >
 > Controls your earbuds directly via classic Bluetooth SPP — no login, no ads, fully offline.
@@ -30,9 +30,11 @@ cd fxxkHilife
 
 ## Project Status
 
-Current version: **v2.7.1**
+Current version: **v2.7.2**
 
 ### Completed
+- **Pill sliders**: ANC mode and theme mode use long pill-shaped slider controls; ANC keeps circular icons for all three modes.
+- **Global wallpaper fix**: wallpaper scope (All / Home only / Settings only) is now actually rendered as page background.
 - **Adaptive polling**: 800ms foreground high-frequency, 5s background low-frequency, driven by Activity lifecycle
 - **Tri-state theme**: Follow system / Dark / Light with Material3 native segmented selector
 - **Wallpaper system**: Import custom image wallpaper (coil AsyncImage), scope selector (All / Home only / Settings only)

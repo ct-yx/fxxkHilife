@@ -3,22 +3,23 @@
 > 版本号统一修改入口，按清单逐一更新。
 
 ## 当前版本
-- **v2.7.1** (versionCode=20, 2026-06-29)
+- **v2.7.2** (versionCode=21, 2026-06-29)
 
 ## 版本号位置
 
 | 位置 | 当前值 |
 |------|--------|
-| `app/build.gradle.kts` | versionCode=20, versionName="2.7.1" |
-| `app/src/main/res/values/strings.xml` | version_name=2.7.1 |
-| `README.md` | v2.7.1 |
-| `README_EN.md` | v2.7.1 |
-| `DEVELOPMENT_LOG.md` | v2.7.1 (末尾) |
+| `app/build.gradle.kts` | versionCode=21, versionName="2.7.2" |
+| `app/src/main/res/values/strings.xml` | version_name=2.7.2 |
+| `README.md` | v2.7.2 |
+| `README_EN.md` | v2.7.2 |
+| `DEVELOPMENT_LOG.md` | v2.7.2 (末尾) |
 
 ## 历史版本
 
 | 版本 | Code | 日期 | 主要变更 |
 |------|------|------|---------|
+| v2.7.2 | 21 | 2026-06-29 | ANC/主题长条胶囊滑块 / ANC 圆形图标滑块 / 全局壁纸背景修复 |
 | v2.7.1 | 20 | 2026-06-29 | 常驻通知保活 / 电池与实时状态显示 / 打开应用/系统自启动自动连接已保存耳机 / 清理旧 ACL 自动连接残留 |
 | v2.7.0 | 19 | 2026-06-28 | 源头乐观更新 / Tile 响应式刷新 / NotificationChannel 适配 / CI 自动发版 |
 | v2.6.0 | 18 | 2026-06-28 | 导航重构 / ANC 乐观更新 / 低延迟可配置 / 已保存设备修复 |
