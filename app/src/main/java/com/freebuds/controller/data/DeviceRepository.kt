@@ -78,6 +78,12 @@ class DeviceRepository {
     private val _props = MutableStateFlow(DeviceProps())
     val props: StateFlow<DeviceProps> = _props.asStateFlow()
 
+    fun isCoreStateReady(): Boolean {
+        val p = _props.value
+        val hasBattery = p.batteryGlobal != null || p.batteryLeft != null || p.batteryRight != null || p.batteryCase != null
+        return p.ancMode != null && p.lowLatency != null && hasBattery
+    }
+
     private var driver: SppDriver? = null
     private var prefs: SharedPreferences? = null
     private var appContext: Context? = null
@@ -276,18 +282,25 @@ class DeviceRepository {
             var attempt = 0
 
             while (isActive && _connectionState.value is ConnectionState.Connected) {
-                if (_props.value.lowLatency == true) {
+                val currentLowLatency = _props.value.lowLatency
+                if (currentLowLatency == true) {
                     LogBuffer.i("SPP", "Auto low latency confirmed")
                     return@launch
                 }
 
                 if (System.currentTimeMillis() - startedAt >= timeoutMs) break
 
+                // 先让 low_latency handler 完成一次读取；未知状态下立刻写入会抢占核心初始化通道。
+                if (currentLowLatency == null) {
+                    delay(500)
+                    continue
+                }
+
                 attempt++
                 LogBuffer.i("SPP", "Auto low latency apply attempt $attempt")
-                sppQuietUntil = System.currentTimeMillis() + 3_500L
+                sppQuietUntil = System.currentTimeMillis() + 1_500L
                 setProperty("config", "low_latency", "true")
-                delay(700)
+                delay(900)
             }
 
             if (_connectionState.value is ConnectionState.Connected && _props.value.lowLatency != true) {

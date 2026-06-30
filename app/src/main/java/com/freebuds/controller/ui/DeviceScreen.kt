@@ -303,7 +303,9 @@ fun DeviceScreen(
 
 @Composable
 private fun BatteryCard(props: DeviceProps, displayMode: UiDisplayMode, hazeState: HazeState?) {
-    if (props.batteryGlobal == null && props.batteryLeft == null) return
+    if (props.batteryGlobal == null && props.batteryLeft == null && props.batteryRight == null && props.batteryCase == null) return
+    val leftLevel = props.batteryLeft ?: props.batteryGlobal
+    val rightLevel = props.batteryRight ?: props.batteryGlobal
     AdaptiveCard(
         displayMode = displayMode,
         hazeState = hazeState,
@@ -311,39 +313,122 @@ private fun BatteryCard(props: DeviceProps, displayMode: UiDisplayMode, hazeStat
             .fillMaxWidth()
             .padding(16.dp),
     ) {
-        Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-            Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(10.dp)) {
-                Icon(
-                    painter = painterResource(R.drawable.ic_earbuds_case),
-                    contentDescription = null,
-                    modifier = Modifier.size(28.dp),
-                    tint = MaterialTheme.colorScheme.primary,
+        Column(verticalArrangement = Arrangement.spacedBy(14.dp)) {
+            Text(i18n("device.battery"), style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.SpaceBetween,
+            ) {
+                Box(
+                    modifier = Modifier
+                        .weight(1f)
+                        .height(122.dp),
+                    contentAlignment = Alignment.Center,
+                ) {
+                    BatteryEarbud(
+                        label = i18n("device.battery.left"),
+                        level = leftLevel,
+                        mirror = false,
+                        modifier = Modifier
+                            .align(Alignment.TopStart)
+                            .offset(x = 10.dp, y = 0.dp),
+                    )
+                    BatteryEarbud(
+                        label = i18n("device.battery.right"),
+                        level = rightLevel,
+                        mirror = true,
+                        modifier = Modifier
+                            .align(Alignment.BottomEnd)
+                            .offset(x = (-10).dp, y = 0.dp),
+                    )
+                }
+                Spacer(Modifier.width(18.dp))
+                BatteryCaseBox(
+                    level = props.batteryCase,
+                    charging = props.isCharging == true,
+                    modifier = Modifier.width(116.dp),
                 )
-                Text(i18n("device.battery"), style = MaterialTheme.typography.titleMedium)
             }
-            Row(horizontalArrangement = Arrangement.spacedBy(24.dp)) {
-                if (props.batteryLeft != null)
-                    BatteryChip(i18n("device.battery.left"), props.batteryLeft)
-                if (props.batteryRight != null)
-                    BatteryChip(i18n("device.battery.right"), props.batteryRight)
-                if (props.batteryCase != null)
-                    BatteryChip(i18n("device.battery.case"), props.batteryCase)
-                if (props.batteryLeft == null && props.batteryGlobal != null)
-                    BatteryChip(i18n("device.battery.earbuds"), props.batteryGlobal)
-            }
-            if (props.isCharging == true)
-                Text(i18n("common.charging"), style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.onPrimaryContainer.copy(alpha = 0.7f))
         }
     }
 }
 
 @Composable
-private fun BatteryChip(label: String, level: Int) {
-    Column(horizontalAlignment = Alignment.CenterHorizontally) {
-        Text("$level%", style = MaterialTheme.typography.headlineSmall)
-        Text(label, style = MaterialTheme.typography.labelSmall,
-            color = MaterialTheme.colorScheme.onPrimaryContainer.copy(alpha = 0.7f))
+private fun BatteryEarbud(
+    label: String,
+    level: Int?,
+    mirror: Boolean,
+    modifier: Modifier = Modifier,
+) {
+    val color = MaterialTheme.colorScheme.primary
+    Column(
+        modifier = modifier.width(82.dp),
+        horizontalAlignment = Alignment.CenterHorizontally,
+    ) {
+        Box(modifier = Modifier.size(width = 62.dp, height = 70.dp), contentAlignment = Alignment.Center) {
+            Box(
+                modifier = Modifier
+                    .size(38.dp)
+                    .align(if (mirror) Alignment.TopEnd else Alignment.TopStart)
+                    .background(color.copy(alpha = 0.18f), CircleShape),
+            )
+            Box(
+                modifier = Modifier
+                    .width(16.dp)
+                    .height(42.dp)
+                    .align(if (mirror) Alignment.BottomStart else Alignment.BottomEnd)
+                    .background(color, RoundedCornerShape(12.dp)),
+            )
+            Box(
+                modifier = Modifier
+                    .width(26.dp)
+                    .height(11.dp)
+                    .align(Alignment.Center)
+                    .background(color, RoundedCornerShape(8.dp)),
+            )
+        }
+        Text(level?.let { "$it%" } ?: "--", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
+        Text(label, style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+    }
+}
+
+@Composable
+private fun BatteryCaseBox(
+    level: Int?,
+    charging: Boolean,
+    modifier: Modifier = Modifier,
+) {
+    val color = MaterialTheme.colorScheme.primary
+    Column(modifier = modifier, horizontalAlignment = Alignment.CenterHorizontally) {
+        Box(
+            modifier = Modifier
+                .width(96.dp)
+                .height(72.dp)
+                .background(color.copy(alpha = 0.16f), RoundedCornerShape(24.dp)),
+            contentAlignment = Alignment.Center,
+        ) {
+            Box(
+                modifier = Modifier
+                    .width(72.dp)
+                    .height(42.dp)
+                    .background(color, RoundedCornerShape(18.dp)),
+            )
+            Box(
+                modifier = Modifier
+                    .width(34.dp)
+                    .height(5.dp)
+                    .align(Alignment.Center)
+                    .background(MaterialTheme.colorScheme.onPrimary.copy(alpha = 0.65f), RoundedCornerShape(4.dp)),
+            )
+        }
+        Spacer(Modifier.height(6.dp))
+        Text(level?.let { "$it%" } ?: "--", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
+        Text(
+            if (charging) i18n("common.charging") else i18n("device.battery.case"),
+            style = MaterialTheme.typography.labelSmall,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+        )
     }
 }
 

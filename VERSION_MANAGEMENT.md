@@ -3,17 +3,17 @@
 > 版本号统一修改入口，按清单逐一更新。
 
 ## 当前版本
-- **v3.5.1** (versionCode=60, 2026-06-30)
+- **v3.6.0** (versionCode=61, 2026-06-30)
 
 ## 版本号位置
 
 | 位置 | 当前值 |
 |------|--------|
-| `app/build.gradle.kts` | versionCode=60, versionName="3.5.1" |
-| `app/src/main/res/values/strings.xml` | version_name=3.5.1 |
-| `README.md` | v3.5.1 |
-| `README_EN.md` | v3.5.1 |
-| `DEVELOPMENT_LOG.md` | v3.5.1 (末尾) |
+| `app/build.gradle.kts` | versionCode=61, versionName="3.6.0" |
+| `app/src/main/res/values/strings.xml` | version_name=3.6.0 |
+| `README.md` | v3.6.0 |
+| `README_EN.md` | v3.6.0 |
+| `DEVELOPMENT_LOG.md` | v3.6.0 (末尾) |
 
 ## 一键版本更新脚本
 
@@ -37,6 +37,7 @@ python3 scripts/bump_version.py <versionName> <versionCode> "修复说明"
 
 | 版本 | Code | 日期 | 主要变更 |
 |------|------|------|---------|
+| v3.6.0 | 61 | 2026-06-30 | 优化核心状态初始化与详情页进入门槛，重做双耳机 + 电池盒电量展示 |
 | v3.5.1 | 60 | 2026-06-30 | 优化 GitHub Actions 构建与发布流程，tag 校验版本后发布并提取 DEVELOPMENT_LOG 作为说明 |
 | v3.5.0 | 59 | 2026-06-30 | 新增耳机 + 耳机盒单色矢量图标，并应用到主页、扫描、设备电量和应用详情 |
 | v3.4.0 | 58 | 2026-06-30 | 优化手势/设备选项菜单展开动画，重做应用详情卡，并修正 ANC 三模式图标居中与尺寸 |

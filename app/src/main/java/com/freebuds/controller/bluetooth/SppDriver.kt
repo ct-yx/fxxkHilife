@@ -38,6 +38,7 @@ class SppDriver(private val device: BluetoothDevice) {
     // 待响应映射: responseId (hex) -> CompletableDeferred
     private val pendingResponses = mutableMapOf<String, CompletableDeferred<HuaweiSppPackage>>()
     private val pendingMutex = Mutex()
+    private val txMutex = Mutex()
 
     // 已注册的 Handler
     private val handlers = mutableListOf<HuaweiDeviceHandler>()
@@ -234,24 +235,27 @@ class SppDriver(private val device: BluetoothDevice) {
             "Starting $deviceLabel core-state fast init for ${fastHandlers.size}/${handlers.size} handlers; deferred=${deferredHandlers.map { it.id }}"
         )
 
-        for (handler in fastHandlers) {
-            var success = false
-            for (attempt in 0 until 1) {
-                try {
-                    withTimeout(1500) {
-                        handler.onInit(this@SppDriver)
+        // 核心状态用小间隔并发发起：避免 battery/ANC/low_latency 单个 1.5s 超时串行拖慢首屏。
+        // 仍保留 90ms 交错，降低同一瞬间 pendingResponses 堆积的概率。
+        coroutineScope {
+            fastHandlers.mapIndexed { index, handler ->
+                async {
+                    if (index > 0) delay(index * 90L)
+                    try {
+                        withTimeout(1500) {
+                            handler.onInit(this@SppDriver)
+                        }
+                        LogBuffer.i("SPP", "Core-state fast init ${handler.id} success")
+                        null
+                    } catch (e: TimeoutCancellationException) {
+                        LogBuffer.w("SPP", "Core-state fast init ${handler.id} timeout")
+                        handler.id
+                    } catch (e: Exception) {
+                        LogBuffer.w("SPP", "Core-state fast init ${handler.id} failed: ${e.message}")
+                        handler.id
                     }
-                    success = true
-                    LogBuffer.i("SPP", "Core-state fast init ${handler.id} success (attempt=${attempt + 1})")
-                    break
-                } catch (e: TimeoutCancellationException) {
-                    LogBuffer.w("SPP", "Core-state fast init ${handler.id} timeout (attempt=${attempt + 1})")
-                } catch (e: Exception) {
-                    LogBuffer.w("SPP", "Core-state fast init ${handler.id} failed (attempt=${attempt + 1}): ${e.message}")
                 }
-            }
-            if (!success) failedHandlerIds.add(handler.id)
-            delay(60L)
+            }.awaitAll().filterNotNull().forEach { failedHandlerIds.add(it) }
         }
 
         failedHandlerIds.addAll(deferredHandlers.map { it.id })
@@ -288,8 +292,10 @@ class SppDriver(private val device: BluetoothDevice) {
         val bytes = pkg.toBytes()
         LogBuffer.d("SPP", "TX: ${bytes.toHex()}")
         try {
-            outputStream?.write(bytes)
-            outputStream?.flush()
+            txMutex.withLock {
+                outputStream?.write(bytes)
+                outputStream?.flush()
+            }
         } catch (e: Exception) {
             LogBuffer.e("SPP", "TX failed: ${e.message}")
             throw e

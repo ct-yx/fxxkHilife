@@ -46,6 +46,11 @@ fun AppNavHost(
 ) {
     val context = LocalContext.current
     val connState by viewModel.connectionState.collectAsState()
+    val props by viewModel.props.collectAsState()
+    val coreStateReady = remember(props) {
+        val hasBattery = props.batteryGlobal != null || props.batteryLeft != null || props.batteryRight != null || props.batteryCase != null
+        props.ancMode != null && props.lowLatency != null && hasBattery
+    }
     val navController = rememberNavController()
     val backStackEntry by navController.currentBackStackEntryAsState()
     val currentRoute = backStackEntry?.destination?.route
@@ -78,9 +83,12 @@ fun AppNavHost(
 
     val startDestination = remember { if (!hasPermissions) Route.PermissionGuide else Route.Home }
 
-    LaunchedEffect(connState) {
-        if (connState is ConnectionState.Connected && currentRoute != Route.Device) {
+    LaunchedEffect(connState, coreStateReady, currentRoute) {
+        if (connState is ConnectionState.Connected && coreStateReady && currentRoute == Route.Home) {
             navController.navigate(Route.Device) { launchSingleTop = true }
+        }
+        if (currentRoute == Route.Device && !coreStateReady) {
+            navController.popBackStack(Route.Home, inclusive = false)
         }
     }
 
@@ -130,7 +138,9 @@ fun AppNavHost(
                     hazeState = hazeState,
                     onDeviceClick = { address ->
                         viewModel.autoConnectSaved(address)
-                        navController.navigate(Route.Device) { launchSingleTop = true }
+                        if (viewModel.isCoreStateReady()) {
+                            navController.navigate(Route.Device) { launchSingleTop = true }
+                        }
                     },
                     onRemoveDevice = { address ->
                         viewModel.removeSavedDevice(address)
@@ -151,7 +161,11 @@ fun AppNavHost(
                     onBack = { navController.popBackStack() },
                     onDeviceSelected = { address ->
                         viewModel.autoConnectSaved(address)
-                        navController.navigate(Route.Device) { launchSingleTop = true }
+                        if (viewModel.isCoreStateReady()) {
+                            navController.navigate(Route.Device) { launchSingleTop = true }
+                        } else {
+                            navController.popBackStack(Route.Home, inclusive = false)
+                        }
                     },
                 )
             }

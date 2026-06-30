@@ -23,6 +23,8 @@ class DeviceViewModel : ViewModel() {
     val connectionState: StateFlow<ConnectionState> = repo.connectionState
     val props: StateFlow<DeviceProps> = repo.props
 
+    fun isCoreStateReady(): Boolean = repo.isCoreStateReady()
+
     // ── 扫描状态（只在 ViewModel 层维护，与连接无关） ─────────────────────────
     private val _scanState = MutableStateFlow(ScanState())
     val scanState: StateFlow<ScanState> = _scanState.asStateFlow()
