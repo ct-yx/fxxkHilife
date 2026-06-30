@@ -19,6 +19,7 @@ import androidx.compose.ui.unit.dp
 import com.freebuds.controller.bluetooth.ScannedDevice
 import com.freebuds.controller.data.ConnectionState
 import com.freebuds.controller.data.DeviceViewModel
+import com.freebuds.controller.i18n.i18n
 import com.freebuds.controller.ui.glass.AdaptiveCard
 import dev.chrisbanes.haze.HazeState
 
@@ -46,10 +47,10 @@ fun HomeScreen(
         containerColor = androidx.compose.ui.graphics.Color.Transparent,
         topBar = {
             TopAppBar(
-                title = { Text("fxxkHilife") },
+                title = { Text(i18n("app.name")) },
                 actions = {
                     IconButton(onClick = onSettings) {
-                        Icon(Icons.Default.Settings, contentDescription = "设置")
+                        Icon(Icons.Default.Settings, contentDescription = i18n("common.settings"))
                     }
                 },
                 colors = TopAppBarDefaults.topAppBarColors(
@@ -67,13 +68,13 @@ fun HomeScreen(
             item {
                 when (val s = connState) {
                     is ConnectionState.Connected -> {
-                        StatusBanner("已连接 ${s.deviceName}", isConnected = true)
+                        StatusBanner(i18n("scan.connected_to", s.deviceName), isConnected = true)
                     }
                     is ConnectionState.Connecting -> {
-                        StatusBanner("正在连接 ${s.deviceName}…")
+                        StatusBanner(i18n("scan.connecting_to", s.deviceName))
                     }
                     is ConnectionState.Failed -> {
-                        StatusBanner("连接失败：${s.reason}", isError = true)
+                        StatusBanner(i18n("scan.connection_failed", s.reason), isError = true)
                     }
                     else -> {}
                 }
@@ -82,7 +83,7 @@ fun HomeScreen(
             // 已保存设备列表
             item {
                 Text(
-                    "已保存的设备",
+                    i18n("home.saved_devices"),
                     modifier = Modifier.padding(horizontal = 16.dp, vertical = 12.dp),
                     style = MaterialTheme.typography.titleSmall,
                     color = MaterialTheme.colorScheme.primary
@@ -99,10 +100,10 @@ fun HomeScreen(
                         contentAlignment = Alignment.Center
                     ) {
                         Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                            Text("尚未保存任何设备", style = MaterialTheme.typography.bodyLarge)
+                            Text(i18n("home.empty_saved_devices"), style = MaterialTheme.typography.bodyLarge)
                             Spacer(Modifier.height(4.dp))
                             Text(
-                                "扫描并连接后会自动保存",
+                                i18n("home.saved_after_connect"),
                                 style = MaterialTheme.typography.bodySmall,
                                 color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.5f)
                             )
@@ -140,9 +141,9 @@ fun HomeScreen(
                     ) {
                         Icon(Icons.Default.Search, contentDescription = null, tint = MaterialTheme.colorScheme.primary)
                         Column {
-                            Text("扫描新设备", style = MaterialTheme.typography.titleSmall)
+                            Text(i18n("home.scan_new_device"), style = MaterialTheme.typography.titleSmall)
                             Text(
-                                "发现附近的华为/荣耀耳机",
+                                i18n("home.scan_nearby_huawei"),
                                 style = MaterialTheme.typography.bodySmall,
                                 color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.5f)
                             )
@@ -168,6 +169,7 @@ private fun SavedDeviceItem(
 ) {
     val device = remember(address) { adapter?.getRemoteDevice(address) }
     val name = device?.name ?: address
+    val bondedLabel = i18n("home.bonded")
     val isBonded = remember(address) {
         try { device?.bondState == android.bluetooth.BluetoothDevice.BOND_BONDED } catch (_: Exception) { false }
     }
@@ -190,14 +192,14 @@ private fun SavedDeviceItem(
                 Text(
                     buildString {
                         append(address)
-                        if (isBonded) append(" · 已配对")
+                        if (isBonded) append(" · ").append(bondedLabel)
                     },
                     style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.62f),
                 )
             }
             IconButton(onClick = onRemove) {
-                Icon(Icons.Default.Delete, contentDescription = "删除", tint = MaterialTheme.colorScheme.error)
+                Icon(Icons.Default.Delete, contentDescription = i18n("common.delete"), tint = MaterialTheme.colorScheme.error)
             }
         }
     }
@@ -224,18 +226,18 @@ private fun ScanSection(
             verticalAlignment = Alignment.CenterVertically
         ) {
             Text(
-                "附近设备",
+                i18n("scan.nearby_devices"),
                 style = MaterialTheme.typography.labelMedium,
                 color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.7f)
             )
             if (scanState.isScanning) {
                 Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                     CircularProgressIndicator(modifier = Modifier.size(16.dp), strokeWidth = 2.dp)
-                    Text("扫描中", style = MaterialTheme.typography.bodySmall)
+                    Text(i18n("common.scanning"), style = MaterialTheme.typography.bodySmall)
                 }
             } else {
                 TextButton(onClick = { viewModel.startScan(context) }) {
-                    Text("开始扫描")
+                    Text(i18n("home.start_scan"))
                 }
             }
         }
@@ -248,7 +250,7 @@ private fun ScanSection(
                 contentAlignment = Alignment.Center
             ) {
                 Text(
-                    "点击\"开始扫描\"发现附近设备",
+                    i18n("home.tap_start_scan"),
                     style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.4f)
                 )
@@ -259,7 +261,7 @@ private fun ScanSection(
 
             if (huawei.isNotEmpty()) {
                 Text(
-                    "华为 / 荣耀设备",
+                    i18n("scan.huawei_honor_devices"),
                     modifier = Modifier.padding(horizontal = 16.dp, vertical = 4.dp),
                     style = MaterialTheme.typography.labelMedium,
                     color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.6f)
@@ -270,7 +272,7 @@ private fun ScanSection(
             }
             if (others.isNotEmpty()) {
                 Text(
-                    "其他设备",
+                    i18n("scan.other_devices"),
                     modifier = Modifier.padding(horizontal = 16.dp, vertical = 4.dp),
                     style = MaterialTheme.typography.labelMedium,
                     color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.6f)
@@ -285,13 +287,14 @@ private fun ScanSection(
 
 @Composable
 private fun ScanDeviceItem(device: ScannedDevice, onClick: () -> Unit) {
+    val bondedLabel = i18n("home.bonded")
     ListItem(
         headlineContent = { Text(device.displayName, fontWeight = FontWeight.Medium) },
         supportingContent = {
             Text(
                 buildString {
                     append(device.address)
-                    if (device.isBonded) append(" · 已配对")
+                    if (device.isBonded) append(" · ").append(bondedLabel)
                     if (device.rssi != 0) append(" · ${device.rssi} dBm")
                 },
                 style = MaterialTheme.typography.bodySmall,

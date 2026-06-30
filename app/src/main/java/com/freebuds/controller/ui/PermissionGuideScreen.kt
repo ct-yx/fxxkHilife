@@ -24,6 +24,7 @@ import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
+import com.freebuds.controller.i18n.i18n
 
 @Composable
 fun PermissionGuideScreen(onGranted: () -> Unit) {
@@ -85,42 +86,42 @@ fun PermissionGuideScreen(onGranted: () -> Unit) {
                 tint = MaterialTheme.colorScheme.primary,
             )
             Spacer(modifier = Modifier.height(22.dp))
-            Text("fxxkHilife", style = MaterialTheme.typography.headlineLarge)
+            Text(i18n("app.name"), style = MaterialTheme.typography.headlineLarge)
             Spacer(modifier = Modifier.height(8.dp))
             Text(
-                "华为 / 荣耀耳机控制",
+                i18n("permission.subtitle"),
                 style = MaterialTheme.typography.bodyLarge,
                 color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.6f),
             )
             Spacer(modifier = Modifier.height(28.dp))
             Text(
-                "需要蓝牙权限连接耳机；建议开启通知与后台/自启动权限，以保证常驻通知和开机自动连接正常工作。",
+                i18n("permission.description"),
                 style = MaterialTheme.typography.bodyMedium,
                 textAlign = TextAlign.Center,
             )
             Spacer(modifier = Modifier.height(18.dp))
-            PermissionStatusRow(Icons.Default.Bluetooth, "蓝牙扫描与连接", bluetoothGranted, required = true)
-            PermissionStatusRow(Icons.Default.Notifications, "通知权限", notificationGranted, required = false)
-            PermissionStatusRow(Icons.Default.BatterySaver, "后台保活 / 电池优化白名单", false, required = false, hint = "需在系统设置中手动允许")
-            PermissionStatusRow(Icons.Default.PowerSettingsNew, "自启动 / 开机后自动连接", false, required = false, hint = "部分国产 ROM 需手动开启")
+            PermissionStatusRow(Icons.Default.Bluetooth, i18n("permission.bluetooth_connect"), bluetoothGranted, required = true)
+            PermissionStatusRow(Icons.Default.Notifications, i18n("permission.notification"), notificationGranted, required = false)
+            PermissionStatusRow(Icons.Default.BatterySaver, i18n("permission.keep_alive_whitelist"), false, required = false, hint = i18n("permission.manual_allow_hint"))
+            PermissionStatusRow(Icons.Default.PowerSettingsNew, i18n("permission.auto_start"), false, required = false, hint = i18n("permission.rom_manual_hint"))
             Spacer(modifier = Modifier.height(24.dp))
             Button(onClick = { launcher.launch(requestPerms) }) {
-                Text(if (notificationPerms.isEmpty()) "授予蓝牙权限" else "授予蓝牙与通知权限")
+                Text(if (notificationPerms.isEmpty()) i18n("permission.grant_bluetooth") else i18n("permission.grant_bluetooth_notification"))
             }
             Spacer(modifier = Modifier.height(10.dp))
             Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
                 OutlinedButton(onClick = { openBatteryOptimizationSettings(context) }) {
-                    Text("后台保活")
+                    Text(i18n("permission.keep_alive"))
                 }
                 OutlinedButton(onClick = { openAutoStartSettings(context) }) {
-                    Text("自启动设置")
+                    Text(i18n("permission.auto_start_settings"))
                 }
             }
             TextButton(onClick = onGranted, enabled = bluetoothGranted) {
-                Text("继续")
+                Text(i18n("common.continue"))
             }
             Text(
-                "我们不会上传任何数据，所有操作均在本地完成。",
+                i18n("permission.privacy_local"),
                 style = MaterialTheme.typography.bodySmall,
                 textAlign = TextAlign.Center,
                 color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.5f),
@@ -141,7 +142,7 @@ private fun PermissionStatusRow(
         headlineContent = { Text(title) },
         supportingContent = {
             Text(
-                hint ?: if (required) "必需" else "建议开启",
+                hint ?: if (required) i18n("permission.required") else i18n("permission.recommended"),
                 color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.55f),
             )
         },
@@ -149,7 +150,7 @@ private fun PermissionStatusRow(
         trailingContent = {
             AssistChip(
                 onClick = {},
-                label = { Text(if (granted) "已授权" else if (required) "未授权" else "建议") },
+                label = { Text(if (granted) i18n("permission.granted") else if (required) i18n("permission.not_granted") else i18n("permission.suggested")) },
                 colors = AssistChipDefaults.assistChipColors(
                     labelColor = if (granted) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant
                 )

@@ -147,35 +147,35 @@ class BluetoothService : Service() {
 
         // ANC 模式
         val ancLabel = when (props.ancMode) {
-            "cancellation" -> "降噪"
-            "awareness" -> "透传"
-            "normal" -> "关闭"
+            "cancellation" -> I18n.t("anc.mode.cancellation")
+            "awareness" -> I18n.t("anc.mode.awareness")
+            "normal" -> I18n.t("anc.mode.off")
             else -> props.ancMode
         }
         if (ancLabel != null) lines.add("ANC：$ancLabel")
 
         // 电池电量：只展示 props 中已有数据，不额外触发查询；电量随仓库轮询低频更新
         val batteryParts = mutableListOf<String>()
-        props.batteryLeft?.let { batteryParts.add("左${it}%") }
-        props.batteryRight?.let { batteryParts.add("右${it}%") }
-        props.batteryCase?.let { batteryParts.add("盒${it}%") }
+        props.batteryLeft?.let { batteryParts.add(I18n.t("notification.battery_left", it)) }
+        props.batteryRight?.let { batteryParts.add(I18n.t("notification.battery_right", it)) }
+        props.batteryCase?.let { batteryParts.add(I18n.t("notification.battery_case", it)) }
         if (batteryParts.isNotEmpty()) {
-            lines.add("电量：${batteryParts.joinToString("/")}")
+            lines.add(I18n.t("notification.battery", batteryParts.joinToString("/")))
         } else {
-            props.batteryGlobal?.let { lines.add("电量：${it}%") }
+            props.batteryGlobal?.let { lines.add(I18n.t("notification.battery", "${it}%")) }
         }
 
         // 音质模式
         val sqLabel = when (props.soundQuality) {
-            "sqp_quality" -> "声音优先"
-            "sqp_connectivity" -> "连接优先"
+            "sqp_quality" -> I18n.t("sound.quality.sound_first")
+            "sqp_connectivity" -> I18n.t("sound.quality.connectivity")
             else -> props.soundQuality
         }
-        if (sqLabel != null) lines.add("音质：$sqLabel")
+        if (sqLabel != null) lines.add(I18n.t("notification.sound_quality", sqLabel))
 
         // 低延迟
         if (props.lowLatency != null) {
-            lines.add("低延迟：${if (props.lowLatency) "开启" else "关闭"}")
+            lines.add(I18n.t("notification.low_latency", if (props.lowLatency) I18n.t("common.enabled") else I18n.t("common.disabled")))
         }
 
         // 佩戴时长
@@ -185,7 +185,7 @@ class BluetoothService : Service() {
             val hours = durationMs / 3600000
             val mins = (durationMs % 3600000) / 60000
             val durationStr = if (hours > 0) "${hours}h${mins}m" else "${mins}m"
-            lines.add("佩戴：$durationStr")
+            lines.add(I18n.t("notification.wearing", durationStr))
         }
 
         val contentText = if (lines.isEmpty()) I18n.t("common.loading") else lines.joinToString(" | ")

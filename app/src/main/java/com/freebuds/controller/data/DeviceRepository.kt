@@ -12,6 +12,7 @@ import android.content.SharedPreferences
 import android.os.Build
 import androidx.core.content.FileProvider
 import com.freebuds.controller.bluetooth.*
+import com.freebuds.controller.i18n.I18n
 import com.freebuds.controller.protocol.HuaweiCapability
 import com.freebuds.controller.protocol.HuaweiModel
 import com.freebuds.controller.protocol.modelCapabilities
@@ -152,7 +153,7 @@ class DeviceRepository {
             } else {
                 driver = null
                 connectedAddress = null
-                _connectionState.value = ConnectionState.Failed("连接失败")
+                _connectionState.value = ConnectionState.Failed(I18n.t("scan.connection_failed_short"))
             }
         }
     }
@@ -459,7 +460,7 @@ class DeviceRepository {
                 putExtra(Intent.EXTRA_STREAM, uri)
                 addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
             }
-            context.startActivity(Intent.createChooser(intent, "分享日志"))
+            context.startActivity(Intent.createChooser(intent, I18n.t("settings.share_log_chooser")))
         } catch (e: Exception) {
             LogBuffer.e("Share", "Failed to share log: ${e.message}")
         }

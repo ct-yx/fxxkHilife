@@ -940,3 +940,29 @@
 - versionCode: 55
 - versionName: 3.1.0
 - tag: v3.1.0
+
+## v3.2.0 (2026-06-30)
+
+### i18n 用户界面覆盖扩展
+- 在 v3.1.0 i18n facade 基础上，继续迁移日志/终端外的主要用户可见 UI 文案。
+- 覆盖首页、扫描页、权限引导页、设备页、手势页、设置页主要分组/按钮/说明文案，以及通知与 Quick Settings Tile 的动态状态描述。
+- 保持现有 Compose 结构，不新增额外 Text 包装组件；仅在原有 Text / title / subtitle / contentDescription 位置替换字符串来源。
+- 日志界面和调试日志内容暂不迁移，避免影响排障文本稳定性。
+
+### 发布
+- versionCode: 56
+- versionName: 3.2.0
+- tag: v3.2.0
+
+## v3.3.0 (2026-06-30)
+
+### i18n 覆盖扩展
+- 继续迁移日志页 / 调试终端之外的主要用户可见文案到统一 `I18n.t()` / Compose `i18n()` key 表。
+- 覆盖主页、扫描、权限引导、设备详情、手势、设置、常驻通知与 Quick Settings Tile 的动态状态文案。
+- 保留日志页、调试终端命令说明和 SPP 原始排障文本，不做 i18n，避免影响后续日志定位与用户反馈。
+- 同步更新 README、README_EN、docs 首页、VERSION_MANAGEMENT 与 Android 版本字段，准备通过 GitHub Actions CI 自动构建并发布。
+
+### 发布
+- versionCode: 57
+- versionName: 3.3.0
+- tag: v3.3.0

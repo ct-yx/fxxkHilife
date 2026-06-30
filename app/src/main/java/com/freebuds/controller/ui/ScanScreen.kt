@@ -17,6 +17,7 @@ import androidx.compose.ui.unit.dp
 import com.freebuds.controller.bluetooth.ScannedDevice
 import com.freebuds.controller.data.ConnectionState
 import com.freebuds.controller.data.DeviceViewModel
+import com.freebuds.controller.i18n.i18n
 import com.freebuds.controller.ui.glass.AdaptiveCard
 import dev.chrisbanes.haze.HazeState
 
@@ -37,10 +38,10 @@ fun ScanScreen(
         containerColor = androidx.compose.ui.graphics.Color.Transparent,
         topBar = {
             TopAppBar(
-                title = { Text("扫描设备") },
+                title = { Text(i18n("scan.title")) },
                 navigationIcon = {
                     IconButton(onClick = onBack) {
-                        Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "返回")
+                        Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = i18n("common.back"))
                     }
                 },
                 colors = TopAppBarDefaults.topAppBarColors(
@@ -56,14 +57,14 @@ fun ScanScreen(
         ) {
             // 已连接提示（返回扫描页时不断连）
             if (connState is ConnectionState.Connected) {
-                StatusBanner("已连接 ${(connState as ConnectionState.Connected).deviceName}",
+                StatusBanner(i18n("scan.connected_to", (connState as ConnectionState.Connected).deviceName),
                     isConnected = true)
             }
             if (connState is ConnectionState.Connecting) {
-                StatusBanner("正在连接 ${(connState as ConnectionState.Connecting).deviceName}…")
+                StatusBanner(i18n("scan.connecting_to", (connState as ConnectionState.Connecting).deviceName))
             }
             if (connState is ConnectionState.Failed) {
-                StatusBanner("连接失败：${(connState as ConnectionState.Failed).reason}", isError = true)
+                StatusBanner(i18n("scan.connection_failed", (connState as ConnectionState.Failed).reason), isError = true)
             }
 
             // 扫描按钮
@@ -75,17 +76,17 @@ fun ScanScreen(
                 verticalAlignment = Alignment.CenterVertically
             ) {
                 Text(
-                    "附近设备",
+                    i18n("scan.nearby_devices"),
                     style = MaterialTheme.typography.titleSmall,
                     color = MaterialTheme.colorScheme.primary
                 )
                 if (scanState.isScanning) {
                     Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                         CircularProgressIndicator(modifier = Modifier.size(16.dp), strokeWidth = 2.dp)
-                        Text("扫描中", style = MaterialTheme.typography.bodySmall)
+                        Text(i18n("common.scanning"), style = MaterialTheme.typography.bodySmall)
                     }
                 } else {
-                    TextButton(onClick = { viewModel.startScan(context) }) { Text("重新扫描") }
+                    TextButton(onClick = { viewModel.startScan(context) }) { Text(i18n("scan.rescan")) }
                 }
             }
 
@@ -93,7 +94,7 @@ fun ScanScreen(
 
             if (scanState.devices.isEmpty() && !scanState.isScanning) {
                 Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-                    Text("未发现设备", color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.5f))
+                    Text(i18n("scan.empty"), color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.5f))
                 }
             } else {
                 val huawei = scanState.devices.filter { it.isHuaweiOrHonor }
@@ -102,12 +103,12 @@ fun ScanScreen(
                 LazyColumn {
                     if (huawei.isNotEmpty()) {
                         item {
-                            SectionHeader("华为 / 荣耀设备")
+                            SectionHeader(i18n("scan.huawei_honor_devices"))
                         }
                         items(huawei) { DeviceItem(it, displayMode, hazeState) { onDeviceSelected(it.device.address) } }
                     }
                     if (others.isNotEmpty()) {
-                        item { SectionHeader("其他设备") }
+                        item { SectionHeader(i18n("scan.other_devices")) }
                         items(others) { DeviceItem(it, displayMode, hazeState) { onDeviceSelected(it.device.address) } }
                     }
                 }
@@ -128,6 +129,7 @@ private fun SectionHeader(text: String) {
 
 @Composable
 private fun DeviceItem(device: ScannedDevice, displayMode: UiDisplayMode, hazeState: HazeState?, onClick: () -> Unit) {
+    val bondedLabel = i18n("home.bonded")
     AdaptiveCard(
         displayMode = displayMode,
         hazeState = hazeState,
@@ -140,7 +142,7 @@ private fun DeviceItem(device: ScannedDevice, displayMode: UiDisplayMode, hazeSt
         Text(
             buildString {
                 append(device.address)
-                if (device.isBonded) append(" · 已配对")
+                if (device.isBonded) append(" · ").append(bondedLabel)
                 if (device.rssi != 0) append(" · ${device.rssi} dBm")
             },
             style = MaterialTheme.typography.bodySmall,

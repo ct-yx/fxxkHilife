@@ -1,10 +1,14 @@
 package com.freebuds.controller.ui
 
 import android.content.Context
+import com.freebuds.controller.i18n.I18n
 
-enum class UiDisplayMode(val label: String, val description: String) {
-    CLASSIC("传统展示", "稳定、清晰、性能开销低"),
-    LIQUID_GLASS("液态玻璃", "壁纸、毛玻璃、虹彩边缘与漂浮质感")
+enum class UiDisplayMode(private val labelKey: String, private val descriptionKey: String) {
+    CLASSIC("ui.display.classic", "ui.display.classic_desc"),
+    LIQUID_GLASS("ui.display.liquid_glass", "ui.display.liquid_glass_desc");
+
+    val label: String get() = I18n.t(labelKey)
+    val description: String get() = I18n.t(descriptionKey)
 }
 
 fun loadUiDisplayMode(context: Context): UiDisplayMode {

@@ -13,6 +13,8 @@ import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.unit.dp
 import com.freebuds.controller.data.DeviceProps
 import com.freebuds.controller.data.DeviceViewModel
+import com.freebuds.controller.i18n.I18n
+import com.freebuds.controller.i18n.i18n
 import com.freebuds.controller.ui.glass.AdaptiveCard
 import dev.chrisbanes.haze.HazeState
 
@@ -29,10 +31,10 @@ fun GestureScreen(
         containerColor = androidx.compose.ui.graphics.Color.Transparent,
         topBar = {
             TopAppBar(
-                title = { Text("手势设置") },
+                title = { Text(i18n("gesture.title")) },
                 navigationIcon = {
                     IconButton(onClick = onBack) {
-                        Icon(Icons.Default.ArrowBack, contentDescription = "返回")
+                        Icon(Icons.Default.ArrowBack, contentDescription = i18n("common.back"))
                     }
                 },
                 colors = TopAppBarDefaults.topAppBarColors(
@@ -54,7 +56,7 @@ fun GestureScreen(
                         displayMode = displayMode,
                         hazeState = hazeState,
                         icon = Icons.Default.TouchApp,
-                        title = "双击 · 左",
+                        title = i18n("gesture.double_left"),
                         current = chineseTap(props.doubleTapLeft),
                         options = props.doubleTapOptions.map(::chineseTap),
                         rawOptions = props.doubleTapOptions,
@@ -68,7 +70,7 @@ fun GestureScreen(
                         displayMode = displayMode,
                         hazeState = hazeState,
                         icon = Icons.Default.TouchApp,
-                        title = "双击 · 右",
+                        title = i18n("gesture.double_right"),
                         current = chineseTap(props.doubleTapRight),
                         options = props.doubleTapOptions.map(::chineseTap),
                         rawOptions = props.doubleTapOptions,
@@ -82,7 +84,7 @@ fun GestureScreen(
                         displayMode = displayMode,
                         hazeState = hazeState,
                         icon = Icons.Default.TouchApp,
-                        title = "三击 · 左",
+                        title = i18n("gesture.triple_left"),
                         current = chineseTap(props.tripleTapLeft),
                         options = props.tripleTapOptions.map(::chineseTap),
                         rawOptions = props.tripleTapOptions,
@@ -96,7 +98,7 @@ fun GestureScreen(
                         displayMode = displayMode,
                         hazeState = hazeState,
                         icon = Icons.Default.TouchApp,
-                        title = "三击 · 右",
+                        title = i18n("gesture.triple_right"),
                         current = chineseTap(props.tripleTapRight),
                         options = props.tripleTapOptions.map(::chineseTap),
                         rawOptions = props.tripleTapOptions,
@@ -110,7 +112,7 @@ fun GestureScreen(
                         displayMode = displayMode,
                         hazeState = hazeState,
                         icon = Icons.Default.Swipe,
-                        title = "滑动手势",
+                        title = i18n("gesture.swipe"),
                         current = chineseSwipe(props.swipeGesture),
                         options = props.swipeGestureOptions.map(::chineseSwipe),
                         rawOptions = props.swipeGestureOptions,
@@ -124,7 +126,7 @@ fun GestureScreen(
                         displayMode = displayMode,
                         hazeState = hazeState,
                         icon = Icons.Default.PanTool,
-                        title = "长按",
+                        title = i18n("gesture.long_tap"),
                         current = chineseLongTap(props.longTap),
                         options = props.longTapOptions.map(::chineseLongTap),
                         rawOptions = props.longTapOptions,
@@ -139,28 +141,28 @@ fun GestureScreen(
 // ── 中文映射 ──────────────────────────────────────────────────────────────
 
 internal fun chineseTap(raw: String?): String = when (raw) {
-    "tap_action_pause" -> "播放/暂停"
-    "tap_action_next" -> "下一首"
-    "tap_action_prev" -> "上一首"
-    "tap_action_assistant" -> "语音助手"
-    "tap_action_off" -> "关闭"
-    "tap_action_answer" -> "接听/挂断"
-    else -> raw ?: "未知"
+    "tap_action_pause" -> I18n.t("gesture.action.pause")
+    "tap_action_next" -> I18n.t("gesture.action.next")
+    "tap_action_prev" -> I18n.t("gesture.action.prev")
+    "tap_action_assistant" -> I18n.t("gesture.action.assistant")
+    "tap_action_off" -> I18n.t("common.disabled")
+    "tap_action_answer" -> I18n.t("gesture.action.answer")
+    else -> raw ?: I18n.t("common.unknown")
 }
 
 internal fun chineseSwipe(raw: String?): String = when (raw) {
-    "tap_action_change_volume" -> "音量调节"
-    "tap_action_off" -> "关闭"
-    else -> raw ?: "未知"
+    "tap_action_change_volume" -> I18n.t("gesture.action.volume")
+    "tap_action_off" -> I18n.t("common.disabled")
+    else -> raw ?: I18n.t("common.unknown")
 }
 
 internal fun chineseLongTap(raw: String?): String = when (raw) {
-    "noise_control_disabled" -> "关闭降噪切换"
-    "noise_control_off_on" -> "降噪切换"
-    "noise_control_off_on_aw" -> "降噪/透传切换"
-    "noise_control_on_aw" -> "透传切换"
-    "noise_control_off_an" -> "仅降噪"
-    else -> raw ?: "未知"
+    "noise_control_disabled" -> I18n.t("gesture.noise.disabled")
+    "noise_control_off_on" -> I18n.t("gesture.noise.off_on")
+    "noise_control_off_on_aw" -> I18n.t("gesture.noise.off_on_aw")
+    "noise_control_on_aw" -> I18n.t("gesture.noise.on_aw")
+    "noise_control_off_an" -> I18n.t("gesture.noise.off_an")
+    else -> raw ?: I18n.t("common.unknown")
 }
 
 // ── 复用组件（从 DeviceScreen 移来） ──────────────────────────────────────
@@ -234,7 +236,7 @@ private fun OptionsDialog2(
                 TextButton(
                     onClick = onDismiss,
                     modifier = Modifier.fillMaxWidth()
-                ) { Text("取消") }
+                ) { Text(i18n("common.cancel")) }
             }
         },
         confirmButton = { }

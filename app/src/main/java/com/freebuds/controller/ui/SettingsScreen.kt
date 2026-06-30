@@ -133,7 +133,7 @@ fun SettingsScreen(
             contentPadding = PaddingValues(bottom = 24.dp)
         ) {
             // ── 主题 ──
-            item { SettingsHeader("主题") }
+            item { SettingsHeader(i18n("settings.theme")) }
             item {
                 ThemeSelector(
                     displayMode = displayMode,
@@ -161,7 +161,7 @@ fun SettingsScreen(
             }
 
             // ── 个性化 ──
-            item { SettingsHeader("个性化") }
+            item { SettingsHeader(i18n("settings.personalization")) }
             item {
                 LiquidGlassPersonalizationCard(
                     displayMode = displayMode,
@@ -172,7 +172,7 @@ fun SettingsScreen(
             }
 
             // ── 壁纸 ──
-            item { SettingsHeader("壁纸") }
+            item { SettingsHeader(i18n("settings.wallpaper")) }
             item {
                 WallpaperPicker(
                     displayMode = displayMode,
@@ -251,14 +251,14 @@ fun SettingsScreen(
             }
 
             // ── 调试 ──
-            item { SettingsHeader("调试") }
+            item { SettingsHeader(i18n("settings.debug")) }
             if (isConnected) {
                 item {
                     SettingsCard(
                         displayMode = displayMode,
                         hazeState = hazeState,
-                        headlineContent = { Text("调试终端") },
-                        supportingContent = { Text("查看 SPP 原始日志 / 发送命令") },
+                        headlineContent = { Text(i18n("settings.debug_terminal")) },
+                        supportingContent = { Text(i18n("settings.debug_terminal_desc")) },
                         leadingContent = { Icon(Icons.Default.Terminal, contentDescription = null) },
                         trailingContent = { Icon(Icons.Default.ChevronRight, contentDescription = null) },
                         onClick = { context.startActivity(Intent(context, TerminalActivity::class.java)) },
@@ -268,8 +268,8 @@ fun SettingsScreen(
                     SettingsCard(
                         displayMode = displayMode,
                         hazeState = hazeState,
-                        headlineContent = { Text("分享日志") },
-                        supportingContent = { Text("导出当前日志为文本文件") },
+                        headlineContent = { Text(i18n("settings.share_log")) },
+                        supportingContent = { Text(i18n("settings.share_log_desc")) },
                         leadingContent = { Icon(Icons.Default.Share, contentDescription = null) },
                         onClick = { viewModel.shareLog(context) },
                     )
@@ -282,20 +282,20 @@ fun SettingsScreen(
                     SettingsCard(
                         displayMode = displayMode,
                         hazeState = hazeState,
-                        headlineContent = { Text("调试功能需连接耳机后使用") },
+                        headlineContent = { Text(i18n("settings.debug_requires_connected")) },
                         leadingContent = { Icon(Icons.Default.Lock, contentDescription = null) },
                     )
                 }
             }
 
             // ── 应用详情 ──────────────────────────────────────────────────────
-            item { SettingsHeader("应用详情") }
+            item { SettingsHeader(i18n("settings.app_details")) }
             item {
                 SettingsCard(
                     displayMode = displayMode,
                     hazeState = hazeState,
-                    headlineContent = { Text("项目理念", fontWeight = FontWeight.Bold) },
-                    supportingContent = { Text("为华为 FreeBuds 系列耳机提供第三方开源控制面板，还原官方 App 的完整功能，同时保持轻量与高效。") },
+                    headlineContent = { Text(i18n("settings.project_philosophy"), fontWeight = FontWeight.Bold) },
+                    supportingContent = { Text(i18n("settings.project_philosophy_desc")) },
                     leadingContent = { Icon(Icons.Default.Lightbulb, contentDescription = null) },
                 )
             }
@@ -317,7 +317,7 @@ fun SettingsScreen(
                 SettingsCard(
                     displayMode = displayMode,
                     hazeState = hazeState,
-                    headlineContent = { Text("更新地址") },
+                    headlineContent = { Text(i18n("settings.update_url")) },
                     supportingContent = { Text("github.com/ct-yx/fxxkHilife/releases") },
                     leadingContent = { Icon(Icons.Default.SystemUpdate, contentDescription = null) },
                     trailingContent = { Icon(Icons.Default.OpenInNew, contentDescription = null) },
@@ -329,7 +329,7 @@ fun SettingsScreen(
             }
 
             // ── 其他贡献 ──────────────────────────────────────────────────────
-            item { SettingsHeader("其他贡献") }
+            item { SettingsHeader(i18n("settings.other_credits")) }
             item {
                 var expanded by remember { mutableStateOf(false) }
                 AdaptiveCard(
@@ -350,9 +350,9 @@ fun SettingsScreen(
                         )
                         Spacer(Modifier.width(12.dp))
                         Column(modifier = Modifier.weight(1f)) {
-                            Text("第三方图标", fontWeight = FontWeight.Bold)
+                            Text(i18n("settings.third_party_icons"), fontWeight = FontWeight.Bold)
                             Spacer(Modifier.height(3.dp))
-                            Text("点击展开图标来源与授权信息")
+                            Text(i18n("settings.third_party_icons_desc"))
                         }
                         Icon(if (expanded) Icons.Default.ExpandLess else Icons.Default.ExpandMore, contentDescription = null)
                     }
@@ -474,8 +474,8 @@ private fun LiquidGlassPersonalizationCard(
             Icon(Icons.Default.AutoAwesome, contentDescription = null)
             Spacer(Modifier.width(12.dp))
             Column(modifier = Modifier.weight(1f)) {
-                Text("液态玻璃个性化", fontWeight = FontWeight.Bold)
-                Text("调节模糊、边缘折射、深度与可读性", style = MaterialTheme.typography.bodySmall)
+                Text(i18n("settings.liquid_glass_personalization"), fontWeight = FontWeight.Bold)
+                Text(i18n("settings.liquid_glass_personalization_desc"), style = MaterialTheme.typography.bodySmall)
             }
             Icon(if (expanded) Icons.Default.ExpandLess else Icons.Default.ExpandMore, contentDescription = null)
         }
@@ -484,12 +484,12 @@ private fun LiquidGlassPersonalizationCard(
             Column(modifier = Modifier.padding(top = 14.dp), verticalArrangement = Arrangement.spacedBy(14.dp)) {
                 // 渲染方案固定为最新主线，传统实现仅保留为代码兜底。
                 ConfigSegmentRow(
-                    title = "玻璃模糊强度",
-                    subtitle = "调整玻璃效果的透明与朦胧程度",
+                    title = i18n("settings.glass_blur"),
+                    subtitle = i18n("settings.glass_blur_desc"),
                     options = listOf(
-                        "通透" to config.copy(tintAlpha = 0.08f, refractionStrength = 0.58f),
-                        "默认" to config.copy(tintAlpha = 0.12f, refractionStrength = 0.72f),
-                        "朦胧" to config.copy(tintAlpha = 0.16f, refractionStrength = 0.86f),
+                        i18n("settings.glass.transparent") to config.copy(tintAlpha = 0.08f, refractionStrength = 0.58f),
+                        i18n("common.default") to config.copy(tintAlpha = 0.12f, refractionStrength = 0.72f),
+                        i18n("settings.glass.misty") to config.copy(tintAlpha = 0.16f, refractionStrength = 0.86f),
                     ),
                     selectedIndex = when {
                         config.tintAlpha < 0.10f -> 0
@@ -499,12 +499,12 @@ private fun LiquidGlassPersonalizationCard(
                     onSelect = onConfigChange,
                 )
                 ConfigSegmentRow(
-                    title = "液态玻璃边缘折射",
-                    subtitle = "一种 Lens 效果，增强边缘厚度与折射感",
+                    title = i18n("settings.glass_refraction"),
+                    subtitle = i18n("settings.glass_lens_desc"),
                     options = listOf(
-                        "关闭" to config.copy(refractionStrength = 0.35f),
-                        "默认" to config.copy(refractionStrength = 0.72f),
-                        "增强" to config.copy(refractionStrength = 0.92f),
+                        i18n("common.disabled") to config.copy(refractionStrength = 0.35f),
+                        i18n("common.default") to config.copy(refractionStrength = 0.72f),
+                        i18n("common.enhanced") to config.copy(refractionStrength = 0.92f),
                     ),
                     selectedIndex = when {
                         config.refractionStrength < 0.50f -> 0
@@ -514,12 +514,12 @@ private fun LiquidGlassPersonalizationCard(
                     onSelect = onConfigChange,
                 )
                 ConfigSegmentRow(
-                    title = "液态玻璃深度效果",
-                    subtitle = "增强玻璃厚度、暗边与层次",
+                    title = i18n("settings.glass_depth"),
+                    subtitle = i18n("settings.glass_depth_desc"),
                     options = listOf(
-                        "关闭" to config.copy(depth = 0.16f),
-                        "默认" to config.copy(depth = 0.42f),
-                        "增强" to config.copy(depth = 0.64f),
+                        i18n("common.disabled") to config.copy(depth = 0.16f),
+                        i18n("common.default") to config.copy(depth = 0.42f),
+                        i18n("common.enhanced") to config.copy(depth = 0.64f),
                     ),
                     selectedIndex = when {
                         config.depth < 0.25f -> 0
@@ -529,12 +529,12 @@ private fun LiquidGlassPersonalizationCard(
                     onSelect = onConfigChange,
                 )
                 ConfigSegmentRow(
-                    title = "液态玻璃可读性增强",
-                    subtitle = "复杂/浅色壁纸下保护文字，不改变玻璃主体透明度",
+                    title = i18n("settings.glass_readability"),
+                    subtitle = i18n("settings.glass_readability_desc"),
                     options = listOf(
-                        "较低" to config.copy(readabilityStrength = 0.12f),
-                        "默认" to config.copy(readabilityStrength = 0.28f),
-                        "较高" to config.copy(readabilityStrength = 0.48f),
+                        i18n("settings.glass.low") to config.copy(readabilityStrength = 0.12f),
+                        i18n("common.default") to config.copy(readabilityStrength = 0.28f),
+                        i18n("settings.glass.high") to config.copy(readabilityStrength = 0.48f),
                     ),
                     selectedIndex = when {
                         config.readabilityStrength < 0.20f -> 0
@@ -550,7 +550,7 @@ private fun LiquidGlassPersonalizationCard(
                 ) {
                     Icon(Icons.Default.Tune, contentDescription = null)
                     Spacer(Modifier.width(12.dp))
-                    Text("高级模式", modifier = Modifier.weight(1f), fontWeight = FontWeight.SemiBold)
+                    Text(i18n("settings.advanced_mode"), modifier = Modifier.weight(1f), fontWeight = FontWeight.SemiBold)
                     Icon(if (advancedExpanded) Icons.Default.ExpandLess else Icons.Default.ExpandMore, contentDescription = null)
                 }
                 AnimatedVisibility(visible = advancedExpanded) {
@@ -571,12 +571,12 @@ private fun LiquidGlassPersonalizationCard(
                             onConfigChange(config.copy(cornerRadiusDp = it))
                         }
                         ConfigSegmentRow(
-                            title = "表面轮廓",
-                            subtitle = "影响玻璃边缘高光形态",
+                            title = i18n("settings.surface_profile"),
+                            subtitle = i18n("settings.edge_highlight_desc"),
                             options = listOf(
-                                "圆角" to config.copy(surfaceProfile = GlassSurfaceProfile.Rounded),
-                                "柔方" to config.copy(surfaceProfile = GlassSurfaceProfile.Squircle),
-                                "圆形" to config.copy(surfaceProfile = GlassSurfaceProfile.Circle),
+                                i18n("settings.surface.rounded") to config.copy(surfaceProfile = GlassSurfaceProfile.Rounded),
+                                i18n("settings.surface.squircle") to config.copy(surfaceProfile = GlassSurfaceProfile.Squircle),
+                                i18n("settings.surface.circle") to config.copy(surfaceProfile = GlassSurfaceProfile.Circle),
                             ),
                             selectedIndex = when (config.surfaceProfile) {
                                 GlassSurfaceProfile.Rounded -> 0
@@ -640,9 +640,9 @@ private fun ThemeSelector(
     onSelect: (ThemeMode) -> Unit,
 ) {
     val options = listOf(
-        Triple(ThemeMode.SYSTEM, "跟随", Icons.Default.BrightnessAuto),
-        Triple(ThemeMode.DARK, "深色", Icons.Default.DarkMode),
-        Triple(ThemeMode.LIGHT, "浅色", Icons.Default.LightMode),
+        Triple(ThemeMode.SYSTEM, i18n("settings.theme.system"), Icons.Default.BrightnessAuto),
+        Triple(ThemeMode.DARK, i18n("settings.theme.dark"), Icons.Default.DarkMode),
+        Triple(ThemeMode.LIGHT, i18n("settings.theme.light"), Icons.Default.LightMode),
     )
 
     AdaptiveCard(
@@ -719,7 +719,7 @@ private fun DisplayModeSelector(
             verticalArrangement = Arrangement.spacedBy(8.dp),
         ) {
         Text(
-            "展示模式",
+            i18n("settings.display_mode"),
             style = MaterialTheme.typography.labelLarge,
             color = MaterialTheme.colorScheme.onSurface,
             fontWeight = FontWeight.SemiBold,
@@ -784,7 +784,7 @@ private fun WallpaperPicker(
             ) {
                 AsyncImage(
                     model = Uri.parse(uri),
-                    contentDescription = "壁纸预览",
+                    contentDescription = i18n("settings.wallpaper_preview"),
                     modifier = Modifier.fillMaxSize(),
                     contentScale = ContentScale.Crop,
                 )
@@ -795,10 +795,10 @@ private fun WallpaperPicker(
             Button(onClick = onPick) {
                 Icon(Icons.Default.Image, contentDescription = null)
                 Spacer(Modifier.width(8.dp))
-                Text(if (uri != null) "更换壁纸" else "导入壁纸")
+                Text(if (uri != null) i18n("settings.wallpaper_change") else i18n("settings.wallpaper_import"))
             }
             if (uri != null) {
-                OutlinedButton(onClick = onClear) { Text("清除") }
+                OutlinedButton(onClick = onClear) { Text(i18n("common.clear")) }
             }
         }
     }
@@ -813,9 +813,9 @@ private fun WallpaperScopeSelector(
     onSelect: (WallpaperScope) -> Unit,
 ) {
     val options = listOf(
-        WallpaperScope.ALL to "全部界面",
-        WallpaperScope.HOME to "仅主页",
-        WallpaperScope.SETTINGS to "仅设置",
+        WallpaperScope.ALL to i18n("settings.scope.all"),
+        WallpaperScope.HOME to i18n("settings.scope.home"),
+        WallpaperScope.SETTINGS to i18n("settings.scope.settings"),
     )
     AdaptiveCard(
         displayMode = displayMode,
@@ -828,7 +828,7 @@ private fun WallpaperScopeSelector(
             horizontalArrangement = Arrangement.spacedBy(8.dp),
             verticalAlignment = Alignment.CenterVertically,
         ) {
-            Text("展示范围：", style = MaterialTheme.typography.bodySmall)
+            Text(i18n("settings.display_scope"), style = MaterialTheme.typography.bodySmall)
             options.forEach { (scope, label) ->
                 FilterChip(
                     selected = scope == current,
@@ -848,7 +848,7 @@ private fun LogRetentionSelector(displayMode: UiDisplayMode, hazeState: HazeStat
         mutableIntStateOf(prefs.getInt("log_max_lines", LogBuffer.getMaxLines()))
     }
 
-    val options = listOf(500 to "500 行", 1000 to "1000 行", 2000 to "2000 行", 5000 to "5000 行", 10000 to "10000 行")
+    val options = listOf(500, 1000, 2000, 5000, 10000).map { it to i18n("settings.log_lines", it) }
 
     AdaptiveCard(
         displayMode = displayMode,
@@ -862,7 +862,7 @@ private fun LogRetentionSelector(displayMode: UiDisplayMode, hazeState: HazeStat
             verticalAlignment = Alignment.CenterVertically
         ) {
             Text(
-                "日志保留：",
+                i18n("settings.log_retention"),
                 style = MaterialTheme.typography.bodySmall,
                 color = MaterialTheme.colorScheme.onSurface
             )

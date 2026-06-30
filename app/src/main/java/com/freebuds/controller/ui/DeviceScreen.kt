@@ -23,6 +23,8 @@ import com.freebuds.controller.R
 import com.freebuds.controller.data.ConnectionState
 import com.freebuds.controller.data.DeviceProps
 import com.freebuds.controller.data.DeviceViewModel
+import com.freebuds.controller.i18n.I18n
+import com.freebuds.controller.i18n.i18n
 import com.freebuds.controller.ui.glass.AdaptiveCard
 import com.freebuds.controller.ui.glass.LiquidGlassPanel
 import dev.chrisbanes.haze.HazeState
@@ -30,26 +32,26 @@ import dev.chrisbanes.haze.HazeState
 // ── 中文映射（DeviceScreen 专用）──────────────────────────────────────────
 
 fun chineseAncMode(raw: String?): String = when (raw) {
-    "normal" -> "关闭"
-    "cancellation" -> "降噪"
-    "awareness" -> "透传"
-    else -> raw ?: "未知"
+    "normal" -> I18n.t("anc.mode.off")
+    "cancellation" -> I18n.t("anc.mode.cancellation")
+    "awareness" -> I18n.t("anc.mode.awareness")
+    else -> raw ?: I18n.t("common.unknown")
 }
 
 fun chineseAncLevel(raw: String?, mode: String?): String = when (mode) {
     "cancellation" -> when (raw) {
-        "comfort", "1" -> "舒适"
-        "normal", "0" -> "均衡"
-        "ultra", "2" -> "深度"
-        "dynamic", "3" -> "动态"
-        else -> raw ?: "未知"
+        "comfort", "1" -> I18n.t("anc.level.comfort")
+        "normal", "0" -> I18n.t("anc.level.normal")
+        "ultra", "2" -> I18n.t("anc.level.ultra")
+        "dynamic", "3" -> I18n.t("anc.level.dynamic")
+        else -> raw ?: I18n.t("common.unknown")
     }
     "awareness" -> when (raw) {
-        "normal", "0", "2" -> "普通透传"
-        "voice_boost", "1" -> "人声增强"
-        else -> raw ?: "未知"
+        "normal", "0", "2" -> I18n.t("anc.awareness.normal")
+        "voice_boost", "1" -> I18n.t("anc.awareness.voice_boost")
+        else -> raw ?: I18n.t("common.unknown")
     }
-    else -> raw ?: "未知"
+    else -> raw ?: I18n.t("common.unknown")
 }
 
 private fun canonicalAncLevel(raw: String, mode: String?): String = when (mode) {
@@ -69,15 +71,15 @@ private fun canonicalAncLevel(raw: String, mode: String?): String = when (mode) 
 }
 
 fun ancLevelTitle(mode: String?): String = when (mode) {
-    "cancellation" -> "降噪强度"
-    "awareness" -> "通透模式"
-    else -> "ANC 子模式"
+    "cancellation" -> I18n.t("anc.level_title.cancellation")
+    "awareness" -> I18n.t("anc.level_title.awareness")
+    else -> I18n.t("anc.level_title.default")
 }
 
 fun chineseSoundQuality(raw: String?): String = when (raw) {
-    "sqp_connectivity" -> "连接优先"
-    "sqp_quality" -> "音质优先"
-    else -> raw ?: "未知"
+    "sqp_connectivity" -> I18n.t("sound.quality.connectivity")
+    "sqp_quality" -> I18n.t("sound.quality.quality")
+    else -> raw ?: I18n.t("common.unknown")
 }
 
 // 手势映射已移至 GestureScreen.kt（chineseTap/chineseSwipe/chineseLongTap）
@@ -95,7 +97,7 @@ fun DeviceScreen(
 ) {
     val connState by viewModel.connectionState.collectAsState()
     val props by viewModel.props.collectAsState()
-    val deviceName = (connState as? ConnectionState.Connected)?.deviceName ?: "耳机"
+    val deviceName = (connState as? ConnectionState.Connected)?.deviceName ?: I18n.t("device.battery.earbuds")
     var optimisticAncMode by remember { mutableStateOf<String?>(null) }
     val displayAncMode = optimisticAncMode ?: props.ancMode
 
@@ -119,12 +121,12 @@ fun DeviceScreen(
                 title = { Text(deviceName) },
                 navigationIcon = {
                     IconButton(onClick = onBack) {
-                        Icon(Icons.Default.ArrowBack, contentDescription = "返回")
+                        Icon(Icons.Default.ArrowBack, contentDescription = i18n("common.back"))
                     }
                 },
                 actions = {
                     IconButton(onClick = onSettings) {
-                        Icon(Icons.Default.Settings, contentDescription = "设置")
+                        Icon(Icons.Default.Settings, contentDescription = i18n("common.settings"))
                     }
                 },
                 colors = TopAppBarDefaults.topAppBarColors(
@@ -147,7 +149,7 @@ fun DeviceScreen(
 
             // ── ANC ─────────────────────────────────────────────────────────
             displayAncMode?.let { syncedAncMode ->
-                item { SettingsGroupHeader("ANC模式") }
+                item { SettingsGroupHeader(i18n("device.group.anc")) }
                 // haze 模糊滑块切换器
                 item {
                     LiquidGlassPanel(
@@ -190,14 +192,14 @@ fun DeviceScreen(
             val hasSoundQuality = props.soundQuality != null && props.soundQualityOptions.isNotEmpty()
             val hasAudio = hasSoundQuality || props.autoPause != null || props.lowLatency != null
             if (hasAudio) {
-                item { SettingsGroupHeader("音频") }
+                item { SettingsGroupHeader(i18n("device.group.audio")) }
                 if (hasSoundQuality) {
                     item {
                         DeviceOptionItem(
                             displayMode = displayMode,
                             hazeState = hazeState,
                             icon = Icons.Default.GraphicEq,
-                            title = "音质偏好",
+                            title = i18n("device.option.sound_quality"),
                             current = chineseSoundQuality(props.soundQuality),
                             options = props.soundQualityOptions.map(::chineseSoundQuality),
                             rawOptions = props.soundQualityOptions,
@@ -211,7 +213,7 @@ fun DeviceScreen(
                             displayMode = displayMode,
                             hazeState = hazeState,
                             icon = Icons.Default.PauseCircle,
-                            title = "摘下自动暂停",
+                            title = i18n("device.option.auto_pause"),
                             checked = props.autoPause,
                             onCheckedChange = { viewModel.setProperty("config", "auto_pause", it.toString()) }
                         )
@@ -223,7 +225,7 @@ fun DeviceScreen(
                             displayMode = displayMode,
                             hazeState = hazeState,
                             icon = Icons.Default.Speed,
-                            title = "低延迟模式",
+                            title = i18n("device.option.low_latency"),
                             checked = props.lowLatency,
                             onCheckedChange = { viewModel.setProperty("config", "low_latency", it.toString()) }
                         )
@@ -234,7 +236,7 @@ fun DeviceScreen(
             // ── 手势（下移到页面底部）────────────────────────────────────────
             val hasGesture = props.doubleTapLeft != null || props.longTap != null || props.swipeGesture != null
             if (hasGesture) {
-                item { SettingsGroupHeader("手势") }
+                item { SettingsGroupHeader(i18n("device.group.gestures")) }
                 item {
                     AdaptiveCard(
                         displayMode = displayMode,
@@ -247,8 +249,8 @@ fun DeviceScreen(
                         Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(14.dp)) {
                             Icon(Icons.Default.TouchApp, contentDescription = null)
                             Column(Modifier.weight(1f)) {
-                                Text("手势设置")
-                                Text("双击 / 三击 / 滑动 / 长按", style = MaterialTheme.typography.bodySmall)
+                                Text(i18n("device.gesture_settings"))
+                                Text(i18n("device.gesture_settings_desc"), style = MaterialTheme.typography.bodySmall)
                             }
                             Icon(Icons.Default.ChevronRight, contentDescription = null)
                         }
@@ -257,15 +259,15 @@ fun DeviceScreen(
             }
 
             // ── 关于 / 调试 ───────────────────────────────────────────────────
-            item { SettingsGroupHeader("关于") }
+            item { SettingsGroupHeader(i18n("device.group.about")) }
             if (props.deviceModel != null) {
                 item {
-                    InfoItem(displayMode, hazeState, Icons.Default.Info, "型号", props.deviceModel!!)
+                    InfoItem(displayMode, hazeState, Icons.Default.Info, i18n("device.model"), props.deviceModel!!)
                 }
             }
             if (props.firmwareVersion != null) {
                 item {
-                    InfoItem(displayMode, hazeState, Icons.Default.SystemUpdate, "固件版本", props.firmwareVersion!!)
+                    InfoItem(displayMode, hazeState, Icons.Default.SystemUpdate, i18n("device.firmware"), props.firmwareVersion!!)
                 }
             }
             item {
@@ -280,8 +282,8 @@ fun DeviceScreen(
                     Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(14.dp)) {
                         Icon(Icons.Default.Terminal, contentDescription = null)
                         Column(Modifier.weight(1f)) {
-                            Text("调试终端")
-                            Text("查看 SPP 原始日志 / 发送命令", style = MaterialTheme.typography.bodySmall)
+                            Text(i18n("device.debug_terminal"))
+                            Text(i18n("device.debug_terminal_desc"), style = MaterialTheme.typography.bodySmall)
                         }
                         Icon(Icons.Default.ChevronRight, contentDescription = null)
                     }
@@ -304,19 +306,19 @@ private fun BatteryCard(props: DeviceProps, displayMode: UiDisplayMode, hazeStat
             .padding(16.dp),
     ) {
         Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-            Text("电量", style = MaterialTheme.typography.titleMedium)
+            Text(i18n("device.battery"), style = MaterialTheme.typography.titleMedium)
             Row(horizontalArrangement = Arrangement.spacedBy(24.dp)) {
                 if (props.batteryLeft != null)
-                    BatteryChip("左", props.batteryLeft)
+                    BatteryChip(i18n("device.battery.left"), props.batteryLeft)
                 if (props.batteryRight != null)
-                    BatteryChip("右", props.batteryRight)
+                    BatteryChip(i18n("device.battery.right"), props.batteryRight)
                 if (props.batteryCase != null)
-                    BatteryChip("盒", props.batteryCase)
+                    BatteryChip(i18n("device.battery.case"), props.batteryCase)
                 if (props.batteryLeft == null && props.batteryGlobal != null)
-                    BatteryChip("耳机", props.batteryGlobal)
+                    BatteryChip(i18n("device.battery.earbuds"), props.batteryGlobal)
             }
             if (props.isCharging == true)
-                Text("充电中", style = MaterialTheme.typography.bodySmall,
+                Text(i18n("common.charging"), style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.onPrimaryContainer.copy(alpha = 0.7f))
         }
     }
@@ -352,7 +354,7 @@ private fun BackgroundSyncCard(
 ) {
     val labels = pendingHandlers.map(::initHandlerLabel).distinct()
     val preview = labels.take(4).joinToString("、")
-    val suffix = if (labels.size > 4) " 等 ${labels.size} 项" else ""
+    val suffix = if (labels.size > 4) i18n("device.pending.more_suffix", labels.size) else ""
     AdaptiveCard(
         displayMode = displayMode,
         hazeState = hazeState,
@@ -364,9 +366,9 @@ private fun BackgroundSyncCard(
             Icon(Icons.Default.Sync, contentDescription = null)
             Spacer(Modifier.width(12.dp))
             Column(modifier = Modifier.weight(1f)) {
-                Text("后台同步中", style = MaterialTheme.typography.titleSmall, fontWeight = FontWeight.Bold)
+                Text(i18n("device.group.background_sync"), style = MaterialTheme.typography.titleSmall, fontWeight = FontWeight.Bold)
                 Text(
-                    "正在补齐：$preview$suffix。通常 15–45 秒内陆续完成，慢项会保持后台重试。",
+                    i18n("device.pending.detail", preview, suffix),
                     style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                 )
@@ -376,18 +378,18 @@ private fun BackgroundSyncCard(
 }
 
 private fun initHandlerLabel(id: String): String = when (id) {
-    "device_info" -> "设备信息"
+    "device_info" -> I18n.t("device.pending.device_info")
     "anc_global" -> "ANC"
-    "gesture_double" -> "双击手势"
-    "gesture_triple" -> "三击手势"
-    "gesture_long" -> "长按手势"
-    "gesture_swipe" -> "滑动手势"
-    "tws_auto_pause" -> "摘下暂停"
-    "config_sound_quality" -> "音质偏好"
-    "voice_language" -> "语音语言"
-    "tws_in_ear" -> "佩戴状态"
-    "battery" -> "电量"
-    "low_latency" -> "低延迟"
+    "gesture_double" -> I18n.t("device.pending.gesture_double")
+    "gesture_triple" -> I18n.t("device.pending.gesture_triple")
+    "gesture_long" -> I18n.t("device.pending.gesture_long")
+    "gesture_swipe" -> I18n.t("device.pending.gesture_swipe")
+    "tws_auto_pause" -> I18n.t("device.pending.auto_pause")
+    "config_sound_quality" -> I18n.t("device.pending.config_sound_quality")
+    "voice_language" -> I18n.t("device.pending.voice_language")
+    "tws_in_ear" -> I18n.t("device.pending.tws_in_ear")
+    "battery" -> I18n.t("device.pending.battery")
+    "low_latency" -> I18n.t("device.pending.low_latency")
     else -> id
 }
 

@@ -79,7 +79,7 @@ class QuickSettingsTileService : TileService() {
             icon = tileIconForMode(nextMode)
             state = Tile.STATE_ACTIVE
             if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
-                stateDescription = "正在切换到${ancLabel(nextMode)}模式"
+                stateDescription = I18n.t("tile.switching_to_mode", ancLabel(nextMode))
             }
             updateTile()
         }
@@ -100,7 +100,7 @@ class QuickSettingsTileService : TileService() {
                 icon = tileIconForMode("normal")
                 state = Tile.STATE_UNAVAILABLE
                 if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
-                    stateDescription = "正在连接已和手机蓝牙连接的耳机"
+                    stateDescription = I18n.t("tile.connecting_saved_device")
                 }
                 updateTile()
             }
@@ -124,7 +124,7 @@ class QuickSettingsTileService : TileService() {
                     icon = tileIconForMode(currentMode)
                     state = Tile.STATE_ACTIVE
                     if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
-                        stateDescription = "当前${ancLabel(currentMode)}模式，点按切到${ancLabel(nextMode)}模式"
+                        stateDescription = I18n.t("tile.current_tap_to_mode", ancLabel(currentMode), ancLabel(nextMode))
                     }
                 }
                 is ConnectionState.Connecting -> {
@@ -133,7 +133,7 @@ class QuickSettingsTileService : TileService() {
                     icon = tileIconForMode("normal")
                     state = Tile.STATE_UNAVAILABLE
                     if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
-                        stateDescription = "耳机连接中"
+                        stateDescription = I18n.t("tile.earbuds_connecting")
                     }
                 }
                 is ConnectionState.Failed -> {
@@ -142,7 +142,7 @@ class QuickSettingsTileService : TileService() {
                     icon = tileIconForMode("normal")
                     state = Tile.STATE_INACTIVE
                     if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
-                        stateDescription = "连接失败，点按重新连接耳机"
+                        stateDescription = I18n.t("tile.connection_failed_retry_desc")
                     }
                 }
                 else -> {
@@ -167,10 +167,10 @@ class QuickSettingsTileService : TileService() {
     }
 
     private fun ancLabel(mode: String?): String = when (mode) {
-        "cancellation" -> "降噪"
-        "awareness" -> "透传"
-        "normal" -> "关闭"
-        else -> "关闭"
+        "cancellation" -> I18n.t("anc.mode.cancellation")
+        "awareness" -> I18n.t("anc.mode.awareness")
+        "normal" -> I18n.t("anc.mode.off")
+        else -> I18n.t("anc.mode.off")
     }
 
     private fun tileIconForMode(mode: String?): Icon = Icon.createWithResource(
