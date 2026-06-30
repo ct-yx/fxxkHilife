@@ -915,3 +915,15 @@
 - versionName: 3.0.6
 - tag: v3.0.6
 
+## v3.0.7 (2026-06-30)
+
+### 6i 初始化与 Flowmix 兼容修复
+- 保留自动低延迟切换，但自动写入低延迟时设置短暂 SPP quiet window，避免前台 device_info 轮询和后台 retry 同时抢占通道。
+- 后台失败 handler retry 改为核心状态优先：ANC / 电量 / 低延迟 / 音质偏好 / 佩戴状态未完成前，不让 device_info、手势、自动暂停、语音语言等非核心项插队。
+- 核心状态失败时前几轮 retry 间隔缩短为 2 秒，优先补回 ANC，避免日志中 ANC 被非核心项拖到一分钟后才出现。
+- 前台快速轮询的 device_info 会等核心状态完成且自动低延迟写入 quiet window 结束后再执行，降低与 Flowmix 音频控制权的冲突概率。
+
+### 发布
+- versionCode: 54
+- versionName: 3.0.7
+- tag: v3.0.7

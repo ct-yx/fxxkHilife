@@ -85,6 +85,7 @@ class DeviceRepository {
     private var pollJob: Job? = null
     private var fastPollJob: Job? = null
     private var autoLowLatencyJob: Job? = null
+    private var sppQuietUntil: Long = 0L
     private var foregroundMode: Boolean = false
     private var connectedAddress: String? = null
     private var aclReceiver: BroadcastReceiver? = null
@@ -161,6 +162,7 @@ class DeviceRepository {
         fastPollJob?.cancel()
         retryJob?.cancel()
         autoLowLatencyJob?.cancel()
+        sppQuietUntil = 0L
         driver?.disconnect()
         driver = null
         connectedAddress = null
@@ -178,6 +180,7 @@ class DeviceRepository {
         fastPollJob?.cancel()
         retryJob?.cancel()
         autoLowLatencyJob?.cancel()
+        sppQuietUntil = 0L
         driver = null
         connectedAddress = null
         deviceInfoFetched = false
@@ -281,8 +284,9 @@ class DeviceRepository {
 
                 attempt++
                 LogBuffer.i("SPP", "Auto low latency apply attempt $attempt")
+                sppQuietUntil = System.currentTimeMillis() + 3_500L
                 setProperty("config", "low_latency", "true")
-                delay(500)
+                delay(700)
             }
 
             if (_connectionState.value is ConnectionState.Connected && _props.value.lowLatency != true) {
@@ -298,7 +302,29 @@ class DeviceRepository {
         p.edit().putStringSet("saved_devices", set).apply()
     }
 
-    // ── 后台重试失败 Handler（阶梯间隔：前 3 次 5s，之后 30s）───────────
+    // ── 后台重试失败 Handler（核心状态优先，避免非核心项抢占 ANC）───────────
+
+    private val coreRetryOrder = listOf(
+        "anc_global",
+        "battery",
+        "low_latency",
+        "config_sound_quality",
+        "tws_in_ear",
+    )
+
+    private fun orderedRetryHandlerIds(): List<String> {
+        val corePending = coreRetryOrder.filter { it in failedHandlers }
+        if (corePending.isNotEmpty()) return corePending
+        return failedHandlers.sortedBy { id ->
+            when (id) {
+                "device_info" -> 10
+                "gesture_double", "gesture_triple", "gesture_long", "gesture_swipe" -> 20
+                "tws_auto_pause" -> 30
+                "voice_language" -> 40
+                else -> 50
+            }
+        }
+    }
 
     private fun retryFailedHandlers() {
         retryJob?.cancel()
@@ -306,12 +332,20 @@ class DeviceRepository {
         retryJob = scope.launch {
             var attempt = 0
             while (isActive && driver?.isConnected == true && failedHandlers.isNotEmpty()) {
-                val delayMs = if (attempt < 3) 5_000L else 30_000L
+                val hasCorePending = failedHandlers.any { it in coreRetryOrder }
+                val delayMs = when {
+                    hasCorePending && attempt < 5 -> 2_000L
+                    attempt < 3 -> 5_000L
+                    else -> 30_000L
+                }
                 delay(delayMs)
+                val quietDelay = sppQuietUntil - System.currentTimeMillis()
+                if (quietDelay > 0) delay(quietDelay)
                 attempt++
                 val d = driver ?: break
                 val toRemove = mutableListOf<String>()
-                for (handlerId in failedHandlers) {
+                val retryIds = orderedRetryHandlerIds()
+                for (handlerId in retryIds) {
                     val handler = d.getHandlerById(handlerId) ?: continue
                     try {
                         withTimeout(1500) {
@@ -354,8 +388,8 @@ class DeviceRepository {
             while (isActive && driver?.isConnected == true && foregroundMode) {
                 delay(800) // 前台 800ms 高频刷新
                 if (!isActive || driver?.isConnected != true || !foregroundMode) break
-                // 设备信息仅在首次连接时获取一次
-                if (!deviceInfoFetched) {
+                // 设备信息仅在首次连接时获取一次；核心状态/自动低延迟稳定前不抢 SPP 通道
+                if (!deviceInfoFetched && System.currentTimeMillis() >= sppQuietUntil && failedHandlers.none { it in coreRetryOrder }) {
                     val d = driver ?: return@launch
                     val infoHandler = d.getHandlerById("device_info")
                     if (infoHandler != null) {
