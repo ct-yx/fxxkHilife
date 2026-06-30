@@ -244,6 +244,9 @@ class AncHandler(
     private var activeMode = 0
     private var pendingMode: Int? = null
     private var pendingModeUntil: Long = 0L
+    private var pendingLevel: Int? = null
+    private var pendingLevelMode: Int = 0
+    private var pendingLevelUntil: Long = 0L
     private val modeOptions = mapOf(0 to "normal", 1 to "cancellation", 2 to "awareness")
     private val cancelOptions = linkedMapOf(1 to "comfort", 0 to "normal", 2 to "ultra", 3 to "dynamic")
     private val awarenessOptions = mapOf(1 to "voice_boost", 2 to "normal")
@@ -272,6 +275,15 @@ class AncHandler(
                 com.freebuds.controller.util.LogBuffer.d("SPP", "Ignore stale ANC state mode=$mode while pending=$targetMode")
                 return
             }
+            val targetLevel = pendingLevel
+            if (targetLevel != null && now >= pendingLevelUntil) {
+                pendingLevel = null
+                pendingLevelUntil = 0L
+            }
+            if (targetLevel != null && now < pendingLevelUntil && mode == pendingLevelMode && level != targetLevel) {
+                com.freebuds.controller.util.LogBuffer.d("SPP", "Ignore stale ANC level mode=$mode level=$level while pending=$targetLevel")
+                return
+            }
             // Keep the pending guard for the whole short window even after the first
             // target confirmation. Some earbuds send a correct 2b2a first and then
             // a stale 2b2c from the previous mode, which otherwise causes UI jump.
@@ -284,7 +296,7 @@ class AncHandler(
                 out["level"] = cancelOptions[level] ?: level.toString()
                 out["level_options"] = options(cancelOptions)
             } else if (mode == 2 && wVoiceBoost) {
-                out["level"] = awarenessOptions[level] ?: level.toString()
+                out["level"] = awarenessOptions[level] ?: if (level == 0) "normal" else level.toString()
                 out["level_options"] = options(awarenessOptions)
             } else {
                 out["level"] = ""
@@ -311,6 +323,8 @@ class AncHandler(
             activeMode = valueByte
             pendingMode = valueByte
             pendingModeUntil = System.currentTimeMillis() + 4_000L
+            pendingLevel = null
+            pendingLevelUntil = 0L
             val out = linkedMapOf(
                 "mode" to value,
                 "mode_options" to options(modeOptions),
@@ -331,10 +345,14 @@ class AncHandler(
             }
             driver.putProperty("anc", null, out.entries.joinToString("\n") { "${it.key}=${it.value}" })
         } else {
+            pendingLevel = valueByte
+            pendingLevelMode = activeMode
+            pendingLevelUntil = System.currentTimeMillis() + 4_000L
             driver.putProperty(group, prop, value)
         }
-        driver.sendPackage(HuaweiSppPackage.changeRequest(b(0x2b, 0x04), 1 to data))
-        onInit(driver)
+        // 7i/6i 常见行为是写入 2b04 不直接 ACK，而是稍后用 2b2a/2b2c 异步上报状态。
+        // 先保持乐观 UI，并用 pending guard 抑制旧状态回跳，不再阻塞等待 2b04 ACK。
+        driver.sendNowait(HuaweiSppPackage.changeRequest(b(0x2b, 0x04), 1 to data))
     }
 }
 

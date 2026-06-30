@@ -3,17 +3,17 @@
 > 版本号统一修改入口，按清单逐一更新。
 
 ## 当前版本
-- **v3.0.4** (versionCode=51, 2026-06-30)
+- **v3.0.5** (versionCode=52, 2026-06-30)
 
 ## 版本号位置
 
 | 位置 | 当前值 |
 |------|--------|
-| `app/build.gradle.kts` | versionCode=51, versionName="3.0.4" |
-| `app/src/main/res/values/strings.xml` | version_name=3.0.4 |
-| `README.md` | v3.0.4 |
-| `README_EN.md` | v3.0.4 |
-| `DEVELOPMENT_LOG.md` | v3.0.4 (末尾) |
+| `app/build.gradle.kts` | versionCode=52, versionName="3.0.5" |
+| `app/src/main/res/values/strings.xml` | version_name=3.0.5 |
+| `README.md` | v3.0.5 |
+| `README_EN.md` | v3.0.5 |
+| `DEVELOPMENT_LOG.md` | v3.0.5 (末尾) |
 
 ## 一键版本更新脚本
 
@@ -37,6 +37,7 @@ python3 scripts/bump_version.py <versionName> <versionCode> "修复说明"
 
 | 版本 | Code | 日期 | 主要变更 |
 |------|------|------|---------|
+| v3.0.5 | 52 | 2026-06-30 | 修复 FreeBuds 7i ANC 初始化慢、透传状态数字显示与状态回跳 |
 | v3.0.4 | 51 | 2026-06-30 | 显示后台同步提示并暴露待补齐初始化项 |
 | v3.0.3 | 50 | 2026-06-30 | 调整 FreeBuds 6i 初始化优先级，优先读取 ANC、低延迟和音质状态 |
 | v3.0.2 | 49 | 2026-06-30 | 优化 FreeBuds 6i 连接初始化速度 |

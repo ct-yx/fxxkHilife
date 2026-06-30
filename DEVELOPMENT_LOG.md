@@ -887,3 +887,17 @@
 - versionName: 3.0.4
 - tag: v3.0.4
 
+## v3.0.5 (2026-06-30)
+
+### FreeBuds 7i ANC 初始化与状态修复
+- 根据 7i 测试日志扩展核心状态 fast init：FreeBuds 7i 与 6i 一样，连接阶段优先读取 battery / ANC / low latency / sound quality / in-ear，设备信息、手势、语音语言等非核心项改为后台 retry。
+- 修复 7i 首次初始化时 ANC 被 device_info / gesture / voice_language 并发挤占，导致 ANC 控制几十秒后才出现的问题。
+- 修复透传模式子状态返回数字时 UI 直接显示数字的问题：`0` / `2` 均映射为普通透传，`1` 映射为人声增强。
+- 增强 ANC level 乐观态：切换降噪强度或透传类型后，短时间内忽略旧 level 回包，避免 UI 自己跳回普通/默认。
+- ANC 写入改为非阻塞发送：不再等待常超时的 `2b04` ACK，依赖 2b2a/2b2c 异步状态确认，避免切换操作卡顿和旧状态覆盖。
+
+### 发布
+- versionCode: 52
+- versionName: 3.0.5
+- tag: v3.0.5
+

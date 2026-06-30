@@ -153,8 +153,10 @@ class SppDriver(private val device: BluetoothDevice) {
 
     /** 初始化所有 Handler（默认：交错发射；FreeBuds 6i：关键项快连，慢项后台补齐） */
     private suspend fun initHandlers() {
-        if (device.name?.contains("FreeBuds 6i", ignoreCase = true) == true) {
-            initHandlersFreeBuds6iFastPath()
+        if (device.name?.contains("FreeBuds 6i", ignoreCase = true) == true ||
+            device.name?.contains("FreeBuds 7i", ignoreCase = true) == true
+        ) {
+            initHandlersCoreStateFastPath(device.name ?: "FreeBuds")
             return
         }
 
@@ -196,11 +198,11 @@ class SppDriver(private val device: BluetoothDevice) {
     }
 
     /**
-     * FreeBuds 6i 对并发 SPP 初始化很敏感：日志显示 80ms 交错会让 pendingResponses 堆到 6~8 个，
-     * 造成大量超时并拖慢连接。这里连接阶段优先跑 ANC / 低延迟 / 音质等核心控制状态，
+     * FreeBuds 6i / 7i 对并发 SPP 初始化很敏感：日志显示 80ms 交错会让 pendingResponses 堆到 6~8 个，
+     * 造成大量超时并拖慢核心状态读取。这里连接阶段优先跑 ANC / 低延迟 / 音质等核心控制状态，
      * 手势、设备信息、语音语言等非关键项标记为后台 retry。
      */
-    private suspend fun initHandlersFreeBuds6iFastPath() {
+    private suspend fun initHandlersCoreStateFastPath(deviceLabel: String) {
         val fastIdsInOrder = listOf(
             "drop_logs",
             "battery",
@@ -214,7 +216,7 @@ class SppDriver(private val device: BluetoothDevice) {
 
         LogBuffer.i(
             "SPP",
-            "Starting FreeBuds 6i fast init for ${fastHandlers.size}/${handlers.size} handlers; deferred=${deferredHandlers.map { it.id }}"
+            "Starting $deviceLabel core-state fast init for ${fastHandlers.size}/${handlers.size} handlers; deferred=${deferredHandlers.map { it.id }}"
         )
 
         for (handler in fastHandlers) {
@@ -225,12 +227,12 @@ class SppDriver(private val device: BluetoothDevice) {
                         handler.onInit(this@SppDriver)
                     }
                     success = true
-                    LogBuffer.i("SPP", "6i fast init ${handler.id} success (attempt=${attempt + 1})")
+                    LogBuffer.i("SPP", "Core-state fast init ${handler.id} success (attempt=${attempt + 1})")
                     break
                 } catch (e: TimeoutCancellationException) {
-                    LogBuffer.w("SPP", "6i fast init ${handler.id} timeout (attempt=${attempt + 1})")
+                    LogBuffer.w("SPP", "Core-state fast init ${handler.id} timeout (attempt=${attempt + 1})")
                 } catch (e: Exception) {
-                    LogBuffer.w("SPP", "6i fast init ${handler.id} failed (attempt=${attempt + 1}): ${e.message}")
+                    LogBuffer.w("SPP", "Core-state fast init ${handler.id} failed (attempt=${attempt + 1}): ${e.message}")
                 }
             }
             if (!success) failedHandlerIds.add(handler.id)
@@ -238,7 +240,7 @@ class SppDriver(private val device: BluetoothDevice) {
         }
 
         failedHandlerIds.addAll(deferredHandlers.map { it.id })
-        LogBuffer.i("SPP", "FreeBuds 6i fast init completed; deferred retry=${failedHandlerIds}")
+        LogBuffer.i("SPP", "$deviceLabel core-state fast init completed; deferred retry=${failedHandlerIds}")
     }
 
     /** 发送包并等响应（对照 send_package） */

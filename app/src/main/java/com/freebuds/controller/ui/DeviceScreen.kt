@@ -45,8 +45,8 @@ fun chineseAncLevel(raw: String?, mode: String?): String = when (mode) {
         else -> raw ?: "未知"
     }
     "awareness" -> when (raw) {
-        "normal" -> "普通透传"
-        "voice_boost" -> "人声增强"
+        "normal", "0", "2" -> "普通透传"
+        "voice_boost", "1" -> "人声增强"
         else -> raw ?: "未知"
     }
     else -> raw ?: "未知"
