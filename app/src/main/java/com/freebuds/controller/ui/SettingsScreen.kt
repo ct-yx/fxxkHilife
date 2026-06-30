@@ -291,39 +291,14 @@ fun SettingsScreen(
             // ── 应用详情 ──────────────────────────────────────────────────────
             item { SettingsHeader(i18n("settings.app_details")) }
             item {
-                SettingsCard(
+                AppDetailsCard(
                     displayMode = displayMode,
                     hazeState = hazeState,
-                    headlineContent = { Text(i18n("settings.project_philosophy"), fontWeight = FontWeight.Bold) },
-                    supportingContent = { Text(i18n("settings.project_philosophy_desc")) },
-                    leadingContent = { Icon(Icons.Default.Lightbulb, contentDescription = null) },
-                )
-            }
-            item {
-                SettingsCard(
-                    displayMode = displayMode,
-                    hazeState = hazeState,
-                    headlineContent = { Text("GitHub") },
-                    supportingContent = { Text("github.com/ct-yx/fxxkHilife") },
-                    leadingContent = { Icon(Icons.Default.Code, contentDescription = null) },
-                    trailingContent = { Icon(Icons.Default.OpenInNew, contentDescription = null) },
-                    onClick = {
-                        val intent = Intent(Intent.ACTION_VIEW, Uri.parse("https://github.com/ct-yx/fxxkHilife"))
-                        context.startActivity(intent)
+                    onOpenProject = {
+                        context.startActivity(Intent(Intent.ACTION_VIEW, Uri.parse("https://github.com/ct-yx/fxxkHilife")))
                     },
-                )
-            }
-            item {
-                SettingsCard(
-                    displayMode = displayMode,
-                    hazeState = hazeState,
-                    headlineContent = { Text(i18n("settings.update_url")) },
-                    supportingContent = { Text("github.com/ct-yx/fxxkHilife/releases") },
-                    leadingContent = { Icon(Icons.Default.SystemUpdate, contentDescription = null) },
-                    trailingContent = { Icon(Icons.Default.OpenInNew, contentDescription = null) },
-                    onClick = {
-                        val intent = Intent(Intent.ACTION_VIEW, Uri.parse("https://github.com/ct-yx/fxxkHilife/releases"))
-                        context.startActivity(intent)
+                    onOpenReleases = {
+                        context.startActivity(Intent(Intent.ACTION_VIEW, Uri.parse("https://github.com/ct-yx/fxxkHilife/releases")))
                     },
                 )
             }
@@ -629,6 +604,75 @@ private fun GlassSliderRow(
             Text(String.format("%.2f", value), style = MaterialTheme.typography.labelSmall)
         }
         Slider(value = value, onValueChange = onValueChange, valueRange = range)
+    }
+}
+
+@Composable
+private fun AppDetailsCard(
+    displayMode: UiDisplayMode,
+    hazeState: HazeState?,
+    onOpenProject: () -> Unit,
+    onOpenReleases: () -> Unit,
+) {
+    AdaptiveCard(
+        displayMode = displayMode,
+        hazeState = hazeState,
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(horizontal = 16.dp, vertical = 6.dp),
+    ) {
+        Column(verticalArrangement = Arrangement.spacedBy(14.dp)) {
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Surface(
+                    shape = CircleShape,
+                    color = MaterialTheme.colorScheme.primaryContainer,
+                    contentColor = MaterialTheme.colorScheme.onPrimaryContainer,
+                    modifier = Modifier.size(52.dp),
+                ) {
+                    Box(contentAlignment = Alignment.Center) {
+                        Icon(Icons.Default.Headphones, contentDescription = null)
+                    }
+                }
+                Spacer(Modifier.width(14.dp))
+                Column(Modifier.weight(1f)) {
+                    Text("fxxkHilife", style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.Bold)
+                    Text(
+                        "v${BuildConfig.VERSION_NAME} (${BuildConfig.VERSION_CODE})",
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    )
+                }
+            }
+
+            HorizontalDivider()
+
+            Row(verticalAlignment = Alignment.Top) {
+                Icon(Icons.Default.Lightbulb, contentDescription = null, modifier = Modifier.padding(top = 2.dp))
+                Spacer(Modifier.width(12.dp))
+                Column {
+                    Text(i18n("settings.project_philosophy"), fontWeight = FontWeight.SemiBold)
+                    Spacer(Modifier.height(4.dp))
+                    Text(
+                        i18n("settings.project_philosophy_desc"),
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    )
+                }
+            }
+
+            Row(horizontalArrangement = Arrangement.spacedBy(10.dp), modifier = Modifier.fillMaxWidth()) {
+                OutlinedButton(onClick = onOpenProject, modifier = Modifier.weight(1f)) {
+                    Icon(Icons.Default.Code, contentDescription = null, modifier = Modifier.size(18.dp))
+                    Spacer(Modifier.width(6.dp))
+                    Text("GitHub")
+                }
+                Button(onClick = onOpenReleases, modifier = Modifier.weight(1f)) {
+                    Icon(Icons.Default.SystemUpdate, contentDescription = null, modifier = Modifier.size(18.dp))
+                    Spacer(Modifier.width(6.dp))
+                    Text(i18n("settings.update_url"))
+                }
+            }
+        }
     }
 }
 

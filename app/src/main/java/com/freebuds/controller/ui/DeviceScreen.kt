@@ -1,6 +1,12 @@
 package com.freebuds.controller.ui
 
 import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.animateContentSize
+import androidx.compose.animation.core.tween
+import androidx.compose.animation.expandVertically
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
+import androidx.compose.animation.shrinkVertically
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
@@ -412,6 +418,7 @@ private fun DeviceOptionItem(
         modifier = Modifier
             .fillMaxWidth()
             .padding(horizontal = 16.dp, vertical = 5.dp)
+            .animateContentSize(animationSpec = tween(durationMillis = 260))
             .clickable(enabled = options.isNotEmpty()) { expanded = !expanded },
     ) {
         Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(14.dp)) {
@@ -427,7 +434,11 @@ private fun DeviceOptionItem(
                 )
             }
         }
-        AnimatedVisibility(visible = expanded && options.isNotEmpty()) {
+        AnimatedVisibility(
+            visible = expanded && options.isNotEmpty(),
+            enter = fadeIn(tween(160)) + expandVertically(tween(240)),
+            exit = shrinkVertically(tween(180)) + fadeOut(tween(120)),
+        ) {
             FlowRow(
                 modifier = Modifier.padding(top = 14.dp),
                 horizontalArrangement = Arrangement.spacedBy(8.dp),

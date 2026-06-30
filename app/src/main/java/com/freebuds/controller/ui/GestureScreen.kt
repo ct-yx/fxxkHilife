@@ -1,5 +1,12 @@
 package com.freebuds.controller.ui
 
+import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.animateContentSize
+import androidx.compose.animation.core.tween
+import androidx.compose.animation.expandVertically
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
+import androidx.compose.animation.shrinkVertically
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
@@ -10,6 +17,7 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import com.freebuds.controller.data.DeviceProps
 import com.freebuds.controller.data.DeviceViewModel
@@ -166,7 +174,7 @@ internal fun chineseLongTap(raw: String?): String = when (raw) {
 }
 
 // ── 复用组件（从 DeviceScreen 移来） ──────────────────────────────────────
-
+@OptIn(ExperimentalLayoutApi::class)
 @Composable
 internal fun OptionSettingItem(
     displayMode: UiDisplayMode,
@@ -178,67 +186,60 @@ internal fun OptionSettingItem(
     rawOptions: List<String>,
     onSelect: (String) -> Unit,
 ) {
-    var expanded by remember { mutableStateOf(false) }
+    var expanded by remember(title) { mutableStateOf(false) }
     AdaptiveCard(
         displayMode = displayMode,
         hazeState = hazeState,
         modifier = Modifier
             .fillMaxWidth()
             .padding(horizontal = 16.dp, vertical = 6.dp)
-            .clickable(enabled = options.isNotEmpty()) { expanded = true },
+            .animateContentSize(animationSpec = tween(durationMillis = 260))
+            .clickable(enabled = options.isNotEmpty()) { expanded = !expanded },
     ) {
         Row(verticalAlignment = Alignment.CenterVertically) {
             Icon(icon, contentDescription = null)
             Spacer(Modifier.width(16.dp))
             Column(modifier = Modifier.weight(1f)) {
-                Text(title, style = MaterialTheme.typography.titleSmall)
+                Text(title, style = MaterialTheme.typography.titleSmall, fontWeight = FontWeight.SemiBold)
                 if (current != null) {
                     Spacer(Modifier.height(3.dp))
-                    Text(current, style = MaterialTheme.typography.bodyMedium)
-                }
-            }
-            if (options.isNotEmpty()) Icon(Icons.Default.ChevronRight, contentDescription = null)
-        }
-    }
-    if (expanded && options.isNotEmpty()) {
-        OptionsDialog2(title, options, rawOptions, onDismiss = { expanded = false }, onSelect = {
-            onSelect(it)
-            expanded = false
-        })
-    }
-}
-
-@Composable
-private fun OptionsDialog2(
-    title: String,
-    options: List<String>,
-    rawOptions: List<String>,
-    onDismiss: () -> Unit,
-    onSelect: (String) -> Unit,
-) {
-    AlertDialog(
-        onDismissRequest = onDismiss,
-        title = { Text(title) },
-        text = {
-            Column {
-                options.forEachIndexed { idx, opt ->
                     Text(
-                        opt,
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .clickable { onSelect(rawOptions[idx]) }
-                            .padding(vertical = 12.dp),
-                        style = MaterialTheme.typography.bodyLarge
+                        current,
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
                     )
                 }
-                Spacer(Modifier.height(8.dp))
-                HorizontalDivider()
-                TextButton(
-                    onClick = onDismiss,
-                    modifier = Modifier.fillMaxWidth()
-                ) { Text(i18n("common.cancel")) }
             }
-        },
-        confirmButton = { }
-    )
+            if (options.isNotEmpty()) {
+                Icon(if (expanded) Icons.Default.ExpandLess else Icons.Default.ExpandMore, contentDescription = null)
+            }
+        }
+        AnimatedVisibility(
+            visible = expanded && options.isNotEmpty(),
+            enter = fadeIn(tween(160)) + expandVertically(tween(240)),
+            exit = shrinkVertically(tween(180)) + fadeOut(tween(120)),
+        ) {
+            FlowRow(
+                modifier = Modifier.padding(top = 14.dp),
+                horizontalArrangement = Arrangement.spacedBy(8.dp),
+                verticalArrangement = Arrangement.spacedBy(8.dp),
+            ) {
+                options.forEachIndexed { idx, opt ->
+                    val raw = rawOptions.getOrNull(idx) ?: return@forEachIndexed
+                    val selected = opt == current
+                    FilterChip(
+                        selected = selected,
+                        onClick = {
+                            onSelect(raw)
+                            expanded = false
+                        },
+                        label = { Text(opt) },
+                        leadingIcon = if (selected) {
+                            { Icon(Icons.Default.Check, contentDescription = null, modifier = Modifier.size(18.dp)) }
+                        } else null,
+                    )
+                }
+            }
+        }
+    }
 }
