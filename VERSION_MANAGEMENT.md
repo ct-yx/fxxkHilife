@@ -3,17 +3,17 @@
 > 版本号统一修改入口，按清单逐一更新。
 
 ## 当前版本
-- **v3.7.2** (versionCode=65, 2026-06-30)
+- **v3.7.3** (versionCode=66, 2026-06-30)
 
 ## 版本号位置
 
 | 位置 | 当前值 |
 |------|--------|
-| `app/build.gradle.kts` | versionCode=65, versionName="3.7.2" |
-| `app/src/main/res/values/strings.xml` | version_name=3.7.2 |
-| `README.md` | v3.7.2 |
-| `README_EN.md` | v3.7.2 |
-| `DEVELOPMENT_LOG.md` | v3.7.2 (末尾) |
+| `app/build.gradle.kts` | versionCode=66, versionName="3.7.3" |
+| `app/src/main/res/values/strings.xml` | version_name=3.7.3 |
+| `README.md` | v3.7.3 |
+| `README_EN.md` | v3.7.3 |
+| `DEVELOPMENT_LOG.md` | v3.7.3 (末尾) |
 
 ## 一键版本更新脚本
 
@@ -37,6 +37,7 @@ python3 scripts/bump_version.py <versionName> <versionCode> "修复说明"
 
 | 版本 | Code | 日期 | 主要变更 |
 |------|------|------|---------|
+| v3.7.3 | 66 | 2026-06-30 | 补充 GitHub Pages SEO 元信息、robots.txt 与 sitemap.xml |
 | v3.7.2 | 65 | 2026-06-30 | 修复设备页电池卡中单只耳机未连接时缺少斜杠标识的问题 |
 | v3.7.1 | 64 | 2026-06-30 | 修复核心状态同步横幅文案，并解析粘包内嵌 SPP 回包以加快进入详情页 |
 | v3.7.0 | 63 | 2026-06-30 | 优化电池水位视觉、未连接设备斜杠、详情页返回行为和后台补齐节奏 |

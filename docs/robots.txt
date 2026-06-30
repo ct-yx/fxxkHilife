@@ -1,0 +1,4 @@
+User-agent: *
+Allow: /
+
+Sitemap: https://ct-yx.github.io/fxxkHilife/sitemap.xml

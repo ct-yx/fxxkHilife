@@ -1084,3 +1084,16 @@
 - versionCode: 65
 - versionName: 3.7.2
 - tag: v3.7.2
+
+## v3.7.3 (2026-06-30)
+
+### GitHub Pages SEO 优化
+- 为 `docs/index.html` 补充 robots、canonical、Open Graph、Twitter Card 和 JSON-LD SoftwareApplication 结构化数据。
+- 新增 `docs/robots.txt`，允许搜索引擎抓取并声明 sitemap 地址。
+- 新增 `docs/sitemap.xml`，显式声明项目主页 URL、更新频率和优先级。
+- 这些改动不能保证搜索结果立刻变化，但能提升 Pages 主页被正确收录和展示的概率。
+
+### 发布
+- versionCode: 66
+- versionName: 3.7.3
+- tag: v3.7.3
