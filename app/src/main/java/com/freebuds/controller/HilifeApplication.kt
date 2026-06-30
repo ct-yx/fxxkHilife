@@ -5,6 +5,7 @@ import android.app.NotificationChannel
 import android.app.NotificationManager
 import android.os.Build
 import com.freebuds.controller.data.DeviceRepository
+import com.freebuds.controller.i18n.I18n
 import com.freebuds.controller.service.BluetoothService
 import com.freebuds.controller.util.LogBuffer
 
@@ -28,10 +29,10 @@ class HilifeApplication : Application() {
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
             val channel = NotificationChannel(
                 BluetoothService.CHANNEL_ID,
-                "蓝牙连接与 ANC 状态",
+                I18n.t("notification.channel.bluetooth_status"),
                 NotificationManager.IMPORTANCE_LOW
             ).apply {
-                description = "显示当前 ANC 模式、听音时长、低延迟/音质状态"
+                description = I18n.t("notification.channel.bluetooth_status_desc")
                 setShowBadge(false)
             }
             getSystemService(NotificationManager::class.java)

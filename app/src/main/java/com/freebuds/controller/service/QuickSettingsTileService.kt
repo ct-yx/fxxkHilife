@@ -9,6 +9,7 @@ import androidx.annotation.RequiresApi
 import com.freebuds.controller.HilifeApplication
 import com.freebuds.controller.R
 import com.freebuds.controller.data.ConnectionState
+import com.freebuds.controller.i18n.I18n
 import com.freebuds.controller.ui.MainActivity
 import kotlinx.coroutines.MainScope
 import kotlinx.coroutines.launch
@@ -29,7 +30,7 @@ class QuickSettingsTileService : TileService() {
     override fun onTileAdded() {
         super.onTileAdded()
         qsTile?.apply {
-            label = "ANC"
+            label = I18n.t("tile.anc")
             icon = tileIconForMode("normal")
             state = Tile.STATE_INACTIVE
             updateTile()
@@ -73,8 +74,8 @@ class QuickSettingsTileService : TileService() {
 
         // 乐观刷新 Tile：点下去立刻看到目标状态，不等设备回包
         qsTile?.apply {
-            label = "ANC: ${ancLabel(nextMode)}"
-            subtitle = "正在切换…"
+            label = "${I18n.t("tile.anc")}: ${ancLabel(nextMode)}"
+            subtitle = I18n.t("tile.switching")
             icon = tileIconForMode(nextMode)
             state = Tile.STATE_ACTIVE
             if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
@@ -94,8 +95,8 @@ class QuickSettingsTileService : TileService() {
         val repo = HilifeApplication.instance.deviceRepository
         if (repo.autoConnectLastSaved()) {
             qsTile?.apply {
-                label = "ANC"
-                subtitle = "正在连接耳机…"
+                label = I18n.t("tile.anc")
+                subtitle = I18n.t("tile.connecting")
                 icon = tileIconForMode("normal")
                 state = Tile.STATE_UNAVAILABLE
                 if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
@@ -118,8 +119,8 @@ class QuickSettingsTileService : TileService() {
                 is ConnectionState.Connected -> {
                     val currentMode = repo.props.value.ancMode ?: "normal"
                     val nextMode = nextAncMode(currentMode)
-                    label = "ANC: ${ancLabel(currentMode)}"
-                    subtitle = "点按切到${ancLabel(nextMode)}"
+                    label = "${I18n.t("tile.anc")}: ${ancLabel(currentMode)}"
+                    subtitle = I18n.t("tile.connected.tap_to", ancLabel(nextMode))
                     icon = tileIconForMode(currentMode)
                     state = Tile.STATE_ACTIVE
                     if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
@@ -127,8 +128,8 @@ class QuickSettingsTileService : TileService() {
                     }
                 }
                 is ConnectionState.Connecting -> {
-                    label = "ANC"
-                    subtitle = "连接中…"
+                    label = I18n.t("tile.anc")
+                    subtitle = I18n.t("tile.connecting")
                     icon = tileIconForMode("normal")
                     state = Tile.STATE_UNAVAILABLE
                     if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
@@ -136,8 +137,8 @@ class QuickSettingsTileService : TileService() {
                     }
                 }
                 is ConnectionState.Failed -> {
-                    label = "ANC"
-                    subtitle = "连接失败，点按重试"
+                    label = I18n.t("tile.anc")
+                    subtitle = I18n.t("tile.connection_failed_retry")
                     icon = tileIconForMode("normal")
                     state = Tile.STATE_INACTIVE
                     if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
@@ -145,8 +146,8 @@ class QuickSettingsTileService : TileService() {
                     }
                 }
                 else -> {
-                    label = "ANC"
-                    subtitle = if (repo.getSavedAddress() != null) "点按连接耳机" else "先在应用内添加耳机"
+                    label = I18n.t("tile.anc")
+                    subtitle = if (repo.getSavedAddress() != null) I18n.t("tile.tap_connect") else I18n.t("tile.add_device_first")
                     icon = tileIconForMode("normal")
                     state = Tile.STATE_INACTIVE
                     if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {

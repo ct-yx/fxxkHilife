@@ -27,6 +27,7 @@ import androidx.compose.animation.AnimatedVisibility
 import coil.compose.AsyncImage
 import com.freebuds.controller.BuildConfig
 import com.freebuds.controller.data.DeviceViewModel
+import com.freebuds.controller.i18n.i18n
 import com.freebuds.controller.util.LogBuffer
 import com.freebuds.controller.ui.glass.AdaptiveCard
 import com.freebuds.controller.ui.glass.GlassSurfaceProfile
@@ -87,22 +88,22 @@ fun SettingsScreen(
     if (showGlassWallpaperGuide) {
         AlertDialog(
             onDismissRequest = { showGlassWallpaperGuide = false },
-            title = { Text("建议先设置壁纸") },
-            text = { Text("液态玻璃需要背景色彩参与模糊与折射。你可以先选择一张壁纸，也可以继续直接开启。") },
+            title = { Text(i18n("settings.wallpaper_guide.title")) },
+            text = { Text(i18n("settings.wallpaper_guide.text")) },
             confirmButton = {
                 TextButton(onClick = {
                     showGlassWallpaperGuide = false
                     enableGlassAfterWallpaperPick = true
                     imagePicker.launch("image/*")
-                }) { Text("选择壁纸") }
+                }) { Text(i18n("settings.wallpaper_guide.pick")) }
             },
             dismissButton = {
                 Row {
                     TextButton(onClick = {
                         showGlassWallpaperGuide = false
                         onDisplayModeChange(UiDisplayMode.LIQUID_GLASS)
-                    }) { Text("仍然开启") }
-                    TextButton(onClick = { showGlassWallpaperGuide = false }) { Text("取消") }
+                    }) { Text(i18n("settings.wallpaper_guide.continue")) }
+                    TextButton(onClick = { showGlassWallpaperGuide = false }) { Text(i18n("common.cancel")) }
                 }
             },
         )
@@ -112,10 +113,10 @@ fun SettingsScreen(
         containerColor = androidx.compose.ui.graphics.Color.Transparent,
         topBar = {
             TopAppBar(
-                title = { Text("设置") },
+                title = { Text(i18n("settings.title")) },
                 navigationIcon = {
                     IconButton(onClick = onBack) {
-                        Icon(Icons.Default.ArrowBack, contentDescription = "返回")
+                        Icon(Icons.Default.ArrowBack, contentDescription = i18n("common.back"))
                     }
                 },
                 colors = TopAppBarDefaults.topAppBarColors(
@@ -201,12 +202,12 @@ fun SettingsScreen(
             }
 
             // ── 关于 ──
-            item { SettingsHeader("关于") }
+            item { SettingsHeader(i18n("settings.about")) }
             item {
                 SettingsCard(
                     displayMode = displayMode,
                     hazeState = hazeState,
-                    headlineContent = { Text("版本") },
+                    headlineContent = { Text(i18n("settings.version")) },
                     supportingContent = { Text(BuildConfig.VERSION_NAME) },
                     leadingContent = { Icon(Icons.Default.Info, contentDescription = null) },
                 )
@@ -216,16 +217,16 @@ fun SettingsScreen(
                 SettingsCard(
                     displayMode = displayMode,
                     hazeState = hazeState,
-                    headlineContent = { Text("已保存的设备（${savedAddresses.size}）") },
+                    headlineContent = { Text(i18n("settings.saved_devices", savedAddresses.size)) },
                     supportingContent = {
-                        Text(if (savedAddresses.isEmpty()) "无" else savedAddresses.joinToString("\n"))
+                        Text(if (savedAddresses.isEmpty()) i18n("common.none") else savedAddresses.joinToString("\n"))
                     },
                     leadingContent = { Icon(Icons.Default.Devices, contentDescription = null) },
                 )
             }
 
             // ── 连接偏好 ──
-            item { SettingsHeader("连接偏好") }
+            item { SettingsHeader(i18n("settings.connection_preferences")) }
             item {
                 val prefs = context.getSharedPreferences("settings", android.content.Context.MODE_PRIVATE)
                 var autoLowLatency by remember {
@@ -234,8 +235,8 @@ fun SettingsScreen(
                 SettingsCard(
                     displayMode = displayMode,
                     hazeState = hazeState,
-                    headlineContent = { Text("自动低延迟模式") },
-                    supportingContent = { Text("连接已保存耳机后自动开启低延迟") },
+                    headlineContent = { Text(i18n("settings.auto_low_latency")) },
+                    supportingContent = { Text(i18n("settings.auto_low_latency_desc")) },
                     leadingContent = { Icon(Icons.Default.Speed, contentDescription = null) },
                     trailingContent = {
                         Switch(

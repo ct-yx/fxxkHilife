@@ -927,3 +927,16 @@
 - versionCode: 54
 - versionName: 3.0.7
 - tag: v3.0.7
+
+## v3.1.0 (2026-06-30)
+
+### i18n 接口框架
+- 新增 `com.freebuds.controller.i18n` 包，提供 `I18nProvider`、`I18n.t(key)` 与 Compose `i18n(key)` 入口。
+- 内置默认中文文案表作为 fallback；暂不添加其它语言资源目录，后续翻译者只需实现/替换 provider 或扩展资源映射。
+- 通知渠道、前台服务通知、Quick Settings Tile、设置页部分基础文案已接入 i18n 接口，作为后续全量迁移示例。
+- 同步修正默认 `strings.xml` 中残留英文默认文案，并更新版本占位字符串。
+
+### 发布
+- versionCode: 55
+- versionName: 3.1.0
+- tag: v3.1.0

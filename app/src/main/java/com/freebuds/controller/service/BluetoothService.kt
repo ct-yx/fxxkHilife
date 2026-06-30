@@ -11,8 +11,8 @@ import android.os.Build
 import android.os.IBinder
 import androidx.core.app.NotificationCompat
 import com.freebuds.controller.HilifeApplication
-import com.freebuds.controller.R
 import com.freebuds.controller.data.ConnectionState
+import com.freebuds.controller.i18n.I18n
 import com.freebuds.controller.ui.MainActivity
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.MainScope
@@ -49,9 +49,9 @@ class BluetoothService : Service() {
     private fun createNotificationChannelIfNeeded() {
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
             val channel = NotificationChannel(
-                CHANNEL_ID, "蓝牙连接与 ANC 状态", NotificationManager.IMPORTANCE_LOW
+                CHANNEL_ID, I18n.t("notification.channel.bluetooth_status"), NotificationManager.IMPORTANCE_LOW
             ).apply {
-                description = "显示当前 ANC 模式、听音时长、低延迟/音质状态"
+                description = I18n.t("notification.channel.bluetooth_status_desc")
                 setShowBadge(false)
             }
             getSystemService(NotificationManager::class.java).createNotificationChannel(channel)
@@ -85,13 +85,13 @@ class BluetoothService : Service() {
             Intent(this, BluetoothService::class.java).setAction(ACTION_ANC_AWARE),
             PendingIntent.FLAG_IMMUTABLE)
         return NotificationCompat.Builder(this, CHANNEL_ID)
-            .setContentTitle(getString(R.string.service_notification_title))
-            .setContentText(getString(R.string.service_notification_text))
+            .setContentTitle(I18n.t("notification.service.title"))
+            .setContentText(I18n.t("notification.service.text"))
             .setSmallIcon(android.R.drawable.ic_menu_search)
             .setContentIntent(pendingIntent)
-            .addAction(0, "关闭", normalIntent)
-            .addAction(0, "降噪", cancelIntent)
-            .addAction(0, "透传", awareIntent)
+            .addAction(0, I18n.t("common.disabled"), normalIntent)
+            .addAction(0, I18n.t("notification.action.anc_cancellation"), cancelIntent)
+            .addAction(0, I18n.t("notification.action.anc_awareness"), awareIntent)
             .setPriority(NotificationCompat.PRIORITY_LOW)
             .setOngoing(true)
             .build()
@@ -188,11 +188,11 @@ class BluetoothService : Service() {
             lines.add("佩戴：$durationStr")
         }
 
-        val contentText = if (lines.isEmpty()) "等待数据…" else lines.joinToString(" | ")
+        val contentText = if (lines.isEmpty()) I18n.t("common.loading") else lines.joinToString(" | ")
 
         // 重建通知（带 ANC 按钮）
         val notification = NotificationCompat.Builder(this, CHANNEL_ID)
-            .setContentTitle(getString(R.string.service_notification_title))
+            .setContentTitle(I18n.t("notification.service.title"))
             .setContentText(contentText)
             .setStyle(NotificationCompat.BigTextStyle().bigText(contentText))
             .setSmallIcon(android.R.drawable.ic_menu_search)
@@ -201,13 +201,13 @@ class BluetoothService : Service() {
                     Intent(this, MainActivity::class.java),
                     PendingIntent.FLAG_IMMUTABLE or PendingIntent.FLAG_UPDATE_CURRENT)
             )
-            .addAction(0, "关闭", PendingIntent.getService(this, 1,
+            .addAction(0, I18n.t("common.disabled"), PendingIntent.getService(this, 1,
                 Intent(this, BluetoothService::class.java).setAction(ACTION_ANC_NORMAL),
                 PendingIntent.FLAG_IMMUTABLE))
-            .addAction(0, "降噪", PendingIntent.getService(this, 2,
+            .addAction(0, I18n.t("notification.action.anc_cancellation"), PendingIntent.getService(this, 2,
                 Intent(this, BluetoothService::class.java).setAction(ACTION_ANC_CANCEL),
                 PendingIntent.FLAG_IMMUTABLE))
-            .addAction(0, "透传", PendingIntent.getService(this, 3,
+            .addAction(0, I18n.t("notification.action.anc_awareness"), PendingIntent.getService(this, 3,
                 Intent(this, BluetoothService::class.java).setAction(ACTION_ANC_AWARE),
                 PendingIntent.FLAG_IMMUTABLE))
             .setPriority(NotificationCompat.PRIORITY_LOW)
