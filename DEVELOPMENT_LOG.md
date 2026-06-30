@@ -966,3 +966,19 @@
 - versionCode: 57
 - versionName: 3.3.0
 - tag: v3.3.0
+
+## v3.4.0 (2026-06-30)
+
+### 选项菜单与应用详情 UI 优化
+- 手势控制二级页的选择菜单从普通弹窗改为卡片内展开式 `FilterChip`，补充展开/收起动画与选中态 check。
+- 设备页的降噪强度、透传子模式、音质偏好等选项卡补充一致的展开/收起动画。
+- 设置页「应用详情」从多张普通列表卡重做为单张项目详情卡，集中展示应用名、版本、项目理念、GitHub 与 Releases 入口。
+
+### ANC 三模式图标修复
+- 修正 `ic_anc_normal`、`ic_anc_cancellation`、`ic_anc_awareness` 的 vector viewport 比例，去除底部留白导致的视觉上移。
+- 在 ANC 三段控件中按模式微调图标显示尺寸，让关闭/降噪/透传三个图标的有效视觉面积更接近且居中。
+
+### 发布
+- versionCode: 58
+- versionName: 3.4.0
+- tag: v3.4.0

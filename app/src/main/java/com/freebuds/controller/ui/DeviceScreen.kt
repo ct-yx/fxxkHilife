@@ -544,6 +544,12 @@ private fun AncModeSlider(
                     "awareness" -> R.drawable.ic_anc_awareness
                     else -> R.drawable.ic_anc_normal
                 }
+                val iconSize = when (raw) {
+                    "normal" -> 23.dp
+                    "cancellation" -> 22.dp
+                    "awareness" -> 21.dp
+                    else -> 22.dp
+                }
                 Row(
                     modifier = Modifier
                         .weight(1f)
@@ -566,7 +572,7 @@ private fun AncModeSlider(
                             Icon(
                                 painter = painterResource(iconId),
                                 contentDescription = label,
-                                modifier = Modifier.size(20.dp),
+                                modifier = Modifier.size(iconSize),
                                 tint = if (isSelected) MaterialTheme.colorScheme.onPrimary
                                 else MaterialTheme.colorScheme.onSurface
                             )
