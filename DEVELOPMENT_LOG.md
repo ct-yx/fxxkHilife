@@ -901,3 +901,17 @@
 - versionName: 3.0.5
 - tag: v3.0.5
 
+## v3.0.6 (2026-06-30)
+
+### 通用 ANC 子选项与连接优先级修复
+- 将 ANC 子选项数字显示问题从 7i 专项修正扩展为通用 UI 规范化：降噪 `0/1/2/3` 分别映射为均衡/舒适/深度/动态，透传 `0/2` 映射为普通透传，`1` 映射为人声增强。
+- ANC 子选项列表在 UI 展示前会先 canonicalize + distinct，避免出现裸数字、重复「普通透传」或 raw option 与显示项错位。
+- 除 FreeBuds 6i/7i 的快速核心初始化外，其它型号启用更温和的 core-first staggered init：优先发起 battery / ANC / low latency / sound quality / in-ear，再初始化设备信息和手势等非核心项。
+- 其它型号不会像 6i/7i 那样大量 defer handler，只是调整初始化顺序并把交错间隔从 80ms 放宽到 140ms，降低 pendingResponses 堆积风险。
+- 默认初始化全局超时从 10s 轻微放宽到 12s，避免更宽松间隔下过早截断。
+
+### 发布
+- versionCode: 53
+- versionName: 3.0.6
+- tag: v3.0.6
+

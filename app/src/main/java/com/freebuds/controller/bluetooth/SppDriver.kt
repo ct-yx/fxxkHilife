@@ -151,7 +151,7 @@ class SppDriver(private val device: BluetoothDevice) {
         }
     }
 
-    /** 初始化所有 Handler（默认：交错发射；FreeBuds 6i：关键项快连，慢项后台补齐） */
+    /** 初始化所有 Handler（默认：核心状态优先交错；FreeBuds 6i/7i：核心状态快连，慢项后台补齐） */
     private suspend fun initHandlers() {
         if (device.name?.contains("FreeBuds 6i", ignoreCase = true) == true ||
             device.name?.contains("FreeBuds 7i", ignoreCase = true) == true
@@ -161,12 +161,14 @@ class SppDriver(private val device: BluetoothDevice) {
         }
 
         try {
-            withTimeout(10000) {
-                LogBuffer.i("SPP", "Starting staggered init for ${handlers.size} handlers (gap=80ms, perHandler=1.5s×3, timeout=10s)")
+            val orderedHandlers = coreFirstHandlers()
+            val gapMs = 140L
+            withTimeout(12000) {
+                LogBuffer.i("SPP", "Starting core-first staggered init for ${handlers.size} handlers (gap=${gapMs}ms, perHandler=1.5s×3, timeout=12s)")
                 coroutineScope {
-                    handlers.mapIndexed { index, handler ->
+                    orderedHandlers.mapIndexed { index, handler ->
                         launch {
-                            if (index > 0) delay(index * 80L)
+                            if (index > 0) delay(index * gapMs)
                             var success = false
                             for (attempt in 0 until 3) {
                                 try {
@@ -195,6 +197,19 @@ class SppDriver(private val device: BluetoothDevice) {
         } catch (e: TimeoutCancellationException) {
             LogBuffer.w("SPP", "Staggered init global timeout reached, proceeding with partial results")
         }
+    }
+
+    private fun coreFirstHandlers(): List<HuaweiDeviceHandler> {
+        val coreIdsInOrder = listOf(
+            "drop_logs",
+            "battery",
+            "anc_global",
+            "low_latency",
+            "config_sound_quality",
+            "tws_in_ear",
+        )
+        val core = coreIdsInOrder.mapNotNull { id -> handlers.find { it.id == id } }
+        return core + handlers.filter { handler -> handler.id !in coreIdsInOrder }
     }
 
     /**

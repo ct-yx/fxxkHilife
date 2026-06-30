@@ -38,10 +38,10 @@ fun chineseAncMode(raw: String?): String = when (raw) {
 
 fun chineseAncLevel(raw: String?, mode: String?): String = when (mode) {
     "cancellation" -> when (raw) {
-        "comfort" -> "舒适"
-        "normal" -> "均衡"
-        "ultra" -> "深度"
-        "dynamic" -> "动态"
+        "comfort", "1" -> "舒适"
+        "normal", "0" -> "均衡"
+        "ultra", "2" -> "深度"
+        "dynamic", "3" -> "动态"
         else -> raw ?: "未知"
     }
     "awareness" -> when (raw) {
@@ -50,6 +50,22 @@ fun chineseAncLevel(raw: String?, mode: String?): String = when (mode) {
         else -> raw ?: "未知"
     }
     else -> raw ?: "未知"
+}
+
+private fun canonicalAncLevel(raw: String, mode: String?): String = when (mode) {
+    "cancellation" -> when (raw) {
+        "0" -> "normal"
+        "1" -> "comfort"
+        "2" -> "ultra"
+        "3" -> "dynamic"
+        else -> raw
+    }
+    "awareness" -> when (raw) {
+        "0", "2" -> "normal"
+        "1" -> "voice_boost"
+        else -> raw
+    }
+    else -> raw
 }
 
 fun ancLevelTitle(mode: String?): String = when (mode) {
@@ -151,7 +167,10 @@ fun DeviceScreen(
                         )
                     }
                 }
-                if (props.ancLevel != null && syncedAncMode != "normal" && props.ancLevelOptions.isNotEmpty()) {
+                val normalizedAncLevelOptions = props.ancLevelOptions
+                    .map { canonicalAncLevel(it, syncedAncMode) }
+                    .distinct()
+                if (props.ancLevel != null && syncedAncMode != "normal" && normalizedAncLevelOptions.isNotEmpty()) {
                     item {
                         DeviceOptionItem(
                             displayMode = displayMode,
@@ -159,8 +178,8 @@ fun DeviceScreen(
                             icon = Icons.Default.Tune,
                             title = ancLevelTitle(syncedAncMode),
                             current = chineseAncLevel(props.ancLevel, syncedAncMode),
-                            options = props.ancLevelOptions.map { chineseAncLevel(it, syncedAncMode) },
-                            rawOptions = props.ancLevelOptions,
+                            options = normalizedAncLevelOptions.map { chineseAncLevel(it, syncedAncMode) },
+                            rawOptions = normalizedAncLevelOptions,
                             onSelect = { viewModel.setProperty("anc", "level", it) }
                         )
                     }
