@@ -3,7 +3,7 @@
     <string name="app_name">fxxkHilife</string>
     <string name="service_notification_title">fxxkHilife</string>
     <string name="service_notification_text">耳机服务运行中</string>
-    <string name="version_name">3.5.0</string>
+    <string name="version_name">3.5.1</string>
     <string name="back">返回</string>
     <string name="saved_devices_count">已保存的设备（%d）</string>
     <string name="connection_preferences">连接偏好</string>

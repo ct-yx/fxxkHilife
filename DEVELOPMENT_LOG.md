@@ -994,3 +994,18 @@
 - versionCode: 59
 - versionName: 3.5.0
 - tag: v3.5.0
+
+## v3.5.1 (2026-06-30)
+
+### GitHub Actions 发布流程优化
+- 新增 `workflow_dispatch`，允许手动触发构建验证。
+- 新增 concurrency，同一 ref 的新构建会自动取消旧构建，减少重复排队。
+- 使用 `gradle/actions/setup-gradle@v4` 替代手写 Gradle cache。
+- 分支 push / PR 仅构建并上传 APK artifact；只有 `v*` tag 会创建或更新 GitHub Release。
+- tag 构建会校验 `GITHUB_REF_NAME` 必须等于 `app/build.gradle.kts` 中的 `v${versionName}`，避免 tag 与版本号不一致。
+- Release APK 统一重命名为 `fxxkHilife-vX.Y.Z-code.apk`，并从 `DEVELOPMENT_LOG.md` 自动提取对应版本段落作为 Release notes。
+
+### 发布
+- versionCode: 60
+- versionName: 3.5.1
+- tag: v3.5.1
