@@ -3,17 +3,17 @@
 > 版本号统一修改入口，按清单逐一更新。
 
 ## 当前版本
-- **v3.7.0** (versionCode=63, 2026-06-30)
+- **v3.7.1** (versionCode=64, 2026-06-30)
 
 ## 版本号位置
 
 | 位置 | 当前值 |
 |------|--------|
-| `app/build.gradle.kts` | versionCode=63, versionName="3.7.0" |
-| `app/src/main/res/values/strings.xml` | version_name=3.7.0 |
-| `README.md` | v3.7.0 |
-| `README_EN.md` | v3.7.0 |
-| `DEVELOPMENT_LOG.md` | v3.7.0 (末尾) |
+| `app/build.gradle.kts` | versionCode=64, versionName="3.7.1" |
+| `app/src/main/res/values/strings.xml` | version_name=3.7.1 |
+| `README.md` | v3.7.1 |
+| `README_EN.md` | v3.7.1 |
+| `DEVELOPMENT_LOG.md` | v3.7.1 (末尾) |
 
 ## 一键版本更新脚本
 
@@ -37,6 +37,7 @@ python3 scripts/bump_version.py <versionName> <versionCode> "修复说明"
 
 | 版本 | Code | 日期 | 主要变更 |
 |------|------|------|---------|
+| v3.7.1 | 64 | 2026-06-30 | 修复核心状态同步横幅文案，并解析粘包内嵌 SPP 回包以加快进入详情页 |
 | v3.7.0 | 63 | 2026-06-30 | 优化电池水位视觉、未连接设备斜杠、详情页返回行为和后台补齐节奏 |
 | v3.6.1 | 62 | 2026-06-30 | 修复 CI Gradle wrapper 校验失败，恢复手写 Gradle cache 以保证发布流程 |
 | v3.6.0 | 61 | 2026-06-30 | 优化核心状态初始化与详情页进入门槛，重做双耳机 + 电池盒电量展示 |

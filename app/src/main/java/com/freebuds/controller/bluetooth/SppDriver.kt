@@ -335,6 +335,7 @@ class SppDriver(private val device: BluetoothDevice) {
                 val pkgBytes = head + body
                 LogBuffer.d("SPP", "RX: ${pkgBytes.toHex()}")
                 handlePackage(pkgBytes)
+                handleEmbeddedPackages(pkgBytes)
             }
             } catch (e: java.io.EOFException) {
             LogBuffer.i("SPP", "Recv loop: connection closed")
@@ -348,6 +349,24 @@ class SppDriver(private val device: BluetoothDevice) {
         isConnected = false
         LogBuffer.i("SPP", "Recv loop ended")
         if (wasConnected) onDisconnected?.invoke()
+    }
+
+    private suspend fun handleEmbeddedPackages(data: ByteArray) {
+        var pos = 4
+        while (pos + 4 <= data.size) {
+            if (data[pos] == 0x5A.toByte() && data[pos + 1] == 0x00.toByte()) {
+                val len = data[pos + 2].toInt() and 0xFF
+                val end = pos + 4 + len
+                if (len >= 4 && end <= data.size) {
+                    val child = data.copyOfRange(pos, end)
+                    LogBuffer.d("SPP", "RX embedded: ${child.toHex()}")
+                    handlePackage(child)
+                    pos = end
+                    continue
+                }
+            }
+            pos++
+        }
     }
 
     /** 处理收到的包（对照 _handle_raw_pkg） */

@@ -39,6 +39,11 @@ fun HomeScreen(
 ) {
     val context = LocalContext.current
     val connState by viewModel.connectionState.collectAsState()
+    val props by viewModel.props.collectAsState()
+    val coreStateReady = remember(props) {
+        val hasBattery = props.batteryGlobal != null || props.batteryLeft != null || props.batteryRight != null || props.batteryCase != null
+        props.ancMode != null && props.lowLatency != null && hasBattery
+    }
     // 使用 key 强制重组：每次连接状态变化都刷新已保存设备列表
     var savedAddresses by remember { mutableStateOf(viewModel.getSavedAddresses()) }
     // 订阅连接状态变化来刷新列表
@@ -71,7 +76,11 @@ fun HomeScreen(
             item {
                 when (val s = connState) {
                     is ConnectionState.Connected -> {
-                        StatusBanner(i18n("scan.connected_to", s.deviceName), isConnected = true)
+                        if (coreStateReady) {
+                            StatusBanner(i18n("scan.connected_to", s.deviceName), isConnected = true)
+                        } else {
+                            StatusBanner(i18n("device.core_syncing", s.deviceName))
+                        }
                     }
                     is ConnectionState.Connecting -> {
                         StatusBanner(i18n("scan.connecting_to", s.deviceName))

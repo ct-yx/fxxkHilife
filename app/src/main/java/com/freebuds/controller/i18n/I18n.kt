@@ -97,6 +97,7 @@ private object DefaultI18nProvider : I18nProvider {
         "device.group.anc" to "ANC模式",
         "device.group.audio" to "音频",
         "device.group.background_sync" to "后台同步中",
+        "device.core_syncing" to "正在同步 %s 的核心状态…",
         "device.pending.device_info" to "设备信息",
         "device.pending.gesture_double" to "双击手势",
         "device.pending.gesture_triple" to "三击手势",
