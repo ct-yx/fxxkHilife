@@ -859,3 +859,17 @@
 - versionName: 3.0.2
 - tag: v3.0.2
 
+## v3.0.3 (2026-06-30)
+
+### FreeBuds 6i 核心状态优先初始化
+- 修正 v3.0.2 的 fast init 策略：用户关心的是 ANC、低延迟、音质偏好等核心控制状态尽快出现，而不是只追求进入已连接 UI。
+- 6i 连接阶段优先顺序调整为：logs → battery → ANC → low latency → sound quality → in-ear。
+- 手势、设备信息、自动暂停、语音语言等非核心状态继续后台 retry，不阻塞核心控制状态读取。
+- 6i fast init 每个核心 handler 只尝试 1 次，避免单个超时项拖慢整体；失败项仍进入后台 retry 补齐。
+- 适配范围仍仅限 FreeBuds 6i，其它型号初始化策略不变。
+
+### 发布
+- versionCode: 50
+- versionName: 3.0.3
+- tag: v3.0.3
+

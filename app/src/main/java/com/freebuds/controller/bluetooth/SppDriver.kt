@@ -197,18 +197,20 @@ class SppDriver(private val device: BluetoothDevice) {
 
     /**
      * FreeBuds 6i 对并发 SPP 初始化很敏感：日志显示 80ms 交错会让 pendingResponses 堆到 6~8 个，
-     * 造成大量超时并拖慢连接。这里连接阶段只跑关键快项，其余 handler 标记为后台 retry。
+     * 造成大量超时并拖慢连接。这里连接阶段优先跑 ANC / 低延迟 / 音质等核心控制状态，
+     * 手势、设备信息、语音语言等非关键项标记为后台 retry。
      */
     private suspend fun initHandlersFreeBuds6iFastPath() {
-        val fastIds = setOf(
+        val fastIdsInOrder = listOf(
             "drop_logs",
-            "tws_in_ear",
             "battery",
-            "gesture_triple",
+            "anc_global",
             "low_latency",
+            "config_sound_quality",
+            "tws_in_ear",
         )
-        val fastHandlers = handlers.filter { it.id in fastIds }
-        val deferredHandlers = handlers.filter { it.id !in fastIds }
+        val fastHandlers = fastIdsInOrder.mapNotNull { id -> handlers.find { it.id == id } }
+        val deferredHandlers = handlers.filter { it.id !in fastIdsInOrder }
 
         LogBuffer.i(
             "SPP",
@@ -217,7 +219,7 @@ class SppDriver(private val device: BluetoothDevice) {
 
         for (handler in fastHandlers) {
             var success = false
-            for (attempt in 0 until 2) {
+            for (attempt in 0 until 1) {
                 try {
                     withTimeout(1500) {
                         handler.onInit(this@SppDriver)
