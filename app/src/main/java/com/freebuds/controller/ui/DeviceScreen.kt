@@ -7,6 +7,7 @@ import androidx.compose.animation.expandVertically
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
 import androidx.compose.animation.shrinkVertically
+import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
@@ -21,6 +22,7 @@ import kotlinx.coroutines.delay
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
@@ -330,6 +332,7 @@ private fun BatteryCard(props: DeviceProps, displayMode: UiDisplayMode, hazeStat
                     BatteryEarbud(
                         label = i18n("device.battery.left"),
                         level = leftLevel,
+                        disconnected = leftLevel == null || leftLevel == 0,
                         mirror = false,
                         modifier = Modifier
                             .align(Alignment.TopStart)
@@ -338,6 +341,7 @@ private fun BatteryCard(props: DeviceProps, displayMode: UiDisplayMode, hazeStat
                     BatteryEarbud(
                         label = i18n("device.battery.right"),
                         level = rightLevel,
+                        disconnected = rightLevel == null || rightLevel == 0,
                         mirror = true,
                         modifier = Modifier
                             .align(Alignment.BottomEnd)
@@ -359,6 +363,7 @@ private fun BatteryCard(props: DeviceProps, displayMode: UiDisplayMode, hazeStat
 private fun BatteryEarbud(
     label: String,
     level: Int?,
+    disconnected: Boolean,
     mirror: Boolean,
     modifier: Modifier = Modifier,
 ) {
@@ -388,6 +393,16 @@ private fun BatteryEarbud(
                     .align(Alignment.Center)
                     .background(color, RoundedCornerShape(8.dp)),
             )
+            if (disconnected) {
+                Canvas(modifier = Modifier.matchParentSize()) {
+                    drawLine(
+                        color = color,
+                        start = Offset(size.width * 0.14f, size.height * 0.84f),
+                        end = Offset(size.width * 0.86f, size.height * 0.16f),
+                        strokeWidth = 5f,
+                    )
+                }
+            }
         }
         Text(level?.let { "$it%" } ?: "--", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
         Text(label, style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
