@@ -845,3 +845,17 @@
 - versionName: 3.0.1
 - tag: v3.0.1
 
+## v3.0.2 (2026-06-30)
+
+### FreeBuds 6i 连接初始化提速
+- 根据 6i 日志调整连接初始化策略：不再让 13 个 handler 在连接阶段以 80ms 间隔并发初始化，避免 `pendingResponses` 堆积到 6~8 个造成大量超时。
+- 仅针对 FreeBuds 6i 启用 fast init path；其它型号仍保持原有 staggered init 策略。
+- 6i 连接阻塞阶段只初始化快项：logs、佩戴状态、电量、三击手势、低延迟状态。
+- 6i 的设备信息、ANC、双击、长按、滑动、自动暂停、音质偏好、语音语言等较慢 handler 改为后台 retry 补齐，优先缩短进入已连接 UI 的时间。
+- 保留所有 handler 注册能力，后续属性读取/设置仍可通过后台恢复或用户操作触发，不做跨型号适配变更。
+
+### 发布
+- versionCode: 49
+- versionName: 3.0.2
+- tag: v3.0.2
+
