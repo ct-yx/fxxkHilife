@@ -29,7 +29,6 @@ import com.freebuds.controller.BuildConfig
 import com.freebuds.controller.data.DeviceViewModel
 import com.freebuds.controller.util.LogBuffer
 import com.freebuds.controller.ui.glass.AdaptiveCard
-import com.freebuds.controller.ui.glass.GlassRendererMode
 import com.freebuds.controller.ui.glass.GlassSurfaceProfile
 import com.freebuds.controller.ui.glass.LiquidGlassConfig
 import com.freebuds.controller.ui.theme.ThemeMode
@@ -118,7 +117,11 @@ fun SettingsScreen(
                     IconButton(onClick = onBack) {
                         Icon(Icons.Default.ArrowBack, contentDescription = "返回")
                     }
-                }
+                },
+                colors = TopAppBarDefaults.topAppBarColors(
+                    containerColor = if (displayMode == UiDisplayMode.LIQUID_GLASS) androidx.compose.ui.graphics.Color.Transparent else MaterialTheme.colorScheme.surface,
+                    scrolledContainerColor = if (displayMode == UiDisplayMode.LIQUID_GLASS) androidx.compose.ui.graphics.Color.Transparent else MaterialTheme.colorScheme.surface,
+                ),
             )
         }
     ) { padding ->
@@ -478,19 +481,7 @@ private fun LiquidGlassPersonalizationCard(
 
         AnimatedVisibility(visible = expanded) {
             Column(modifier = Modifier.padding(top = 14.dp), verticalArrangement = Arrangement.spacedBy(14.dp)) {
-                ConfigSegmentRow(
-                    title = "玻璃渲染方案",
-                    subtitle = "最新为 3.0 主线；传统仅保留为兼容兜底",
-                    options = listOf(
-                        "最新" to config.copy(rendererMode = GlassRendererMode.HAZE_2),
-                        "传统" to config.copy(rendererMode = GlassRendererMode.LEGACY_COMPAT),
-                    ),
-                    selectedIndex = when (config.rendererMode) {
-                        GlassRendererMode.HAZE_2 -> 0
-                        GlassRendererMode.LEGACY_COMPAT -> 1
-                    },
-                    onSelect = onConfigChange,
-                )
+                // 渲染方案固定为最新主线，传统实现仅保留为代码兜底。
                 ConfigSegmentRow(
                     title = "玻璃模糊强度",
                     subtitle = "调整玻璃效果的透明与朦胧程度",

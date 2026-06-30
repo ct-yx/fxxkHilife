@@ -3,17 +3,17 @@
 > 版本号统一修改入口，按清单逐一更新。
 
 ## 当前版本
-- **v3.0.0** (versionCode=47, 2026-06-29)
+- **v3.0.1** (versionCode=48, 2026-06-30)
 
 ## 版本号位置
 
 | 位置 | 当前值 |
 |------|--------|
-| `app/build.gradle.kts` | versionCode=47, versionName="3.0.0" |
-| `app/src/main/res/values/strings.xml` | version_name=3.0.0 |
-| `README.md` | v3.0.0 |
-| `README_EN.md` | v3.0.0 |
-| `DEVELOPMENT_LOG.md` | v3.0.0 (末尾) |
+| `app/build.gradle.kts` | versionCode=48, versionName="3.0.1" |
+| `app/src/main/res/values/strings.xml` | version_name=3.0.1 |
+| `README.md` | v3.0.1 |
+| `README_EN.md` | v3.0.1 |
+| `DEVELOPMENT_LOG.md` | v3.0.1 (末尾) |
 
 ## 一键版本更新脚本
 
@@ -37,6 +37,7 @@ python3 scripts/bump_version.py <versionName> <versionCode> "修复说明"
 
 | 版本 | Code | 日期 | 主要变更 |
 |------|------|------|---------|
+| v3.0.1 | 48 | 2026-06-30 | 修复设置/手势页顶栏透明、初始化状态显示，并移除传统渲染用户选项 |
 | v3.0.0 | 47 | 2026-06-29 | 发布 Haze 2.0 液态玻璃 UI 正式主线 |
 | v2.13.1 | 46 | 2026-06-29 | 移除最新模式主体白色 tint |
 | v2.13.0 | 45 | 2026-06-29 | 增强最新液态玻璃 Flowmix 风格边缘光学 |

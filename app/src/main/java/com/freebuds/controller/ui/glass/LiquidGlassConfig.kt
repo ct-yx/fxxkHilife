@@ -29,12 +29,9 @@ fun loadLiquidGlassConfig(context: Context): LiquidGlassConfig {
         ?: GlassSurfaceProfile.Squircle.name
     val profile = runCatching { GlassSurfaceProfile.valueOf(profileName) }
         .getOrDefault(GlassSurfaceProfile.Squircle)
-    val rendererName = prefs.getString("renderer_mode", GlassRendererMode.HAZE_2.name)
-        ?: GlassRendererMode.HAZE_2.name
-    val rendererMode = runCatching { GlassRendererMode.valueOf(rendererName) }
-        .getOrDefault(GlassRendererMode.HAZE_2)
+    // 3.0+ 固定使用 Haze 2 最新主线。传统实现保留在代码中，仅作为内部兜底，不再暴露为用户选项。
     return LiquidGlassConfig(
-        rendererMode = rendererMode,
+        rendererMode = GlassRendererMode.HAZE_2,
         tintAlpha = prefs.getFloat("tint_alpha", 0.12f).coerceIn(0.04f, 0.20f),
         readabilityStrength = prefs.getFloat("readability_strength", 0.28f).coerceIn(0.00f, 0.70f),
         refractionStrength = prefs.getFloat("refraction_strength", 0.72f).coerceIn(0.30f, 1.00f),

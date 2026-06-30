@@ -81,7 +81,7 @@ fun DeviceScreen(
     val props by viewModel.props.collectAsState()
     val deviceName = (connState as? ConnectionState.Connected)?.deviceName ?: "耳机"
     var optimisticAncMode by remember { mutableStateOf<String?>(null) }
-    val displayAncMode = optimisticAncMode ?: (props.ancMode ?: "normal")
+    val displayAncMode = optimisticAncMode ?: props.ancMode
 
     // 当 props 的实际值追上乐观值时清除乐观状态（含超时保护）
     LaunchedEffect(props.ancMode) {
@@ -127,7 +127,7 @@ fun DeviceScreen(
             item { BatteryCard(props, displayMode, hazeState) }
 
             // ── ANC ─────────────────────────────────────────────────────────
-            if (props.ancMode != null || props.ancModeOptions.isNotEmpty()) {
+            displayAncMode?.let { syncedAncMode ->
                 item { SettingsGroupHeader("ANC模式") }
                 // haze 模糊滑块切换器
                 item {
@@ -137,7 +137,7 @@ fun DeviceScreen(
                         modifier = Modifier.padding(horizontal = 16.dp, vertical = 6.dp),
                     ) {
                         AncModeSlider(
-                            current = displayAncMode,
+                            current = syncedAncMode,
                             options = props.ancModeOptions.ifEmpty {
                                 listOf("normal", "cancellation", "awareness")
                             },
@@ -148,15 +148,15 @@ fun DeviceScreen(
                         )
                     }
                 }
-                if (props.ancLevel != null && displayAncMode != "normal") {
+                if (props.ancLevel != null && syncedAncMode != "normal" && props.ancLevelOptions.isNotEmpty()) {
                     item {
                         DeviceOptionItem(
                             displayMode = displayMode,
                             hazeState = hazeState,
                             icon = Icons.Default.Tune,
-                            title = ancLevelTitle(displayAncMode),
-                            current = chineseAncLevel(props.ancLevel, displayAncMode),
-                            options = props.ancLevelOptions.map { chineseAncLevel(it, displayAncMode) },
+                            title = ancLevelTitle(syncedAncMode),
+                            current = chineseAncLevel(props.ancLevel, syncedAncMode),
+                            options = props.ancLevelOptions.map { chineseAncLevel(it, syncedAncMode) },
                             rawOptions = props.ancLevelOptions,
                             onSelect = { viewModel.setProperty("anc", "level", it) }
                         )
@@ -165,10 +165,11 @@ fun DeviceScreen(
             }
 
             // ── 音频 ─────────────────────────────────────────────────────────
-            val hasAudio = props.soundQuality != null || props.autoPause != null || props.lowLatency != null
+            val hasSoundQuality = props.soundQuality != null && props.soundQualityOptions.isNotEmpty()
+            val hasAudio = hasSoundQuality || props.autoPause != null || props.lowLatency != null
             if (hasAudio) {
                 item { SettingsGroupHeader("音频") }
-                if (props.soundQuality != null) {
+                if (hasSoundQuality) {
                     item {
                         DeviceOptionItem(
                             displayMode = displayMode,
