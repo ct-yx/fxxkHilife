@@ -3,6 +3,7 @@ package com.freebuds.controller.ui
 import android.bluetooth.BluetoothAdapter
 import android.content.Context
 import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
@@ -13,6 +14,7 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
@@ -174,6 +176,12 @@ private fun SavedDeviceItem(
     val isBonded = remember(address) {
         try { device?.bondState == android.bluetooth.BluetoothDevice.BOND_BONDED } catch (_: Exception) { false }
     }
+    val isSystemConnected = remember(address) {
+        try {
+            val method = device?.javaClass?.getMethod("isConnected")
+            method?.invoke(device) as? Boolean == true
+        } catch (_: Exception) { false }
+    }
 
     AdaptiveCard(
         displayMode = displayMode,
@@ -187,12 +195,7 @@ private fun SavedDeviceItem(
             verticalAlignment = Alignment.CenterVertically,
             horizontalArrangement = Arrangement.spacedBy(14.dp),
         ) {
-            Icon(
-                painter = painterResource(com.freebuds.controller.R.drawable.ic_earbuds_case),
-                contentDescription = null,
-                modifier = Modifier.size(28.dp),
-                tint = MaterialTheme.colorScheme.primary,
-            )
+            EarbudsListIcon(connected = isSystemConnected)
             Column(Modifier.weight(1f)) {
                 Text(name, fontWeight = FontWeight.Medium)
                 Text(
@@ -206,6 +209,29 @@ private fun SavedDeviceItem(
             }
             IconButton(onClick = onRemove) {
                 Icon(Icons.Default.Delete, contentDescription = i18n("common.delete"), tint = MaterialTheme.colorScheme.error)
+            }
+        }
+    }
+}
+
+@Composable
+private fun EarbudsListIcon(connected: Boolean) {
+    val color = if (connected) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant
+    Box(modifier = Modifier.size(32.dp), contentAlignment = Alignment.Center) {
+        Icon(
+            painter = painterResource(com.freebuds.controller.R.drawable.ic_earbuds_case),
+            contentDescription = null,
+            modifier = Modifier.size(28.dp),
+            tint = color,
+        )
+        if (!connected) {
+            Canvas(modifier = Modifier.matchParentSize()) {
+                drawLine(
+                    color = color,
+                    start = Offset(size.width * 0.18f, size.height * 0.84f),
+                    end = Offset(size.width * 0.84f, size.height * 0.18f),
+                    strokeWidth = 3.2f,
+                )
             }
         }
     }

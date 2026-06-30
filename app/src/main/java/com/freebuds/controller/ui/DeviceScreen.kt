@@ -20,6 +20,7 @@ import androidx.compose.runtime.*
 import kotlinx.coroutines.delay
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
@@ -367,11 +368,11 @@ private fun BatteryEarbud(
         horizontalAlignment = Alignment.CenterHorizontally,
     ) {
         Box(modifier = Modifier.size(width = 62.dp, height = 70.dp), contentAlignment = Alignment.Center) {
-            Box(
+            BatteryWaterCircle(
+                level = level,
                 modifier = Modifier
                     .size(38.dp)
-                    .align(if (mirror) Alignment.TopEnd else Alignment.TopStart)
-                    .background(color.copy(alpha = 0.18f), CircleShape),
+                    .align(if (mirror) Alignment.TopEnd else Alignment.TopStart),
             )
             Box(
                 modifier = Modifier
@@ -390,6 +391,32 @@ private fun BatteryEarbud(
         }
         Text(level?.let { "$it%" } ?: "--", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
         Text(label, style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+    }
+}
+
+@Composable
+private fun BatteryWaterCircle(level: Int?, modifier: Modifier = Modifier) {
+    val color = MaterialTheme.colorScheme.primary
+    val fraction = ((level ?: 0).coerceIn(0, 100) / 100f)
+    Box(
+        modifier = modifier
+            .clip(CircleShape)
+            .background(color.copy(alpha = 0.14f)),
+    ) {
+        Box(
+            modifier = Modifier
+                .fillMaxWidth()
+                .fillMaxHeight(fraction)
+                .align(Alignment.BottomCenter)
+                .background(color.copy(alpha = 0.48f)),
+        )
+        Box(
+            modifier = Modifier
+                .width(28.dp)
+                .height(4.dp)
+                .align(Alignment.Center)
+                .background(color.copy(alpha = 0.26f), RoundedCornerShape(4.dp)),
+        )
     }
 }
 
@@ -416,11 +443,19 @@ private fun BatteryCaseBox(
             )
             Box(
                 modifier = Modifier
-                    .width(34.dp)
-                    .height(5.dp)
+                    .width(42.dp)
+                    .height(6.dp)
                     .align(Alignment.Center)
-                    .background(MaterialTheme.colorScheme.onPrimary.copy(alpha = 0.65f), RoundedCornerShape(4.dp)),
-            )
+                    .clip(RoundedCornerShape(4.dp))
+                    .background(MaterialTheme.colorScheme.onPrimary.copy(alpha = 0.28f)),
+            ) {
+                Box(
+                    modifier = Modifier
+                        .fillMaxHeight()
+                        .fillMaxWidth(((level ?: 0).coerceIn(0, 100) / 100f))
+                        .background(MaterialTheme.colorScheme.onPrimary.copy(alpha = 0.82f)),
+                )
+            }
         }
         Spacer(Modifier.height(6.dp))
         Text(level?.let { "$it%" } ?: "--", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
@@ -640,7 +675,7 @@ private fun AncModeSlider(
                 val iconSize = when (raw) {
                     "normal" -> 23.dp
                     "cancellation" -> 22.dp
-                    "awareness" -> 21.dp
+                    "awareness" -> 24.dp
                     else -> 22.dp
                 }
                 Row(

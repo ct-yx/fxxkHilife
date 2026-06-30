@@ -96,6 +96,7 @@ class DeviceRepository {
     private var foregroundMode: Boolean = false
     private var connectedAddress: String? = null
     private var aclReceiver: BroadcastReceiver? = null
+    private var connectingJob: Job? = null
 
     // 设备信息是否已获取（本次进程生命周期内）
     private var deviceInfoFetched: Boolean = false
@@ -127,10 +128,11 @@ class DeviceRepository {
     // ── 连接 ─────────────────────────────────────────────────────────────────
 
     fun connect(device: BluetoothDevice) {
-        if (_connectionState.value is ConnectionState.Connecting ||
+        if (connectingJob?.isActive == true ||
+            _connectionState.value is ConnectionState.Connecting ||
             _connectionState.value is ConnectionState.Connected) return
 
-        scope.launch {
+        connectingJob = scope.launch {
             _connectionState.value = ConnectionState.Connecting(device.name ?: device.address)
             val d = SppDriver(device)
             d.onPropertyChanged = {
@@ -349,8 +351,9 @@ class DeviceRepository {
                 val hasCorePending = failedHandlers.any { it in coreRetryOrder }
                 val delayMs = when {
                     hasCorePending && attempt < 5 -> 2_000L
-                    attempt < 3 -> 5_000L
-                    else -> 30_000L
+                    hasCorePending -> 5_000L
+                    attempt < 8 -> 8_000L
+                    else -> 20_000L
                 }
                 delay(delayMs)
                 val quietDelay = sppQuietUntil - System.currentTimeMillis()
@@ -358,7 +361,9 @@ class DeviceRepository {
                 attempt++
                 val d = driver ?: break
                 val toRemove = mutableListOf<String>()
-                val retryIds = orderedRetryHandlerIds()
+                val retryIds = orderedRetryHandlerIds().let { ids ->
+                    if (ids.any { it in coreRetryOrder }) ids else ids.take(3)
+                }
                 for (handlerId in retryIds) {
                     val handler = d.getHandlerById(handlerId) ?: continue
                     try {
@@ -410,6 +415,7 @@ class DeviceRepository {
                         try {
                             withTimeout(1500) { infoHandler.onInit(d) }
                             deviceInfoFetched = true
+                            failedHandlers.remove("device_info")
                         } catch (_: Exception) { }
                     } else {
                         deviceInfoFetched = true

@@ -51,6 +51,7 @@ fun AppNavHost(
         val hasBattery = props.batteryGlobal != null || props.batteryLeft != null || props.batteryRight != null || props.batteryCase != null
         props.ancMode != null && props.lowLatency != null && hasBattery
     }
+    var userLeftDevice by remember { mutableStateOf(false) }
     val navController = rememberNavController()
     val backStackEntry by navController.currentBackStackEntryAsState()
     val currentRoute = backStackEntry?.destination?.route
@@ -84,8 +85,11 @@ fun AppNavHost(
     val startDestination = remember { if (!hasPermissions) Route.PermissionGuide else Route.Home }
 
     LaunchedEffect(connState, coreStateReady, currentRoute) {
-        if (connState is ConnectionState.Connected && coreStateReady && currentRoute == Route.Home) {
+        if (connState is ConnectionState.Connected && coreStateReady && currentRoute == Route.Home && !userLeftDevice) {
             navController.navigate(Route.Device) { launchSingleTop = true }
+        }
+        if (connState !is ConnectionState.Connected) {
+            userLeftDevice = false
         }
         if (currentRoute == Route.Device && !coreStateReady) {
             navController.popBackStack(Route.Home, inclusive = false)
@@ -176,6 +180,7 @@ fun AppNavHost(
                     displayMode = displayMode,
                     hazeState = hazeState,
                     onBack = {
+                        userLeftDevice = true
                         navController.popBackStack(Route.Home, inclusive = false)
                     },
                     onGesture = { navController.navigate(Route.Gesture) { launchSingleTop = true } },

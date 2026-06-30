@@ -16,8 +16,8 @@
   <a href="https://github.com/ct-yx/fxxkHilife/issues">Report / Join testing</a>
 </p>
 
-> **Current version: v3.6.1**
-> Fixes the CI release pipeline interrupted by Gradle wrapper validation failure and keeps manual Gradle caching for the current wrapper.
+> **Current version: v3.7.0**
+> Polishes battery level visuals, disconnected-device slash state, detail-page back navigation, and background initialization retry pacing.
 
 ---
 
@@ -66,7 +66,7 @@ The project is still evolving quickly. Testers with more earbud models are very 
 | Device | Status | Notes |
 |--------|--------|-------|
 | HUAWEI FreeBuds 6i | Tested | Main development device; ANC, gestures, battery, low-latency, and sound preference are being continuously tuned |
-| HUAWEI FreeBuds 7i | Temporary conservative profile, full adaptation pending | v3.6.1 keeps a reduced capability table to lower initialization pressure and temporarily hides the unverified auto-pause option; full 7i support will continue with testers in the next major compatibility round for more models and vendors |
+| HUAWEI FreeBuds 7i | Temporary conservative profile, full adaptation pending | v3.7.0 keeps a reduced capability table to lower initialization pressure and temporarily hides the unverified auto-pause option; full 7i support will continue with testers in the next major compatibility round for more models and vendors |
 | HUAWEI FreeBuds 5i | Capability table ready, needs testing | ANC, ANC level, gestures, sound preference, low-latency |
 | HUAWEI FreeBuds 4i / HONOR Earbuds 2 / 2 Lite / SE | Capability table ready, needs testing | Basic ANC, battery, wear detection, double/long tap, auto-pause |
 | HUAWEI FreeBuds Pro | Capability table ready, needs testing | ANC, voice boost, swipe/long press, dual-connect capabilities may vary |
@@ -87,7 +87,7 @@ Please include:
 
 1. Earbud model and firmware version
 2. Phone model, Android version / ROM
-3. App version (v3.6.1+ logs include it automatically)
+3. App version (v3.7.0+ logs include it automatically)
 4. Which features work and which do not
 5. Exported log from the in-app “Share log” action
 6. For connection issues, whether Android system Bluetooth already shows the earbuds as connected
