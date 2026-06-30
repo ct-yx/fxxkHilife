@@ -630,7 +630,11 @@ private fun AppDetailsCard(
                     modifier = Modifier.size(52.dp),
                 ) {
                     Box(contentAlignment = Alignment.Center) {
-                        Icon(Icons.Default.Headphones, contentDescription = null)
+                        Icon(
+                            painter = painterResource(com.freebuds.controller.R.drawable.ic_earbuds_case),
+                            contentDescription = null,
+                            modifier = Modifier.size(30.dp),
+                        )
                     }
                 }
                 Spacer(Modifier.width(14.dp))

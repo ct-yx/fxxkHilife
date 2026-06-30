@@ -312,7 +312,15 @@ private fun BatteryCard(props: DeviceProps, displayMode: UiDisplayMode, hazeStat
             .padding(16.dp),
     ) {
         Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-            Text(i18n("device.battery"), style = MaterialTheme.typography.titleMedium)
+            Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+                Icon(
+                    painter = painterResource(R.drawable.ic_earbuds_case),
+                    contentDescription = null,
+                    modifier = Modifier.size(28.dp),
+                    tint = MaterialTheme.colorScheme.primary,
+                )
+                Text(i18n("device.battery"), style = MaterialTheme.typography.titleMedium)
+            }
             Row(horizontalArrangement = Arrangement.spacedBy(24.dp)) {
                 if (props.batteryLeft != null)
                     BatteryChip(i18n("device.battery.left"), props.batteryLeft)

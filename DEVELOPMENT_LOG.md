@@ -982,3 +982,15 @@
 - versionCode: 58
 - versionName: 3.4.0
 - tag: v3.4.0
+
+## v3.5.0 (2026-06-30)
+
+### 耳机 + 耳机盒图标
+- 新增 `ic_earbuds_case.xml`，使用代码绘制单色 Android Vector，包含一对真无线耳机与打开的充电盒。
+- 图标采用方形 viewport、透明背景、单色可 tint 设计，适配 Material3 / Liquid Glass 风格和 20–32dp 小尺寸显示。
+- 将新图标应用到主页已保存设备列表、扫描结果设备项、设备页电量卡标题，以及设置页应用详情主图标。
+
+### 发布
+- versionCode: 59
+- versionName: 3.5.0
+- tag: v3.5.0

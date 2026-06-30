@@ -14,6 +14,7 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import com.freebuds.controller.bluetooth.ScannedDevice
@@ -186,7 +187,12 @@ private fun SavedDeviceItem(
             verticalAlignment = Alignment.CenterVertically,
             horizontalArrangement = Arrangement.spacedBy(14.dp),
         ) {
-            Icon(Icons.Default.Headphones, contentDescription = null, tint = MaterialTheme.colorScheme.primary)
+            Icon(
+                painter = painterResource(com.freebuds.controller.R.drawable.ic_earbuds_case),
+                contentDescription = null,
+                modifier = Modifier.size(28.dp),
+                tint = MaterialTheme.colorScheme.primary,
+            )
             Column(Modifier.weight(1f)) {
                 Text(name, fontWeight = FontWeight.Medium)
                 Text(
@@ -289,6 +295,14 @@ private fun ScanSection(
 private fun ScanDeviceItem(device: ScannedDevice, onClick: () -> Unit) {
     val bondedLabel = i18n("home.bonded")
     ListItem(
+        leadingContent = {
+            Icon(
+                painter = painterResource(com.freebuds.controller.R.drawable.ic_earbuds_case),
+                contentDescription = null,
+                modifier = Modifier.size(28.dp),
+                tint = MaterialTheme.colorScheme.primary,
+            )
+        },
         headlineContent = { Text(device.displayName, fontWeight = FontWeight.Medium) },
         supportingContent = {
             Text(

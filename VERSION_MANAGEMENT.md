@@ -3,17 +3,17 @@
 > 版本号统一修改入口，按清单逐一更新。
 
 ## 当前版本
-- **v3.4.0** (versionCode=58, 2026-06-30)
+- **v3.5.0** (versionCode=59, 2026-06-30)
 
 ## 版本号位置
 
 | 位置 | 当前值 |
 |------|--------|
-| `app/build.gradle.kts` | versionCode=58, versionName="3.4.0" |
-| `app/src/main/res/values/strings.xml` | version_name=3.4.0 |
-| `README.md` | v3.4.0 |
-| `README_EN.md` | v3.4.0 |
-| `DEVELOPMENT_LOG.md` | v3.4.0 (末尾) |
+| `app/build.gradle.kts` | versionCode=59, versionName="3.5.0" |
+| `app/src/main/res/values/strings.xml` | version_name=3.5.0 |
+| `README.md` | v3.5.0 |
+| `README_EN.md` | v3.5.0 |
+| `DEVELOPMENT_LOG.md` | v3.5.0 (末尾) |
 
 ## 一键版本更新脚本
 
@@ -37,6 +37,7 @@ python3 scripts/bump_version.py <versionName> <versionCode> "修复说明"
 
 | 版本 | Code | 日期 | 主要变更 |
 |------|------|------|---------|
+| v3.5.0 | 59 | 2026-06-30 | 新增耳机 + 耳机盒单色矢量图标，并应用到主页、扫描、设备电量和应用详情 |
 | v3.4.0 | 58 | 2026-06-30 | 优化手势/设备选项菜单展开动画，重做应用详情卡，并修正 ANC 三模式图标居中与尺寸 |
 | v3.3.0 | 57 | 2026-06-30 | 扩展主要用户界面 i18n 覆盖，日志/调试终端保留原始排障文本，并准备 GitHub CI 自动发布 |
 | v3.0.6 | 53 | 2026-06-30 | 通用修复 ANC 子选项数字显示，并为其它型号启用温和核心状态优先初始化 |
