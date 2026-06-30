@@ -1031,3 +1031,14 @@
 - versionCode: 61
 - versionName: 3.6.0
 - tag: v3.6.0
+
+## v3.6.1 (2026-06-30)
+
+### CI 发布修复
+- 修复 `gradle/actions/setup-gradle@v4` 默认 wrapper validation 拦截当前 `gradle-wrapper.jar`，导致 v3.5.1/v3.6.0 CI 构建失败的问题。
+- 恢复使用 `actions/cache@v4` 手写 Gradle cache，保留此前 tag 校验、artifact 命名和 DEVELOPMENT_LOG release notes 提取逻辑。
+
+### 发布
+- versionCode: 62
+- versionName: 3.6.1
+- tag: v3.6.1
