@@ -58,6 +58,7 @@ data class DeviceProps(
     val inEar: Boolean? = null,
     val deviceModel: String? = null,
     val firmwareVersion: String? = null,
+    val pendingInitHandlers: List<String> = emptyList(),
     // 连接时刻 ( = 未连接)，用于计算佩戴时长
     val connectedSince: Long? = null,
 )
@@ -142,6 +143,7 @@ class DeviceRepository {
                 syncProps()
                 deviceInfoFetched = false // 新连接：允许重新获取设备信息
                 failedHandlers.addAll(d.failedHandlerIds)
+                syncProps()
                 startPolling()
                 if (foregroundMode) startFastPolling()
                 retryFailedHandlers()
@@ -466,6 +468,7 @@ class DeviceRepository {
             inEar            = get("state", "in_ear")?.toBooleanStrictOrNull(),
             deviceModel      = get("info", "device_model"),
             firmwareVersion  = get("info", "software_ver"),
+            pendingInitHandlers = failedHandlers.toList(),
             connectedSince   = connectedAt.takeIf { it > 0 },
         )
         ensureDefaultAncOptions()

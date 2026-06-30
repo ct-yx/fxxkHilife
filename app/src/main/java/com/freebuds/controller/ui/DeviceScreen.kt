@@ -125,6 +125,9 @@ fun DeviceScreen(
         ) {
             // ── 电池卡片 ─────────────────────────────────────────────────────
             item { BatteryCard(props, displayMode, hazeState) }
+            if (props.pendingInitHandlers.isNotEmpty()) {
+                item { BackgroundSyncCard(props.pendingInitHandlers, displayMode, hazeState) }
+            }
 
             // ── ANC ─────────────────────────────────────────────────────────
             displayAncMode?.let { syncedAncMode ->
@@ -320,6 +323,53 @@ private fun SettingsGroupHeader(text: String) {
             color = MaterialTheme.colorScheme.primary
         )
     }
+}
+
+@Composable
+private fun BackgroundSyncCard(
+    pendingHandlers: List<String>,
+    displayMode: UiDisplayMode,
+    hazeState: HazeState?,
+) {
+    val labels = pendingHandlers.map(::initHandlerLabel).distinct()
+    val preview = labels.take(4).joinToString("、")
+    val suffix = if (labels.size > 4) " 等 ${labels.size} 项" else ""
+    AdaptiveCard(
+        displayMode = displayMode,
+        hazeState = hazeState,
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(horizontal = 16.dp, vertical = 6.dp),
+    ) {
+        Row(verticalAlignment = Alignment.CenterVertically) {
+            Icon(Icons.Default.Sync, contentDescription = null)
+            Spacer(Modifier.width(12.dp))
+            Column(modifier = Modifier.weight(1f)) {
+                Text("后台同步中", style = MaterialTheme.typography.titleSmall, fontWeight = FontWeight.Bold)
+                Text(
+                    "正在补齐：$preview$suffix。通常 15–45 秒内陆续完成，慢项会保持后台重试。",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                )
+            }
+        }
+    }
+}
+
+private fun initHandlerLabel(id: String): String = when (id) {
+    "device_info" -> "设备信息"
+    "anc_global" -> "ANC"
+    "gesture_double" -> "双击手势"
+    "gesture_triple" -> "三击手势"
+    "gesture_long" -> "长按手势"
+    "gesture_swipe" -> "滑动手势"
+    "tws_auto_pause" -> "摘下暂停"
+    "config_sound_quality" -> "音质偏好"
+    "voice_language" -> "语音语言"
+    "tws_in_ear" -> "佩戴状态"
+    "battery" -> "电量"
+    "low_latency" -> "低延迟"
+    else -> id
 }
 
 @OptIn(ExperimentalLayoutApi::class)
