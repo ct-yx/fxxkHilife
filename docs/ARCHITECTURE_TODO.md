@@ -166,6 +166,8 @@ data class EarbudState(
 - [x] 新建 `core/adapter` 包，定义 `EarbudAdapter` / `EarbudController` 草案。
 - [ ] 将 `HuaweiModel` / `HuaweiCapability` 移入 `protocol/huawei` 或 `adapter/huawei` 命名空间。
 - [x] `DeviceRepository.registerHandlers()` 改为委托给 `HuaweiOpenFreebudsAdapter`。
+- [x] 新建 `core/protocol` 包，定义 `EarbudProtocol` / `ProtocolFramer` / `ProtocolSession`。
+- [x] 新增 `HuaweiSppProtocol` / `HuaweiSppFramer`，把 5A 包编码与流式解帧抽到协议层；生产路径暂不替换 `SppDriver`。
 
 ### 阶段 2：能力与状态通用化
 

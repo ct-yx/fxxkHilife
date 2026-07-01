@@ -1122,3 +1122,11 @@
 - versionName: 3.8.2
 - tag: v3.8.2
 
+## v3.8.3 (2026-07-01)
+
+### 发布
+- 继续 4.0 架构前置重构：新增通用 Protocol 接口与 HuaweiSppProtocol / HuaweiSppFramer，将 5A 包编码和流式解帧从蓝牙连接管理中抽象出来
+- versionCode: 70
+- versionName: 3.8.3
+- tag: v3.8.3
+

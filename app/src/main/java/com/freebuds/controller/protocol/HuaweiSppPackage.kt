@@ -1,10 +1,16 @@
 package com.freebuds.controller.protocol
 
+import com.freebuds.controller.core.protocol.ProtocolPacket
+
+private fun ByteArray.toHexString(): String = joinToString("") { "%02x".format(it) }
+
 class HuaweiSppPackage(
     val commandId: ByteArray,
     val responseId: ByteArray = commandId,
     val parameters: MutableMap<Int, ByteArray> = mutableMapOf()
-) {
+) : ProtocolPacket {
+    override val commandKey: String get() = commandId.toHexString()
+    override val responseKey: String get() = responseId.toHexString()
     companion object {
         fun readRequest(cmd: ByteArray, vararg types: Int): HuaweiSppPackage {
             val m = mutableMapOf<Int, ByteArray>()
