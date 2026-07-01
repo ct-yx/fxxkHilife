@@ -1114,3 +1114,11 @@
 - versionName: 3.8.1
 - tag: v3.8.1
 
+## v3.8.2 (2026-07-01)
+
+### 发布
+- 继续可插拔架构重构：新增 RfcommSppTransport，将 Android RFCOMM/SPP 原始连接与收发抽象为 Transport 层，为后续协议层迁移做准备
+- versionCode: 69
+- versionName: 3.8.2
+- tag: v3.8.2
+

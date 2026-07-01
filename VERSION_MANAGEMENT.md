@@ -3,17 +3,17 @@
 > 版本号统一修改入口，按清单逐一更新。
 
 ## 当前版本
-- **v3.8.1** (versionCode=68, 2026-07-01)
+- **v3.8.2** (versionCode=69, 2026-07-01)
 
 ## 版本号位置
 
 | 位置 | 当前值 |
 |------|--------|
-| `app/build.gradle.kts` | versionCode=68, versionName="3.8.1" |
-| `app/src/main/res/values/strings.xml` | version_name=3.8.1 |
-| `README.md` | v3.8.1 |
-| `README_EN.md` | v3.8.1 |
-| `DEVELOPMENT_LOG.md` | v3.8.1 (末尾) |
+| `app/build.gradle.kts` | versionCode=69, versionName="3.8.2" |
+| `app/src/main/res/values/strings.xml` | version_name=3.8.2 |
+| `README.md` | v3.8.2 |
+| `README_EN.md` | v3.8.2 |
+| `DEVELOPMENT_LOG.md` | v3.8.2 (末尾) |
 
 ## 一键版本更新脚本
 
@@ -37,6 +37,7 @@ python3 scripts/bump_version.py <versionName> <versionCode> "修复说明"
 
 | 版本 | Code | 日期 | 主要变更 |
 |------|------|------|---------|
+| v3.8.2 | 69 | 2026-07-01 | 继续可插拔架构重构：新增 RfcommSppTransport，将 Android RFCOMM/SPP 原始连接与收发抽象为 Transport 层，为后续协议层迁移做准备 |
 | v3.8.1 | 68 | 2026-07-01 | 启动可插拔耳机架构重构：新增 Transport / Adapter 接口骨架，抽出 HuaweiOpenFreebudsAdapter 并将 Handler 注册从 DeviceRepository 委托到厂商 Adapter |
 | v3.8.0 | 67 | 2026-07-01 | 新增听音统计页面：按耳机连接时长累计总时长、今日时长、已听天数、连续天数，并提供近 16 周活动热力图入口 |
 | v3.7.3 | 66 | 2026-06-30 | 补充 GitHub Pages SEO 元信息、robots.txt 与 sitemap.xml |
