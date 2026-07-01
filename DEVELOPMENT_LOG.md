@@ -1130,3 +1130,11 @@
 - versionName: 3.8.3
 - tag: v3.8.3
 
+## v3.8.4 (2026-07-01)
+
+### 发布
+- 继续削薄 SppDriver：新增 HuaweiHandlerRegistry，将 Handler 列表、命令路由、忽略命令、属性路由和失败 Handler 集合从驱动中抽出
+- versionCode: 71
+- versionName: 3.8.4
+- tag: v3.8.4
+

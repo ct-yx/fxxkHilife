@@ -3,17 +3,17 @@
 > 版本号统一修改入口，按清单逐一更新。
 
 ## 当前版本
-- **v3.8.3** (versionCode=70, 2026-07-01)
+- **v3.8.4** (versionCode=71, 2026-07-01)
 
 ## 版本号位置
 
 | 位置 | 当前值 |
 |------|--------|
-| `app/build.gradle.kts` | versionCode=70, versionName="3.8.3" |
-| `app/src/main/res/values/strings.xml` | version_name=3.8.3 |
-| `README.md` | v3.8.3 |
-| `README_EN.md` | v3.8.3 |
-| `DEVELOPMENT_LOG.md` | v3.8.3 (末尾) |
+| `app/build.gradle.kts` | versionCode=71, versionName="3.8.4" |
+| `app/src/main/res/values/strings.xml` | version_name=3.8.4 |
+| `README.md` | v3.8.4 |
+| `README_EN.md` | v3.8.4 |
+| `DEVELOPMENT_LOG.md` | v3.8.4 (末尾) |
 
 ## 一键版本更新脚本
 
@@ -37,6 +37,7 @@ python3 scripts/bump_version.py <versionName> <versionCode> "修复说明"
 
 | 版本 | Code | 日期 | 主要变更 |
 |------|------|------|---------|
+| v3.8.4 | 71 | 2026-07-01 | 继续削薄 SppDriver：新增 HuaweiHandlerRegistry，将 Handler 列表、命令路由、忽略命令、属性路由和失败 Handler 集合从驱动中抽出 |
 | v3.8.3 | 70 | 2026-07-01 | 继续 4.0 架构前置重构：新增通用 Protocol 接口与 HuaweiSppProtocol / HuaweiSppFramer，将 5A 包编码和流式解帧从蓝牙连接管理中抽象出来 |
 | v3.8.2 | 69 | 2026-07-01 | 继续可插拔架构重构：新增 RfcommSppTransport，将 Android RFCOMM/SPP 原始连接与收发抽象为 Transport 层，为后续协议层迁移做准备 |
 | v3.8.1 | 68 | 2026-07-01 | 启动可插拔耳机架构重构：新增 Transport / Adapter 接口骨架，抽出 HuaweiOpenFreebudsAdapter 并将 Handler 注册从 DeviceRepository 委托到厂商 Adapter |

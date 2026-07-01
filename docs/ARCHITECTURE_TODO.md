@@ -168,6 +168,7 @@ data class EarbudState(
 - [x] `DeviceRepository.registerHandlers()` 改为委托给 `HuaweiOpenFreebudsAdapter`。
 - [x] 新建 `core/protocol` 包，定义 `EarbudProtocol` / `ProtocolFramer` / `ProtocolSession`。
 - [x] 新增 `HuaweiSppProtocol` / `HuaweiSppFramer`，把 5A 包编码与流式解帧抽到协议层；生产路径暂不替换 `SppDriver`。
+- [x] 新增 `HuaweiHandlerRegistry`，把 Handler 列表、命令路由、ignore command、属性路由和失败 Handler 集合从 `SppDriver` 中抽出。
 
 ### 阶段 2：能力与状态通用化
 

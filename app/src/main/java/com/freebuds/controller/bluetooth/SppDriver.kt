@@ -1,6 +1,7 @@
 package com.freebuds.controller.bluetooth
 
 import android.bluetooth.BluetoothDevice
+import com.freebuds.controller.adapter.huawei.protocol.HuaweiHandlerRegistry
 import com.freebuds.controller.protocol.HuaweiSppPackage
 import com.freebuds.controller.util.LogBuffer
 import kotlinx.coroutines.*
@@ -40,11 +41,8 @@ class SppDriver(private val device: BluetoothDevice) {
     private val pendingMutex = Mutex()
     private val txMutex = Mutex()
 
-    // 已注册的 Handler
-    private val handlers = mutableListOf<HuaweiDeviceHandler>()
-    val failedHandlerIds = mutableSetOf<String>()
-    private val packageHandlers = mutableMapOf<String, HuaweiDeviceHandler?>()
-    private val propertyHandlers = mutableMapOf<String, HuaweiDeviceHandler>()
+    private val handlerRegistry = HuaweiHandlerRegistry()
+    val failedHandlerIds: MutableSet<String> get() = handlerRegistry.failedHandlerIds
     private val store = mutableMapOf<String, MutableMap<String, String>>()
     private val storeMutex = Mutex()
 
@@ -55,19 +53,10 @@ class SppDriver(private val device: BluetoothDevice) {
     var onDisconnected: (() -> Unit)? = null
 
     fun registerHandler(handler: HuaweiDeviceHandler) {
-        handlers.add(handler)
-        for (cmd in handler.commandIds) {
-            packageHandlers[cmd.toHex()] = handler
-        }
-        for (cmd in handler.ignoreCommandIds) {
-            packageHandlers[cmd.toHex()] = null
-        }
-        for ((group, prop) in handler.properties) {
-            propertyHandlers["$group//$prop"] = handler
-        }
+        handlerRegistry.register(handler)
     }
 
-    fun getHandlerById(id: String): HuaweiDeviceHandler? = handlers.find { it.id == id }
+    fun getHandlerById(id: String): HuaweiDeviceHandler? = handlerRegistry.findById(id)
 
     suspend fun putProperty(group: String, prop: String?, value: String?, extendGroup: Boolean = false) {
         storeMutex.withLock {
@@ -100,7 +89,7 @@ class SppDriver(private val device: BluetoothDevice) {
     }
 
     suspend fun setProperty(group: String, prop: String, value: String) {
-        val handler = propertyHandlers["$group//$prop"] ?: propertyHandlers["$group//"]
+        val handler = handlerRegistry.handlerForProperty(group, prop)
         if (handler == null) {
             LogBuffer.w("Prop", "No handler for $group.$prop")
             return
@@ -165,7 +154,7 @@ class SppDriver(private val device: BluetoothDevice) {
             val orderedHandlers = coreFirstHandlers()
             val gapMs = 140L
             withTimeout(12000) {
-                LogBuffer.i("SPP", "Starting core-first staggered init for ${handlers.size} handlers (gap=${gapMs}ms, perHandler=1.5s×3, timeout=12s)")
+                LogBuffer.i("SPP", "Starting core-first staggered init for ${handlerRegistry.allHandlers().size} handlers (gap=${gapMs}ms, perHandler=1.5s×3, timeout=12s)")
                 coroutineScope {
                     orderedHandlers.mapIndexed { index, handler ->
                         launch {
@@ -209,8 +198,9 @@ class SppDriver(private val device: BluetoothDevice) {
             "config_sound_quality",
             "tws_in_ear",
         )
-        val core = coreIdsInOrder.mapNotNull { id -> handlers.find { it.id == id } }
-        return core + handlers.filter { handler -> handler.id !in coreIdsInOrder }
+        val all = handlerRegistry.allHandlers()
+        val core = coreIdsInOrder.mapNotNull { id -> all.find { it.id == id } }
+        return core + all.filter { handler -> handler.id !in coreIdsInOrder }
     }
 
     /**
@@ -227,12 +217,13 @@ class SppDriver(private val device: BluetoothDevice) {
             "config_sound_quality",
             "tws_in_ear",
         )
-        val fastHandlers = fastIdsInOrder.mapNotNull { id -> handlers.find { it.id == id } }
-        val deferredHandlers = handlers.filter { it.id !in fastIdsInOrder }
+        val all = handlerRegistry.allHandlers()
+        val fastHandlers = fastIdsInOrder.mapNotNull { id -> all.find { it.id == id } }
+        val deferredHandlers = all.filter { it.id !in fastIdsInOrder }
 
         LogBuffer.i(
             "SPP",
-            "Starting $deviceLabel core-state fast init for ${fastHandlers.size}/${handlers.size} handlers; deferred=${deferredHandlers.map { it.id }}"
+            "Starting $deviceLabel core-state fast init for ${fastHandlers.size}/${all.size} handlers; deferred=${deferredHandlers.map { it.id }}"
         )
 
         // 核心状态用小间隔并发发起：避免 battery/ANC/low_latency 单个 1.5s 超时串行拖慢首屏。
@@ -385,8 +376,8 @@ class SppDriver(private val device: BluetoothDevice) {
             }
         }
 
-        if (packageHandlers.containsKey(cmdKey)) {
-            val handler = packageHandlers[cmdKey]
+        if (handlerRegistry.hasCommand(cmdKey)) {
+            val handler = handlerRegistry.handlerForCommand(cmdKey)
             if (handler != null) {
                 LogBuffer.d("SPP", "RX → onDriverPackage handler=${handler.id} cmd=$cmdKey")
                 handler.onDriverPackage(this, pkg)
