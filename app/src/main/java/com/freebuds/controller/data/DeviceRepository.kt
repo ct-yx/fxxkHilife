@@ -12,9 +12,10 @@ import android.content.SharedPreferences
 import android.os.Build
 import androidx.core.content.FileProvider
 import com.freebuds.controller.adapter.huawei.HuaweiOpenFreebudsAdapter
-import com.freebuds.controller.bluetooth.SppDriver
 import com.freebuds.controller.core.adapter.EarbudAdapter
 import com.freebuds.controller.core.adapter.EarbudAdapterCallbacks
+import com.freebuds.controller.core.session.EarbudSession
+import com.freebuds.controller.core.session.LegacySppEarbudSession
 import com.freebuds.controller.i18n.I18n
 import com.freebuds.controller.util.LogBuffer
 import kotlinx.coroutines.*
@@ -98,8 +99,7 @@ class DeviceRepository {
         return p.ancMode != null && p.lowLatency != null && hasBattery
     }
 
-    private var driver: SppDriver? = null
-    private var activeAdapter: EarbudAdapter? = null
+    private var session: EarbudSession? = null
     private var prefs: SharedPreferences? = null
     private var appContext: Context? = null
     private val failedHandlers = mutableSetOf<String>()
@@ -124,7 +124,7 @@ class DeviceRepository {
     // ── 前后台感知 ───────────────────────────────────────────────────────────
     fun setAppInForeground(foreground: Boolean) {
         foregroundMode = foreground
-        if (driver?.isConnected == true) {
+        if (session?.isConnected == true) {
             if (foreground) {
                 startFastPolling()
             } else {
@@ -153,18 +153,17 @@ class DeviceRepository {
         connectingJob = scope.launch {
             _connectionState.value = ConnectionState.Connecting(device.name ?: device.address)
             val adapter = adapters.firstOrNull { it.canHandle(device) } ?: HuaweiOpenFreebudsAdapter
-            activeAdapter = adapter
-            val d = SppDriver(device)
-            d.onPropertyChanged = {
+            val d = LegacySppEarbudSession(device, adapter)
+            d.setPropertyChangedListener {
                 scope.launch {
-                    if (driver === d) syncProps()
+                    if (session === d) syncProps()
                 }
             }
-            d.onDisconnected = {
+            d.setDisconnectedListener {
                 scope.launch { handleRemoteDisconnected(d, "SPP receive loop ended") }
             }
             registerHandlers(adapter, d, device.name ?: "")
-            driver = d
+            session = d
             if (d.connect()) {
                 _connectionState.value = ConnectionState.Connected(device.name ?: device.address)
                 connectedAt = System.currentTimeMillis()
@@ -180,7 +179,7 @@ class DeviceRepository {
                 retryFailedHandlers()
                 applyAutoLowLatencyIfEnabled()
             } else {
-                driver = null
+                session = null
                 connectedAddress = null
                 _connectionState.value = ConnectionState.Failed(I18n.t("scan.connection_failed_short"))
             }
@@ -194,8 +193,8 @@ class DeviceRepository {
         autoLowLatencyJob?.cancel()
         stopListeningStatsTicker()
         sppQuietUntil = 0L
-        driver?.disconnect()
-        driver = null
+        session?.disconnect()
+        session = null
         connectedAddress = null
         deviceInfoFetched = false
         _connectionState.value = ConnectionState.Disconnected
@@ -203,9 +202,9 @@ class DeviceRepository {
         connectedAt = 0
     }
 
-    private fun handleRemoteDisconnected(sourceDriver: SppDriver?, reason: String) {
-        if (sourceDriver != null && driver !== sourceDriver) return
-        if (_connectionState.value !is ConnectionState.Connected && driver == null) return
+    private fun handleRemoteDisconnected(sourceSession: EarbudSession?, reason: String) {
+        if (sourceSession != null && session !== sourceSession) return
+        if (_connectionState.value !is ConnectionState.Connected && session == null) return
         LogBuffer.w("SPP", "Remote disconnected: $reason")
         pollJob?.cancel()
         fastPollJob?.cancel()
@@ -213,7 +212,7 @@ class DeviceRepository {
         autoLowLatencyJob?.cancel()
         stopListeningStatsTicker()
         sppQuietUntil = 0L
-        driver = null
+        session = null
         connectedAddress = null
         deviceInfoFetched = false
         _connectionState.value = ConnectionState.Disconnected
@@ -229,7 +228,7 @@ class DeviceRepository {
                 val device = intent.getParcelableExtra<BluetoothDevice>(BluetoothDevice.EXTRA_DEVICE)
                 val address = device?.address ?: return
                 if (address == connectedAddress) {
-                    scope.launch { handleRemoteDisconnected(driver, "Bluetooth ACL disconnected") }
+                    scope.launch { handleRemoteDisconnected(session, "Bluetooth ACL disconnected") }
                 }
             }
         }
@@ -370,7 +369,7 @@ class DeviceRepository {
         if (failedHandlers.isEmpty()) return
         retryJob = scope.launch {
             var attempt = 0
-            while (isActive && driver?.isConnected == true && failedHandlers.isNotEmpty()) {
+            while (isActive && session?.isConnected == true && failedHandlers.isNotEmpty()) {
                 val hasCorePending = failedHandlers.any { it in coreRetryOrder }
                 val delayMs = when {
                     hasCorePending && attempt < 5 -> 2_000L
@@ -382,7 +381,8 @@ class DeviceRepository {
                 val quietDelay = sppQuietUntil - System.currentTimeMillis()
                 if (quietDelay > 0) delay(quietDelay)
                 attempt++
-                val d = driver ?: break
+                val d = session ?: break
+                val legacyDriver = d.legacyDriverOrNull() ?: break
                 val toRemove = mutableListOf<String>()
                 val retryIds = orderedRetryHandlerIds().let { ids ->
                     if (ids.any { it in coreRetryOrder }) ids else ids.take(3)
@@ -391,7 +391,7 @@ class DeviceRepository {
                     val handler = d.getHandlerById(handlerId) ?: continue
                     try {
                         withTimeout(1500) {
-                            handler.onInit(d)
+                            handler.onInit(legacyDriver)
                         }
                         LogBuffer.i("SPP", "Retry init $handlerId success (attempt=$attempt)")
                         toRemove.add(handlerId)
@@ -413,9 +413,9 @@ class DeviceRepository {
     private fun startPolling() {
         pollJob?.cancel()
         pollJob = scope.launch {
-            while (isActive && driver?.isConnected == true) {
+            while (isActive && session?.isConnected == true) {
                 delay(5_000) // 后台每 5s 轮询一次
-                if (!isActive || driver?.isConnected != true) break
+                if (!isActive || session?.isConnected != true) break
                 if (!foregroundMode) {
                     syncProps()
                 }
@@ -427,16 +427,17 @@ class DeviceRepository {
         fastPollJob?.cancel()
         fastPollJob = scope.launch {
             var tick = 0
-            while (isActive && driver?.isConnected == true && foregroundMode) {
+            while (isActive && session?.isConnected == true && foregroundMode) {
                 delay(800) // 前台 800ms 高频刷新
-                if (!isActive || driver?.isConnected != true || !foregroundMode) break
+                if (!isActive || session?.isConnected != true || !foregroundMode) break
                 // 设备信息仅在首次连接时获取一次；核心状态/自动低延迟稳定前不抢 SPP 通道
                 if (!deviceInfoFetched && System.currentTimeMillis() >= sppQuietUntil && failedHandlers.none { it in coreRetryOrder }) {
-                    val d = driver ?: return@launch
+                    val d = session ?: return@launch
+                    val legacyDriver = d.legacyDriverOrNull() ?: return@launch
                     val infoHandler = d.getHandlerById("device_info")
                     if (infoHandler != null) {
                         try {
-                            withTimeout(1500) { infoHandler.onInit(d) }
+                            withTimeout(1500) { infoHandler.onInit(legacyDriver) }
                             deviceInfoFetched = true
                             failedHandlers.remove("device_info")
                         } catch (_: Exception) { }
@@ -458,7 +459,7 @@ class DeviceRepository {
     // ── 属性写入（UI → 设备）──等待响应后重新同步 ─────────────────
 
     suspend fun setProperty(group: String, prop: String, value: String) {
-        val d = driver ?: return
+        val d = session ?: return
 
         // ========== v2.7.0 根因修复：源头乐观更新 ==========
         // 让 UI、Tile、Notification 全部瞬间看到预期值，彻底解决跳变问题
@@ -588,14 +589,11 @@ class DeviceRepository {
             LogBuffer.e("Share", "Failed to share log: ${e.message}")
         }
     }
-
-    // ── 内部：从 driver 属性存储同步到 StateFlow ──────────────────────────────
+    // ── 内部：从 session 状态映射同步到 StateFlow ─────────────────────────────
 
     private suspend fun syncProps() {
-        val d = driver ?: return
-        val adapter = activeAdapter ?: HuaweiOpenFreebudsAdapter
-        _props.value = adapter.mapState(
-            driver = d,
+        val d = session ?: return
+        _props.value = d.mapState(
             failedHandlers = failedHandlers,
             connectedSince = connectedAt.takeIf { it > 0 },
         )
@@ -604,9 +602,10 @@ class DeviceRepository {
 
     // ── 内部：注册 Handler ─────────────────────────────────────────────────────
 
-    private fun registerHandlers(adapter: EarbudAdapter, d: SppDriver, name: String) {
+    private fun registerHandlers(adapter: EarbudAdapter, d: EarbudSession, name: String) {
+        val legacyDriver = d.legacyDriverOrNull() ?: return
         adapter.registerHandlers(
-            driver = d,
+            driver = legacyDriver,
             deviceName = name,
             callbacks = EarbudAdapterCallbacks(
                 onStateChanged = { syncProps() }
@@ -614,5 +613,6 @@ class DeviceRepository {
         )
     }
 
-    fun getDriver(): SppDriver? = driver
+
+    fun getDriver() = session?.legacyDriverOrNull()
 }

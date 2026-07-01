@@ -1162,3 +1162,11 @@
 - versionName: 4.0.0
 - tag: v4.0.0
 
+## v4.1.0 (2026-07-01)
+
+### 发布
+- 新增通用 EarbudSession 与 LegacySppEarbudSession 桥接层，DeviceRepository 通过 session 管理连接、属性写入与状态映射，为第三方耳机接入铺路
+- versionCode: 78
+- versionName: 4.1.0
+- tag: v4.1.0
+

@@ -3,17 +3,17 @@
 > 版本号统一修改入口，按清单逐一更新。
 
 ## 当前版本
-- **v4.0.0** (versionCode=77, 2026-07-01)
+- **v4.1.0** (versionCode=78, 2026-07-01)
 
 ## 版本号位置
 
 | 位置 | 当前值 |
 |------|--------|
-| `app/build.gradle.kts` | versionCode=77, versionName="4.0.0" |
-| `app/src/main/res/values/strings.xml` | version_name=4.0.0 |
-| `README.md` | v4.0.0 |
-| `README_EN.md` | v4.0.0 |
-| `DEVELOPMENT_LOG.md` | v4.0.0 (末尾) |
+| `app/build.gradle.kts` | versionCode=78, versionName="4.1.0" |
+| `app/src/main/res/values/strings.xml` | version_name=4.1.0 |
+| `README.md` | v4.1.0 |
+| `README_EN.md` | v4.1.0 |
+| `DEVELOPMENT_LOG.md` | v4.1.0 (末尾) |
 
 ## 一键版本更新脚本
 
@@ -37,6 +37,7 @@ python3 scripts/bump_version.py <versionName> <versionCode> "修复说明"
 
 | 版本 | Code | 日期 | 主要变更 |
 |------|------|------|---------|
+| v4.1.0 | 78 | 2026-07-01 | 新增通用 EarbudSession 与 LegacySppEarbudSession 桥接层，DeviceRepository 通过 session 管理连接、属性写入与状态映射，为第三方耳机接入铺路 |
 | v3.8.7 | 74 | 2026-07-01 | 拆出 HuaweiHandlerInitializer，迁移 handler 初始化调度和 FreeBuds 6i/7i 核心状态 fast path |
 | v3.8.8 | 75 | 2026-07-01 | 新增 EarbudStateMapper，将 Huawei 属性字符串映射为统一 DeviceProps |
 | v3.9.0 | 76 | 2026-07-01 | EarbudAdapter 暴露 mapState 边界，DeviceRepository 通过 active adapter 同步 UI 状态 |

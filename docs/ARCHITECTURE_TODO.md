@@ -206,3 +206,8 @@ data class EarbudState(
 - 未验证能力默认隐藏。
 - 所有实验性能力必须能导出日志。
 - 重构期间保持当前 Huawei / HONOR 功能稳定优先。
+
+## v4.1.0 第三方接入边界
+- 新增 `core/session/EarbudSession`，作为连接态耳机的通用运行时边界。
+- 新增 `LegacySppEarbudSession`，把现有 Huawei `SppDriver` 包装成 session，避免 `DeviceRepository` 继续直接依赖具体驱动。
+- 后续第三方耳机应优先实现自己的 `EarbudSession` / `EarbudAdapter.mapState()`，再按需接入 `EarbudTransport` 与 `EarbudProtocol`。
