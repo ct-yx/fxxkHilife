@@ -3,17 +3,17 @@
 > 版本号统一修改入口，按清单逐一更新。
 
 ## 当前版本
-- **v3.8.5** (versionCode=72, 2026-07-01)
+- **v4.0.0** (versionCode=77, 2026-07-01)
 
 ## 版本号位置
 
 | 位置 | 当前值 |
 |------|--------|
-| `app/build.gradle.kts` | versionCode=72, versionName="3.8.5" |
-| `app/src/main/res/values/strings.xml` | version_name=3.8.5 |
-| `README.md` | v3.8.5 |
-| `README_EN.md` | v3.8.5 |
-| `DEVELOPMENT_LOG.md` | v3.8.5 (末尾) |
+| `app/build.gradle.kts` | versionCode=77, versionName="4.0.0" |
+| `app/src/main/res/values/strings.xml` | version_name=4.0.0 |
+| `README.md` | v4.0.0 |
+| `README_EN.md` | v4.0.0 |
+| `DEVELOPMENT_LOG.md` | v4.0.0 (末尾) |
 
 ## 一键版本更新脚本
 
@@ -37,6 +37,11 @@ python3 scripts/bump_version.py <versionName> <versionCode> "修复说明"
 
 | 版本 | Code | 日期 | 主要变更 |
 |------|------|------|---------|
+| v3.8.7 | 74 | 2026-07-01 | 拆出 HuaweiHandlerInitializer，迁移 handler 初始化调度和 FreeBuds 6i/7i 核心状态 fast path |
+| v3.8.8 | 75 | 2026-07-01 | 新增 EarbudStateMapper，将 Huawei 属性字符串映射为统一 DeviceProps |
+| v3.9.0 | 76 | 2026-07-01 | EarbudAdapter 暴露 mapState 边界，DeviceRepository 通过 active adapter 同步 UI 状态 |
+| v4.0.0 | 77 | 2026-07-01 | 稳定协议/厂商插件边界：SppDriver 继续拆分 pending response 与 handler 初始化，Repository 通过 adapter 状态映射消费统一 DeviceProps |
+| v3.8.6 | 73 | 2026-07-01 | 继续削薄 SppDriver：新增 HuaweiPendingResponseManager，将 pending response 等待/消费/清理逻辑从驱动中抽出 |
 | v3.8.5 | 72 | 2026-07-01 | 继续削薄 SppDriver：新增 HuaweiPropertyStore，将 Huawei Handler 属性仓库从驱动中抽出，为后续通用 EarbudState 映射做准备 |
 | v3.8.4 | 71 | 2026-07-01 | 继续削薄 SppDriver：新增 HuaweiHandlerRegistry，将 Handler 列表、命令路由、忽略命令、属性路由和失败 Handler 集合从驱动中抽出 |
 | v3.8.3 | 70 | 2026-07-01 | 继续 4.0 架构前置重构：新增通用 Protocol 接口与 HuaweiSppProtocol / HuaweiSppFramer，将 5A 包编码和流式解帧从蓝牙连接管理中抽象出来 |

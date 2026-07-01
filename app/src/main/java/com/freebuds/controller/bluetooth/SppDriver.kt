@@ -1,7 +1,9 @@
 package com.freebuds.controller.bluetooth
 
 import android.bluetooth.BluetoothDevice
+import com.freebuds.controller.adapter.huawei.protocol.HuaweiHandlerInitializer
 import com.freebuds.controller.adapter.huawei.protocol.HuaweiHandlerRegistry
+import com.freebuds.controller.adapter.huawei.protocol.HuaweiPendingResponseManager
 import com.freebuds.controller.adapter.huawei.protocol.HuaweiPropertyStore
 import com.freebuds.controller.protocol.HuaweiSppPackage
 import com.freebuds.controller.util.LogBuffer
@@ -37,12 +39,11 @@ class SppDriver(private val device: BluetoothDevice) {
     private var job: Job? = null
     private var scope = CoroutineScope(Dispatchers.IO + SupervisorJob())
 
-    // 待响应映射: responseId (hex) -> CompletableDeferred
-    private val pendingResponses = mutableMapOf<String, CompletableDeferred<HuaweiSppPackage>>()
-    private val pendingMutex = Mutex()
+    private val pendingResponses = HuaweiPendingResponseManager()
     private val txMutex = Mutex()
 
     private val handlerRegistry = HuaweiHandlerRegistry()
+    private val handlerInitializer = HuaweiHandlerInitializer(handlerRegistry)
     private val propertyStore = HuaweiPropertyStore()
     val failedHandlerIds: MutableSet<String> get() = handlerRegistry.failedHandlerIds
 
@@ -109,7 +110,7 @@ class SppDriver(private val device: BluetoothDevice) {
             job = scope.launch { recvLoop() }
 
             // 初始化 Handler（对照 _start_all_handlers）
-            initHandlers()
+            handlerInitializer.initialize(this@SppDriver, device.name)
 
             true
         } catch (e: Exception) {
@@ -120,117 +121,7 @@ class SppDriver(private val device: BluetoothDevice) {
         }
     }
 
-    /** 初始化所有 Handler（默认：核心状态优先交错；FreeBuds 6i/7i：核心状态快连，慢项后台补齐） */
-    private suspend fun initHandlers() {
-        if (device.name?.contains("FreeBuds 6i", ignoreCase = true) == true ||
-            device.name?.contains("FreeBuds 7i", ignoreCase = true) == true
-        ) {
-            initHandlersCoreStateFastPath(device.name ?: "FreeBuds")
-            return
-        }
-
-        try {
-            val orderedHandlers = coreFirstHandlers()
-            val gapMs = 140L
-            withTimeout(12000) {
-                LogBuffer.i("SPP", "Starting core-first staggered init for ${handlerRegistry.allHandlers().size} handlers (gap=${gapMs}ms, perHandler=1.5s×3, timeout=12s)")
-                coroutineScope {
-                    orderedHandlers.mapIndexed { index, handler ->
-                        launch {
-                            if (index > 0) delay(index * gapMs)
-                            var success = false
-                            for (attempt in 0 until 3) {
-                                try {
-                                    withTimeout(1500) {
-                                        handler.onInit(this@SppDriver)
-                                    }
-                                    success = true
-                                    LogBuffer.i("SPP", "Init ${handler.id} success (attempt=${attempt + 1})")
-                                    break
-                                } catch (e: TimeoutCancellationException) {
-                                    LogBuffer.w("SPP", "Init ${handler.id} timeout (attempt=${attempt + 1})")
-                                } catch (e: Exception) {
-                                    LogBuffer.w("SPP", "Init ${handler.id} failed (attempt=${attempt + 1}): ${e.message}")
-                                }
-                            }
-                            if (!success) {
-                                LogBuffer.w("SPP", "Can't initialize ${handler.id}. Skipping.")
-                                failedHandlerIds.add(handler.id)
-                            }
-                        }
-                    }.joinAll()
-                }
-                LogBuffer.i("SPP", if (failedHandlerIds.isEmpty()) "All handlers initialized"
-                else "Staggered init completed, ${failedHandlerIds.size} failed: $failedHandlerIds")
-            }
-        } catch (e: TimeoutCancellationException) {
-            LogBuffer.w("SPP", "Staggered init global timeout reached, proceeding with partial results")
-        }
-    }
-
-    private fun coreFirstHandlers(): List<HuaweiDeviceHandler> {
-        val coreIdsInOrder = listOf(
-            "drop_logs",
-            "battery",
-            "anc_global",
-            "low_latency",
-            "config_sound_quality",
-            "tws_in_ear",
-        )
-        val all = handlerRegistry.allHandlers()
-        val core = coreIdsInOrder.mapNotNull { id -> all.find { it.id == id } }
-        return core + all.filter { handler -> handler.id !in coreIdsInOrder }
-    }
-
-    /**
-     * FreeBuds 6i / 7i 对并发 SPP 初始化很敏感：日志显示 80ms 交错会让 pendingResponses 堆到 6~8 个，
-     * 造成大量超时并拖慢核心状态读取。这里连接阶段优先跑 ANC / 低延迟 / 音质等核心控制状态，
-     * 手势、设备信息、语音语言等非关键项标记为后台 retry。
-     */
-    private suspend fun initHandlersCoreStateFastPath(deviceLabel: String) {
-        val fastIdsInOrder = listOf(
-            "drop_logs",
-            "battery",
-            "anc_global",
-            "low_latency",
-            "config_sound_quality",
-            "tws_in_ear",
-        )
-        val all = handlerRegistry.allHandlers()
-        val fastHandlers = fastIdsInOrder.mapNotNull { id -> all.find { it.id == id } }
-        val deferredHandlers = all.filter { it.id !in fastIdsInOrder }
-
-        LogBuffer.i(
-            "SPP",
-            "Starting $deviceLabel core-state fast init for ${fastHandlers.size}/${all.size} handlers; deferred=${deferredHandlers.map { it.id }}"
-        )
-
-        // 核心状态用小间隔并发发起：避免 battery/ANC/low_latency 单个 1.5s 超时串行拖慢首屏。
-        // 仍保留 90ms 交错，降低同一瞬间 pendingResponses 堆积的概率。
-        coroutineScope {
-            fastHandlers.mapIndexed { index, handler ->
-                async {
-                    if (index > 0) delay(index * 90L)
-                    try {
-                        withTimeout(1500) {
-                            handler.onInit(this@SppDriver)
-                        }
-                        LogBuffer.i("SPP", "Core-state fast init ${handler.id} success")
-                        null
-                    } catch (e: TimeoutCancellationException) {
-                        LogBuffer.w("SPP", "Core-state fast init ${handler.id} timeout")
-                        handler.id
-                    } catch (e: Exception) {
-                        LogBuffer.w("SPP", "Core-state fast init ${handler.id} failed: ${e.message}")
-                        handler.id
-                    }
-                }
-            }.awaitAll().filterNotNull().forEach { failedHandlerIds.add(it) }
-        }
-
-        failedHandlerIds.addAll(deferredHandlers.map { it.id })
-        LogBuffer.i("SPP", "$deviceLabel core-state fast init completed; deferred retry=${failedHandlerIds}")
-    }
+    // Handler initialization is delegated to HuaweiHandlerInitializer.
 
     /** 发送包并等响应（对照 send_package） */
     suspend fun sendPackage(pkg: HuaweiSppPackage, timeout: Long = 1500): HuaweiSppPackage? {
@@ -240,20 +131,17 @@ class SppDriver(private val device: BluetoothDevice) {
             return null
         }
 
-        val deferred = CompletableDeferred<HuaweiSppPackage>()
-        pendingMutex.withLock {
-            pendingResponses[respId]?.cancel()
-            pendingResponses[respId] = deferred
-        }
+        val deferred = pendingResponses.register(respId)
 
         try {
             sendNowait(pkg)
             return withTimeout(timeout) { deferred.await() }
         } catch (e: Exception) {
-            LogBuffer.w("SPP", "Timeout waiting for response to cmd=${pkg.commandId.toHex()} (respId=$respId, pending=[${pendingResponses.keys.joinToString(",")}])")
+            val pendingKeys = pendingResponses.keys().joinToString(",")
+            LogBuffer.w("SPP", "Timeout waiting for response to cmd=${pkg.commandId.toHex()} (respId=$respId, pending=[$pendingKeys])")
             return null
         } finally {
-            pendingMutex.withLock { pendingResponses.remove(respId) }
+            pendingResponses.remove(respId)
         }
     }
 
@@ -346,13 +234,9 @@ class SppDriver(private val device: BluetoothDevice) {
         val paramsKeys = pkg.parameters.keys.joinToString(",") { it.toString() }
         LogBuffer.d("SPP", "RX: ${data.toHex()} | cmd=$cmdKey resp=${pkg.responseId.toHex()} params=[$paramsKeys]")
 
-        pendingMutex.withLock {
-            val deferred = pendingResponses[cmdKey]
-            if (deferred != null && !deferred.isCompleted) {
-                LogBuffer.d("SPP", "RX → pendingResponses consumed cmd=$cmdKey")
-                deferred.complete(pkg)
-                return
-            }
+        if (pendingResponses.complete(cmdKey, pkg)) {
+            LogBuffer.d("SPP", "RX → pendingResponses consumed cmd=$cmdKey")
+            return
         }
 
         if (handlerRegistry.hasCommand(cmdKey)) {
@@ -362,12 +246,13 @@ class SppDriver(private val device: BluetoothDevice) {
                 handler.onDriverPackage(this, pkg)
             }
         } else {
-            LogBuffer.d("SPP", "No handler for cmd=$cmdKey (pending=${pendingResponses.keys.joinToString(",")})")
+            LogBuffer.d("SPP", "No handler for cmd=$cmdKey (pending=${pendingResponses.keys().joinToString(",")})")
         }
     }
 
     fun disconnect() {
         job?.cancel()
+        pendingResponses.cancelAll()
         closeSocket()
         isConnected = false
         LogBuffer.i("SPP", "Disconnected")

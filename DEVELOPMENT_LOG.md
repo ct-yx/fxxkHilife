@@ -1146,3 +1146,19 @@
 - versionName: 3.8.5
 - tag: v3.8.5
 
+## v3.8.6 (2026-07-01)
+
+### 发布
+- 继续削薄 SppDriver：新增 HuaweiPendingResponseManager，将 pending response 等待/消费/清理逻辑从驱动中抽出
+- versionCode: 73
+- versionName: 3.8.6
+- tag: v3.8.6
+
+## v4.0.0 (2026-07-01)
+
+### 发布
+- 稳定协议/厂商插件边界：SppDriver 继续拆分 pending response 与 handler 初始化，Repository 通过 adapter 状态映射消费统一 DeviceProps
+- versionCode: 77
+- versionName: 4.0.0
+- tag: v4.0.0
+

@@ -99,6 +99,7 @@ class DeviceRepository {
     }
 
     private var driver: SppDriver? = null
+    private var activeAdapter: EarbudAdapter? = null
     private var prefs: SharedPreferences? = null
     private var appContext: Context? = null
     private val failedHandlers = mutableSetOf<String>()
@@ -152,6 +153,7 @@ class DeviceRepository {
         connectingJob = scope.launch {
             _connectionState.value = ConnectionState.Connecting(device.name ?: device.address)
             val adapter = adapters.firstOrNull { it.canHandle(device) } ?: HuaweiOpenFreebudsAdapter
+            activeAdapter = adapter
             val d = SppDriver(device)
             d.onPropertyChanged = {
                 scope.launch {
@@ -591,41 +593,11 @@ class DeviceRepository {
 
     private suspend fun syncProps() {
         val d = driver ?: return
-        suspend fun get(group: String, prop: String) = d.getProperty(group, prop)
-        suspend fun opts(group: String, prop: String) =
-            get(group, prop)?.split(",")?.filter { it.isNotBlank() } ?: emptyList()
-
-        val batteryCase = get("battery", "case")?.toIntOrNull()
-
-        _props.value = DeviceProps(
-            batteryGlobal    = get("battery", "global")?.toIntOrNull(),
-            batteryLeft      = get("battery", "left")?.toIntOrNull(),
-            batteryRight     = get("battery", "right")?.toIntOrNull(),
-            batteryCase      = batteryCase,
-            isCharging       = get("battery", "is_charging")?.toBooleanStrictOrNull(),
-            ancMode          = get("anc", "mode"),
-            ancModeOptions   = opts("anc", "mode_options"),
-            ancLevel         = get("anc", "level"),
-            ancLevelOptions  = opts("anc", "level_options"),
-            autoPause        = get("config", "auto_pause")?.toBooleanStrictOrNull(),
-            lowLatency       = get("config", "low_latency")?.toBooleanStrictOrNull(),
-            soundQuality     = get("sound", "quality_preference"),
-            soundQualityOptions = opts("sound", "quality_preference_options"),
-            doubleTapLeft    = get("action", "double_tap_left"),
-            doubleTapRight   = get("action", "double_tap_right"),
-            doubleTapOptions = opts("action", "double_tap_options"),
-            tripleTapLeft    = get("action", "triple_tap_left"),
-            tripleTapRight   = get("action", "triple_tap_right"),
-            tripleTapOptions = opts("action", "triple_tap_options"),
-            longTap          = get("action", "long_tap"),
-            longTapOptions   = opts("action", "long_tap_options"),
-            swipeGesture     = get("action", "swipe_gesture"),
-            swipeGestureOptions = opts("action", "swipe_gesture_options"),
-            inEar            = get("state", "in_ear")?.toBooleanStrictOrNull(),
-            deviceModel      = get("info", "device_model"),
-            firmwareVersion  = get("info", "software_ver"),
-            pendingInitHandlers = failedHandlers.toList(),
-            connectedSince   = connectedAt.takeIf { it > 0 },
+        val adapter = activeAdapter ?: HuaweiOpenFreebudsAdapter
+        _props.value = adapter.mapState(
+            driver = d,
+            failedHandlers = failedHandlers,
+            connectedSince = connectedAt.takeIf { it > 0 },
         )
         ensureDefaultAncOptions()
     }

@@ -4,6 +4,8 @@ import android.bluetooth.BluetoothDevice
 import com.freebuds.controller.bluetooth.*
 import com.freebuds.controller.core.adapter.EarbudAdapter
 import com.freebuds.controller.core.adapter.EarbudAdapterCallbacks
+import com.freebuds.controller.data.DeviceProps
+import com.freebuds.controller.data.EarbudStateMapper
 import com.freebuds.controller.protocol.HuaweiCapability
 import com.freebuds.controller.protocol.HuaweiModel
 import com.freebuds.controller.protocol.modelCapabilities
@@ -52,6 +54,12 @@ object HuaweiOpenFreebudsAdapter : EarbudAdapter {
         if (has(HuaweiCapability.SOUND_QUALITY)) driver.registerHandler(SoundQualityHandler())
         if (has(HuaweiCapability.VOICE_LANGUAGE)) driver.registerHandler(VoiceLanguageHandler())
     }
+
+    override suspend fun mapState(
+        driver: SppDriver,
+        failedHandlers: Collection<String>,
+        connectedSince: Long?,
+    ): DeviceProps = EarbudStateMapper.fromHuaweiDriver(driver, failedHandlers, connectedSince)
 
     fun isHuaweiOrHonorName(name: String?): Boolean {
         if (name.isNullOrBlank()) return false

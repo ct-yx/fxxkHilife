@@ -2,6 +2,7 @@ package com.freebuds.controller.core.adapter
 
 import android.bluetooth.BluetoothDevice
 import com.freebuds.controller.bluetooth.SppDriver
+import com.freebuds.controller.data.DeviceProps
 
 /** High level adapter identity for a vendor/protocol family. */
 interface EarbudAdapter {
@@ -13,6 +14,13 @@ interface EarbudAdapter {
 
     /** Register protocol handlers onto the current legacy driver bridge. */
     fun registerHandlers(driver: SppDriver, deviceName: String, callbacks: EarbudAdapterCallbacks = EarbudAdapterCallbacks())
+
+    /** Map adapter-owned raw properties into the app-level UI state snapshot. */
+    suspend fun mapState(
+        driver: SppDriver,
+        failedHandlers: Collection<String>,
+        connectedSince: Long?,
+    ): DeviceProps
 }
 
 /** Callbacks used by adapter-owned handlers to notify the repository without depending on it directly. */
