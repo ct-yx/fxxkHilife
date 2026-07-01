@@ -1138,3 +1138,11 @@
 - versionName: 3.8.4
 - tag: v3.8.4
 
+## v3.8.5 (2026-07-01)
+
+### 发布
+- 继续削薄 SppDriver：新增 HuaweiPropertyStore，将 Huawei Handler 属性仓库从驱动中抽出，为后续通用 EarbudState 映射做准备
+- versionCode: 72
+- versionName: 3.8.5
+- tag: v3.8.5
+

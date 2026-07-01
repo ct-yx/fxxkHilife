@@ -2,6 +2,7 @@ package com.freebuds.controller.bluetooth
 
 import android.bluetooth.BluetoothDevice
 import com.freebuds.controller.adapter.huawei.protocol.HuaweiHandlerRegistry
+import com.freebuds.controller.adapter.huawei.protocol.HuaweiPropertyStore
 import com.freebuds.controller.protocol.HuaweiSppPackage
 import com.freebuds.controller.util.LogBuffer
 import kotlinx.coroutines.*
@@ -42,9 +43,8 @@ class SppDriver(private val device: BluetoothDevice) {
     private val txMutex = Mutex()
 
     private val handlerRegistry = HuaweiHandlerRegistry()
+    private val propertyStore = HuaweiPropertyStore()
     val failedHandlerIds: MutableSet<String> get() = handlerRegistry.failedHandlerIds
-    private val store = mutableMapOf<String, MutableMap<String, String>>()
-    private val storeMutex = Mutex()
 
     /** Called whenever a handler updates the property store. */
     var onPropertyChanged: (() -> Unit)? = null
@@ -59,34 +59,13 @@ class SppDriver(private val device: BluetoothDevice) {
     fun getHandlerById(id: String): HuaweiDeviceHandler? = handlerRegistry.findById(id)
 
     suspend fun putProperty(group: String, prop: String?, value: String?, extendGroup: Boolean = false) {
-        storeMutex.withLock {
-            if (prop == null) {
-                val incoming = parseObject(value)
-                store[group] = if (extendGroup) {
-                    (store[group] ?: mutableMapOf()).apply { putAll(incoming) }
-                } else {
-                    incoming.toMutableMap()
-                }
-            } else {
-                val target = store.getOrPut(group) { mutableMapOf() }
-                if (value == null) target.remove(prop) else target[prop] = value
-            }
-        }
+        propertyStore.put(group, prop, value, extendGroup)
         LogBuffer.i("Prop", if (prop == null) "$group=*" else "$group.$prop=${value ?: "null"}")
         onPropertyChanged?.invoke()
     }
 
-    suspend fun getProperty(group: String? = null, prop: String? = null, fallback: String? = null): String? {
-        return storeMutex.withLock {
-            when {
-                group == null -> store.entries.joinToString("\n") { (g, props) ->
-                    props.entries.joinToString("\n") { (p, v) -> "$g.$p=$v" }
-                }
-                prop == null -> store[group]?.entries?.joinToString("\n") { (p, v) -> "$group.$p=$v" } ?: fallback
-                else -> store[group]?.get(prop) ?: fallback
-            }
-        }
-    }
+    suspend fun getProperty(group: String? = null, prop: String? = null, fallback: String? = null): String? =
+        propertyStore.get(group, prop, fallback)
 
     suspend fun setProperty(group: String, prop: String, value: String) {
         val handler = handlerRegistry.handlerForProperty(group, prop)
@@ -422,16 +401,6 @@ class SppDriver(private val device: BluetoothDevice) {
             if (n == -1) throw java.io.EOFException("Stream closed")
             off += n
         }
-    }
-
-    private fun parseObject(value: String?): Map<String, String> {
-        if (value.isNullOrBlank()) return emptyMap()
-        return value.lineSequence()
-            .mapNotNull { line ->
-                val idx = line.indexOf('=')
-                if (idx <= 0) null else line.substring(0, idx) to line.substring(idx + 1)
-            }
-            .toMap()
     }
 
     private fun ByteArray.toHex(): String = joinToString("") { "%02x".format(it) }
