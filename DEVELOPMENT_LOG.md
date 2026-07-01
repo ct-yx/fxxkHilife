@@ -1106,3 +1106,11 @@
 - versionName: 3.8.0
 - tag: v3.8.0
 
+## v3.8.1 (2026-07-01)
+
+### 发布
+- 启动可插拔耳机架构重构：新增 Transport / Adapter 接口骨架，抽出 HuaweiOpenFreebudsAdapter 并将 Handler 注册从 DeviceRepository 委托到厂商 Adapter
+- versionCode: 68
+- versionName: 3.8.1
+- tag: v3.8.1
+

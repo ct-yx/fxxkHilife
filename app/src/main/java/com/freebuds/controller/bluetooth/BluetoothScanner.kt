@@ -6,6 +6,7 @@ import android.content.BroadcastReceiver
 import android.content.Context
 import android.content.Intent
 import android.content.IntentFilter
+import com.freebuds.controller.adapter.huawei.HuaweiOpenFreebudsAdapter
 import com.freebuds.controller.util.LogBuffer
 
 data class ScannedDevice(
@@ -19,16 +20,7 @@ data class ScannedDevice(
     val address: String get() = device.address
 
     companion object {
-        private val HUAWEI_PREFIXES = listOf(
-            "HUAWEI", "HONOR", "FreeBuds", "Freebuds", "freebuds",
-            "华为", "荣耀", "Honor"
-        )
-
-        fun isHuaweiOrHonorName(name: String?): Boolean {
-            if (name.isNullOrBlank()) return false
-            val upper = name.uppercase()
-            return HUAWEI_PREFIXES.any { upper.contains(it.uppercase()) }
-        }
+        fun isHuaweiOrHonorName(name: String?): Boolean = HuaweiOpenFreebudsAdapter.isHuaweiOrHonorName(name)
     }
 }
 

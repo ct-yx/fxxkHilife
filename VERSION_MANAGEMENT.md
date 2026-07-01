@@ -3,17 +3,17 @@
 > 版本号统一修改入口，按清单逐一更新。
 
 ## 当前版本
-- **v3.8.0** (versionCode=67, 2026-07-01)
+- **v3.8.1** (versionCode=68, 2026-07-01)
 
 ## 版本号位置
 
 | 位置 | 当前值 |
 |------|--------|
-| `app/build.gradle.kts` | versionCode=67, versionName="3.8.0" |
-| `app/src/main/res/values/strings.xml` | version_name=3.8.0 |
-| `README.md` | v3.8.0 |
-| `README_EN.md` | v3.8.0 |
-| `DEVELOPMENT_LOG.md` | v3.8.0 (末尾) |
+| `app/build.gradle.kts` | versionCode=68, versionName="3.8.1" |
+| `app/src/main/res/values/strings.xml` | version_name=3.8.1 |
+| `README.md` | v3.8.1 |
+| `README_EN.md` | v3.8.1 |
+| `DEVELOPMENT_LOG.md` | v3.8.1 (末尾) |
 
 ## 一键版本更新脚本
 
@@ -37,6 +37,7 @@ python3 scripts/bump_version.py <versionName> <versionCode> "修复说明"
 
 | 版本 | Code | 日期 | 主要变更 |
 |------|------|------|---------|
+| v3.8.1 | 68 | 2026-07-01 | 启动可插拔耳机架构重构：新增 Transport / Adapter 接口骨架，抽出 HuaweiOpenFreebudsAdapter 并将 Handler 注册从 DeviceRepository 委托到厂商 Adapter |
 | v3.8.0 | 67 | 2026-07-01 | 新增听音统计页面：按耳机连接时长累计总时长、今日时长、已听天数、连续天数，并提供近 16 周活动热力图入口 |
 | v3.7.3 | 66 | 2026-06-30 | 补充 GitHub Pages SEO 元信息、robots.txt 与 sitemap.xml |
 | v3.7.2 | 65 | 2026-06-30 | 修复设备页电池卡中单只耳机未连接时缺少斜杠标识的问题 |

@@ -11,11 +11,11 @@ import android.content.IntentFilter
 import android.content.SharedPreferences
 import android.os.Build
 import androidx.core.content.FileProvider
-import com.freebuds.controller.bluetooth.*
+import com.freebuds.controller.adapter.huawei.HuaweiOpenFreebudsAdapter
+import com.freebuds.controller.bluetooth.SppDriver
+import com.freebuds.controller.core.adapter.EarbudAdapter
+import com.freebuds.controller.core.adapter.EarbudAdapterCallbacks
 import com.freebuds.controller.i18n.I18n
-import com.freebuds.controller.protocol.HuaweiCapability
-import com.freebuds.controller.protocol.HuaweiModel
-import com.freebuds.controller.protocol.modelCapabilities
 import com.freebuds.controller.util.LogBuffer
 import kotlinx.coroutines.*
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -81,6 +81,7 @@ data class DeviceProps(
 class DeviceRepository {
 
     private val scope = CoroutineScope(Dispatchers.IO + SupervisorJob())
+    private val adapters: List<EarbudAdapter> = listOf(HuaweiOpenFreebudsAdapter)
 
     private val _connectionState = MutableStateFlow<ConnectionState>(ConnectionState.Disconnected)
     val connectionState: StateFlow<ConnectionState> = _connectionState.asStateFlow()
@@ -150,6 +151,7 @@ class DeviceRepository {
 
         connectingJob = scope.launch {
             _connectionState.value = ConnectionState.Connecting(device.name ?: device.address)
+            val adapter = adapters.firstOrNull { it.canHandle(device) } ?: HuaweiOpenFreebudsAdapter
             val d = SppDriver(device)
             d.onPropertyChanged = {
                 scope.launch {
@@ -159,7 +161,7 @@ class DeviceRepository {
             d.onDisconnected = {
                 scope.launch { handleRemoteDisconnected(d, "SPP receive loop ended") }
             }
-            registerHandlers(d, device.name ?: "")
+            registerHandlers(adapter, d, device.name ?: "")
             driver = d
             if (d.connect()) {
                 _connectionState.value = ConnectionState.Connected(device.name ?: device.address)
@@ -630,50 +632,14 @@ class DeviceRepository {
 
     // ── 内部：注册 Handler ─────────────────────────────────────────────────────
 
-    private fun registerHandlers(d: SppDriver, name: String) {
-        val model = detectModel(name)
-        val caps = modelCapabilities[model]?.toSet() ?: emptySet()
-        fun has(c: HuaweiCapability) = caps.isEmpty() || c in caps
-
-        if (true)              d.registerHandler(LogsHandler())
-        if (has(HuaweiCapability.INFO))               d.registerHandler(InfoHandler())
-        if (has(HuaweiCapability.WEAR_DETECT))        d.registerHandler(InEarHandler())
-        if (has(HuaweiCapability.BATTERY)) {
-            val bh = BatteryHandler(wTws = model?.hasTwsBattery ?: true)
-            bh.setOnBatteryUpdate { scope.launch { syncProps() } }
-            d.registerHandler(bh)
-        }
-        if (has(HuaweiCapability.ANC_LEGACY))         d.registerHandler(AncLegacyChangeHandler())
-        if (has(HuaweiCapability.ANC))                d.registerHandler(AncHandler())
-        if (has(HuaweiCapability.ACTION_DOUBLE_TAP))  d.registerHandler(DoubleTapHandler())
-        if (has(HuaweiCapability.ACTION_TRIPLE_TAP))  d.registerHandler(TripleTapHandler())
-        if (has(HuaweiCapability.ACTION_LONG_TAP_SPLIT)) d.registerHandler(LongTapHandler())
-        if (has(HuaweiCapability.ACTION_SWIPE))       d.registerHandler(SwipeGestureHandler())
-        if (has(HuaweiCapability.ACTION_POWER_BUTTON)) d.registerHandler(PowerButtonHandler())
-        if (has(HuaweiCapability.AUTO_PAUSE))         d.registerHandler(AutoPauseHandler())
-        if (has(HuaweiCapability.LOW_LATENCY))        d.registerHandler(LowLatencyHandler())
-        if (has(HuaweiCapability.SOUND_QUALITY))      d.registerHandler(SoundQualityHandler())
-        if (has(HuaweiCapability.VOICE_LANGUAGE))     d.registerHandler(VoiceLanguageHandler())
-    }
-
-    private fun detectModel(name: String): HuaweiModel? = when {
-        name.contains("FreeBuds 7i", true)    -> HuaweiModel.BUDS_7I
-        name.contains("FreeBuds 6i", true)    -> HuaweiModel.BUDS_6I
-        name.contains("FreeBuds Pro 4", true) ||
-        name.contains("FreeBuds Pro 3", true) ||
-        name.contains("FreeClip", true)        -> HuaweiModel.BUDS_PRO_3
-        name.contains("FreeBuds Pro 2", true)  -> HuaweiModel.BUDS_PRO_2
-        name.contains("FreeBuds Pro", true)    -> HuaweiModel.BUDS_PRO
-        name.contains("FreeBuds Studio", true) -> HuaweiModel.STUDIO
-        name.contains("FreeBuds SE 4", true)   -> HuaweiModel.BUDS_SE_4
-        name.contains("FreeBuds SE 2", true)   -> HuaweiModel.BUDS_SE_2
-        name.contains("FreeBuds SE", true)     -> HuaweiModel.BUDS_SE
-        name.contains("FreeBuds 5i", true)     -> HuaweiModel.BUDS_5I
-        name.contains("FreeBuds 4i", true)     -> HuaweiModel.BUDS_4I
-        name.contains("FreeLace Pro 2", true)  -> HuaweiModel.LACE_PRO_2
-        name.contains("FreeLace Pro", true)    -> HuaweiModel.LACE_PRO
-        name.contains("Earbuds", true)         -> HuaweiModel.BUDS_4I
-        else -> null
+    private fun registerHandlers(adapter: EarbudAdapter, d: SppDriver, name: String) {
+        adapter.registerHandlers(
+            driver = d,
+            deviceName = name,
+            callbacks = EarbudAdapterCallbacks(
+                onStateChanged = { syncProps() }
+            )
+        )
     }
 
     fun getDriver(): SppDriver? = driver

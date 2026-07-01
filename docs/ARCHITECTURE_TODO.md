@@ -161,11 +161,11 @@ data class EarbudState(
 
 ### 阶段 1：不破坏现有功能的接口整理
 
-- [ ] 新建 `core/transport` 包，定义 `EarbudTransport`。
+- [x] 新建 `core/transport` 包，定义 `EarbudTransport`。
 - [ ] 将当前 SPP 连接能力包一层 `RfcommSppTransport`，先内部复用现有 `SppDriver`。
-- [ ] 新建 `core/adapter` 包，定义 `EarbudAdapter` / `EarbudController` 草案。
+- [x] 新建 `core/adapter` 包，定义 `EarbudAdapter` / `EarbudController` 草案。
 - [ ] 将 `HuaweiModel` / `HuaweiCapability` 移入 `protocol/huawei` 或 `adapter/huawei` 命名空间。
-- [ ] `DeviceRepository.registerHandlers()` 改为委托给 `HuaweiOpenFreebudsAdapter`。
+- [x] `DeviceRepository.registerHandlers()` 改为委托给 `HuaweiOpenFreebudsAdapter`。
 
 ### 阶段 2：能力与状态通用化
 
