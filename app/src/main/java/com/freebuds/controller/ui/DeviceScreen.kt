@@ -103,6 +103,7 @@ fun DeviceScreen(
     onSettings: () -> Unit,
     onOpenTerminal: () -> Unit,
     onGesture: () -> Unit,
+    onListeningStats: () -> Unit,
 ) {
     val connState by viewModel.connectionState.collectAsState()
     val props by viewModel.props.collectAsState()
@@ -238,6 +239,28 @@ fun DeviceScreen(
                             checked = props.lowLatency,
                             onCheckedChange = { viewModel.setProperty("config", "low_latency", it.toString()) }
                         )
+                    }
+                }
+            }
+
+            // ── 听音统计 ─────────────────────────────────────────────────────
+            item { SettingsGroupHeader("听音") }
+            item {
+                AdaptiveCard(
+                    displayMode = displayMode,
+                    hazeState = hazeState,
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(horizontal = 16.dp, vertical = 5.dp)
+                        .clickable(onClick = onListeningStats),
+                ) {
+                    Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(14.dp)) {
+                        Icon(Icons.Default.QueryStats, contentDescription = null)
+                        Column(Modifier.weight(1f)) {
+                            Text("听音统计")
+                            Text("查看总时长、今日听音和活动热力图", style = MaterialTheme.typography.bodySmall)
+                        }
+                        Icon(Icons.Default.ChevronRight, contentDescription = null)
                     }
                 }
             }

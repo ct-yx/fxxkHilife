@@ -22,6 +22,7 @@ class DeviceViewModel : ViewModel() {
     // ── 透传 Repository 的 Flow ───────────────────────────────────────────────
     val connectionState: StateFlow<ConnectionState> = repo.connectionState
     val props: StateFlow<DeviceProps> = repo.props
+    val listeningStats: StateFlow<ListeningStats> = repo.listeningStats
 
     fun isCoreStateReady(): Boolean = repo.isCoreStateReady()
 

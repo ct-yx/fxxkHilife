@@ -35,6 +35,7 @@ private object Route {
     const val Scan = "scan"
     const val Device = "device"
     const val Gesture = "gesture"
+    const val ListeningStats = "listening_stats"
     const val Settings = "settings"
 }
 
@@ -184,8 +185,18 @@ fun AppNavHost(
                         navController.popBackStack(Route.Home, inclusive = false)
                     },
                     onGesture = { navController.navigate(Route.Gesture) { launchSingleTop = true } },
+                    onListeningStats = { navController.navigate(Route.ListeningStats) { launchSingleTop = true } },
                     onSettings = { navController.navigate(Route.Settings) { launchSingleTop = true } },
                     onOpenTerminal = onOpenTerminal,
+                )
+            }
+
+            composable(Route.ListeningStats) {
+                ListeningStatsScreen(
+                    viewModel = viewModel,
+                    displayMode = displayMode,
+                    hazeState = hazeState,
+                    onBack = { navController.popBackStack() },
                 )
             }
 

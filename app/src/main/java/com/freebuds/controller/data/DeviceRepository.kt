@@ -22,6 +22,8 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import java.io.File
+import java.util.Calendar
+import java.util.Locale
 
 /** 连接状态 */
 sealed class ConnectionState {
@@ -30,6 +32,14 @@ sealed class ConnectionState {
     data class Connected(val deviceName: String) : ConnectionState()
     data class Failed(val reason: String) : ConnectionState()
 }
+
+data class ListeningStats(
+    val totalMs: Long = 0L,
+    val todayMs: Long = 0L,
+    val activeDays: Int = 0,
+    val streakDays: Int = 0,
+    val dailyMs: Map<String, Long> = emptyMap(),
+)
 
 /** 设备属性快照（UI 消费） */
 data class DeviceProps(
@@ -78,6 +88,9 @@ class DeviceRepository {
     private val _props = MutableStateFlow(DeviceProps())
     val props: StateFlow<DeviceProps> = _props.asStateFlow()
 
+    private val _listeningStats = MutableStateFlow(ListeningStats())
+    val listeningStats: StateFlow<ListeningStats> = _listeningStats.asStateFlow()
+
     fun isCoreStateReady(): Boolean {
         val p = _props.value
         val hasBattery = p.batteryGlobal != null || p.batteryLeft != null || p.batteryRight != null || p.batteryCase != null
@@ -92,6 +105,8 @@ class DeviceRepository {
     private var pollJob: Job? = null
     private var fastPollJob: Job? = null
     private var autoLowLatencyJob: Job? = null
+    private var listeningStatsJob: Job? = null
+    private var lastListeningTick: Long = 0L
     private var sppQuietUntil: Long = 0L
     private var foregroundMode: Boolean = false
     private var connectedAddress: String? = null
@@ -121,6 +136,7 @@ class DeviceRepository {
     fun init(context: Context) {
         appContext = context.applicationContext
         prefs = context.getSharedPreferences("fxxk_device", Context.MODE_PRIVATE)
+        refreshListeningStats()
         deviceInfoFetched = false // 每次进程启动重置
         registerAclDisconnectReceiver(context.applicationContext)
     }
@@ -155,6 +171,7 @@ class DeviceRepository {
                 failedHandlers.addAll(d.failedHandlerIds)
                 syncProps()
                 startPolling()
+                startListeningStatsTicker()
                 if (foregroundMode) startFastPolling()
                 retryFailedHandlers()
                 applyAutoLowLatencyIfEnabled()
@@ -171,6 +188,7 @@ class DeviceRepository {
         fastPollJob?.cancel()
         retryJob?.cancel()
         autoLowLatencyJob?.cancel()
+        stopListeningStatsTicker()
         sppQuietUntil = 0L
         driver?.disconnect()
         driver = null
@@ -189,6 +207,7 @@ class DeviceRepository {
         fastPollJob?.cancel()
         retryJob?.cancel()
         autoLowLatencyJob?.cancel()
+        stopListeningStatsTicker()
         sppQuietUntil = 0L
         driver = null
         connectedAddress = null
@@ -462,6 +481,87 @@ class DeviceRepository {
                 ancModeOptions = listOf("normal", "cancellation", "awareness")
             )
         }
+    }
+
+    // ── 听音统计 ─────────────────────────────────────────────────────────
+
+    private fun todayKey(time: Long = System.currentTimeMillis()): String {
+        val cal = Calendar.getInstance().apply { timeInMillis = time }
+        return String.format(Locale.US, "%04d-%02d-%02d", cal.get(Calendar.YEAR), cal.get(Calendar.MONTH) + 1, cal.get(Calendar.DAY_OF_MONTH))
+    }
+
+    private fun readDailyListening(): MutableMap<String, Long> {
+        val p = prefs ?: return mutableMapOf()
+        val raw = p.getString("listening_daily_ms", "") ?: ""
+        return raw.split(";")
+            .mapNotNull { item ->
+                val parts = item.split("=")
+                if (parts.size == 2) parts[0] to (parts[1].toLongOrNull() ?: 0L) else null
+            }
+            .filter { it.first.isNotBlank() && it.second > 0L }
+            .toMap()
+            .toMutableMap()
+    }
+
+    private fun writeDailyListening(map: Map<String, Long>) {
+        val p = prefs ?: return
+        val compact = map.entries
+            .sortedBy { it.key }
+            .takeLast(180)
+            .joinToString(";") { "${it.key}=${it.value}" }
+        p.edit().putString("listening_daily_ms", compact).apply()
+    }
+
+    private fun refreshListeningStats(extraTodayMs: Long = 0L) {
+        val daily = readDailyListening().toMutableMap()
+        if (extraTodayMs > 0L) {
+            val key = todayKey()
+            daily[key] = (daily[key] ?: 0L) + extraTodayMs
+            writeDailyListening(daily)
+        }
+        val today = todayKey()
+        var streak = 0
+        val cal = Calendar.getInstance()
+        while (true) {
+            val key = todayKey(cal.timeInMillis)
+            if ((daily[key] ?: 0L) <= 0L) break
+            streak++
+            cal.add(Calendar.DAY_OF_YEAR, -1)
+        }
+        _listeningStats.value = ListeningStats(
+            totalMs = daily.values.sum(),
+            todayMs = daily[today] ?: 0L,
+            activeDays = daily.count { it.value > 0L },
+            streakDays = streak,
+            dailyMs = daily.toMap(),
+        )
+    }
+
+    private fun startListeningStatsTicker() {
+        listeningStatsJob?.cancel()
+        lastListeningTick = System.currentTimeMillis()
+        listeningStatsJob = scope.launch {
+            while (isActive) {
+                delay(60_000)
+                val now = System.currentTimeMillis()
+                if (_connectionState.value is ConnectionState.Connected) {
+                    val delta = (now - lastListeningTick).coerceIn(0L, 5 * 60_000L)
+                    refreshListeningStats(delta)
+                }
+                lastListeningTick = now
+            }
+        }
+    }
+
+    private fun stopListeningStatsTicker() {
+        val now = System.currentTimeMillis()
+        val delta = if (lastListeningTick > 0L) (now - lastListeningTick).coerceIn(0L, 5 * 60_000L) else 0L
+        if (delta > 0L && _connectionState.value is ConnectionState.Connected) {
+            refreshListeningStats(delta)
+        }
+        listeningStatsJob?.cancel()
+        listeningStatsJob = null
+        lastListeningTick = 0L
     }
 
     // ── 分享日志 ─────────────────────────────────────────────────────────
