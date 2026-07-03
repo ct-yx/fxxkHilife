@@ -211,3 +211,10 @@ data class EarbudState(
 - 新增 `core/session/EarbudSession`，作为连接态耳机的通用运行时边界。
 - 新增 `LegacySppEarbudSession`，把现有 Huawei `SppDriver` 包装成 session，避免 `DeviceRepository` 继续直接依赖具体驱动。
 - 后续第三方耳机应优先实现自己的 `EarbudSession` / `EarbudAdapter.mapState()`，再按需接入 `EarbudTransport` 与 `EarbudProtocol`。
+
+
+## v4.1.1 底层连接效率
+- 新增 `core/transport/RfcommSocketBridge`，集中封装 Android 隐藏 RFCOMM socket API。
+- 缓存 `createRfcommSocket`、`connect`、`close`、`getInputStream`、`getOutputStream` 反射 Method，减少重复连接开销。
+- 建连前主动取消 Bluetooth discovery，避免扫描拖慢 RFCOMM 连接。
+- `SppDriver` 与 `RfcommSppTransport` 共用同一建连路径，为后续迁移到通用 transport 降低差异。

@@ -56,18 +56,11 @@ class RfcommSppTransport(
             LogBuffer.i("Transport", "Connecting RFCOMM SPP to ${device.name} (${device.address}) port=$port")
             scope.cancel()
             scope = CoroutineScope(Dispatchers.IO + SupervisorJob())
-
-            val sockClass = Class.forName("android.bluetooth.BluetoothSocket")
-            val createMethod = device.javaClass.getMethod("createRfcommSocket", Int::class.javaPrimitiveType)
-            socket = createMethod.invoke(device, port)
-            closeMethod = sockClass.getMethod("close")
-
-            val connectMethod = sockClass.getMethod("connect")
-            val getInputStream = sockClass.getMethod("getInputStream")
-            val getOutputStream = sockClass.getMethod("getOutputStream")
-            connectMethod.invoke(socket)
-            inputStream = getInputStream.invoke(socket) as InputStream
-            outputStream = getOutputStream.invoke(socket) as OutputStream
+            val connectedSocket = RfcommSocketBridge.connect(device, port, "Transport")
+            socket = connectedSocket.socket
+            closeMethod = connectedSocket.closeMethod
+            inputStream = connectedSocket.inputStream
+            outputStream = connectedSocket.outputStream
             isConnected = true
             readJob = scope.launch { readLoop() }
             true

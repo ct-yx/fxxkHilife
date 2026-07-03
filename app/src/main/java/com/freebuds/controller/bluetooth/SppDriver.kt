@@ -5,6 +5,7 @@ import com.freebuds.controller.adapter.huawei.protocol.HuaweiHandlerInitializer
 import com.freebuds.controller.adapter.huawei.protocol.HuaweiHandlerRegistry
 import com.freebuds.controller.adapter.huawei.protocol.HuaweiPendingResponseManager
 import com.freebuds.controller.adapter.huawei.protocol.HuaweiPropertyStore
+import com.freebuds.controller.core.transport.RfcommSocketBridge
 import com.freebuds.controller.protocol.HuaweiSppPackage
 import com.freebuds.controller.util.LogBuffer
 import kotlinx.coroutines.*
@@ -87,21 +88,13 @@ class SppDriver(private val device: BluetoothDevice) {
         LogBuffer.i("SPP", "Connecting to ${device.name} (${device.address}) via RFCOMM port=$SPP_SERVICE_PORT...")
         try {
             // 使用端口号连接（对照 OpenFreebuds _spp_service_port）
+            scope.cancel()
             scope = CoroutineScope(Dispatchers.IO + SupervisorJob())
-            val sockClass = Class.forName("android.bluetooth.BluetoothSocket")
-            val createMethod = device.javaClass.getMethod(
-                "createRfcommSocket", Int::class.javaPrimitiveType
-            )
-            socket = createMethod.invoke(device, SPP_SERVICE_PORT)
-
-            val connectMethod = sockClass.getMethod("connect")
-            closeMethod = sockClass.getMethod("close")
-            val getInputStream = sockClass.getMethod("getInputStream")
-            val getOutputStream = sockClass.getMethod("getOutputStream")
-
-            connectMethod.invoke(socket)
-            inputStream = getInputStream.invoke(socket) as InputStream
-            outputStream = getOutputStream.invoke(socket) as OutputStream
+            val connectedSocket = RfcommSocketBridge.connect(device, SPP_SERVICE_PORT, "SPP")
+            socket = connectedSocket.socket
+            closeMethod = connectedSocket.closeMethod
+            inputStream = connectedSocket.inputStream
+            outputStream = connectedSocket.outputStream
 
             isConnected = true
             LogBuffer.i("SPP", "Connected to ${device.name}")

@@ -1170,3 +1170,11 @@
 - versionName: 4.1.0
 - tag: v4.1.0
 
+## v4.1.1 (2026-07-03)
+
+### 发布
+- 优化底层 RFCOMM 连接效率：新增 RfcommSocketBridge 缓存反射方法，连接前取消蓝牙 discovery，并统一 SPP/Transport 建连路径与耗时日志
+- versionCode: 79
+- versionName: 4.1.1
+- tag: v4.1.1
+
