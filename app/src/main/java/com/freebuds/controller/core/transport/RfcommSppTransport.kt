@@ -123,6 +123,7 @@ class RfcommSppTransport(
         inputStream = null
         outputStream = null
         socket = null
+        closeMethod = null
     }
 
     companion object {

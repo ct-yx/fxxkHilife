@@ -3,17 +3,17 @@
 > 版本号统一修改入口，按清单逐一更新。
 
 ## 当前版本
-- **v4.1.1** (versionCode=79, 2026-07-03)
+- **v4.1.2** (versionCode=80, 2026-07-03)
 
 ## 版本号位置
 
 | 位置 | 当前值 |
 |------|--------|
-| `app/build.gradle.kts` | versionCode=79, versionName="4.1.1" |
-| `app/src/main/res/values/strings.xml` | version_name=4.1.1 |
-| `README.md` | v4.1.1 |
-| `README_EN.md` | v4.1.1 |
-| `DEVELOPMENT_LOG.md` | v4.1.1 (末尾) |
+| `app/build.gradle.kts` | versionCode=80, versionName="4.1.2" |
+| `app/src/main/res/values/strings.xml` | version_name=4.1.2 |
+| `README.md` | v4.1.2 |
+| `README_EN.md` | v4.1.2 |
+| `DEVELOPMENT_LOG.md` | v4.1.2 (末尾) |
 
 ## 一键版本更新脚本
 
@@ -37,6 +37,7 @@ python3 scripts/bump_version.py <versionName> <versionCode> "修复说明"
 
 | 版本 | Code | 日期 | 主要变更 |
 |------|------|------|---------|
+| v4.1.2 | 80 | 2026-07-03 | 全面代码审计修复：加固 RFCOMM discovery 权限处理与半开 socket 清理，修正扫描页已配对设备连接状态误标，移除设备信息 UI 强制解包 |
 | v4.1.1 | 79 | 2026-07-03 | 优化底层 RFCOMM 连接效率：新增 RfcommSocketBridge 缓存反射方法，连接前取消蓝牙 discovery，并统一 SPP/Transport 建连路径与耗时日志 |
 | v4.1.0 | 78 | 2026-07-01 | 新增通用 EarbudSession 与 LegacySppEarbudSession 桥接层，DeviceRepository 通过 session 管理连接、属性写入与状态映射，为第三方耳机接入铺路 |
 | v3.8.7 | 74 | 2026-07-01 | 拆出 HuaweiHandlerInitializer，迁移 handler 初始化调度和 FreeBuds 6i/7i 核心状态 fast path |

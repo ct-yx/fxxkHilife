@@ -39,10 +39,7 @@ object RfcommSocketBridge {
     private val socketMethodCache = ConcurrentHashMap<Class<*>, SocketMethods>()
 
     fun connect(device: BluetoothDevice, port: Int, logTag: String): ConnectedSocket {
-        if (BluetoothAdapter.getDefaultAdapter()?.isDiscovering == true) {
-            LogBuffer.i(logTag, "Bluetooth discovery active; cancelling before RFCOMM connect")
-            BluetoothAdapter.getDefaultAdapter()?.cancelDiscovery()
-        }
+        cancelDiscoveryIfNeeded(logTag)
 
         val startedAt = System.currentTimeMillis()
         val deviceMethods = deviceMethodCache.getOrPut(device.javaClass) {
@@ -64,15 +61,32 @@ object RfcommSocketBridge {
             )
         }
 
-        socketMethods.connect.invoke(socket)
-        val input = socketMethods.getInputStream.invoke(socket) as InputStream
-        val output = socketMethods.getOutputStream.invoke(socket) as OutputStream
-        LogBuffer.i(logTag, "RFCOMM socket connected in ${System.currentTimeMillis() - startedAt}ms")
-        return ConnectedSocket(
-            socket = socket,
-            inputStream = input,
-            outputStream = output,
-            closeMethod = socketMethods.close,
-        )
+        try {
+            socketMethods.connect.invoke(socket)
+            val input = socketMethods.getInputStream.invoke(socket) as InputStream
+            val output = socketMethods.getOutputStream.invoke(socket) as OutputStream
+            LogBuffer.i(logTag, "RFCOMM socket connected in ${System.currentTimeMillis() - startedAt}ms")
+            return ConnectedSocket(
+                socket = socket,
+                inputStream = input,
+                outputStream = output,
+                closeMethod = socketMethods.close,
+            )
+        } catch (e: Exception) {
+            runCatching { socketMethods.close.invoke(socket) }
+            throw e
+        }
+    }
+
+    private fun cancelDiscoveryIfNeeded(logTag: String) {
+        val adapter = BluetoothAdapter.getDefaultAdapter() ?: return
+        try {
+            if (adapter.isDiscovering) {
+                LogBuffer.i(logTag, "Bluetooth discovery active; cancelling before RFCOMM connect")
+                adapter.cancelDiscovery()
+            }
+        } catch (e: SecurityException) {
+            LogBuffer.w(logTag, "Bluetooth discovery check/cancel denied: ${e.message}")
+        }
     }
 }

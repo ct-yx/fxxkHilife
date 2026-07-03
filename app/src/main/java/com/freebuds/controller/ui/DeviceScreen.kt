@@ -292,14 +292,14 @@ fun DeviceScreen(
 
             // ── 关于 / 调试 ───────────────────────────────────────────────────
             item { SettingsGroupHeader(i18n("device.group.about")) }
-            if (props.deviceModel != null) {
+            props.deviceModel?.let { model ->
                 item {
-                    InfoItem(displayMode, hazeState, Icons.Default.Info, i18n("device.model"), props.deviceModel!!)
+                    InfoItem(displayMode, hazeState, Icons.Default.Info, i18n("device.model"), model)
                 }
             }
-            if (props.firmwareVersion != null) {
+            props.firmwareVersion?.let { firmware ->
                 item {
-                    InfoItem(displayMode, hazeState, Icons.Default.SystemUpdate, i18n("device.firmware"), props.firmwareVersion!!)
+                    InfoItem(displayMode, hazeState, Icons.Default.SystemUpdate, i18n("device.firmware"), firmware)
                 }
             }
             item {

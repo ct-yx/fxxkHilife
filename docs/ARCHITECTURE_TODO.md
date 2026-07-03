@@ -218,3 +218,11 @@ data class EarbudState(
 - 缓存 `createRfcommSocket`、`connect`、`close`、`getInputStream`、`getOutputStream` 反射 Method，减少重复连接开销。
 - 建连前主动取消 Bluetooth discovery，避免扫描拖慢 RFCOMM 连接。
 - `SppDriver` 与 `RfcommSppTransport` 共用同一建连路径，为后续迁移到通用 transport 降低差异。
+
+
+## v4.1.2 稳定性审计
+- `RfcommSocketBridge` 的 discovery 取消操作改为权限安全兜底，避免 Android 12+ 权限异常阻断建连。
+- RFCOMM socket 在 `connect()` 失败时主动关闭，降低半开 socket 泄漏风险。
+- `BluetoothScanner` 不再把所有已配对设备误标为已连接，改为读取系统 HEADSET/A2DP 连接状态与隐藏 `isConnected()` 结果。
+- 扫描器对 `device.name/address/bondState` 增加安全读取，避免运行时蓝牙权限异常导致扫描页崩溃。
+- `DeviceScreen` 设备型号/固件展示移除 `!!` 强制解包。

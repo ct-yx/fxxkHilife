@@ -1178,3 +1178,11 @@
 - versionName: 4.1.1
 - tag: v4.1.1
 
+## v4.1.2 (2026-07-03)
+
+### 发布
+- 全面代码审计修复：加固 RFCOMM discovery 权限处理与半开 socket 清理，修正扫描页已配对设备连接状态误标，移除设备信息 UI 强制解包
+- versionCode: 80
+- versionName: 4.1.2
+- tag: v4.1.2
+

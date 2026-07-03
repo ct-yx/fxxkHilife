@@ -2,6 +2,8 @@ package com.freebuds.controller.bluetooth
 
 import android.bluetooth.BluetoothAdapter
 import android.bluetooth.BluetoothDevice
+import android.bluetooth.BluetoothManager
+import android.bluetooth.BluetoothProfile
 import android.content.BroadcastReceiver
 import android.content.Context
 import android.content.Intent
@@ -14,10 +16,10 @@ data class ScannedDevice(
     val rssi: Int = 0,
     val isBonded: Boolean = false,
     val isHuaweiOrHonor: Boolean = false,
-    val isConnected: Boolean = false
+    val isConnected: Boolean = false,
 ) {
-    val displayName: String get() = device.name ?: "?"
-    val address: String get() = device.address
+    val displayName: String get() = runCatching { device.name }.getOrNull() ?: "?"
+    val address: String get() = runCatching { device.address }.getOrNull() ?: ""
 
     companion object {
         fun isHuaweiOrHonorName(name: String?): Boolean = HuaweiOpenFreebudsAdapter.isHuaweiOrHonorName(name)
@@ -25,7 +27,6 @@ data class ScannedDevice(
 }
 
 class BluetoothScanner(private val context: Context) {
-
     private var callback: ((Boolean) -> Unit)? = null
     val found = mutableListOf<ScannedDevice>()
     private var receiver: BroadcastReceiver? = null
@@ -45,18 +46,25 @@ class BluetoothScanner(private val context: Context) {
             return
         }
 
-        // 先列出已配对设备，标注连接状态
-        val bonded = adapter.bondedDevices
+        // 先列出已配对设备，标注真实系统连接状态。
+        val connectedAddresses = connectedSystemAddresses()
+        val bonded = runCatching { adapter.bondedDevices }.getOrNull()
         if (bonded != null) {
             for (device in bonded) {
-                found.add(ScannedDevice(
-                    device = device,
-                    isBonded = true,
-                    isConnected = true,
-                    isHuaweiOrHonor = ScannedDevice.isHuaweiOrHonorName(device.name)
-                ))
-                val tag = if (ScannedDevice.isHuaweiOrHonorName(device.name)) "🔹 " else ""
-                LogBuffer.i("Scan", "$tag${device.name}  ${device.address}  [paired+connected]")
+                val address = safeAddress(device)
+                val name = safeName(device)
+                val isConnected = address in connectedAddresses || isDeviceConnected(device)
+                found.add(
+                    ScannedDevice(
+                        device = device,
+                        isBonded = true,
+                        isConnected = isConnected,
+                        isHuaweiOrHonor = ScannedDevice.isHuaweiOrHonorName(name),
+                    )
+                )
+                val tag = if (ScannedDevice.isHuaweiOrHonorName(name)) "🔹 " else ""
+                val state = if (isConnected) "paired+connected" else "paired"
+                LogBuffer.i("Scan", "$tag$name  $address  [$state]")
             }
         }
 
@@ -66,18 +74,25 @@ class BluetoothScanner(private val context: Context) {
                     BluetoothDevice.ACTION_FOUND -> {
                         val device = intent.getParcelableExtra<BluetoothDevice>(BluetoothDevice.EXTRA_DEVICE)
                         val rssi = intent.getShortExtra(BluetoothDevice.EXTRA_RSSI, Short.MIN_VALUE).toInt()
-                        if (device != null && device.name != null) {
-                            found.removeAll { it.device.address == device.address }
-                            found.add(ScannedDevice(
-                                device = device,
-                                rssi = rssi,
-                                isBonded = device.bondState != BluetoothDevice.BOND_NONE,
-                                isHuaweiOrHonor = ScannedDevice.isHuaweiOrHonorName(device.name)
-                            ))
-                            val tag = if (ScannedDevice.isHuaweiOrHonorName(device.name)) "🔹 " else ""
-                            LogBuffer.i("Scan", "$tag${device.name}  ${device.address}  RSSI:$rssi")
+                        val name = device?.let { safeName(it) }
+                        val address = device?.let { safeAddress(it) }
+                        if (device != null && !name.isNullOrBlank() && !address.isNullOrBlank()) {
+                            found.removeAll { it.address == address }
+                            val isConnected = address in connectedAddresses || isDeviceConnected(device)
+                            found.add(
+                                ScannedDevice(
+                                    device = device,
+                                    rssi = rssi,
+                                    isBonded = safeBondState(device) != BluetoothDevice.BOND_NONE,
+                                    isConnected = isConnected,
+                                    isHuaweiOrHonor = ScannedDevice.isHuaweiOrHonorName(name),
+                                )
+                            )
+                            val tag = if (ScannedDevice.isHuaweiOrHonorName(name)) "🔹 " else ""
+                            LogBuffer.i("Scan", "$tag$name  $address  RSSI:$rssi")
                         }
                     }
+
                     BluetoothAdapter.ACTION_DISCOVERY_FINISHED -> {
                         LogBuffer.i("Scan", "Scan finished, ${found.size} devices found")
                         complete(true)
@@ -90,15 +105,45 @@ class BluetoothScanner(private val context: Context) {
             addAction(BluetoothDevice.ACTION_FOUND)
             addAction(BluetoothAdapter.ACTION_DISCOVERY_FINISHED)
         }
-        context.registerReceiver(receiver, filter)
 
-        adapter.startDiscovery()
-        LogBuffer.i("Scan", "Scanning for devices...")
+        try {
+            context.registerReceiver(receiver, filter)
+            if (!adapter.startDiscovery()) {
+                LogBuffer.w("Scan", "Bluetooth discovery did not start")
+                stopScan()
+                complete(false)
+                return
+            }
+            LogBuffer.i("Scan", "Scanning for devices...")
+        } catch (e: SecurityException) {
+            LogBuffer.e("Scan", "Bluetooth scan permission denied: ${e.message}")
+            stopScan()
+            complete(false)
+        }
     }
 
     fun stopScan() {
-        BluetoothAdapter.getDefaultAdapter()?.cancelDiscovery()
-        receiver?.let { context.unregisterReceiver(it) }
+        runCatching { BluetoothAdapter.getDefaultAdapter()?.cancelDiscovery() }
+        receiver?.let { r -> runCatching { context.unregisterReceiver(r) } }
         receiver = null
     }
+
+    private fun connectedSystemAddresses(): Set<String> {
+        val manager = context.getSystemService(BluetoothManager::class.java) ?: return emptySet()
+        return buildSet {
+            addAll(runCatching { manager.getConnectedDevices(BluetoothProfile.HEADSET).mapNotNull { safeAddress(it).ifBlank { null } } }.getOrDefault(emptyList()))
+            addAll(runCatching { manager.getConnectedDevices(BluetoothProfile.A2DP).mapNotNull { safeAddress(it).ifBlank { null } } }.getOrDefault(emptyList()))
+        }
+    }
+
+    private fun safeName(device: BluetoothDevice): String = runCatching { device.name }.getOrNull().orEmpty()
+
+    private fun safeAddress(device: BluetoothDevice): String = runCatching { device.address }.getOrNull().orEmpty()
+
+    private fun safeBondState(device: BluetoothDevice): Int = runCatching { device.bondState }.getOrDefault(BluetoothDevice.BOND_NONE)
+
+    private fun isDeviceConnected(device: BluetoothDevice): Boolean = runCatching {
+        val method = device.javaClass.getMethod("isConnected")
+        method.invoke(device) as? Boolean == true
+    }.getOrDefault(false)
 }
