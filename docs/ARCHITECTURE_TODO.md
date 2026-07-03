@@ -226,3 +226,11 @@ data class EarbudState(
 - `BluetoothScanner` 不再把所有已配对设备误标为已连接，改为读取系统 HEADSET/A2DP 连接状态与隐藏 `isConnected()` 结果。
 - 扫描器对 `device.name/address/bondState` 增加安全读取，避免运行时蓝牙权限异常导致扫描页崩溃。
 - `DeviceScreen` 设备型号/固件展示移除 `!!` 强制解包。
+
+
+## v4.2.0 EQ 与双设备 MVP
+- UI 层继续沿用 `DeviceProps`，新增 EQ preset、custom EQ 只读状态、dual-connect 设备列表和保存设备连接快照字段，后续迁移到通用 `EarbudState` 时应拆成 `AudioState` 与 `ConnectionState` 子结构。
+- `EqualizerPresetHandler` 只写入 OpenFreebuds 已验证的 preset payload：内置 preset 使用 `2b49` 参数 1，已验证兼容预设使用 `mode_id/name/rows/action` 固定 payload。Custom EQ 行编辑需要用户自定义 `mode_id/name/rows/action` 组合 payload，目前只解析和展示耳机返回的 rows/saved/max-count，暂不开放写入。
+- `DualConnectHandler` 管理耳机侧双连能力：读取开关、枚举设备、首选设备、连接/断开、自动连接和解绑命令。Android 本地仍只维护一个 active `EarbudSession`，避免在未知 ROM/蓝牙栈上强行创建两条并发 SPP 控制通道。
+- 首页保存设备列表显示系统蓝牙连接与当前控制通道连接状态。若未来实现真正双 session，应先把 `DeviceRepository.session` 拆为按 address 管理的 session map，并明确通知/Tile/统计使用哪一个 active control target。
+- Liquid Glass UI 增加 `AdaptiveGlassBanner`，Home / Scan / Device 的状态反馈走同一 Haze 2.0 卡片体系；经典模式仍使用低成本 Material3 Surface/Card。

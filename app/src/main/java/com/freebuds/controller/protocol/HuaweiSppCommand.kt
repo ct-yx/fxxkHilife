@@ -16,6 +16,8 @@ object HuaweiSppCommand {
     val SWIPE_READ = byteArrayOf(0x2b, 0x1f)
     val SWIPE_WRITE = byteArrayOf(0x2b, 0x1e)
     val LOW_LATENCY = byteArrayOf(0x2b, 0x6c)
+    val EQ_PRESET_READ = byteArrayOf(0x2b, 0x4a)
+    val EQ_PRESET_WRITE = byteArrayOf(0x2b, 0x49)
     val DUAL_CONNECT_ENABLED_READ = byteArrayOf(0x2b, 0x2f)
     val DUAL_CONNECT_ENABLED_WRITE = byteArrayOf(0x2b, 0x2e)
     val DUAL_CONNECT_ENUMERATE = byteArrayOf(0x2b, 0x31)

@@ -33,6 +33,15 @@ object EarbudStateMapper {
             lowLatency = get("config", "low_latency")?.toBooleanStrictOrNull(),
             soundQuality = get("sound", "quality_preference"),
             soundQualityOptions = opts("sound", "quality_preference_options"),
+            equalizerPreset = get("sound", "equalizer_preset"),
+            equalizerPresetOptions = opts("sound", "equalizer_preset_options"),
+            equalizerPresetCreateOptions = opts("sound", "equalizer_preset_create_options"),
+            equalizerRows = opts("sound", "equalizer_rows").mapNotNull { it.toIntOrNull() },
+            equalizerSaved = get("sound", "equalizer_saved")?.toBooleanStrictOrNull(),
+            equalizerMaxCustomModes = get("sound", "equalizer_max_custom_modes")?.toIntOrNull() ?: 0,
+            dualConnectEnabled = get("dual_connect", "enabled")?.toBooleanStrictOrNull(),
+            dualConnectDevices = parseDualConnectDevices(get("dual_connect", "devices")),
+            dualConnectPreferredDevice = get("dual_connect", "preferred_device")?.takeIf { it.isNotBlank() },
             doubleTapLeft = get("action", "double_tap_left"),
             doubleTapRight = get("action", "double_tap_right"),
             doubleTapOptions = opts("action", "double_tap_options"),
@@ -50,4 +59,23 @@ object EarbudStateMapper {
             connectedSince = connectedSince,
         )
     }
+
+    private fun parseDualConnectDevices(raw: String?): List<DualConnectDevice> {
+        if (raw.isNullOrBlank()) return emptyList()
+        return raw.split("|").mapNotNull { row ->
+            val parts = row.split(";")
+            if (parts.size < 6) return@mapNotNull null
+            DualConnectDevice(
+                address = parts[0],
+                name = parts[1].decodeListValue().ifBlank { parts[0] },
+                autoConnect = parts[2].takeIf { it.isNotBlank() }?.toBooleanStrictOrNull(),
+                preferred = parts[3].toBooleanStrictOrNull() ?: false,
+                connected = parts[4].toBooleanStrictOrNull() ?: false,
+                playing = parts[5].toBooleanStrictOrNull() ?: false,
+            )
+        }
+    }
+
+    private fun String.decodeListValue(): String =
+        replace("%7C", "|").replace("%3B", ";").replace("%25", "%")
 }

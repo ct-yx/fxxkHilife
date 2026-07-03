@@ -1186,3 +1186,15 @@
 - versionName: 4.1.2
 - tag: v4.1.2
 
+## v4.2.0 (2026-07-03)
+
+### 发布
+- 统一 Home / Scan / Device 的 Haze 2.0 Liquid Glass 视觉：新增 `AdaptiveGlassBanner`，状态横幅、扫描条目和设备卡片使用同一玻璃质感，经典 Material3 模式继续保留。
+- 新增 `EqualizerPresetHandler`：按 OpenFreebuds `config_equalizer.py` 校准 `2b4a/2b49` 协议，支持 EQ preset 状态读取、内置选项展示、内置/已验证兼容预设写入与回读同步。
+- Custom EQ 采用保守实现：解析耳机返回的自定义频段、保存状态和最大自定义模式数量，但不写入未知 custom rows payload，避免编造协议值。
+- 新增 `DualConnectHandler`：按 OpenFreebuds dual-connect handler 校准 `2b2f/2b2e/2b31/2b32/2b33/2b36`，读取双连开关、枚举耳机侧设备列表，并支持首选设备、连接/断开、自动连接标记和双连开关写入。
+- Repository 增加保存设备连接快照，首页显示系统蓝牙连接状态与当前控制通道状态；当前 Android 控制路径仍保持单 active SPP session，双设备连接作为耳机侧管理 MVP，不能保证所有 ROM 上双 SPP 同时稳定。
+- 版本和文档同步更新：README / README_EN / docs 首页 / VERSION_MANAGEMENT / 架构 TODO 记录 EQ 与双设备边界。
+- versionCode: 81
+- versionName: 4.2.0
+- tag: v4.2.0

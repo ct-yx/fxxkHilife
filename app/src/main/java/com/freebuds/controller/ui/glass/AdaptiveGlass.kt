@@ -7,6 +7,8 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.BoxScope
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.ColumnScope
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.RowScope
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -216,6 +218,59 @@ fun LiquidGlassPanel(
     } else {
         Box(modifier = modifier, content = content)
     }
+}
+
+@Composable
+fun AdaptiveGlassBanner(
+    displayMode: UiDisplayMode,
+    hazeState: HazeState?,
+    modifier: Modifier = Modifier,
+    tone: GlassBannerTone = GlassBannerTone.Info,
+    content: @Composable RowScope.() -> Unit,
+) {
+    val tint = when (tone) {
+        GlassBannerTone.Info -> MaterialTheme.colorScheme.primary
+        GlassBannerTone.Success -> MaterialTheme.colorScheme.tertiary
+        GlassBannerTone.Error -> MaterialTheme.colorScheme.error
+    }
+    if (displayMode == UiDisplayMode.LIQUID_GLASS && hazeState != null) {
+        LiquidGlassCard(
+            hazeState = hazeState,
+            modifier = modifier,
+            tint = tint.copy(alpha = 0.10f),
+            refractionStrength = 0.62f,
+            depth = 0.30f,
+            cornerRadius = 20.dp,
+            shape = RoundedCornerShape(20.dp),
+        ) {
+            Row(
+                horizontalArrangement = Arrangement.spacedBy(12.dp),
+                content = content,
+            )
+        }
+    } else {
+        Surface(
+            modifier = modifier,
+            color = when (tone) {
+                GlassBannerTone.Info -> MaterialTheme.colorScheme.primaryContainer
+                GlassBannerTone.Success -> MaterialTheme.colorScheme.tertiaryContainer
+                GlassBannerTone.Error -> MaterialTheme.colorScheme.errorContainer
+            },
+            shape = RoundedCornerShape(20.dp),
+        ) {
+            Row(
+                modifier = Modifier.padding(horizontal = 16.dp, vertical = 12.dp),
+                horizontalArrangement = Arrangement.spacedBy(12.dp),
+                content = content,
+            )
+        }
+    }
+}
+
+enum class GlassBannerTone {
+    Info,
+    Success,
+    Error,
 }
 
 private fun Modifier.contentReadabilityVeil(strength: Float): Modifier {

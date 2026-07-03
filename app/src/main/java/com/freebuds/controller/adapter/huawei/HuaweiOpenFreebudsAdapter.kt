@@ -52,6 +52,17 @@ object HuaweiOpenFreebudsAdapter : EarbudAdapter {
         if (has(HuaweiCapability.AUTO_PAUSE)) driver.registerHandler(AutoPauseHandler())
         if (has(HuaweiCapability.LOW_LATENCY)) driver.registerHandler(LowLatencyHandler())
         if (has(HuaweiCapability.SOUND_QUALITY)) driver.registerHandler(SoundQualityHandler())
+        if (has(HuaweiCapability.EQ_PRESET) || has(HuaweiCapability.EQ_CUSTOM)) {
+            driver.registerHandler(
+                EqualizerPresetHandler(
+                    wCustom = has(HuaweiCapability.EQ_CUSTOM),
+                    wFakeBuiltIn = has(HuaweiCapability.EQ_FAKE_BUILTIN),
+                )
+            )
+        }
+        if (has(HuaweiCapability.DUAL_CONNECT)) {
+            driver.registerHandler(DualConnectHandler(wAutoConnect = has(HuaweiCapability.DUAL_CONNECT_AUTO)))
+        }
         if (has(HuaweiCapability.VOICE_LANGUAGE)) driver.registerHandler(VoiceLanguageHandler())
     }
 
