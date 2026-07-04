@@ -26,6 +26,14 @@ interface HuaweiDeviceHandler {
     /** 该 Handler 代表的能力 */
     val capabilities: List<HuaweiCapability>
 
+    /** OpenFreebuds default: each handler init waits up to 3s. */
+    val initTimeoutMs: Long
+        get() = 3_000L
+
+    /** OpenFreebuds default: each handler gets at most 5 init attempts, then is skipped. */
+    val initAttemptMax: Int
+        get() = 5
+
     /** 初始化（发送请求读取设备状态） */
     suspend fun onInit(driver: SppDriver) {}
 

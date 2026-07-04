@@ -2,6 +2,7 @@ package com.freebuds.controller.adapter.huawei.protocol
 
 import com.freebuds.controller.protocol.HuaweiSppPackage
 import kotlinx.coroutines.CompletableDeferred
+import kotlinx.coroutines.delay
 
 /**
  * Tracks in-flight Huawei SPP request/response waiters.
@@ -15,9 +16,15 @@ class HuaweiPendingResponseManager {
     private val pendingResponses = mutableMapOf<String, CompletableDeferred<HuaweiSppPackage>>()
 
     suspend fun register(responseId: String): CompletableDeferred<HuaweiSppPackage> {
+        while (true) {
+            val existing = synchronized(lock) { pendingResponses[responseId] }
+            if (existing == null) break
+            runCatching { existing.await() }
+            delay(500)
+        }
+
         val deferred = CompletableDeferred<HuaweiSppPackage>()
         synchronized(lock) {
-            pendingResponses[responseId]?.cancel()
             pendingResponses[responseId] = deferred
         }
         return deferred
@@ -35,7 +42,7 @@ class HuaweiPendingResponseManager {
 
     suspend fun remove(responseId: String) {
         synchronized(lock) {
-            pendingResponses.remove(responseId)
+            pendingResponses.remove(responseId)?.cancel()
         }
     }
 

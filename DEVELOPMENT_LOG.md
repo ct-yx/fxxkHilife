@@ -1198,3 +1198,14 @@
 - versionCode: 81
 - versionName: 4.2.0
 - tag: v4.2.0
+
+## v4.2.1 (2026-07-04)
+
+### 发布
+- 对照本机 OpenFreebuds `OfbDriverHuaweiGeneric` / FreeBuds 6i / dual-connect handler，移除 6i/7i deferred 后台无限补齐策略，改为顺序初始化、单 handler 有限重试、失败后降级跳过。
+- `sendPackage` 默认等待恢复到 OpenFreebuds 秒级语义，并修复 pending response 同 responseId 冲突时取消前序等待者的问题，避免“设备已回包但调用方仍超时”的错配。
+- `DualConnectHandler` 按 OpenFreebuds 的 1s 枚举窗口和 6 次尝试处理，收到有效 `2b31` 设备行并写入 `devices` 后即判成功，避免反复枚举导致连接被打断。
+- 后台服务监听 ACL/A2DP/HEADSET 系统连接事件，并低频巡检已保存设备；当系统蓝牙已连接时按退避策略自动建立 App SPP 控制连接，手动断开后短期抑制自动抢回。
+- versionCode: 82
+- versionName: 4.2.1
+- tag: v4.2.1

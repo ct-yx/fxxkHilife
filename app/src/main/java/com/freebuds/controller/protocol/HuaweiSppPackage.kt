@@ -27,7 +27,7 @@ class HuaweiSppPackage(
         fun changeRequestNoWait(cmd: ByteArray, vararg pairs: Pair<Int, ByteArray>): HuaweiSppPackage {
             val m = mutableMapOf<Int, ByteArray>()
             for ((k, v) in pairs) m[k] = v
-            return HuaweiSppPackage(cmd, parameters = m)
+            return HuaweiSppPackage(cmd, responseId = byteArrayOf(), parameters = m)
         }
 
         /**

@@ -3,17 +3,17 @@
 > 版本号统一修改入口，按清单逐一更新。
 
 ## 当前版本
-- **v4.2.0** (versionCode=81, 2026-07-03)
+- **v4.2.1** (versionCode=82, 2026-07-04)
 
 ## 版本号位置
 
 | 位置 | 当前值 |
 |------|--------|
-| `app/build.gradle.kts` | versionCode=81, versionName="4.2.0" |
-| `app/src/main/res/values/strings.xml` | version_name=4.2.0 |
-| `README.md` | v4.2.0 |
-| `README_EN.md` | v4.2.0 |
-| `DEVELOPMENT_LOG.md` | v4.2.0 (末尾) |
+| `app/build.gradle.kts` | versionCode=82, versionName="4.2.1" |
+| `app/src/main/res/values/strings.xml` | version_name=4.2.1 |
+| `README.md` | v4.2.1 |
+| `README_EN.md` | v4.2.1 |
+| `DEVELOPMENT_LOG.md` | v4.2.1 (末尾) |
 
 ## 一键版本更新脚本
 
@@ -37,6 +37,7 @@ python3 scripts/bump_version.py <versionName> <versionCode> "修复说明"
 
 | 版本 | Code | 日期 | 主要变更 |
 |------|------|------|---------|
+| v4.2.1 | 82 | 2026-07-04 | 对照 OpenFreebuds 修正初始化/dual-connect 判定，并新增系统蓝牙已连接时后台自动建立 App 控制连接 |
 | v4.2.0 | 81 | 2026-07-03 | 液态玻璃 UI 重构、EQ 调音模式与双设备连接 MVP |
 | v4.1.2 | 80 | 2026-07-03 | 全面代码审计修复：加固 RFCOMM discovery 权限处理与半开 socket 清理，修正扫描页已配对设备连接状态误标，移除设备信息 UI 强制解包 |
 | v4.1.1 | 79 | 2026-07-03 | 优化底层 RFCOMM 连接效率：新增 RfcommSocketBridge 缓存反射方法，连接前取消蓝牙 discovery，并统一 SPP/Transport 建连路径与耗时日志 |

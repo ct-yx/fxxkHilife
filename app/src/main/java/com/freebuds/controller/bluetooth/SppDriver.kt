@@ -117,7 +117,7 @@ class SppDriver(private val device: BluetoothDevice) {
     // Handler initialization is delegated to HuaweiHandlerInitializer.
 
     /** 发送包并等响应（对照 send_package） */
-    suspend fun sendPackage(pkg: HuaweiSppPackage, timeout: Long = 1500): HuaweiSppPackage? {
+    suspend fun sendPackage(pkg: HuaweiSppPackage, timeout: Long = 5_000): HuaweiSppPackage? {
         val respId = pkg.responseId.toHex()
         if (respId.isEmpty()) {
             sendNowait(pkg)
@@ -128,10 +128,15 @@ class SppDriver(private val device: BluetoothDevice) {
 
         try {
             sendNowait(pkg)
-            return withTimeout(timeout) { deferred.await() }
-        } catch (e: Exception) {
+            val response = withTimeoutOrNull(timeout) { deferred.await() }
+            if (response != null) return response
             val pendingKeys = pendingResponses.keys().joinToString(",")
             LogBuffer.w("SPP", "Timeout waiting for response to cmd=${pkg.commandId.toHex()} (respId=$respId, pending=[$pendingKeys])")
+            return null
+        } catch (e: CancellationException) {
+            throw e
+        } catch (e: Exception) {
+            LogBuffer.w("SPP", "Failed waiting for response to cmd=${pkg.commandId.toHex()} (respId=$respId): ${e.message}")
             return null
         } finally {
             pendingResponses.remove(respId)

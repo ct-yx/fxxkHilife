@@ -234,3 +234,9 @@ data class EarbudState(
 - `DualConnectHandler` 管理耳机侧双连能力：读取开关、枚举设备、首选设备、连接/断开、自动连接和解绑命令。Android 本地仍只维护一个 active `EarbudSession`，避免在未知 ROM/蓝牙栈上强行创建两条并发 SPP 控制通道。
 - 首页保存设备列表显示系统蓝牙连接与当前控制通道连接状态。若未来实现真正双 session，应先把 `DeviceRepository.session` 拆为按 address 管理的 session map，并明确通知/Tile/统计使用哪一个 active control target。
 - Liquid Glass UI 增加 `AdaptiveGlassBanner`，Home / Scan / Device 的状态反馈走同一 Haze 2.0 卡片体系；经典模式仍使用低成本 Material3 Surface/Card。
+
+## v4.2.1 OpenFreebuds 初始化对齐与后台控制连接
+- Handler 初始化回到 OpenFreebuds 语义：注册后的 handler 顺序初始化，默认 3s × 5 次；`dual_connect` 使用独立短窗口和 6 次尝试；失败后作为能力降级展示，不再后台无限重试抢占 SPP。
+- `HuaweiPendingResponseManager` 遇到相同 responseId 时等待前一个请求完成，不再取消旧 waiter；`sendPackage` 默认 timeout 恢复到秒级，只有已知异步/短窗口命令显式使用较短 timeout。
+- `DualConnectHandler` 的成功条件以有效 `2b31` 设备列表写入为准，避免只收到开关状态或已写入列表后仍继续重试枚举。
+- 后台保活服务监听系统 ACL/A2DP/HEADSET 连接事件，并周期检查已保存设备；系统蓝牙在线才尝试 App SPP 控制连接，失败按退避重试，手动断开后短期不自动抢回。
