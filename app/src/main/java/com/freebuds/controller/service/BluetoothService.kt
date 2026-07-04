@@ -5,8 +5,14 @@ import android.app.NotificationChannel
 import android.app.NotificationManager
 import android.app.PendingIntent
 import android.app.Service
+import android.bluetooth.BluetoothA2dp
+import android.bluetooth.BluetoothDevice
+import android.bluetooth.BluetoothHeadset
+import android.bluetooth.BluetoothProfile
+import android.content.BroadcastReceiver
 import android.content.Context
 import android.content.Intent
+import android.content.IntentFilter
 import android.os.Build
 import android.os.IBinder
 import androidx.core.app.NotificationCompat
@@ -14,6 +20,7 @@ import com.freebuds.controller.HilifeApplication
 import com.freebuds.controller.data.ConnectionState
 import com.freebuds.controller.i18n.I18n
 import com.freebuds.controller.ui.MainActivity
+import com.freebuds.controller.util.LogBuffer
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.MainScope
 import kotlinx.coroutines.delay
@@ -36,6 +43,10 @@ class BluetoothService : Service() {
     private val scope = MainScope()
     private var propsJob: Job? = null
     private var notificationTickerJob: Job? = null
+    private var autoConnectJob: Job? = null
+    private var bluetoothReceiver: BroadcastReceiver? = null
+    private var nextAutoConnectAt: Long = 0L
+    private var autoConnectBackoffMs: Long = 5_000L
 
 
     override fun onCreate() {
@@ -44,6 +55,8 @@ class BluetoothService : Service() {
         startForeground(NOTIFICATION_ID, createNotification())
         startPropsObserver()
         startNotificationTicker()
+        registerSystemBluetoothReceiver()
+        startSystemBluetoothMonitor()
     }
 
     private fun createNotificationChannelIfNeeded() {
@@ -98,11 +111,13 @@ class BluetoothService : Service() {
     }
 
     private fun disconnect() {
+        LogBuffer.i("AutoConnect", "Manual disconnect requested; background auto-control connect paused")
         HilifeApplication.instance.deviceRepository.disconnect()
     }
 
     private fun autoConnectLastSavedDevice() {
-        HilifeApplication.instance.deviceRepository.autoConnectLastSaved()
+        HilifeApplication.instance.deviceRepository.clearManualDisconnectSuppression()
+        triggerAutoControlConnect("service command")
     }
 
     private fun setAncMode(mode: String) {
@@ -137,6 +152,89 @@ class BluetoothService : Service() {
                 }
             }
         }
+    }
+
+    private fun registerSystemBluetoothReceiver() {
+        if (bluetoothReceiver != null) return
+        bluetoothReceiver = object : BroadcastReceiver() {
+            override fun onReceive(context: Context?, intent: Intent?) {
+                val action = intent?.action ?: return
+                val address = runCatching {
+                    intent.getParcelableExtra<BluetoothDevice>(BluetoothDevice.EXTRA_DEVICE)?.address
+                }.getOrNull()
+                val state = intent.getIntExtra(BluetoothProfile.EXTRA_STATE, -1)
+                when {
+                    action == BluetoothDevice.ACTION_ACL_CONNECTED -> {
+                        LogBuffer.i("AutoConnect", "System ACL connected address=${address ?: "unknown"}")
+                        triggerAutoControlConnect("ACL connected")
+                    }
+                    action == BluetoothA2dp.ACTION_CONNECTION_STATE_CHANGED && state == BluetoothProfile.STATE_CONNECTED -> {
+                        LogBuffer.i("AutoConnect", "System A2DP connected address=${address ?: "unknown"}")
+                        triggerAutoControlConnect("A2DP connected")
+                    }
+                    action == BluetoothHeadset.ACTION_CONNECTION_STATE_CHANGED && state == BluetoothProfile.STATE_CONNECTED -> {
+                        LogBuffer.i("AutoConnect", "System HEADSET connected address=${address ?: "unknown"}")
+                        triggerAutoControlConnect("HEADSET connected")
+                    }
+                    action == BluetoothDevice.ACTION_ACL_DISCONNECTED -> {
+                        LogBuffer.i("AutoConnect", "System ACL disconnected address=${address ?: "unknown"}")
+                        HilifeApplication.instance.deviceRepository.refreshSavedDeviceConnections()
+                    }
+                }
+            }
+        }
+
+        val filter = IntentFilter().apply {
+            addAction(BluetoothDevice.ACTION_ACL_CONNECTED)
+            addAction(BluetoothDevice.ACTION_ACL_DISCONNECTED)
+            addAction(BluetoothA2dp.ACTION_CONNECTION_STATE_CHANGED)
+            addAction(BluetoothHeadset.ACTION_CONNECTION_STATE_CHANGED)
+        }
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+            registerReceiver(bluetoothReceiver, filter, Context.RECEIVER_NOT_EXPORTED)
+        } else {
+            @Suppress("DEPRECATION")
+            registerReceiver(bluetoothReceiver, filter)
+        }
+        LogBuffer.i("AutoConnect", "Background system Bluetooth monitor registered")
+    }
+
+    private fun startSystemBluetoothMonitor() {
+        autoConnectJob?.cancel()
+        autoConnectJob = scope.launch {
+            delay(1_000)
+            while (isActive) {
+                triggerAutoControlConnect("periodic system-connected check")
+                delay(15_000)
+            }
+        }
+    }
+
+    private fun triggerAutoControlConnect(reason: String) {
+        val now = System.currentTimeMillis()
+        val repo = HilifeApplication.instance.deviceRepository
+        if (repo.connectionState.value is ConnectionState.Connected ||
+            repo.connectionState.value is ConnectionState.Connecting
+        ) {
+            repo.refreshSavedDeviceConnections()
+            return
+        }
+        if (now < nextAutoConnectAt) {
+            LogBuffer.d("AutoConnect", "Backoff active; skip $reason for ${(nextAutoConnectAt - now) / 1000}s")
+            return
+        }
+
+        val started = repo.autoConnectSystemConnectedSaved()
+        if (started) {
+            LogBuffer.i("AutoConnect", "Auto control connect triggered by $reason")
+            autoConnectBackoffMs = 5_000L
+            nextAutoConnectAt = now + autoConnectBackoffMs
+        } else {
+            nextAutoConnectAt = now + autoConnectBackoffMs
+            LogBuffer.d("AutoConnect", "No eligible system-connected saved device after $reason; next check in ${autoConnectBackoffMs / 1000}s")
+            autoConnectBackoffMs = (autoConnectBackoffMs * 2).coerceAtMost(60_000L)
+        }
+        repo.refreshSavedDeviceConnections()
     }
 
     private fun updateNotification(props: com.freebuds.controller.data.DeviceProps) {
@@ -222,6 +320,9 @@ class BluetoothService : Service() {
     override fun onDestroy() {
         propsJob?.cancel()
         notificationTickerJob?.cancel()
+        autoConnectJob?.cancel()
+        bluetoothReceiver?.let { receiver -> runCatching { unregisterReceiver(receiver) } }
+        bluetoothReceiver = null
         // 前台服务被系统回收/重建时不要主动断开耳机；手动断连只走 ACTION_DISCONNECT
         super.onDestroy()
     }

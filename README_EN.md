@@ -16,8 +16,8 @@
   <a href="https://github.com/ct-yx/fxxkHilife/issues">Report / Join testing</a>
 </p>
 
-> **Current version: v4.2.0**
-> Unifies the Haze 2.0 Liquid Glass UI across Home / Scan / Device, and adds EQ preset control plus a Dual Connect MVP.
+> **Current version: v4.2.1**
+> Aligns init, Dual Connect success detection, and background app-control auto-connect with local OpenFreebuds behavior.
 
 ---
 
@@ -43,7 +43,7 @@ The project is still evolving quickly. Testers with more earbud models are very 
 
 - **Dual display modes**: the stable Material3 classic mode remains available; the Haze 2.0 Liquid Glass mode is now unified across Home / Scan / Device with glass cards, status banners, background blur, iridescent edges, and subtle highlights.
 
-- **Connection and auto-connect**: scan HUAWEI / HONOR earbuds, save known devices, auto-connect on app launch / boot / foreground service; auto-connect is gated by system Bluetooth connection state before opening SPP.
+- **Connection and auto-connect**: scan HUAWEI / HONOR earbuds and save known devices; the foreground service detects saved earbuds already connected by Android Bluetooth and opens the app SPP control channel with backoff.
 - **ANC / Awareness / Off**: switch ANC modes from the in-app pill slider, Quick Settings Tile, or persistent notification actions; on third-party Android phones, you can cycle ANC directly from the system quick settings panel without opening the app.
 - **Low-latency / game mode**: manual switch plus optional auto low-latency; after the earbuds reconnect to the phone and SPP initialization finishes, the app starts immediately and retries every 500ms for up to 30s until confirmed.
 - **Battery and wearing state**: left/right/case battery levels, charging state, wearing detection, auto-pause.

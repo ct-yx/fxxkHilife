@@ -4,12 +4,7 @@ import com.freebuds.controller.bluetooth.HuaweiDeviceHandler
 import com.freebuds.controller.bluetooth.SppDriver
 import com.freebuds.controller.util.LogBuffer
 import kotlinx.coroutines.TimeoutCancellationException
-import kotlinx.coroutines.async
-import kotlinx.coroutines.awaitAll
-import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.delay
-import kotlinx.coroutines.joinAll
-import kotlinx.coroutines.launch
 import kotlinx.coroutines.withTimeout
 
 /**
@@ -22,60 +17,30 @@ import kotlinx.coroutines.withTimeout
 class HuaweiHandlerInitializer(private val registry: HuaweiHandlerRegistry) {
     suspend fun initialize(driver: SppDriver, deviceLabel: String?) {
         val label = deviceLabel ?: "FreeBuds"
-        if (label.contains("FreeBuds 6i", ignoreCase = true) ||
-            label.contains("FreeBuds 7i", ignoreCase = true)
-        ) {
-            initializeCoreStateFastPath(driver, label)
-            return
-        }
-
-        initializeCoreFirstStaggered(driver)
+        initializeOpenFreebudsStyle(driver, label)
     }
 
-    private suspend fun initializeCoreFirstStaggered(driver: SppDriver) {
-        try {
-            val orderedHandlers = coreFirstHandlers()
-            val gapMs = 140L
-            withTimeout(12000) {
-                LogBuffer.i(
-                    "SPP",
-                    "Starting core-first staggered init for ${registry.allHandlers().size} handlers (gap=${gapMs}ms, perHandler=1.5s×3, timeout=12s)"
-                )
-                coroutineScope {
-                    orderedHandlers.mapIndexed { index, handler ->
-                        launch {
-                            if (index > 0) delay(index * gapMs)
-                            var success = false
-                            for (attempt in 0 until 3) {
-                                try {
-                                    withTimeout(1500) {
-                                        handler.onInit(driver)
-                                    }
-                                    success = true
-                                    LogBuffer.i("SPP", "Init ${handler.id} success (attempt=${attempt + 1})")
-                                    break
-                                } catch (e: TimeoutCancellationException) {
-                                    LogBuffer.w("SPP", "Init ${handler.id} timeout (attempt=${attempt + 1})")
-                                } catch (e: Exception) {
-                                    LogBuffer.w("SPP", "Init ${handler.id} failed (attempt=${attempt + 1}): ${e.message}")
-                                }
-                            }
-                            if (!success) {
-                                LogBuffer.w("SPP", "Can't initialize ${handler.id}. Skipping.")
-                                registry.failedHandlerIds.add(handler.id)
-                            }
-                        }
-                    }.joinAll()
-                }
-                LogBuffer.i(
-                    "SPP",
-                    if (registry.failedHandlerIds.isEmpty()) "All handlers initialized"
-                    else "Staggered init completed, ${registry.failedHandlerIds.size} failed: ${registry.failedHandlerIds}"
-                )
+    private suspend fun initializeOpenFreebudsStyle(driver: SppDriver, deviceLabel: String) {
+        val orderedHandlers = coreFirstHandlers()
+        LogBuffer.i(
+            "SPP",
+            "OpenFreebuds-style init for $deviceLabel: handlers=${orderedHandlers.map { it.id }}, per-handler timeouts/attempts follow OpenFreebuds defaults unless overridden"
+        )
+
+        for (handler in orderedHandlers) {
+            val success = initializeHandler(driver, handler)
+            if (!success) {
+                LogBuffer.w("SPP", "Can't initialize ${handler.id}. Skipping after ${handler.initAttemptMax} attempts.")
+                registry.failedHandlerIds.add(handler.id)
             }
-        } catch (e: TimeoutCancellationException) {
-            LogBuffer.w("SPP", "Staggered init global timeout reached, proceeding with partial results")
+            delay(80)
         }
+
+        LogBuffer.i(
+            "SPP",
+            if (registry.failedHandlerIds.isEmpty()) "OpenFreebuds-style init completed: all handlers ready"
+            else "OpenFreebuds-style init completed with degraded handlers=${registry.failedHandlerIds}"
+        )
     }
 
     private fun coreFirstHandlers(): List<HuaweiDeviceHandler> {
@@ -92,50 +57,58 @@ class HuaweiHandlerInitializer(private val registry: HuaweiHandlerRegistry) {
         return core + all.filter { handler -> handler.id !in coreIdsInOrder }
     }
 
-    /**
-     * FreeBuds 6i / 7i are sensitive to concurrent SPP initialization. The fast
-     * path reads the core state first and leaves non-critical handlers for retry.
-     */
-    private suspend fun initializeCoreStateFastPath(driver: SppDriver, deviceLabel: String) {
-        val fastIdsInOrder = listOf(
-            "drop_logs",
-            "battery",
-            "anc_global",
-            "low_latency",
-            "config_sound_quality",
-            "tws_in_ear",
-        )
-        val all = registry.allHandlers()
-        val fastHandlers = fastIdsInOrder.mapNotNull { id -> all.find { it.id == id } }
-        val deferredHandlers = all.filter { it.id !in fastIdsInOrder }
-
-        LogBuffer.i(
-            "SPP",
-            "Starting $deviceLabel core-state fast init for ${fastHandlers.size}/${all.size} handlers; deferred=${deferredHandlers.map { it.id }}"
-        )
-
-        coroutineScope {
-            fastHandlers.mapIndexed { index, handler ->
-                async {
-                    if (index > 0) delay(index * 90L)
-                    try {
-                        withTimeout(1500) {
-                            handler.onInit(driver)
-                        }
-                        LogBuffer.i("SPP", "Core-state fast init ${handler.id} success")
-                        null
-                    } catch (e: TimeoutCancellationException) {
-                        LogBuffer.w("SPP", "Core-state fast init ${handler.id} timeout")
-                        handler.id
-                    } catch (e: Exception) {
-                        LogBuffer.w("SPP", "Core-state fast init ${handler.id} failed: ${e.message}")
-                        handler.id
-                    }
+    private suspend fun initializeHandler(driver: SppDriver, handler: HuaweiDeviceHandler): Boolean {
+        for (attempt in 0 until handler.initAttemptMax) {
+            try {
+                LogBuffer.d("SPP", "Init ${handler.id}, attempt=$attempt")
+                withTimeout(handler.initTimeoutMs) {
+                    handler.onInit(driver)
                 }
-            }.awaitAll().filterNotNull().forEach { registry.failedHandlerIds.add(it) }
+                if (hasExpectedInitState(driver, handler.id)) {
+                    LogBuffer.i("SPP", "Init ${handler.id} success (attempt=${attempt + 1})")
+                    return true
+                }
+                LogBuffer.w("SPP", "Init ${handler.id} returned without expected state (attempt=${attempt + 1})")
+            } catch (e: TimeoutCancellationException) {
+                if (hasExpectedInitState(driver, handler.id)) {
+                    LogBuffer.i("SPP", "Init ${handler.id} accepted after timeout because expected state is present (attempt=${attempt + 1})")
+                    return true
+                }
+                LogBuffer.w("SPP", "Init ${handler.id} timeout (attempt=${attempt + 1}, timeout=${handler.initTimeoutMs}ms)")
+            } catch (e: Exception) {
+                if (hasExpectedInitState(driver, handler.id)) {
+                    LogBuffer.i("SPP", "Init ${handler.id} accepted after error because expected state is present (attempt=${attempt + 1})")
+                    return true
+                }
+                LogBuffer.w("SPP", "Init ${handler.id} failed (attempt=${attempt + 1}): ${e.message}")
+            }
+            delay(120)
         }
-
-        registry.failedHandlerIds.addAll(deferredHandlers.map { it.id })
-                LogBuffer.i("SPP", "$deviceLabel core-state fast init completed; deferred retry=${registry.failedHandlerIds}")
+        return false
     }
+
+    private suspend fun hasExpectedInitState(driver: SppDriver, handlerId: String): Boolean {
+        if (handlerId == "dual_connect") {
+            return !driver.getProperty("dual_connect", "devices").isNullOrBlank()
+        }
+        val checks = expectedInitProperties[handlerId] ?: return true
+        return checks.any { (group, prop) -> driver.getProperty(group, prop) != null }
+    }
+
+    private val expectedInitProperties = mapOf(
+        "battery" to listOf("battery" to "global", "battery" to "left", "battery" to "right", "battery" to "case"),
+        "anc_global" to listOf("anc" to "mode"),
+        "low_latency" to listOf("config" to "low_latency"),
+        "config_sound_quality" to listOf("sound" to "quality_preference"),
+        "tws_in_ear" to listOf("state" to "in_ear"),
+        "device_info" to listOf("info" to null),
+        "gesture_double" to listOf("action" to "double_tap_left", "action" to "double_tap_right"),
+        "gesture_triple" to listOf("action" to "triple_tap_left", "action" to "triple_tap_right"),
+        "gesture_long" to listOf("action" to "long_tap"),
+        "gesture_swipe" to listOf("action" to "swipe_gesture_options", "action" to "swipe_gesture"),
+        "tws_auto_pause" to listOf("config" to "auto_pause"),
+        "config_eq" to listOf("sound" to "equalizer_preset_options", "sound" to "equalizer_preset"),
+        "voice_language" to listOf("service" to "language_options", "service" to "language"),
+        "dual_connect" to listOf("dual_connect" to "devices"),
+    )
 }

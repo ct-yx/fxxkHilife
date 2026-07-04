@@ -331,6 +331,8 @@ class DualConnectHandler(
     private val wAutoConnect: Boolean = true,
 ) : HuaweiDeviceHandler {
     override val id = "dual_connect"
+    override val initTimeoutMs = 1_200L
+    override val initAttemptMax = 6
     override val commandIds = listOf(
         HuaweiSppCommand.DUAL_CONNECT_ENUMERATE,
         HuaweiSppCommand.DUAL_CONNECT_CHANGE_EVENT,
@@ -345,21 +347,19 @@ class DualConnectHandler(
     override val capabilities = listOf(HuaweiCapability.DUAL_CONNECT, HuaweiCapability.DUAL_CONNECT_AUTO)
 
     private val pendingDevices = mutableMapOf<Int, DualConnectRow>()
-    private var expectedCount = 0
+    private var expectedCount = Int.MAX_VALUE
 
     override suspend fun onInit(driver: SppDriver) {
-        readEnabled(driver)
         pendingDevices.clear()
-        expectedCount = 0
-        driver.sendPackage(
-            HuaweiSppPackage.changeRequest(HuaweiSppCommand.DUAL_CONNECT_ENUMERATE, 1 to byteArrayOf()),
-            timeout = 1000,
-        )?.let { onPackage(it, driver) }
+        expectedCount = Int.MAX_VALUE
+        requestEnabledNoWait(driver)
+        driver.sendNowait(HuaweiSppPackage.changeRequestNoWait(HuaweiSppCommand.DUAL_CONNECT_ENUMERATE, 1 to byteArrayOf()))
         waitForEnumeration(driver)
     }
 
     override suspend fun onDriverPackage(driver: SppDriver, pkg: HuaweiSppPackage) {
         if (pkg.commandId.contentEquals(HuaweiSppCommand.DUAL_CONNECT_CHANGE_EVENT)) {
+            com.freebuds.controller.util.LogBuffer.i("SPP", "dual_connect change event received; scheduling refresh")
             onInit(driver)
             return
         }
@@ -374,6 +374,16 @@ class DualConnectHandler(
             }
     }
 
+    private suspend fun requestEnabledNoWait(driver: SppDriver) {
+        driver.sendNowait(
+            HuaweiSppPackage(
+                commandId = HuaweiSppCommand.DUAL_CONNECT_ENABLED_READ,
+                responseId = byteArrayOf(),
+                parameters = mutableMapOf(1 to byteArrayOf()),
+            )
+        )
+    }
+
     private suspend fun onPackage(pkg: HuaweiSppPackage, driver: SppDriver) {
         when {
             pkg.commandId.contentEquals(HuaweiSppCommand.DUAL_CONNECT_ENABLED_READ) -> {
@@ -385,16 +395,27 @@ class DualConnectHandler(
                 expectedCount = pkg.findParam(2).toPositiveIntOrNull() ?: expectedCount
                 val index = pkg.findParam(3).toPositiveIntOrNull() ?: pendingDevices.size
                 pendingDevices[index] = row
+                com.freebuds.controller.util.LogBuffer.i(
+                    "SPP",
+                    "dual_connect row received index=$index expected=$expectedCount address=${row.address} connected=${row.connected}"
+                )
                 publishRows(driver)
             }
         }
     }
 
     private suspend fun waitForEnumeration(driver: SppDriver) {
-        withTimeoutOrNull(900) {
-            while (expectedCount == 0 || pendingDevices.size < expectedCount) {
+        val completed = withTimeoutOrNull(1_000) {
+            while (pendingDevices.isEmpty() || pendingDevices.size < expectedCount) {
                 delay(80)
             }
+            true
+        } == true
+        if (!completed && pendingDevices.isNotEmpty()) {
+            com.freebuds.controller.util.LogBuffer.i(
+                "SPP",
+                "dual_connect accepted partial enumeration rows=${pendingDevices.size} expected=$expectedCount"
+            )
         }
         publishRows(driver)
     }
@@ -414,6 +435,9 @@ class DualConnectHandler(
         val preferred = ordered.firstOrNull { it.preferred }?.address.orEmpty()
         driver.putProperty("dual_connect", "devices", rows)
         driver.putProperty("dual_connect", "preferred_device", preferred)
+        if (rows.isNotEmpty()) {
+            com.freebuds.controller.util.LogBuffer.d("SPP", "dual_connect published ${ordered.size} devices")
+        }
     }
 
     private fun parseRow(pkg: HuaweiSppPackage): DualConnectRow? {

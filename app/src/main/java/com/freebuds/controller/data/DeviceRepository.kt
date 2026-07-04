@@ -132,7 +132,6 @@ class DeviceRepository {
     private var prefs: SharedPreferences? = null
     private var appContext: Context? = null
     private val failedHandlers = mutableSetOf<String>()
-    private var retryJob: Job? = null
     private var pollJob: Job? = null
     private var fastPollJob: Job? = null
     private var autoLowLatencyJob: Job? = null
@@ -143,6 +142,7 @@ class DeviceRepository {
     private var connectedAddress: String? = null
     private var aclReceiver: BroadcastReceiver? = null
     private var connectingJob: Job? = null
+    private var manualDisconnectSuppressUntil: Long = 0L
 
     // 设备信息是否已获取（本次进程生命周期内）
     private var deviceInfoFetched: Boolean = false
@@ -198,6 +198,7 @@ class DeviceRepository {
                 _connectionState.value = ConnectionState.Connected(device.name ?: device.address)
                 connectedAt = System.currentTimeMillis()
                 connectedAddress = device.address
+                manualDisconnectSuppressUntil = 0L
                 saveDeviceAddress(device.address)
                 refreshSavedDeviceConnections()
                 syncProps()
@@ -207,7 +208,7 @@ class DeviceRepository {
                 startPolling()
                 startListeningStatsTicker()
                 if (foregroundMode) startFastPolling()
-                retryFailedHandlers()
+                logDegradedHandlersOnce()
                 applyAutoLowLatencyIfEnabled()
             } else {
                 session = null
@@ -218,9 +219,9 @@ class DeviceRepository {
     }
 
     fun disconnect() {
+        manualDisconnectSuppressUntil = System.currentTimeMillis() + 10 * 60_000L
         pollJob?.cancel()
         fastPollJob?.cancel()
-        retryJob?.cancel()
         autoLowLatencyJob?.cancel()
         stopListeningStatsTicker()
         sppQuietUntil = 0L
@@ -234,13 +235,16 @@ class DeviceRepository {
         refreshSavedDeviceConnections()
     }
 
+    fun clearManualDisconnectSuppression() {
+        manualDisconnectSuppressUntil = 0L
+    }
+
     private fun handleRemoteDisconnected(sourceSession: EarbudSession?, reason: String) {
         if (sourceSession != null && session !== sourceSession) return
         if (_connectionState.value !is ConnectionState.Connected && session == null) return
         LogBuffer.w("SPP", "Remote disconnected: $reason")
         pollJob?.cancel()
         fastPollJob?.cancel()
-        retryJob?.cancel()
         autoLowLatencyJob?.cancel()
         stopListeningStatsTicker()
         sppQuietUntil = 0L
@@ -341,10 +345,19 @@ class DeviceRepository {
     }
 
     fun autoConnectSaved(address: String): Boolean {
+        val suppressRemaining = manualDisconnectSuppressUntil - System.currentTimeMillis()
+        if (suppressRemaining > 0) {
+            LogBuffer.i("AutoConnect", "Skip $address: manual disconnect suppression ${suppressRemaining / 1000}s left")
+            return false
+        }
         if (_connectionState.value is ConnectionState.Connecting ||
             _connectionState.value is ConnectionState.Connected) return true
 
-        val device = getSystemConnectedDevice(address) ?: return false
+        val device = getSystemConnectedDevice(address) ?: run {
+            LogBuffer.d("AutoConnect", "Skip $address: system Bluetooth is not connected")
+            return false
+        }
+        LogBuffer.i("AutoConnect", "System Bluetooth connected for ${device.name ?: address}; opening app SPP control channel")
         connect(device)
         return true
     }
@@ -352,6 +365,18 @@ class DeviceRepository {
     fun autoConnectLastSaved(): Boolean {
         val address = getSavedAddress() ?: return false
         return autoConnectSaved(address)
+    }
+
+    fun autoConnectSystemConnectedSaved(): Boolean {
+        val addresses = getSavedAddresses().asReversed()
+        if (addresses.isEmpty()) {
+            LogBuffer.d("AutoConnect", "No saved devices for background control connect")
+            return false
+        }
+        for (address in addresses) {
+            if (autoConnectSaved(address)) return true
+        }
+        return false
     }
 
     private fun applyAutoLowLatencyIfEnabled() {
@@ -406,7 +431,7 @@ class DeviceRepository {
         refreshSavedDeviceConnections()
     }
 
-    // ── 后台重试失败 Handler（核心状态优先，避免非核心项抢占 ANC）───────────
+    // ── OpenFreebuds-style init degradation ────────────────────────────────
 
     private val coreRetryOrder = listOf(
         "anc_global",
@@ -416,62 +441,15 @@ class DeviceRepository {
         "tws_in_ear",
     )
 
-    private fun orderedRetryHandlerIds(): List<String> {
-        val corePending = coreRetryOrder.filter { it in failedHandlers }
-        if (corePending.isNotEmpty()) return corePending
-        return failedHandlers.sortedBy { id ->
-            when (id) {
-                "device_info" -> 10
-                "gesture_double", "gesture_triple", "gesture_long", "gesture_swipe" -> 20
-                "tws_auto_pause" -> 30
-                "voice_language" -> 40
-                else -> 50
-            }
-        }
-    }
-
-    private fun retryFailedHandlers() {
-        retryJob?.cancel()
+    private fun logDegradedHandlersOnce() {
         if (failedHandlers.isEmpty()) return
-        retryJob = scope.launch {
-            var attempt = 0
-            while (isActive && session?.isConnected == true && failedHandlers.isNotEmpty()) {
-                val hasCorePending = failedHandlers.any { it in coreRetryOrder }
-                val delayMs = when {
-                    hasCorePending && attempt < 5 -> 2_000L
-                    hasCorePending -> 5_000L
-                    attempt < 8 -> 8_000L
-                    else -> 20_000L
-                }
-                delay(delayMs)
-                val quietDelay = sppQuietUntil - System.currentTimeMillis()
-                if (quietDelay > 0) delay(quietDelay)
-                attempt++
-                val d = session ?: break
-                val legacyDriver = d.legacyDriverOrNull() ?: break
-                val toRemove = mutableListOf<String>()
-                val retryIds = orderedRetryHandlerIds().let { ids ->
-                    if (ids.any { it in coreRetryOrder }) ids else ids.take(3)
-                }
-                for (handlerId in retryIds) {
-                    val handler = d.getHandlerById(handlerId) ?: continue
-                    try {
-                        withTimeout(1500) {
-                            handler.onInit(legacyDriver)
-                        }
-                        LogBuffer.i("SPP", "Retry init $handlerId success (attempt=$attempt)")
-                        toRemove.add(handlerId)
-                    } catch (_: Exception) {
-                        LogBuffer.w("SPP", "Retry init $handlerId still failed (attempt=$attempt), will retry in ${delayMs/1000}s")
-                    }
-                }
-                failedHandlers.removeAll(toRemove)
-                if (failedHandlers.isEmpty()) {
-                    LogBuffer.i("SPP", "All failed handlers recovered")
-                }
-                syncProps()
-            }
-        }
+        val core = failedHandlers.filter { it in coreRetryOrder }
+        val optional = failedHandlers.filterNot { it in coreRetryOrder }
+        LogBuffer.w(
+            "SPP",
+            "OpenFreebuds-style init degraded; skipped core=$core optional=$optional. " +
+                "Handlers are not retried in background to avoid repeated SPP enumeration/write pressure."
+        )
     }
 
     // ── 定时轮询（后台 5s 基础属性，前台 fastPoll 800ms）─────────────────
