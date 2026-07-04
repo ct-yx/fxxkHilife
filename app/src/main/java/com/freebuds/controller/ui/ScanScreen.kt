@@ -5,13 +5,15 @@ import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
+import androidx.compose.material.icons.filled.Bluetooth
+import androidx.compose.material.icons.filled.BluetoothConnected
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import com.freebuds.controller.bluetooth.ScannedDevice
@@ -19,6 +21,8 @@ import com.freebuds.controller.data.ConnectionState
 import com.freebuds.controller.data.DeviceViewModel
 import com.freebuds.controller.i18n.i18n
 import com.freebuds.controller.ui.glass.AdaptiveCard
+import com.freebuds.controller.ui.glass.AdaptiveGlassBanner
+import com.freebuds.controller.ui.glass.GlassBannerTone
 import dev.chrisbanes.haze.HazeState
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -58,13 +62,15 @@ fun ScanScreen(
             // 已连接提示（返回扫描页时不断连）
             if (connState is ConnectionState.Connected) {
                 StatusBanner(i18n("scan.connected_to", (connState as ConnectionState.Connected).deviceName),
+                    displayMode = displayMode,
+                    hazeState = hazeState,
                     isConnected = true)
             }
             if (connState is ConnectionState.Connecting) {
-                StatusBanner(i18n("scan.connecting_to", (connState as ConnectionState.Connecting).deviceName))
+                StatusBanner(i18n("scan.connecting_to", (connState as ConnectionState.Connecting).deviceName), displayMode, hazeState)
             }
             if (connState is ConnectionState.Failed) {
-                StatusBanner(i18n("scan.connection_failed", (connState as ConnectionState.Failed).reason), isError = true)
+                StatusBanner(i18n("scan.connection_failed", (connState as ConnectionState.Failed).reason), displayMode, hazeState, isError = true)
             }
 
             // 扫描按钮
@@ -138,33 +144,58 @@ private fun DeviceItem(device: ScannedDevice, displayMode: UiDisplayMode, hazeSt
             .padding(horizontal = 16.dp, vertical = 6.dp)
             .clickable(onClick = onClick),
     ) {
-        Text(device.displayName, fontWeight = FontWeight.Medium)
-        Text(
-            buildString {
-                append(device.address)
-                if (device.isBonded) append(" · ").append(bondedLabel)
-                if (device.rssi != 0) append(" · ${device.rssi} dBm")
-            },
-            style = MaterialTheme.typography.bodySmall,
-            color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.62f),
-        )
+        Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(14.dp)) {
+            Icon(
+                painter = painterResource(com.freebuds.controller.R.drawable.ic_earbuds_case),
+                contentDescription = null,
+                modifier = Modifier.size(30.dp),
+                tint = if (device.isConnected) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant,
+            )
+            Column(Modifier.weight(1f)) {
+                Text(device.displayName, fontWeight = FontWeight.Medium)
+                Text(
+                    buildString {
+                        append(device.address)
+                        if (device.isBonded) append(" · ").append(bondedLabel)
+                        if (device.rssi != 0) append(" · ${device.rssi} dBm")
+                    },
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.62f),
+                )
+            }
+            Icon(
+                if (device.isConnected) Icons.Default.BluetoothConnected else Icons.Default.Bluetooth,
+                contentDescription = null,
+                tint = if (device.isConnected) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant,
+            )
+        }
     }
 }
 
 @Composable
-private fun StatusBanner(text: String, isError: Boolean = false, isConnected: Boolean = false) {
-    Surface(
-        color = when {
-            isError -> MaterialTheme.colorScheme.errorContainer
-            isConnected -> MaterialTheme.colorScheme.tertiaryContainer
-            else -> MaterialTheme.colorScheme.primaryContainer
+private fun StatusBanner(
+    text: String,
+    displayMode: UiDisplayMode,
+    hazeState: HazeState?,
+    isError: Boolean = false,
+    isConnected: Boolean = false,
+) {
+    AdaptiveGlassBanner(
+        displayMode = displayMode,
+        hazeState = hazeState,
+        tone = when {
+            isError -> GlassBannerTone.Error
+            isConnected -> GlassBannerTone.Success
+            else -> GlassBannerTone.Info
         },
-        modifier = Modifier.fillMaxWidth()
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(horizontal = 16.dp, vertical = 8.dp),
     ) {
         Text(
             text,
-            modifier = Modifier.padding(horizontal = 16.dp, vertical = 10.dp),
-            style = MaterialTheme.typography.bodyMedium
+            modifier = Modifier.weight(1f),
+            style = MaterialTheme.typography.bodyMedium,
         )
     }
 }

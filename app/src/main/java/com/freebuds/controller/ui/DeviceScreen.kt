@@ -32,6 +32,7 @@ import com.freebuds.controller.R
 import com.freebuds.controller.data.ConnectionState
 import com.freebuds.controller.data.DeviceProps
 import com.freebuds.controller.data.DeviceViewModel
+import com.freebuds.controller.data.DualConnectDevice
 import com.freebuds.controller.i18n.I18n
 import com.freebuds.controller.i18n.i18n
 import com.freebuds.controller.ui.glass.AdaptiveCard
@@ -88,6 +89,16 @@ fun ancLevelTitle(mode: String?): String = when (mode) {
 fun chineseSoundQuality(raw: String?): String = when (raw) {
     "sqp_connectivity" -> I18n.t("sound.quality.connectivity")
     "sqp_quality" -> I18n.t("sound.quality.quality")
+    else -> raw ?: I18n.t("common.unknown")
+}
+
+fun chineseEqualizerPreset(raw: String?): String = when (raw) {
+    "equalizer_preset_default" -> I18n.t("eq.preset.default")
+    "equalizer_preset_hardbass" -> I18n.t("eq.preset.hardbass")
+    "equalizer_preset_treble" -> I18n.t("eq.preset.treble")
+    "equalizer_preset_voices" -> I18n.t("eq.preset.voices")
+    "equalizer_preset_symphony" -> I18n.t("eq.preset.symphony")
+    "equalizer_preset_hi_fi_live" -> I18n.t("eq.preset.hifi_live")
     else -> raw ?: I18n.t("common.unknown")
 }
 
@@ -200,7 +211,8 @@ fun DeviceScreen(
 
             // ── 音频 ─────────────────────────────────────────────────────────
             val hasSoundQuality = props.soundQuality != null && props.soundQualityOptions.isNotEmpty()
-            val hasAudio = hasSoundQuality || props.autoPause != null || props.lowLatency != null
+            val hasEqualizer = props.equalizerPreset != null && props.equalizerPresetOptions.isNotEmpty()
+            val hasAudio = hasSoundQuality || hasEqualizer || props.autoPause != null || props.lowLatency != null
             if (hasAudio) {
                 item { SettingsGroupHeader(i18n("device.group.audio")) }
                 if (hasSoundQuality) {
@@ -214,6 +226,29 @@ fun DeviceScreen(
                             options = props.soundQualityOptions.map(::chineseSoundQuality),
                             rawOptions = props.soundQualityOptions,
                             onSelect = { viewModel.setProperty("sound", "quality_preference", it) }
+                        )
+                    }
+                }
+                if (hasEqualizer) {
+                    item {
+                        DeviceOptionItem(
+                            displayMode = displayMode,
+                            hazeState = hazeState,
+                            icon = Icons.Default.Equalizer,
+                            title = i18n("device.option.equalizer_preset"),
+                            current = chineseEqualizerPreset(props.equalizerPreset),
+                            options = props.equalizerPresetOptions.map(::chineseEqualizerPreset),
+                            rawOptions = props.equalizerPresetOptions,
+                            onSelect = { viewModel.setProperty("sound", "equalizer_preset", it) }
+                        )
+                    }
+                }
+                if (props.equalizerRows.isNotEmpty() || props.equalizerMaxCustomModes > 0) {
+                    item {
+                        EqualizerStatusCard(
+                            props = props,
+                            displayMode = displayMode,
+                            hazeState = hazeState,
                         )
                     }
                 }
@@ -238,6 +273,39 @@ fun DeviceScreen(
                             title = i18n("device.option.low_latency"),
                             checked = props.lowLatency,
                             onCheckedChange = { viewModel.setProperty("config", "low_latency", it.toString()) }
+                        )
+                    }
+                }
+            }
+
+            if (props.dualConnectEnabled != null || props.dualConnectDevices.isNotEmpty()) {
+                item { SettingsGroupHeader(i18n("device.group.dual_connect")) }
+                props.dualConnectEnabled?.let { enabled ->
+                    item {
+                        SwitchSettingItem(
+                            displayMode = displayMode,
+                            hazeState = hazeState,
+                            icon = Icons.Default.Devices,
+                            title = i18n("device.option.dual_connect"),
+                            checked = enabled,
+                            onCheckedChange = { viewModel.setProperty("dual_connect", "enabled", it.toString()) }
+                        )
+                    }
+                }
+                props.dualConnectDevices.forEach { device ->
+                    item {
+                        DualConnectDeviceCard(
+                            device = device,
+                            preferredAddress = props.dualConnectPreferredDevice,
+                            displayMode = displayMode,
+                            hazeState = hazeState,
+                            onPreferred = { viewModel.setProperty("dual_connect", "preferred_device", device.address) },
+                            onConnectionToggle = { target ->
+                                viewModel.setProperty("dual_connect", "${device.address}:connected", target.toString())
+                            },
+                            onAutoToggle = { target ->
+                                viewModel.setProperty("dual_connect", "${device.address}:auto_connect", target.toString())
+                            },
                         )
                     }
                 }
@@ -558,12 +626,119 @@ private fun initHandlerLabel(id: String): String = when (id) {
     "gesture_swipe" -> I18n.t("device.pending.gesture_swipe")
     "tws_auto_pause" -> I18n.t("device.pending.auto_pause")
     "config_sound_quality" -> I18n.t("device.pending.config_sound_quality")
+    "config_eq" -> I18n.t("device.pending.config_eq")
+    "dual_connect" -> I18n.t("device.pending.dual_connect")
     "voice_language" -> I18n.t("device.pending.voice_language")
     "tws_in_ear" -> I18n.t("device.pending.tws_in_ear")
     "battery" -> I18n.t("device.pending.battery")
     "low_latency" -> I18n.t("device.pending.low_latency")
     else -> id
 }
+
+@Composable
+private fun EqualizerStatusCard(
+    props: DeviceProps,
+    displayMode: UiDisplayMode,
+    hazeState: HazeState?,
+) {
+    AdaptiveCard(
+        displayMode = displayMode,
+        hazeState = hazeState,
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(horizontal = 16.dp, vertical = 5.dp),
+    ) {
+        Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(14.dp)) {
+            Icon(Icons.Default.GraphicEq, contentDescription = null)
+            Column(Modifier.weight(1f)) {
+                Text(i18n("device.option.custom_eq"), style = MaterialTheme.typography.titleSmall)
+                val rows = props.equalizerRows.takeIf { it.isNotEmpty() }?.joinToString(", ") ?: i18n("common.unknown")
+                Text(
+                    i18n("device.option.custom_eq_desc", props.equalizerMaxCustomModes, rows),
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                )
+            }
+            AssistChip(
+                onClick = {},
+                enabled = false,
+                label = { Text(if (props.equalizerSaved == false) i18n("device.eq.unsaved") else i18n("device.eq.read_only")) },
+            )
+        }
+    }
+}
+
+@Composable
+private fun DualConnectDeviceCard(
+    device: DualConnectDevice,
+    preferredAddress: String?,
+    displayMode: UiDisplayMode,
+    hazeState: HazeState?,
+    onPreferred: () -> Unit,
+    onConnectionToggle: (Boolean) -> Unit,
+    onAutoToggle: (Boolean) -> Unit,
+) {
+    val isPreferred = device.preferred || preferredAddress == device.address
+    AdaptiveCard(
+        displayMode = displayMode,
+        hazeState = hazeState,
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(horizontal = 16.dp, vertical = 5.dp),
+    ) {
+        Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(14.dp)) {
+            Icon(
+                if (device.connected) Icons.Default.BluetoothConnected else Icons.Default.Bluetooth,
+                contentDescription = null,
+                tint = if (device.connected) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant,
+            )
+            Column(Modifier.weight(1f)) {
+                Text(device.name, style = MaterialTheme.typography.titleSmall)
+                Text(
+                    buildString {
+                        append(formatMac(device.address))
+                        append(" · ")
+                        append(if (device.connected) i18n("device.dual.connected") else i18n("device.dual.disconnected"))
+                        if (device.playing) append(" · ").append(i18n("device.dual.playing"))
+                        if (isPreferred) append(" · ").append(i18n("device.dual.preferred"))
+                    },
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                )
+            }
+            Switch(
+                checked = device.connected,
+                onCheckedChange = onConnectionToggle,
+            )
+        }
+        Row(
+            modifier = Modifier.padding(top = 12.dp),
+            horizontalArrangement = Arrangement.spacedBy(8.dp),
+        ) {
+            FilterChip(
+                selected = isPreferred,
+                onClick = onPreferred,
+                label = { Text(i18n("device.dual.preferred")) },
+                leadingIcon = if (isPreferred) {
+                    { Icon(Icons.Default.Check, contentDescription = null, modifier = Modifier.size(18.dp)) }
+                } else null,
+            )
+            device.autoConnect?.let { auto ->
+                FilterChip(
+                    selected = auto,
+                    onClick = { onAutoToggle(!auto) },
+                    label = { Text(i18n("device.dual.auto_connect")) },
+                    leadingIcon = if (auto) {
+                        { Icon(Icons.Default.Check, contentDescription = null, modifier = Modifier.size(18.dp)) }
+                    } else null,
+                )
+            }
+        }
+    }
+}
+
+private fun formatMac(raw: String): String =
+    raw.chunked(2).joinToString(":").uppercase()
 
 @OptIn(ExperimentalLayoutApi::class)
 @Composable

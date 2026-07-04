@@ -42,6 +42,23 @@ data class ListeningStats(
     val dailyMs: Map<String, Long> = emptyMap(),
 )
 
+data class DualConnectDevice(
+    val address: String,
+    val name: String,
+    val autoConnect: Boolean?,
+    val preferred: Boolean,
+    val connected: Boolean,
+    val playing: Boolean,
+)
+
+data class SavedDeviceConnection(
+    val address: String,
+    val name: String,
+    val isBonded: Boolean,
+    val isSystemConnected: Boolean,
+    val isControlConnected: Boolean,
+)
+
 /** 设备属性快照（UI 消费） */
 data class DeviceProps(
     val batteryGlobal: Int? = null,
@@ -57,6 +74,15 @@ data class DeviceProps(
     val lowLatency: Boolean? = null,
     val soundQuality: String? = null,
     val soundQualityOptions: List<String> = emptyList(),
+    val equalizerPreset: String? = null,
+    val equalizerPresetOptions: List<String> = emptyList(),
+    val equalizerPresetCreateOptions: List<String> = emptyList(),
+    val equalizerRows: List<Int> = emptyList(),
+    val equalizerSaved: Boolean? = null,
+    val equalizerMaxCustomModes: Int = 0,
+    val dualConnectEnabled: Boolean? = null,
+    val dualConnectDevices: List<DualConnectDevice> = emptyList(),
+    val dualConnectPreferredDevice: String? = null,
     val doubleTapLeft: String? = null,
     val doubleTapRight: String? = null,
     val doubleTapOptions: List<String> = emptyList(),
@@ -92,6 +118,9 @@ class DeviceRepository {
 
     private val _listeningStats = MutableStateFlow(ListeningStats())
     val listeningStats: StateFlow<ListeningStats> = _listeningStats.asStateFlow()
+
+    private val _savedDeviceConnections = MutableStateFlow<List<SavedDeviceConnection>>(emptyList())
+    val savedDeviceConnections: StateFlow<List<SavedDeviceConnection>> = _savedDeviceConnections.asStateFlow()
 
     fun isCoreStateReady(): Boolean {
         val p = _props.value
@@ -141,6 +170,7 @@ class DeviceRepository {
         refreshListeningStats()
         deviceInfoFetched = false // 每次进程启动重置
         registerAclDisconnectReceiver(context.applicationContext)
+        refreshSavedDeviceConnections()
     }
 
     // ── 连接 ─────────────────────────────────────────────────────────────────
@@ -169,6 +199,7 @@ class DeviceRepository {
                 connectedAt = System.currentTimeMillis()
                 connectedAddress = device.address
                 saveDeviceAddress(device.address)
+                refreshSavedDeviceConnections()
                 syncProps()
                 deviceInfoFetched = false // 新连接：允许重新获取设备信息
                 failedHandlers.addAll(d.failedHandlerIds)
@@ -200,6 +231,7 @@ class DeviceRepository {
         _connectionState.value = ConnectionState.Disconnected
         _props.value = DeviceProps()
         connectedAt = 0
+        refreshSavedDeviceConnections()
     }
 
     private fun handleRemoteDisconnected(sourceSession: EarbudSession?, reason: String) {
@@ -218,6 +250,7 @@ class DeviceRepository {
         _connectionState.value = ConnectionState.Disconnected
         _props.value = DeviceProps()
         connectedAt = 0
+        refreshSavedDeviceConnections()
     }
 
     private fun registerAclDisconnectReceiver(context: Context) {
@@ -247,15 +280,43 @@ class DeviceRepository {
         val p = prefs ?: return
         val set = p.getStringSet("saved_devices", emptySet())?.toMutableSet() ?: mutableSetOf()
         set.add(address)
-        p.edit().putStringSet("saved_devices", set).apply()
+        val ordered = getSavedAddresses().filterNot { it == address } + address
+        p.edit()
+            .putStringSet("saved_devices", set)
+            .putString("saved_devices_order", ordered.joinToString(","))
+            .apply()
+        refreshSavedDeviceConnections()
     }
 
     fun getSavedAddresses(): List<String> {
         val p = prefs ?: return emptyList()
-        return p.getStringSet("saved_devices", emptySet())?.toList() ?: emptyList()
+        val set = p.getStringSet("saved_devices", emptySet())?.toSet() ?: emptySet()
+        val ordered = p.getString("saved_devices_order", null)
+            ?.split(",")
+            ?.map { it.trim() }
+            ?.filter { it.isNotBlank() && it in set }
+            ?: emptyList()
+        return ordered + set.filterNot { it in ordered }.sorted()
     }
 
     fun getSavedAddress(): String? = getSavedAddresses().lastOrNull()
+
+    fun refreshSavedDeviceConnections() {
+        val addresses = getSavedAddresses()
+        val adapter = BluetoothAdapter.getDefaultAdapter()
+        _savedDeviceConnections.value = addresses.map { address ->
+            val device = runCatching { adapter?.getRemoteDevice(address) }.getOrNull()
+            val name = runCatching { device?.name }.getOrNull()?.takeIf { it.isNotBlank() } ?: address
+            val bonded = runCatching { device?.bondState == BluetoothDevice.BOND_BONDED }.getOrDefault(false)
+            SavedDeviceConnection(
+                address = address,
+                name = name,
+                isBonded = bonded,
+                isSystemConnected = getSystemConnectedDevice(address) != null,
+                isControlConnected = address == connectedAddress && session?.isConnected == true,
+            )
+        }
+    }
 
     private fun getSystemConnectedDevice(address: String): BluetoothDevice? {
         val adapterDevice = runCatching {
@@ -337,7 +398,12 @@ class DeviceRepository {
         val p = prefs ?: return
         val set = p.getStringSet("saved_devices", emptySet())?.toMutableSet() ?: mutableSetOf()
         set.remove(address)
-        p.edit().putStringSet("saved_devices", set).apply()
+        val ordered = getSavedAddresses().filterNot { it == address }
+        p.edit()
+            .putStringSet("saved_devices", set)
+            .putString("saved_devices_order", ordered.joinToString(","))
+            .apply()
+        refreshSavedDeviceConnections()
     }
 
     // ── 后台重试失败 Handler（核心状态优先，避免非核心项抢占 ANC）───────────
@@ -345,8 +411,8 @@ class DeviceRepository {
     private val coreRetryOrder = listOf(
         "anc_global",
         "battery",
-        "low_latency",
         "config_sound_quality",
+        "low_latency",
         "tws_in_ear",
     )
 
@@ -472,6 +538,12 @@ class DeviceRepository {
             }
             group == "sound" && prop == "quality_preference" -> {
                 _props.value = _props.value.copy(soundQuality = value)
+            }
+            group == "sound" && prop == "equalizer_preset" -> {
+                _props.value = _props.value.copy(equalizerPreset = value)
+            }
+            group == "dual_connect" && prop == "enabled" -> {
+                _props.value = _props.value.copy(dualConnectEnabled = value.toBooleanStrictOrNull())
             }
         }
 

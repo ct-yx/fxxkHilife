@@ -23,6 +23,7 @@ class DeviceViewModel : ViewModel() {
     val connectionState: StateFlow<ConnectionState> = repo.connectionState
     val props: StateFlow<DeviceProps> = repo.props
     val listeningStats: StateFlow<ListeningStats> = repo.listeningStats
+    val savedDeviceConnections: StateFlow<List<SavedDeviceConnection>> = repo.savedDeviceConnections
 
     fun isCoreStateReady(): Boolean = repo.isCoreStateReady()
 
@@ -48,6 +49,7 @@ class DeviceViewModel : ViewModel() {
     fun getSavedAddresses(): List<String> = repo.getSavedAddresses()
     fun getSavedAddress(): String? = repo.getSavedAddress()
     fun removeSavedDevice(address: String) = repo.removeSavedDevice(address)
+    fun refreshSavedDeviceConnections() = repo.refreshSavedDeviceConnections()
 
     // ── 前后台感知 ────────────────────────────────────────────────────────────
     fun setAppInForeground(foreground: Boolean) = repo.setAppInForeground(foreground)

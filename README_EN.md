@@ -16,8 +16,8 @@
   <a href="https://github.com/ct-yx/fxxkHilife/issues">Report / Join testing</a>
 </p>
 
-> **Current version: v4.1.2**
-> Continues slimming down SppDriver by adding HuaweiPropertyStore, moving the Huawei handler property store out of the driver in preparation for generic EarbudState mapping.
+> **Current version: v4.2.0**
+> Unifies the Haze 2.0 Liquid Glass UI across Home / Scan / Device, and adds EQ preset control plus a Dual Connect MVP.
 
 ---
 
@@ -41,13 +41,14 @@ The project is still evolving quickly. Testers with more earbud models are very 
 
 ## Key features
 
-- **Dual display modes**: the stable Material3 classic mode remains available; the Haze-based Liquid Glass mode is now enabled on Home / Device with glass cards, background blur, iridescent edges, and subtle highlights.
+- **Dual display modes**: the stable Material3 classic mode remains available; the Haze 2.0 Liquid Glass mode is now unified across Home / Scan / Device with glass cards, status banners, background blur, iridescent edges, and subtle highlights.
 
 - **Connection and auto-connect**: scan HUAWEI / HONOR earbuds, save known devices, auto-connect on app launch / boot / foreground service; auto-connect is gated by system Bluetooth connection state before opening SPP.
 - **ANC / Awareness / Off**: switch ANC modes from the in-app pill slider, Quick Settings Tile, or persistent notification actions; on third-party Android phones, you can cycle ANC directly from the system quick settings panel without opening the app.
 - **Low-latency / game mode**: manual switch plus optional auto low-latency; after the earbuds reconnect to the phone and SPP initialization finishes, the app starts immediately and retries every 500ms for up to 30s until confirmed.
 - **Battery and wearing state**: left/right/case battery levels, charging state, wearing detection, auto-pause.
-- **Gestures and audio preferences**: double tap, triple tap, long press, swipe gestures, sound quality vs connectivity preference, voice prompt language read/write.
+- **Gestures and audio preferences**: double tap, triple tap, long press, swipe gestures, sound quality vs connectivity preference, EQ preset read/display/write/read-back sync, and voice prompt language read/write.
+- **Dual Connect MVP**: reads the earbud-side dual-connect toggle and paired-device list, displays preferred/playing/connected/auto-connect states, and supports toggling the dual-connect switch, preferred device, connect/disconnect, and auto-connect flags. Android-side control remains a single active SPP session, with UI showing both system Bluetooth state and control-channel state.
 - **Persistent notification and logs**: notification shows ANC, low-latency, sound quality, battery, and listening duration; debug terminal can inspect raw SPP logs, export logs, and write properties.
 - **UI experience**: Material3 + Jetpack Compose, dark/light/system themes, wallpaper scope, unified i18n text entry points, Chinese option mapping, and multi-screen navigation.
 
@@ -74,7 +75,7 @@ The project is still evolving quickly. Testers with more earbud models are very 
 | Device | Status | Notes |
 |--------|--------|-------|
 | HUAWEI FreeBuds 6i | Tested | Main development device; ANC, gestures, battery, low-latency, and sound preference are being continuously tuned |
-| HUAWEI FreeBuds 7i | Temporary conservative profile, full adaptation pending | v4.1.2 keeps a reduced capability table to lower initialization pressure and temporarily hides the unverified auto-pause option; full 7i support will continue with testers in the next major compatibility round for more models and vendors |
+| HUAWEI FreeBuds 7i | Temporary conservative profile, full adaptation pending | v4.2.0 keeps a reduced capability table to lower initialization pressure and temporarily hides the unverified auto-pause option; full 7i support will continue with testers in the next major compatibility round for more models and vendors |
 | HUAWEI FreeBuds 5i | Capability table ready, needs testing | ANC, ANC level, gestures, sound preference, low-latency |
 | HUAWEI FreeBuds 4i / HONOR Earbuds 2 / 2 Lite / SE | Capability table ready, needs testing | Basic ANC, battery, wear detection, double/long tap, auto-pause |
 | HUAWEI FreeBuds Pro | Capability table ready, needs testing | ANC, voice boost, swipe/long press, dual-connect capabilities may vary |
@@ -95,7 +96,7 @@ Please include:
 
 1. Earbud model and firmware version
 2. Phone model, Android version / ROM
-3. App version (v4.1.2+ logs include it automatically)
+3. App version (v4.2.0+ logs include it automatically)
 4. Which features work and which do not
 5. Exported log from the in-app “Share log” action
 6. For connection issues, whether Android system Bluetooth already shows the earbuds as connected
@@ -112,7 +113,8 @@ Feedback:
 - The control channel currently depends on classic Bluetooth SPP; some Android ROMs may restrict background Bluetooth behavior.
 - Different firmware versions may respond differently to the same commands; untested models may have partial handler initialization failures.
 - Battery, ANC, and gesture capabilities are filtered by model, but the capability table still needs calibration from real devices.
-- EQ Preset / Custom EQ and Dual Connect are known protocol/capability targets, but UI and stable write flows are not complete yet.
+- EQ Preset now supports state reads, option display, built-in and verified compatibility preset writes, and read-back sync. Custom EQ currently only displays the custom rows and saved state reported by the earbuds; unknown custom payload writes are intentionally not sent.
+- Dual Connect is an MVP: earbud-side dual-connect state is readable/writable, but Android control remains on one stable active SPP session. If a phone Bluetooth stack cannot maintain multiple SPP links reliably, the app degrades to system connection display plus current-device control.
 - This is not an official app and does not guarantee feature parity with the official HiLife / AI Life app.
 
 ---

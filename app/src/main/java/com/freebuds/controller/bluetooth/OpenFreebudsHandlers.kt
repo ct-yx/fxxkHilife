@@ -4,6 +4,7 @@ import com.freebuds.controller.protocol.HuaweiCapability
 import com.freebuds.controller.protocol.HuaweiSppCommand
 import com.freebuds.controller.protocol.HuaweiSppPackage
 import kotlinx.coroutines.delay
+import kotlinx.coroutines.withTimeoutOrNull
 import java.nio.charset.Charset
 
 private fun b(vararg values: Int): ByteArray = values.map { it.toByte() }.toByteArray()
@@ -191,6 +192,308 @@ class SoundQualityHandler : HuaweiDeviceHandler {
             }
         }
     }
+}
+
+class EqualizerPresetHandler(
+    private val wCustom: Boolean = false,
+    private val wFakeBuiltIn: Boolean = false,
+    private val wCustomRows: Int = 10,
+    private val wCustomMaxCount: Int = 3,
+) : HuaweiDeviceHandler {
+    override val id = "config_eq"
+    override val commandIds = listOf(HuaweiSppCommand.EQ_PRESET_READ)
+    override val ignoreCommandIds = listOf(HuaweiSppCommand.EQ_PRESET_WRITE)
+    override val properties = listOf(
+        "sound" to "equalizer_preset",
+        "sound" to "equalizer_saved",
+    )
+    override val capabilities =
+        listOf(HuaweiCapability.EQ_PRESET) + if (wCustom) listOf(HuaweiCapability.EQ_CUSTOM) else emptyList()
+
+    private val knownBuiltInPresets = mapOf(
+        1 to "equalizer_preset_default",
+        2 to "equalizer_preset_hardbass",
+        3 to "equalizer_preset_treble",
+        9 to "equalizer_preset_voices",
+    )
+    private val fakeBuiltInPresets = listOf(
+        -56 to "equalizer_preset_symphony",
+        -55 to "equalizer_preset_hi_fi_live",
+    )
+    private val fakeBuiltInPresetData = mapOf(
+        -56 to "0f0f0afb0f190ffb322d",
+        -55 to "fb141e0a0000e7f60a00",
+    )
+    private var presetIdsByLabel: Map<String, Int> = emptyMap()
+    private var changesSaved = true
+
+    override suspend fun onInit(driver: SppDriver) {
+        driver.sendPackage(
+            HuaweiSppPackage.readRequest(HuaweiSppCommand.EQ_PRESET_READ, 1, 2, 3, 4, 5, 6, 7, 8)
+        )?.let { onPackage(it, driver) }
+    }
+
+    override suspend fun onDriverPackage(driver: SppDriver, pkg: HuaweiSppPackage) {
+        onPackage(pkg, driver)
+    }
+
+    private suspend fun onPackage(pkg: HuaweiSppPackage, driver: SppDriver) {
+        if (!pkg.commandId.contentEquals(HuaweiSppCommand.EQ_PRESET_READ)) return
+
+        val presets = linkedMapOf<Int, String>()
+        val availableModes = pkg.findParam(3)
+        if (availableModes.isNotEmpty()) {
+            availableModes.forEach { raw ->
+                val id = raw.toInt() and 0xFF
+                presets[id] = knownBuiltInPresets[id] ?: "equalizer_preset_$id"
+            }
+        } else {
+            presets.putAll(knownBuiltInPresets)
+        }
+        if (wFakeBuiltIn) {
+            fakeBuiltInPresets.forEach { (id, label) -> presets[id] = label }
+        }
+
+        val customRows = mutableListOf<Int>()
+        val customLabels = mutableListOf<String>()
+        if (wCustom) {
+            val customModes = pkg.findParam(8)
+            var offset = 0
+            while (offset + 36 <= customModes.size) {
+                val row = customModes.copyOfRange(offset, offset + 36)
+                val modeId = row[0].toInt()
+                val count = row[1].toInt().coerceIn(0, wCustomRows)
+                val labelBytes = row.copyOfRange(2 + count, row.size)
+                    .takeWhile { it != 0.toByte() }
+                    .toByteArray()
+                val label = String(labelBytes, Charsets.UTF_8)
+                    .ifBlank { "equalizer_preset_custom_$modeId" }
+                presets[modeId] = label
+                customLabels.add(label)
+                if (customRows.isEmpty()) {
+                    row.copyOfRange(2, 2 + count).forEach { customRows.add(it.toInt()) }
+                }
+                offset += 36
+            }
+        }
+
+        presetIdsByLabel = presets.entries.associate { it.value to it.key }
+        val currentId = pkg.findParam(2).firstOrNull()?.toInt()
+        val currentLabel = currentId?.let { presets[it] ?: "unknown_$it" }
+
+        val out = linkedMapOf(
+            "equalizer_preset_options" to presets.values.joinToString(","),
+            "equalizer_preset_create_options" to if (wCustom && !wFakeBuiltIn) fakeBuiltInPresets.joinToString(",") { it.second } else "",
+            "equalizer_rows" to customRows.joinToString(","),
+            "equalizer_saved" to changesSaved.asString(),
+            "equalizer_rows_count" to wCustomRows.toString(),
+            "equalizer_max_custom_modes" to if (wCustom) wCustomMaxCount.toString() else "0",
+        )
+        if (currentLabel != null) out["equalizer_preset"] = currentLabel
+        if (customLabels.isNotEmpty()) out["equalizer_custom_options"] = customLabels.joinToString(",")
+        driver.putProperty("sound", null, out.entries.joinToString("\n") { "${it.key}=${it.value}" }, extendGroup = true)
+    }
+
+    override suspend fun setProperty(driver: SppDriver, group: String, prop: String, value: String) {
+        if (prop != "equalizer_preset") {
+            com.freebuds.controller.util.LogBuffer.w("SPP", "EQ $prop write is not enabled without verified custom payload")
+            return
+        }
+        val modeId = presetIdsByLabel[value] ?: value.removePrefix("equalizer_preset_").toIntOrNull()
+        if (modeId == null) {
+            com.freebuds.controller.util.LogBuffer.w("SPP", "Skip EQ preset write for unsupported/custom value=$value")
+            return
+        }
+        driver.putProperty(group, prop, value)
+        val overrideData = fakeBuiltInPresetData[modeId]
+        val request = if (overrideData != null) {
+            HuaweiSppPackage.changeRequest(
+                HuaweiSppCommand.EQ_PRESET_WRITE,
+                1 to b(modeId),
+                2 to b(overrideData.length / 2),
+                3 to overrideData.hexToBytes(),
+                4 to value.toByteArray(Charsets.UTF_8),
+                5 to b(1),
+            )
+        } else {
+            HuaweiSppPackage.changeRequest(HuaweiSppCommand.EQ_PRESET_WRITE, 1 to b(modeId))
+        }
+        driver.sendPackage(request)
+        delay(150)
+        onInit(driver)
+    }
+
+    private fun String.hexToBytes(): ByteArray =
+        chunked(2).map { it.toInt(16).toByte() }.toByteArray()
+}
+
+class DualConnectHandler(
+    private val wAutoConnect: Boolean = true,
+) : HuaweiDeviceHandler {
+    override val id = "dual_connect"
+    override val commandIds = listOf(
+        HuaweiSppCommand.DUAL_CONNECT_ENUMERATE,
+        HuaweiSppCommand.DUAL_CONNECT_CHANGE_EVENT,
+        HuaweiSppCommand.DUAL_CONNECT_ENABLED_READ,
+    )
+    override val ignoreCommandIds = listOf(
+        HuaweiSppCommand.DUAL_CONNECT_ENABLED_WRITE,
+        HuaweiSppCommand.DUAL_CONNECT_PREFERRED_WRITE,
+        HuaweiSppCommand.DUAL_CONNECT_EXECUTE,
+    )
+    override val properties = listOf("dual_connect" to "")
+    override val capabilities = listOf(HuaweiCapability.DUAL_CONNECT, HuaweiCapability.DUAL_CONNECT_AUTO)
+
+    private val pendingDevices = mutableMapOf<Int, DualConnectRow>()
+    private var expectedCount = 0
+
+    override suspend fun onInit(driver: SppDriver) {
+        readEnabled(driver)
+        pendingDevices.clear()
+        expectedCount = 0
+        driver.sendPackage(
+            HuaweiSppPackage.changeRequest(HuaweiSppCommand.DUAL_CONNECT_ENUMERATE, 1 to byteArrayOf()),
+            timeout = 1000,
+        )?.let { onPackage(it, driver) }
+        waitForEnumeration(driver)
+    }
+
+    override suspend fun onDriverPackage(driver: SppDriver, pkg: HuaweiSppPackage) {
+        if (pkg.commandId.contentEquals(HuaweiSppCommand.DUAL_CONNECT_CHANGE_EVENT)) {
+            onInit(driver)
+            return
+        }
+        onPackage(pkg, driver)
+    }
+
+    private suspend fun readEnabled(driver: SppDriver) {
+        driver.sendPackage(HuaweiSppPackage.readRequest(HuaweiSppCommand.DUAL_CONNECT_ENABLED_READ, 1), timeout = 1000)
+            ?.let { pkg ->
+                val enabled = pkg.findParam(1).firstOrNull()?.toInt() == 1
+                driver.putProperty("dual_connect", "enabled", enabled.asString())
+            }
+    }
+
+    private suspend fun onPackage(pkg: HuaweiSppPackage, driver: SppDriver) {
+        when {
+            pkg.commandId.contentEquals(HuaweiSppCommand.DUAL_CONNECT_ENABLED_READ) -> {
+                val enabled = pkg.findParam(1).firstOrNull()?.toInt() == 1
+                driver.putProperty("dual_connect", "enabled", enabled.asString())
+            }
+            pkg.commandId.contentEquals(HuaweiSppCommand.DUAL_CONNECT_ENUMERATE) -> {
+                val row = parseRow(pkg) ?: return
+                expectedCount = pkg.findParam(2).toPositiveIntOrNull() ?: expectedCount
+                val index = pkg.findParam(3).toPositiveIntOrNull() ?: pendingDevices.size
+                pendingDevices[index] = row
+                publishRows(driver)
+            }
+        }
+    }
+
+    private suspend fun waitForEnumeration(driver: SppDriver) {
+        withTimeoutOrNull(900) {
+            while (expectedCount == 0 || pendingDevices.size < expectedCount) {
+                delay(80)
+            }
+        }
+        publishRows(driver)
+    }
+
+    private suspend fun publishRows(driver: SppDriver) {
+        val ordered = pendingDevices.toSortedMap().values.toList()
+        val rows = ordered.joinToString("|") { row ->
+            listOf(
+                row.address,
+                row.name.encodeForList(),
+                row.autoConnect?.asString() ?: "",
+                row.preferred.asString(),
+                row.connected.asString(),
+                row.playing.asString(),
+            ).joinToString(";")
+        }
+        val preferred = ordered.firstOrNull { it.preferred }?.address.orEmpty()
+        driver.putProperty("dual_connect", "devices", rows)
+        driver.putProperty("dual_connect", "preferred_device", preferred)
+    }
+
+    private fun parseRow(pkg: HuaweiSppPackage): DualConnectRow? {
+        val address = pkg.findParam(4).joinToString("") { "%02x".format(it.toInt() and 0xFF) }
+        if (address.length < 12) return null
+        val connState = pkg.findParam(5).firstOrNull()?.toInt() ?: 0
+        val preferred = pkg.findParam(7).firstOrNull()?.toInt() == 1
+        val autoConnect = if (wAutoConnect) pkg.findParam(8).firstOrNull()?.let { it.toInt() == 1 } else null
+        val name = String(pkg.findParam(9), Charsets.UTF_8).ifBlank { address }
+        return DualConnectRow(
+            address = address,
+            name = name,
+            autoConnect = autoConnect,
+            preferred = preferred,
+            connected = connState > 0,
+            playing = connState == 9,
+        )
+    }
+
+    override suspend fun setProperty(driver: SppDriver, group: String, prop: String, value: String) {
+        when {
+            prop == "enabled" -> {
+                driver.putProperty(group, prop, value)
+                driver.sendPackage(
+                    HuaweiSppPackage.changeRequest(HuaweiSppCommand.DUAL_CONNECT_ENABLED_WRITE, 1 to b(if (value == "true") 1 else 0)),
+                    timeout = 1000,
+                )
+                readEnabled(driver)
+            }
+            prop == "preferred_device" -> {
+                val address = value.normalizeMacHex() ?: return
+                driver.putProperty(group, prop, address)
+                driver.sendNowait(HuaweiSppPackage.changeRequestNoWait(HuaweiSppCommand.DUAL_CONNECT_PREFERRED_WRITE, 1 to address.hexToBytes()))
+                onInit(driver)
+            }
+            prop.endsWith(":auto_connect") -> {
+                val address = prop.substringBefore(":").normalizeMacHex() ?: return
+                val cmd = if (value == "true") 4 else 5
+                driver.sendNowait(HuaweiSppPackage.changeRequestNoWait(HuaweiSppCommand.DUAL_CONNECT_EXECUTE, cmd to address.hexToBytes()))
+                onInit(driver)
+            }
+            prop.endsWith(":connected") -> {
+                val address = prop.substringBefore(":").normalizeMacHex() ?: return
+                val cmd = if (value == "true") 1 else 2
+                driver.sendNowait(HuaweiSppPackage.changeRequestNoWait(HuaweiSppCommand.DUAL_CONNECT_EXECUTE, cmd to address.hexToBytes()))
+                onInit(driver)
+            }
+            prop.endsWith(":name") && value.isBlank() -> {
+                val address = prop.substringBefore(":").normalizeMacHex() ?: return
+                driver.sendNowait(HuaweiSppPackage.changeRequestNoWait(HuaweiSppCommand.DUAL_CONNECT_EXECUTE, 3 to address.hexToBytes()))
+                onInit(driver)
+            }
+            prop == "refresh" -> onInit(driver)
+            else -> com.freebuds.controller.util.LogBuffer.w("SPP", "Unknown dual_connect.$prop=$value")
+        }
+    }
+
+    private data class DualConnectRow(
+        val address: String,
+        val name: String,
+        val autoConnect: Boolean?,
+        val preferred: Boolean,
+        val connected: Boolean,
+        val playing: Boolean,
+    )
+
+    private fun ByteArray.toPositiveIntOrNull(): Int? {
+        if (isEmpty()) return null
+        return fold(0) { acc, byte -> (acc shl 8) or (byte.toInt() and 0xFF) }
+    }
+
+    private fun String.encodeForList(): String = replace("%", "%25").replace(";", "%3B").replace("|", "%7C")
+
+    private fun String.normalizeMacHex(): String? {
+        val normalized = filter { it.isDigit() || it.lowercaseChar() in 'a'..'f' }.lowercase()
+        return normalized.takeIf { it.length == 12 }
+    }
+
+    private fun String.hexToBytes(): ByteArray =
+        chunked(2).map { it.toInt(16).toByte() }.toByteArray()
 }
 
 class VoiceLanguageHandler : HuaweiDeviceHandler {

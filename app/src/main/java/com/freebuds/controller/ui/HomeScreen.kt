@@ -1,6 +1,5 @@
 package com.freebuds.controller.ui
 
-import android.bluetooth.BluetoothAdapter
 import android.content.Context
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.foundation.Canvas
@@ -22,8 +21,11 @@ import androidx.compose.ui.unit.dp
 import com.freebuds.controller.bluetooth.ScannedDevice
 import com.freebuds.controller.data.ConnectionState
 import com.freebuds.controller.data.DeviceViewModel
+import com.freebuds.controller.data.SavedDeviceConnection
 import com.freebuds.controller.i18n.i18n
 import com.freebuds.controller.ui.glass.AdaptiveCard
+import com.freebuds.controller.ui.glass.AdaptiveGlassBanner
+import com.freebuds.controller.ui.glass.GlassBannerTone
 import dev.chrisbanes.haze.HazeState
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -40,15 +42,13 @@ fun HomeScreen(
     val context = LocalContext.current
     val connState by viewModel.connectionState.collectAsState()
     val props by viewModel.props.collectAsState()
+    val savedConnections by viewModel.savedDeviceConnections.collectAsState()
     val coreStateReady = remember(props) {
         val hasBattery = props.batteryGlobal != null || props.batteryLeft != null || props.batteryRight != null || props.batteryCase != null
         props.ancMode != null && props.lowLatency != null && hasBattery
     }
-    // 使用 key 强制重组：每次连接状态变化都刷新已保存设备列表
-    var savedAddresses by remember { mutableStateOf(viewModel.getSavedAddresses()) }
-    // 订阅连接状态变化来刷新列表
     LaunchedEffect(connState) {
-        savedAddresses = viewModel.getSavedAddresses()
+        viewModel.refreshSavedDeviceConnections()
     }
 
     Scaffold(
@@ -77,16 +77,16 @@ fun HomeScreen(
                 when (val s = connState) {
                     is ConnectionState.Connected -> {
                         if (coreStateReady) {
-                            StatusBanner(i18n("scan.connected_to", s.deviceName), isConnected = true)
+                            StatusBanner(i18n("scan.connected_to", s.deviceName), displayMode, hazeState, isConnected = true)
                         } else {
-                            StatusBanner(i18n("device.core_syncing", s.deviceName))
+                            StatusBanner(i18n("device.core_syncing", s.deviceName), displayMode, hazeState)
                         }
                     }
                     is ConnectionState.Connecting -> {
-                        StatusBanner(i18n("scan.connecting_to", s.deviceName))
+                        StatusBanner(i18n("scan.connecting_to", s.deviceName), displayMode, hazeState)
                     }
                     is ConnectionState.Failed -> {
-                        StatusBanner(i18n("scan.connection_failed", s.reason), isError = true)
+                        StatusBanner(i18n("scan.connection_failed", s.reason), displayMode, hazeState, isError = true)
                     }
                     else -> {}
                 }
@@ -103,7 +103,7 @@ fun HomeScreen(
             }
             item { HorizontalDivider() }
 
-            if (savedAddresses.isEmpty()) {
+            if (savedConnections.isEmpty()) {
                 item {
                     Box(
                         Modifier
@@ -123,14 +123,13 @@ fun HomeScreen(
                     }
                 }
             } else {
-                items(savedAddresses) { addr ->
+                items(savedConnections) { connection ->
                     SavedDeviceItem(
-                        address = addr,
-                        adapter = BluetoothAdapter.getDefaultAdapter(),
+                        connection = connection,
                         displayMode = displayMode,
                         hazeState = hazeState,
-                        onClick = { onDeviceClick(addr) },
-                        onRemove = { onRemoveDevice(addr) }
+                        onClick = { onDeviceClick(connection.address) },
+                        onRemove = { onRemoveDevice(connection.address) }
                     )
                 }
             }
@@ -172,25 +171,13 @@ fun HomeScreen(
 // ============================================================
 @Composable
 private fun SavedDeviceItem(
-    address: String,
-    adapter: BluetoothAdapter?,
+    connection: SavedDeviceConnection,
     displayMode: UiDisplayMode,
     hazeState: HazeState?,
     onClick: () -> Unit,
     onRemove: () -> Unit,
 ) {
-    val device = remember(address) { adapter?.getRemoteDevice(address) }
-    val name = device?.name ?: address
     val bondedLabel = i18n("home.bonded")
-    val isBonded = remember(address) {
-        try { device?.bondState == android.bluetooth.BluetoothDevice.BOND_BONDED } catch (_: Exception) { false }
-    }
-    val isSystemConnected = remember(address) {
-        try {
-            val method = device?.javaClass?.getMethod("isConnected")
-            method?.invoke(device) as? Boolean == true
-        } catch (_: Exception) { false }
-    }
 
     AdaptiveCard(
         displayMode = displayMode,
@@ -204,13 +191,21 @@ private fun SavedDeviceItem(
             verticalAlignment = Alignment.CenterVertically,
             horizontalArrangement = Arrangement.spacedBy(14.dp),
         ) {
-            EarbudsListIcon(connected = isSystemConnected)
+            EarbudsListIcon(connected = connection.isSystemConnected || connection.isControlConnected)
             Column(Modifier.weight(1f)) {
-                Text(name, fontWeight = FontWeight.Medium)
+                Text(connection.name, fontWeight = FontWeight.Medium)
                 Text(
                     buildString {
-                        append(address)
-                        if (isBonded) append(" · ").append(bondedLabel)
+                        append(connection.address)
+                        if (connection.isBonded) append(" · ").append(bondedLabel)
+                        append(" · ")
+                        append(
+                            when {
+                                connection.isControlConnected -> i18n("home.control_connected")
+                                connection.isSystemConnected -> i18n("home.system_connected")
+                                else -> i18n("home.not_connected")
+                            }
+                        )
                     },
                     style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.62f),
@@ -359,19 +354,29 @@ private fun ScanDeviceItem(device: ScannedDevice, onClick: () -> Unit) {
 // 状态横幅（复用）
 // ============================================================
 @Composable
-private fun StatusBanner(text: String, isError: Boolean = false, isConnected: Boolean = false) {
-    Surface(
-        color = when {
-            isError -> MaterialTheme.colorScheme.errorContainer
-            isConnected -> MaterialTheme.colorScheme.tertiaryContainer
-            else -> MaterialTheme.colorScheme.primaryContainer
+private fun StatusBanner(
+    text: String,
+    displayMode: UiDisplayMode,
+    hazeState: HazeState?,
+    isError: Boolean = false,
+    isConnected: Boolean = false,
+) {
+    AdaptiveGlassBanner(
+        displayMode = displayMode,
+        hazeState = hazeState,
+        tone = when {
+            isError -> GlassBannerTone.Error
+            isConnected -> GlassBannerTone.Success
+            else -> GlassBannerTone.Info
         },
-        modifier = Modifier.fillMaxWidth()
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(horizontal = 16.dp, vertical = 8.dp),
     ) {
         Text(
             text,
-            modifier = Modifier.padding(horizontal = 16.dp, vertical = 10.dp),
-            style = MaterialTheme.typography.bodyMedium
+            modifier = Modifier.weight(1f),
+            style = MaterialTheme.typography.bodyMedium,
         )
     }
 }
