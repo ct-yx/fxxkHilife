@@ -14,7 +14,6 @@ import kotlinx.coroutines.sync.withLock
 import java.io.InputStream
 import java.io.OutputStream
 import java.lang.reflect.Method
-import kotlin.coroutines.resume
 
 /**
  * RFCOMM SPP 蓝牙驱动
@@ -102,9 +101,6 @@ class SppDriver(private val device: BluetoothDevice) {
             // 启动接收循环（对照 _loop_recv）
             job = scope.launch { recvLoop() }
 
-            // 初始化 Handler（对照 _start_all_handlers）
-            handlerInitializer.initialize(this@SppDriver, device.name)
-
             true
         } catch (e: Exception) {
             LogBuffer.e("SPP", "Connection failed: ${e.message}")
@@ -114,7 +110,15 @@ class SppDriver(private val device: BluetoothDevice) {
         }
     }
 
-    // Handler initialization is delegated to HuaweiHandlerInitializer.
+    // Handler initialization is delegated to HuaweiHandlerInitializer and is intentionally
+    // kept outside connect(), so UI/control state can become connected as soon as RFCOMM is ready.
+    suspend fun initializeCoreHandlers() {
+        handlerInitializer.initializeCore(this, device.name)
+    }
+
+    suspend fun initializeDeferredHandlers() {
+        handlerInitializer.initializeDeferred(this, device.name)
+    }
 
     /** 发送包并等响应（对照 send_package） */
     suspend fun sendPackage(pkg: HuaweiSppPackage, timeout: Long = 5_000): HuaweiSppPackage? {

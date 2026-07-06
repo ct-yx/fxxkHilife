@@ -3,17 +3,17 @@
 > 版本号统一修改入口，按清单逐一更新。
 
 ## 当前版本
-- **v4.2.1** (versionCode=82, 2026-07-04)
+- **v4.2.2** (versionCode=83, 2026-07-07)
 
 ## 版本号位置
 
 | 位置 | 当前值 |
 |------|--------|
-| `app/build.gradle.kts` | versionCode=82, versionName="4.2.1" |
-| `app/src/main/res/values/strings.xml` | version_name=4.2.1 |
-| `README.md` | v4.2.1 |
-| `README_EN.md` | v4.2.1 |
-| `DEVELOPMENT_LOG.md` | v4.2.1 (末尾) |
+| `app/build.gradle.kts` | versionCode=83, versionName="4.2.2" |
+| `app/src/main/res/values/strings.xml` | version_name=4.2.2 |
+| `README.md` | v4.2.2 |
+| `README_EN.md` | v4.2.2 |
+| `DEVELOPMENT_LOG.md` | v4.2.2 (末尾) |
 
 ## 一键版本更新脚本
 
@@ -37,6 +37,7 @@ python3 scripts/bump_version.py <versionName> <versionCode> "修复说明"
 
 | 版本 | Code | 日期 | 主要变更 |
 |------|------|------|---------|
+| v4.2.2 | 83 | 2026-07-07 | 保留后台自动控制连接，并恢复核心优先初始化，避免 EQ/双设备等慢项阻塞 FreeBuds 6i 连接 |
 | v4.2.1 | 82 | 2026-07-04 | 对照 OpenFreebuds 修正初始化/dual-connect 判定，并新增系统蓝牙已连接时后台自动建立 App 控制连接 |
 | v4.2.0 | 81 | 2026-07-03 | 液态玻璃 UI 重构、EQ 调音模式与双设备连接 MVP |
 | v4.1.2 | 80 | 2026-07-03 | 全面代码审计修复：加固 RFCOMM discovery 权限处理与半开 socket 清理，修正扫描页已配对设备连接状态误标，移除设备信息 UI 强制解包 |

@@ -1209,3 +1209,11 @@
 - versionCode: 82
 - versionName: 4.2.1
 - tag: v4.2.1
+
+## v4.2.2 (2026-07-07)
+
+### 发布
+- 保留后台自动控制连接，并恢复核心优先初始化，避免 EQ/双设备等慢项阻塞 FreeBuds 6i 连接
+- versionCode: 83
+- versionName: 4.2.2
+- tag: v4.2.2

@@ -20,6 +20,32 @@ class HuaweiHandlerInitializer(private val registry: HuaweiHandlerRegistry) {
         initializeOpenFreebudsStyle(driver, label)
     }
 
+    suspend fun initializeCore(driver: SppDriver, deviceLabel: String?) {
+        val label = deviceLabel ?: "FreeBuds"
+        val handlers = coreHandlers()
+        LogBuffer.i("SPP", "Fast core init for $label: handlers=${handlers.map { it.id }}")
+        for (handler in handlers) {
+            initializeAndRecord(driver, handler, maxAttempts = 2, timeoutMs = handler.initTimeoutMs.coerceAtMost(1_800L))
+            delay(50)
+        }
+    }
+
+    suspend fun initializeDeferred(driver: SppDriver, deviceLabel: String?) {
+        val label = deviceLabel ?: "FreeBuds"
+        val handlers = deferredHandlers()
+        if (handlers.isEmpty()) return
+        LogBuffer.i("SPP", "Deferred init for $label: handlers=${handlers.map { it.id }}")
+        for (handler in handlers) {
+            initializeAndRecord(driver, handler, maxAttempts = 1, timeoutMs = handler.initTimeoutMs.coerceAtMost(1_500L))
+            delay(120)
+        }
+        LogBuffer.i(
+            "SPP",
+            if (registry.failedHandlerIds.isEmpty()) "Deferred init completed: all handlers ready"
+            else "Deferred init completed with degraded handlers=${registry.failedHandlerIds}"
+        )
+    }
+
     private suspend fun initializeOpenFreebudsStyle(driver: SppDriver, deviceLabel: String) {
         val orderedHandlers = coreFirstHandlers()
         LogBuffer.i(
@@ -28,11 +54,7 @@ class HuaweiHandlerInitializer(private val registry: HuaweiHandlerRegistry) {
         )
 
         for (handler in orderedHandlers) {
-            val success = initializeHandler(driver, handler)
-            if (!success) {
-                LogBuffer.w("SPP", "Can't initialize ${handler.id}. Skipping after ${handler.initAttemptMax} attempts.")
-                registry.failedHandlerIds.add(handler.id)
-            }
+            initializeAndRecord(driver, handler, maxAttempts = handler.initAttemptMax, timeoutMs = handler.initTimeoutMs)
             delay(80)
         }
 
@@ -43,25 +65,57 @@ class HuaweiHandlerInitializer(private val registry: HuaweiHandlerRegistry) {
         )
     }
 
-    private fun coreFirstHandlers(): List<HuaweiDeviceHandler> {
-        val coreIdsInOrder = listOf(
+    private val coreIdsInOrder = listOf(
             "drop_logs",
             "battery",
             "anc_global",
             "low_latency",
             "config_sound_quality",
             "tws_in_ear",
-        )
+    )
+
+    private fun coreHandlers(): List<HuaweiDeviceHandler> {
         val all = registry.allHandlers()
-        val core = coreIdsInOrder.mapNotNull { id -> all.find { it.id == id } }
-        return core + all.filter { handler -> handler.id !in coreIdsInOrder }
+        return coreIdsInOrder.mapNotNull { id -> all.find { it.id == id } }
     }
 
-    private suspend fun initializeHandler(driver: SppDriver, handler: HuaweiDeviceHandler): Boolean {
-        for (attempt in 0 until handler.initAttemptMax) {
+    private fun deferredHandlers(): List<HuaweiDeviceHandler> {
+        return registry.allHandlers().filter { handler -> handler.id !in coreIdsInOrder }
+    }
+
+    private fun coreFirstHandlers(): List<HuaweiDeviceHandler> {
+        return coreHandlers() + deferredHandlers()
+    }
+
+    private suspend fun initializeAndRecord(
+        driver: SppDriver,
+        handler: HuaweiDeviceHandler,
+        maxAttempts: Int,
+        timeoutMs: Long,
+    ) {
+        if (hasExpectedInitState(driver, handler.id)) {
+            registry.failedHandlerIds.remove(handler.id)
+            return
+        }
+        val success = initializeHandler(driver, handler, maxAttempts, timeoutMs)
+        if (success) {
+            registry.failedHandlerIds.remove(handler.id)
+        } else {
+            LogBuffer.w("SPP", "Can't initialize ${handler.id}. Skipping after $maxAttempts attempts.")
+            registry.failedHandlerIds.add(handler.id)
+        }
+    }
+
+    private suspend fun initializeHandler(
+        driver: SppDriver,
+        handler: HuaweiDeviceHandler,
+        maxAttempts: Int,
+        timeoutMs: Long,
+    ): Boolean {
+        for (attempt in 0 until maxAttempts) {
             try {
                 LogBuffer.d("SPP", "Init ${handler.id}, attempt=$attempt")
-                withTimeout(handler.initTimeoutMs) {
+                withTimeout(timeoutMs) {
                     handler.onInit(driver)
                 }
                 if (hasExpectedInitState(driver, handler.id)) {
@@ -74,7 +128,7 @@ class HuaweiHandlerInitializer(private val registry: HuaweiHandlerRegistry) {
                     LogBuffer.i("SPP", "Init ${handler.id} accepted after timeout because expected state is present (attempt=${attempt + 1})")
                     return true
                 }
-                LogBuffer.w("SPP", "Init ${handler.id} timeout (attempt=${attempt + 1}, timeout=${handler.initTimeoutMs}ms)")
+                LogBuffer.w("SPP", "Init ${handler.id} timeout (attempt=${attempt + 1}, timeout=${timeoutMs}ms)")
             } catch (e: Exception) {
                 if (hasExpectedInitState(driver, handler.id)) {
                     LogBuffer.i("SPP", "Init ${handler.id} accepted after error because expected state is present (attempt=${attempt + 1})")

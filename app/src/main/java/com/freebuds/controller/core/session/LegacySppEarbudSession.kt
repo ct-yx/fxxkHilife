@@ -40,6 +40,10 @@ class LegacySppEarbudSession(
 
     override suspend fun connect(): Boolean = driver.connect()
 
+    override suspend fun initializeCoreHandlers() = driver.initializeCoreHandlers()
+
+    override suspend fun initializeDeferredHandlers() = driver.initializeDeferredHandlers()
+
     override fun disconnect() = driver.disconnect()
 
     override suspend fun setProperty(group: String, prop: String, value: String) {

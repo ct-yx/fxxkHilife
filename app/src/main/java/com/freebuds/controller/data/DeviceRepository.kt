@@ -134,6 +134,7 @@ class DeviceRepository {
     private val failedHandlers = mutableSetOf<String>()
     private var pollJob: Job? = null
     private var fastPollJob: Job? = null
+    private var initJob: Job? = null
     private var autoLowLatencyJob: Job? = null
     private var listeningStatsJob: Job? = null
     private var lastListeningTick: Long = 0L
@@ -199,17 +200,15 @@ class DeviceRepository {
                 connectedAt = System.currentTimeMillis()
                 connectedAddress = device.address
                 manualDisconnectSuppressUntil = 0L
+                failedHandlers.clear()
                 saveDeviceAddress(device.address)
                 refreshSavedDeviceConnections()
-                syncProps()
                 deviceInfoFetched = false // 新连接：允许重新获取设备信息
-                failedHandlers.addAll(d.failedHandlerIds)
                 syncProps()
                 startPolling()
                 startListeningStatsTicker()
                 if (foregroundMode) startFastPolling()
-                logDegradedHandlersOnce()
-                applyAutoLowLatencyIfEnabled()
+                startHandlerInitialization(d)
             } else {
                 session = null
                 connectedAddress = null
@@ -220,6 +219,7 @@ class DeviceRepository {
 
     fun disconnect() {
         manualDisconnectSuppressUntil = System.currentTimeMillis() + 10 * 60_000L
+        initJob?.cancel()
         pollJob?.cancel()
         fastPollJob?.cancel()
         autoLowLatencyJob?.cancel()
@@ -229,6 +229,7 @@ class DeviceRepository {
         session = null
         connectedAddress = null
         deviceInfoFetched = false
+        failedHandlers.clear()
         _connectionState.value = ConnectionState.Disconnected
         _props.value = DeviceProps()
         connectedAt = 0
@@ -243,6 +244,7 @@ class DeviceRepository {
         if (sourceSession != null && session !== sourceSession) return
         if (_connectionState.value !is ConnectionState.Connected && session == null) return
         LogBuffer.w("SPP", "Remote disconnected: $reason")
+        initJob?.cancel()
         pollJob?.cancel()
         fastPollJob?.cancel()
         autoLowLatencyJob?.cancel()
@@ -251,6 +253,7 @@ class DeviceRepository {
         session = null
         connectedAddress = null
         deviceInfoFetched = false
+        failedHandlers.clear()
         _connectionState.value = ConnectionState.Disconnected
         _props.value = DeviceProps()
         connectedAt = 0
@@ -448,8 +451,40 @@ class DeviceRepository {
         LogBuffer.w(
             "SPP",
             "OpenFreebuds-style init degraded; skipped core=$core optional=$optional. " +
-                "Handlers are not retried in background to avoid repeated SPP enumeration/write pressure."
+                "Optional handlers are initialized after the control channel is usable to avoid blocking connect."
         )
+    }
+
+    private fun startHandlerInitialization(targetSession: EarbudSession) {
+        initJob?.cancel()
+        initJob = scope.launch {
+            try {
+                targetSession.initializeCoreHandlers()
+                if (session !== targetSession || targetSession.isConnected != true) return@launch
+                failedHandlers.clear()
+                failedHandlers.addAll(targetSession.failedHandlerIds)
+                syncProps()
+                logDegradedHandlersOnce()
+                applyAutoLowLatencyIfEnabled()
+                delay(1_000)
+
+                targetSession.initializeDeferredHandlers()
+                if (session !== targetSession || targetSession.isConnected != true) return@launch
+                failedHandlers.clear()
+                failedHandlers.addAll(targetSession.failedHandlerIds)
+                syncProps()
+                logDegradedHandlersOnce()
+            } catch (e: CancellationException) {
+                throw e
+            } catch (e: Exception) {
+                if (session === targetSession) {
+                    LogBuffer.w("SPP", "Handler initialization stopped: ${e.message}")
+                    failedHandlers.clear()
+                    failedHandlers.addAll(targetSession.failedHandlerIds)
+                    syncProps()
+                }
+            }
+        }
     }
 
     // ── 定时轮询（后台 5s 基础属性，前台 fastPoll 800ms）─────────────────
@@ -475,7 +510,11 @@ class DeviceRepository {
                 delay(800) // 前台 800ms 高频刷新
                 if (!isActive || session?.isConnected != true || !foregroundMode) break
                 // 设备信息仅在首次连接时获取一次；核心状态/自动低延迟稳定前不抢 SPP 通道
-                if (!deviceInfoFetched && System.currentTimeMillis() >= sppQuietUntil && failedHandlers.none { it in coreRetryOrder }) {
+                if (!deviceInfoFetched &&
+                    initJob?.isActive != true &&
+                    System.currentTimeMillis() >= sppQuietUntil &&
+                    failedHandlers.none { it in coreRetryOrder }
+                ) {
                     val d = session ?: return@launch
                     val legacyDriver = d.legacyDriverOrNull() ?: return@launch
                     val infoHandler = d.getHandlerById("device_info")
