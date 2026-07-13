@@ -128,11 +128,21 @@ class SppDriver(private val device: BluetoothDevice) {
             return null
         }
 
-        val deferred = pendingResponses.register(respId)
+        val startedAt = System.currentTimeMillis()
+        val deferred = pendingResponses.register(respId, timeout)
+        if (deferred == null) {
+            LogBuffer.w(
+                "SPP",
+                "Timeout acquiring response slot for cmd=${pkg.commandId.toHex()} (respId=$respId, timeout=${timeout}ms)"
+            )
+            return null
+        }
 
         try {
             sendNowait(pkg)
-            val response = withTimeoutOrNull(timeout) { deferred.await() }
+            val elapsed = System.currentTimeMillis() - startedAt
+            val remaining = (timeout - elapsed).coerceAtLeast(1L)
+            val response = withTimeoutOrNull(remaining) { deferred.await() }
             if (response != null) return response
             val pendingKeys = pendingResponses.keys().joinToString(",")
             LogBuffer.w("SPP", "Timeout waiting for response to cmd=${pkg.commandId.toHex()} (respId=$respId, pending=[$pendingKeys])")
@@ -143,7 +153,7 @@ class SppDriver(private val device: BluetoothDevice) {
             LogBuffer.w("SPP", "Failed waiting for response to cmd=${pkg.commandId.toHex()} (respId=$respId): ${e.message}")
             return null
         } finally {
-            pendingResponses.remove(respId)
+            pendingResponses.remove(respId, deferred)
         }
     }
 

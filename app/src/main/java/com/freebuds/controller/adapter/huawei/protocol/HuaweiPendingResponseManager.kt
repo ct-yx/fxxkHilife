@@ -2,7 +2,8 @@ package com.freebuds.controller.adapter.huawei.protocol
 
 import com.freebuds.controller.protocol.HuaweiSppPackage
 import kotlinx.coroutines.CompletableDeferred
-import kotlinx.coroutines.delay
+import kotlinx.coroutines.withTimeoutOrNull
+import kotlinx.coroutines.yield
 
 /**
  * Tracks in-flight Huawei SPP request/response waiters.
@@ -15,19 +16,25 @@ class HuaweiPendingResponseManager {
     private val lock = Any()
     private val pendingResponses = mutableMapOf<String, CompletableDeferred<HuaweiSppPackage>>()
 
-    suspend fun register(responseId: String): CompletableDeferred<HuaweiSppPackage> {
+    suspend fun register(
+        responseId: String,
+        timeoutMs: Long,
+    ): CompletableDeferred<HuaweiSppPackage>? = withTimeoutOrNull(timeoutMs) {
         while (true) {
-            val existing = synchronized(lock) { pendingResponses[responseId] }
-            if (existing == null) break
-            runCatching { existing.await() }
-            delay(500)
-        }
+            var acquired: CompletableDeferred<HuaweiSppPackage>? = null
+            val current = synchronized(lock) {
+                pendingResponses[responseId] ?: CompletableDeferred<HuaweiSppPackage>().also {
+                    pendingResponses[responseId] = it
+                    acquired = it
+                }
+            }
+            if (acquired != null) return@withTimeoutOrNull acquired
 
-        val deferred = CompletableDeferred<HuaweiSppPackage>()
-        synchronized(lock) {
-            pendingResponses[responseId] = deferred
+            // Requests with the same response id must not replace each other. Wait only within
+            // the caller's total deadline, then let the caller fail instead of hanging forever.
+            current.join()
+            yield()
         }
-        return deferred
     }
 
     suspend fun complete(commandId: String, pkg: HuaweiSppPackage): Boolean = synchronized(lock) {
@@ -40,10 +47,13 @@ class HuaweiPendingResponseManager {
         }
     }
 
-    suspend fun remove(responseId: String) {
+    fun remove(responseId: String, deferred: CompletableDeferred<HuaweiSppPackage>) {
         synchronized(lock) {
-            pendingResponses.remove(responseId)?.cancel()
+            if (pendingResponses[responseId] === deferred) {
+                pendingResponses.remove(responseId)
+            }
         }
+        deferred.cancel()
     }
 
     suspend fun keys(): List<String> = synchronized(lock) {

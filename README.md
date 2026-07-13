@@ -16,7 +16,7 @@
   <a href="https://github.com/ct-yx/fxxkHilife/issues">反馈问题 / 参与测试</a>
 </p>
 
-> **当前版本：v4.2.2**
+> **当前版本：v4.2.3**
 > 保留后台自动控制连接，同时恢复核心优先初始化，避免 EQ / 双设备等慢项阻塞 FreeBuds 6i 连接。
 
 ---

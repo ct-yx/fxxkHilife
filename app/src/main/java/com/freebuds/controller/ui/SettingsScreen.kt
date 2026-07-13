@@ -252,6 +252,19 @@ fun SettingsScreen(
 
             // ── 调试 ──
             item { SettingsHeader(i18n("settings.debug")) }
+            item {
+                SettingsCard(
+                    displayMode = displayMode,
+                    hazeState = hazeState,
+                    headlineContent = { Text(i18n("settings.share_log")) },
+                    supportingContent = { Text(i18n("settings.share_log_desc")) },
+                    leadingContent = { Icon(Icons.Default.Share, contentDescription = null) },
+                    onClick = { viewModel.shareLog(context) },
+                )
+            }
+            item {
+                LogRetentionSelector(displayMode = displayMode, hazeState = hazeState)
+            }
             if (isConnected) {
                 item {
                     SettingsCard(
@@ -263,19 +276,6 @@ fun SettingsScreen(
                         trailingContent = { Icon(Icons.Default.ChevronRight, contentDescription = null) },
                         onClick = { context.startActivity(Intent(context, TerminalActivity::class.java)) },
                     )
-                }
-                item {
-                    SettingsCard(
-                        displayMode = displayMode,
-                        hazeState = hazeState,
-                        headlineContent = { Text(i18n("settings.share_log")) },
-                        supportingContent = { Text(i18n("settings.share_log_desc")) },
-                        leadingContent = { Icon(Icons.Default.Share, contentDescription = null) },
-                        onClick = { viewModel.shareLog(context) },
-                    )
-                }
-                item {
-                    LogRetentionSelector(displayMode = displayMode, hazeState = hazeState)
                 }
             } else {
                 item {

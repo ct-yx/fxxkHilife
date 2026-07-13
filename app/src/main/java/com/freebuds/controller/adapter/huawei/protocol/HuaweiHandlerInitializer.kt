@@ -4,6 +4,9 @@ import com.freebuds.controller.bluetooth.HuaweiDeviceHandler
 import com.freebuds.controller.bluetooth.SppDriver
 import com.freebuds.controller.util.LogBuffer
 import kotlinx.coroutines.TimeoutCancellationException
+import kotlinx.coroutines.async
+import kotlinx.coroutines.awaitAll
+import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.withTimeout
 
@@ -23,17 +26,36 @@ class HuaweiHandlerInitializer(private val registry: HuaweiHandlerRegistry) {
     suspend fun initializeCore(driver: SppDriver, deviceLabel: String?) {
         val label = deviceLabel ?: "FreeBuds"
         val handlers = coreHandlers()
-        LogBuffer.i("SPP", "Fast core init for $label: handlers=${handlers.map { it.id }}")
-        for (handler in handlers) {
-            initializeAndRecord(driver, handler, maxAttempts = 2, timeoutMs = handler.initTimeoutMs.coerceAtMost(1_800L))
-            delay(50)
+        val startedAt = System.currentTimeMillis()
+        LogBuffer.i("SPP", "Staggered core init for $label: handlers=${handlers.map { it.id }}, gap=80ms")
+
+        val results = coroutineScope {
+            handlers.mapIndexed { index, handler ->
+                async {
+                    if (index > 0) delay(index * 80L)
+                    handler to initializeHandlerIfNeeded(
+                        driver = driver,
+                        handler = handler,
+                        maxAttempts = 1,
+                        timeoutMs = handler.initTimeoutMs.coerceAtMost(1_500L),
+                    )
+                }
+            }.awaitAll()
         }
+        results.forEach { (handler, success) ->
+            recordResult(handler, success, maxAttempts = 1)
+        }
+        LogBuffer.i(
+            "SPP",
+            "Staggered core init finished in ${System.currentTimeMillis() - startedAt}ms; failed=${registry.failedHandlerIds.filter { id -> handlers.any { it.id == id } }}"
+        )
     }
 
     suspend fun initializeDeferred(driver: SppDriver, deviceLabel: String?) {
         val label = deviceLabel ?: "FreeBuds"
         val handlers = deferredHandlers()
         if (handlers.isEmpty()) return
+        val startedAt = System.currentTimeMillis()
         LogBuffer.i("SPP", "Deferred init for $label: handlers=${handlers.map { it.id }}")
         for (handler in handlers) {
             initializeAndRecord(driver, handler, maxAttempts = 1, timeoutMs = handler.initTimeoutMs.coerceAtMost(1_500L))
@@ -41,8 +63,11 @@ class HuaweiHandlerInitializer(private val registry: HuaweiHandlerRegistry) {
         }
         LogBuffer.i(
             "SPP",
-            if (registry.failedHandlerIds.isEmpty()) "Deferred init completed: all handlers ready"
-            else "Deferred init completed with degraded handlers=${registry.failedHandlerIds}"
+            if (registry.failedHandlerIds.isEmpty()) {
+                "Deferred init completed in ${System.currentTimeMillis() - startedAt}ms: all handlers ready"
+            } else {
+                "Deferred init completed in ${System.currentTimeMillis() - startedAt}ms with degraded handlers=${registry.failedHandlerIds}"
+            }
         )
     }
 
@@ -93,11 +118,21 @@ class HuaweiHandlerInitializer(private val registry: HuaweiHandlerRegistry) {
         maxAttempts: Int,
         timeoutMs: Long,
     ) {
-        if (hasExpectedInitState(driver, handler.id)) {
-            registry.failedHandlerIds.remove(handler.id)
-            return
-        }
-        val success = initializeHandler(driver, handler, maxAttempts, timeoutMs)
+        val success = initializeHandlerIfNeeded(driver, handler, maxAttempts, timeoutMs)
+        recordResult(handler, success, maxAttempts)
+    }
+
+    private suspend fun initializeHandlerIfNeeded(
+        driver: SppDriver,
+        handler: HuaweiDeviceHandler,
+        maxAttempts: Int,
+        timeoutMs: Long,
+    ): Boolean {
+        if (hasExpectedInitState(driver, handler.id)) return true
+        return initializeHandler(driver, handler, maxAttempts, timeoutMs)
+    }
+
+    private fun recordResult(handler: HuaweiDeviceHandler, success: Boolean, maxAttempts: Int) {
         if (success) {
             registry.failedHandlerIds.remove(handler.id)
         } else {

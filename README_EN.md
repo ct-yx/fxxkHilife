@@ -16,7 +16,7 @@
   <a href="https://github.com/ct-yx/fxxkHilife/issues">Report / Join testing</a>
 </p>
 
-> **Current version: v4.2.2**
+> **Current version: v4.2.3**
 > Keeps background app-control auto-connect while restoring core-first initialization so EQ / Dual Connect do not block FreeBuds 6i connection.
 
 ---

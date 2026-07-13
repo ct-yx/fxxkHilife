@@ -14,6 +14,7 @@ import com.freebuds.controller.ui.MainActivity
 import kotlinx.coroutines.MainScope
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.Job
+import kotlinx.coroutines.cancel
 import kotlinx.coroutines.delay
 
 /**
@@ -31,7 +32,7 @@ class QuickSettingsTileService : TileService() {
         super.onTileAdded()
         qsTile?.apply {
             label = I18n.t("tile.anc")
-            icon = tileIconForMode("normal")
+            icon = neutralTileIcon()
             state = Tile.STATE_INACTIVE
             updateTile()
         }
@@ -69,8 +70,8 @@ class QuickSettingsTileService : TileService() {
 
     private fun cycleAncMode() {
         val repo = HilifeApplication.instance.deviceRepository
-        val currentMode = repo.props.value.ancMode ?: "normal"
-        val nextMode = nextAncMode(currentMode)
+        val currentMode = repo.props.value.ancMode
+        val nextMode = if (currentMode == null) "cancellation" else nextAncMode(currentMode)
 
         // 乐观刷新 Tile：点下去立刻看到目标状态，不等设备回包
         qsTile?.apply {
@@ -117,20 +118,30 @@ class QuickSettingsTileService : TileService() {
         qsTile?.apply {
             when (connState) {
                 is ConnectionState.Connected -> {
-                    val currentMode = repo.props.value.ancMode ?: "normal"
-                    val nextMode = nextAncMode(currentMode)
-                    label = "${I18n.t("tile.anc")}: ${ancLabel(currentMode)}"
-                    subtitle = I18n.t("tile.connected.tap_to", ancLabel(nextMode))
-                    icon = tileIconForMode(currentMode)
-                    state = Tile.STATE_ACTIVE
-                    if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
-                        stateDescription = I18n.t("tile.current_tap_to_mode", ancLabel(currentMode), ancLabel(nextMode))
+                    val currentMode = repo.props.value.ancMode
+                    if (currentMode == null) {
+                        label = I18n.t("tile.anc")
+                        subtitle = I18n.t("tile.connected_state_unknown")
+                        icon = neutralTileIcon()
+                        state = Tile.STATE_INACTIVE
+                        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
+                            stateDescription = I18n.t("tile.connected_state_unknown_desc")
+                        }
+                    } else {
+                        val nextMode = nextAncMode(currentMode)
+                        label = "${I18n.t("tile.anc")}: ${ancLabel(currentMode)}"
+                        subtitle = I18n.t("tile.connected.tap_to", ancLabel(nextMode))
+                        icon = tileIconForMode(currentMode)
+                        state = Tile.STATE_ACTIVE
+                        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
+                            stateDescription = I18n.t("tile.current_tap_to_mode", ancLabel(currentMode), ancLabel(nextMode))
+                        }
                     }
                 }
                 is ConnectionState.Connecting -> {
                     label = I18n.t("tile.anc")
                     subtitle = I18n.t("tile.connecting")
-                    icon = tileIconForMode("normal")
+                    icon = neutralTileIcon()
                     state = Tile.STATE_UNAVAILABLE
                     if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
                         stateDescription = I18n.t("tile.earbuds_connecting")
@@ -139,7 +150,7 @@ class QuickSettingsTileService : TileService() {
                 is ConnectionState.Failed -> {
                     label = I18n.t("tile.anc")
                     subtitle = I18n.t("tile.connection_failed_retry")
-                    icon = tileIconForMode("normal")
+                    icon = neutralTileIcon()
                     state = Tile.STATE_INACTIVE
                     if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
                         stateDescription = I18n.t("tile.connection_failed_retry_desc")
@@ -148,7 +159,7 @@ class QuickSettingsTileService : TileService() {
                 else -> {
                     label = I18n.t("tile.anc")
                     subtitle = if (repo.getSavedAddress() != null) I18n.t("tile.tap_connect") else I18n.t("tile.add_device_first")
-                    icon = tileIconForMode("normal")
+                    icon = neutralTileIcon()
                     state = Tile.STATE_INACTIVE
                     if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
                         stateDescription = subtitle.toString()
@@ -183,7 +194,11 @@ class QuickSettingsTileService : TileService() {
         }
     )
 
+    private fun neutralTileIcon(): Icon = Icon.createWithResource(this, R.drawable.ic_tile)
+
     override fun onDestroy() {
+        propsJob?.cancel()
+        scope.cancel()
         super.onDestroy()
     }
 }

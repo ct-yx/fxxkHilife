@@ -3,17 +3,17 @@
 > 版本号统一修改入口，按清单逐一更新。
 
 ## 当前版本
-- **v4.2.2** (versionCode=83, 2026-07-07)
+- **v4.2.3** (versionCode=84, 2026-07-14)
 
 ## 版本号位置
 
 | 位置 | 当前值 |
 |------|--------|
-| `app/build.gradle.kts` | versionCode=83, versionName="4.2.2" |
-| `app/src/main/res/values/strings.xml` | version_name=4.2.2 |
-| `README.md` | v4.2.2 |
-| `README_EN.md` | v4.2.2 |
-| `DEVELOPMENT_LOG.md` | v4.2.2 (末尾) |
+| `app/build.gradle.kts` | versionCode=84, versionName="4.2.3" |
+| `app/src/main/res/values/strings.xml` | version_name=4.2.3 |
+| `README.md` | v4.2.3 |
+| `README_EN.md` | v4.2.3 |
+| `DEVELOPMENT_LOG.md` | v4.2.3 (末尾) |
 
 ## 一键版本更新脚本
 
@@ -37,6 +37,7 @@ python3 scripts/bump_version.py <versionName> <versionCode> "修复说明"
 
 | 版本 | Code | 日期 | 主要变更 |
 |------|------|------|---------|
+| v4.2.3 | 84 | 2026-07-14 | 修复离线日志分享、快捷开关未知状态，并恢复受控并发核心初始化和可靠后台连接发现 |
 | v4.2.2 | 83 | 2026-07-07 | 保留后台自动控制连接，并恢复核心优先初始化，避免 EQ/双设备等慢项阻塞 FreeBuds 6i 连接 |
 | v4.2.1 | 82 | 2026-07-04 | 对照 OpenFreebuds 修正初始化/dual-connect 判定，并新增系统蓝牙已连接时后台自动建立 App 控制连接 |
 | v4.2.0 | 81 | 2026-07-03 | 液态玻璃 UI 重构、EQ 调音模式与双设备连接 MVP |

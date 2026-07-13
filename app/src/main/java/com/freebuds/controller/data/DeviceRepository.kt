@@ -25,6 +25,7 @@ import kotlinx.coroutines.flow.asStateFlow
 import java.io.File
 import java.util.Calendar
 import java.util.Locale
+import java.util.concurrent.ConcurrentHashMap
 
 /** 连接状态 */
 sealed class ConnectionState {
@@ -144,6 +145,7 @@ class DeviceRepository {
     private var aclReceiver: BroadcastReceiver? = null
     private var connectingJob: Job? = null
     private var manualDisconnectSuppressUntil: Long = 0L
+    private val systemConnectedAddresses = ConcurrentHashMap.newKeySet<String>()
 
     // 设备信息是否已获取（本次进程生命周期内）
     private var deviceInfoFetched: Boolean = false
@@ -199,6 +201,7 @@ class DeviceRepository {
                 _connectionState.value = ConnectionState.Connected(device.name ?: device.address)
                 connectedAt = System.currentTimeMillis()
                 connectedAddress = device.address
+                systemConnectedAddresses.add(device.address)
                 manualDisconnectSuppressUntil = 0L
                 failedHandlers.clear()
                 saveDeviceAddress(device.address)
@@ -270,6 +273,8 @@ class DeviceRepository {
                 if (address == connectedAddress) {
                     scope.launch { handleRemoteDisconnected(session, "Bluetooth ACL disconnected") }
                 }
+                systemConnectedAddresses.remove(address)
+                refreshSavedDeviceConnections()
             }
         }
         val filter = IntentFilter(BluetoothDevice.ACTION_ACL_DISCONNECTED)
@@ -330,6 +335,8 @@ class DeviceRepository {
             BluetoothAdapter.getDefaultAdapter()?.getRemoteDevice(address)
         }.getOrNull()
 
+        if (address in systemConnectedAddresses) return adapterDevice
+
         val isConnectedByDevice = adapterDevice?.let { device ->
             runCatching {
                 val method = device.javaClass.getMethod("isConnected")
@@ -347,22 +354,52 @@ class DeviceRepository {
         return connectedDevices.firstOrNull { it.address == address }
     }
 
-    fun autoConnectSaved(address: String): Boolean {
+    fun autoConnectSaved(address: String, logMisses: Boolean = true): Boolean {
         val suppressRemaining = manualDisconnectSuppressUntil - System.currentTimeMillis()
         if (suppressRemaining > 0) {
-            LogBuffer.i("AutoConnect", "Skip $address: manual disconnect suppression ${suppressRemaining / 1000}s left")
+            if (logMisses) {
+                LogBuffer.i("AutoConnect", "Skip $address: manual disconnect suppression ${suppressRemaining / 1000}s left")
+            }
             return false
         }
         if (_connectionState.value is ConnectionState.Connecting ||
             _connectionState.value is ConnectionState.Connected) return true
 
         val device = getSystemConnectedDevice(address) ?: run {
-            LogBuffer.d("AutoConnect", "Skip $address: system Bluetooth is not connected")
+            if (logMisses) {
+                LogBuffer.d("AutoConnect", "Skip $address: system Bluetooth is not connected")
+            }
             return false
         }
+        return autoConnectKnownSystemConnected(device, logMisses)
+    }
+
+    fun autoConnectKnownSystemConnected(device: BluetoothDevice, logMisses: Boolean = true): Boolean {
+        val address = device.address
+        if (address !in getSavedAddresses()) {
+            if (logMisses) LogBuffer.d("AutoConnect", "Ignore unsaved system-connected device $address")
+            return false
+        }
+        val suppressRemaining = manualDisconnectSuppressUntil - System.currentTimeMillis()
+        if (suppressRemaining > 0) {
+            if (logMisses) {
+                LogBuffer.i("AutoConnect", "Skip $address: manual disconnect suppression ${suppressRemaining / 1000}s left")
+            }
+            return false
+        }
+        if (_connectionState.value is ConnectionState.Connecting ||
+            _connectionState.value is ConnectionState.Connected
+        ) return true
+
+        systemConnectedAddresses.add(address)
         LogBuffer.i("AutoConnect", "System Bluetooth connected for ${device.name ?: address}; opening app SPP control channel")
         connect(device)
         return true
+    }
+
+    fun noteSystemBluetoothDisconnected(address: String) {
+        systemConnectedAddresses.remove(address)
+        refreshSavedDeviceConnections()
     }
 
     fun autoConnectLastSaved(): Boolean {
@@ -370,14 +407,14 @@ class DeviceRepository {
         return autoConnectSaved(address)
     }
 
-    fun autoConnectSystemConnectedSaved(): Boolean {
+    fun autoConnectSystemConnectedSaved(logMisses: Boolean = true): Boolean {
         val addresses = getSavedAddresses().asReversed()
         if (addresses.isEmpty()) {
-            LogBuffer.d("AutoConnect", "No saved devices for background control connect")
+            if (logMisses) LogBuffer.d("AutoConnect", "No saved devices for background control connect")
             return false
         }
         for (address in addresses) {
-            if (autoConnectSaved(address)) return true
+            if (autoConnectSaved(address, logMisses)) return true
         }
         return false
     }
@@ -459,11 +496,27 @@ class DeviceRepository {
         initJob?.cancel()
         initJob = scope.launch {
             try {
+                // Android's RFCOMM socket can report connected before the earbud command loop is
+                // ready. The log showed the first battery query only 62ms after connect and both
+                // attempts were dropped, so give the device a short settling window.
+                delay(250)
                 targetSession.initializeCoreHandlers()
                 if (session !== targetSession || targetSession.isConnected != true) return@launch
                 failedHandlers.clear()
                 failedHandlers.addAll(targetSession.failedHandlerIds)
                 syncProps()
+
+                // The first wave is intentionally one attempt per handler and staggered in
+                // parallel. Retry only the failed core handlers once, still without letting one
+                // timeout serialize every other core state.
+                if (failedHandlers.any { it in coreRetryOrder }) {
+                    delay(700)
+                    targetSession.initializeCoreHandlers()
+                    if (session !== targetSession || targetSession.isConnected != true) return@launch
+                    failedHandlers.clear()
+                    failedHandlers.addAll(targetSession.failedHandlerIds)
+                    syncProps()
+                }
                 logDegradedHandlersOnce()
                 applyAutoLowLatencyIfEnabled()
                 delay(1_000)

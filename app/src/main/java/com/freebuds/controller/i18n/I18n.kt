@@ -87,6 +87,8 @@ private object DefaultI18nProvider : I18nProvider {
         "tile.current_tap_to_mode" to "当前%s模式，点按切到%s模式",
         "tile.earbuds_connecting" to "耳机连接中",
         "tile.connection_failed_retry_desc" to "连接失败，点按重新连接耳机",
+        "tile.connected_state_unknown" to "状态同步中，点按可直接设为降噪",
+        "tile.connected_state_unknown_desc" to "ANC 状态尚未初始化，点按将设为降噪模式",
 
         "settings.title" to "设置",
         "settings.about" to "关于",
@@ -208,7 +210,7 @@ private object DefaultI18nProvider : I18nProvider {
         "settings.share_log" to "分享日志",
         "settings.share_log_chooser" to "分享日志",
         "settings.share_log_desc" to "导出当前日志为文本文件",
-        "settings.debug_requires_connected" to "调试功能需连接耳机后使用",
+        "settings.debug_requires_connected" to "调试终端需连接耳机后使用",
         "settings.app_details" to "应用详情",
         "settings.project_philosophy" to "项目理念",
         "settings.project_philosophy_desc" to "为华为 FreeBuds 系列耳机提供第三方开源控制面板，还原官方 App 的完整功能，同时保持轻量与高效。",
