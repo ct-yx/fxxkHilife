@@ -20,6 +20,10 @@ class HuaweiPendingResponseManager {
         responseId: String,
         timeoutMs: Long,
     ): CompletableDeferred<HuaweiSppPackage>? = withTimeoutOrNull(timeoutMs) {
+        acquire(responseId)
+    }
+
+    private suspend fun acquire(responseId: String): CompletableDeferred<HuaweiSppPackage> {
         while (true) {
             var acquired: CompletableDeferred<HuaweiSppPackage>? = null
             val current = synchronized(lock) {
@@ -28,7 +32,7 @@ class HuaweiPendingResponseManager {
                     acquired = it
                 }
             }
-            if (acquired != null) return@withTimeoutOrNull acquired
+            if (acquired != null) return acquired
 
             // Requests with the same response id must not replace each other. Wait only within
             // the caller's total deadline, then let the caller fail instead of hanging forever.
