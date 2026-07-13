@@ -1,0 +1,18 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name">fxxkHilife</string>
+    <string name="service_notification_title">fxxkHilife</string>
+    <string name="service_notification_text">耳機服務執行中</string>
+    <string name="version_name">4.2.4</string>
+    <string name="back">返回</string>
+    <string name="saved_devices_count">已儲存的裝置（%d）</string>
+    <string name="connection_preferences">連線偏好</string>
+    <string name="auto_low_latency">自動低延遲模式</string>
+    <string name="terminal_clear">清除畫面</string>
+    <string name="terminal_props">屬性</string>
+    <string name="terminal_help">說明</string>
+    <string name="terminal_disconnect">中斷連線</string>
+    <string name="terminal_share">分享</string>
+    <string name="terminal_input_hint">輸入指令...</string>
+    <string name="terminal_title">除錯終端</string>
+</resources>

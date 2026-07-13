@@ -3,9 +3,16 @@
     <string name="app_name">fxxkHilife</string>
     <string name="service_notification_title">fxxkHilife</string>
     <string name="service_notification_text">耳机服务运行中</string>
-    <string name="version_name">4.2.3</string>
+    <string name="version_name">4.2.4</string>
     <string name="back">返回</string>
     <string name="saved_devices_count">已保存的设备（%d）</string>
     <string name="connection_preferences">连接偏好</string>
     <string name="auto_low_latency">自动低延迟模式</string>
+    <string name="terminal_clear">清屏</string>
+    <string name="terminal_props">属性</string>
+    <string name="terminal_help">帮助</string>
+    <string name="terminal_disconnect">断开</string>
+    <string name="terminal_share">分享</string>
+    <string name="terminal_input_hint">输入命令…</string>
+    <string name="terminal_title">调试终端</string>
 </resources>

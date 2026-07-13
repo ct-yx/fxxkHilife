@@ -312,7 +312,7 @@ fun DeviceScreen(
             }
 
             // ── 听音统计 ─────────────────────────────────────────────────────
-            item { SettingsGroupHeader("听音") }
+            item { SettingsGroupHeader(i18n("stats.title")) }
             item {
                 AdaptiveCard(
                     displayMode = displayMode,
@@ -325,8 +325,8 @@ fun DeviceScreen(
                     Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(14.dp)) {
                         Icon(Icons.Default.QueryStats, contentDescription = null)
                         Column(Modifier.weight(1f)) {
-                            Text("听音统计")
-                            Text("查看总时长、今日听音和活动热力图", style = MaterialTheme.typography.bodySmall)
+                            Text(i18n("stats.title"))
+                            Text(i18n("stats.description"), style = MaterialTheme.typography.bodySmall)
                         }
                         Icon(Icons.Default.ChevronRight, contentDescription = null)
                     }

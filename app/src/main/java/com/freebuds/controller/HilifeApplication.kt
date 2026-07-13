@@ -16,6 +16,7 @@ class HilifeApplication : Application() {
     override fun onCreate() {
         super.onCreate()
         instance = this
+        I18n.setLocale(I18n.loadLocale(this))
         deviceRepository.init(this)
         // 从 SharedPreferences 加载日志保留行数
         val maxLines = getSharedPreferences("fxxk_theme", MODE_PRIVATE)

@@ -1,19 +1,68 @@
 package com.freebuds.controller.i18n
 
+import android.content.Context
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.Immutable
 import androidx.compose.runtime.staticCompositionLocalOf
 
+enum class I18nLocale(
+    val tag: String,
+    val labelKey: String,
+) {
+    ZH_CN("zh-CN", "language.zh_cn"),
+    EN("en", "language.en"),
+    ZH_TW("zh-TW", "language.zh_tw");
+
+    companion object {
+        fun fromTag(tag: String?): I18nLocale = entries.firstOrNull { it.tag == tag } ?: ZH_CN
+    }
+}
+
 /**
- * Minimal application i18n facade.
- *
- * Only the built-in Chinese table is provided for now. Additional language packs can be
- * added later by implementing [I18nProvider] and installing it through [LocalI18n].
+ * Application i18n facade. Simplified Chinese remains the stable default because it is the
+ * language the project was originally designed around; English and Traditional Chinese are
+ * selectable language packs layered on the same key set.
  */
 object I18n {
     const val DEFAULT_LOCALE = "zh-CN"
+    private const val PREFS = "fxxk_i18n"
+    private const val KEY_LOCALE = "locale"
 
-    fun t(key: String, vararg args: Any?): String = DefaultI18nProvider.t(key, *args)
+    private val providers = mapOf(
+        I18nLocale.ZH_CN to SimplifiedChineseProvider,
+        I18nLocale.EN to EnglishProvider,
+        I18nLocale.ZH_TW to TraditionalChineseProvider,
+    )
+
+    @Volatile
+    private var activeLocale: I18nLocale = I18nLocale.ZH_CN
+
+    fun provider(locale: I18nLocale): I18nProvider = providers[locale] ?: SimplifiedChineseProvider
+
+    fun currentLocale(): I18nLocale = activeLocale
+
+    fun setLocale(locale: I18nLocale) {
+        activeLocale = locale
+    }
+
+    fun loadLocale(context: Context): I18nLocale = I18nLocale.fromTag(
+        context.getSharedPreferences(PREFS, Context.MODE_PRIVATE).getString(KEY_LOCALE, DEFAULT_LOCALE)
+    )
+
+    fun saveLocale(context: Context, locale: I18nLocale) {
+        context.getSharedPreferences(PREFS, Context.MODE_PRIVATE)
+            .edit()
+            .putString(KEY_LOCALE, locale.tag)
+            .apply()
+    }
+
+    internal fun keys(locale: I18nLocale): Set<String> = when (locale) {
+        I18nLocale.ZH_CN -> SimplifiedChineseProvider.entries().keys
+        I18nLocale.EN -> EnglishProvider.entries().keys
+        I18nLocale.ZH_TW -> TraditionalChineseProvider.entries().keys
+    }
+
+    fun t(key: String, vararg args: Any?): String = provider(activeLocale).t(key, *args)
 }
 
 interface I18nProvider {
@@ -22,8 +71,8 @@ interface I18nProvider {
 }
 
 @Immutable
-private object DefaultI18nProvider : I18nProvider {
-    override val localeTag: String = I18n.DEFAULT_LOCALE
+private object SimplifiedChineseProvider : I18nProvider {
+    override val localeTag: String = I18nLocale.ZH_CN.tag
 
     private val strings = mapOf(
         "app.name" to "fxxkHilife",
@@ -91,6 +140,10 @@ private object DefaultI18nProvider : I18nProvider {
         "tile.connected_state_unknown_desc" to "ANC 状态尚未初始化，点按将设为降噪模式",
 
         "settings.title" to "设置",
+        "settings.language" to "语言",
+        "language.zh_cn" to "简体中文",
+        "language.en" to "English",
+        "language.zh_tw" to "繁体中文",
         "settings.about" to "关于",
         "settings.version" to "版本",
         "settings.saved_devices" to "已保存的设备（%s）",
@@ -137,7 +190,7 @@ private object DefaultI18nProvider : I18nProvider {
         "home.tap_start_scan" to "点击\"开始扫描\"发现附近设备",
         "home.bonded" to "已配对",
 
-        "scan.title" to "扫描设备",
+        "scan.title" to "选择设备",
         "scan.rescan" to "重新扫描",
         "scan.empty" to "未发现设备",
         "scan.nearby_devices" to "附近设备",
@@ -255,6 +308,57 @@ private object DefaultI18nProvider : I18nProvider {
         "settings.log_lines" to "%s 行",
         "settings.glass.misty" to "朦胧",
         "settings.glass.high" to "较高",
+        "settings.glass.slider.tint" to "传统色调",
+        "settings.glass.slider.readability" to "可读性",
+        "settings.glass.slider.refraction" to "折射",
+        "settings.glass.slider.depth" to "深度",
+        "settings.glass.slider.radius" to "圆角半径",
+
+        "stats.title" to "听音统计",
+        "stats.description" to "当前统计按耳机连接时长累计；后续在佩戴状态稳定后可切换为真实佩戴听音时长。",
+        "stats.total" to "总时长",
+        "stats.today" to "今日",
+        "stats.heard" to "已听",
+        "stats.streak" to "连续听音",
+        "stats.days" to "%s 天",
+        "stats.activity" to "听音活动",
+        "stats.recent_weeks" to "近 16 周",
+        "stats.less" to "少",
+        "stats.more" to "多",
+        "stats.duration.hours_minutes" to "%s小时%s分",
+        "stats.duration.hours" to "%s小时",
+        "stats.duration.minutes" to "%s分",
+
+        "terminal.title" to "调试终端",
+        "terminal.clear" to "清屏",
+        "terminal.props" to "属性",
+        "terminal.help" to "帮助",
+        "terminal.disconnect" to "断开",
+        "terminal.share" to "分享",
+        "terminal.permissions" to "属性",
+        "terminal.input_hint" to "输入命令…",
+        "terminal.started" to "调试终端 — 连接管理请返回主界面",
+        "terminal.commands" to "可用命令：clear | props | set <group.prop> <value> | share | disconnect | help",
+        "terminal.help.clear" to "clear        — 清屏",
+        "terminal.help.props" to "props        — 查看所有属性",
+        "terminal.help.set" to "set g.p v    — 写入属性",
+        "terminal.help.share" to "share        — 导出日志",
+        "terminal.help.disconnect" to "disconnect   — 断开连接并返回",
+        "terminal.unknown_command" to "未知命令：%s",
+        "terminal.not_connected" to "未连接",
+        "terminal.no_properties" to "暂无属性",
+        "terminal.usage_set" to "用法：set <group.prop> <value>",
+        "terminal.export_log" to "导出日志",
+
+        "settings.credit.anc_cancellation" to "降噪模式：noise canceling by Vanicon studio from Noun Project (CC BY 3.0)",
+        "settings.credit.anc_awareness" to "通透模式：noise canceling by Gregor Cresnar from Noun Project (CC BY 3.0)",
+        "settings.credit.anc_off" to "ANC关闭：Wireless headset by Berkah Icon from Noun Project (CC BY 3.0)",
+        "glass.preview.device" to "FreeBuds Pro",
+        "glass.preview.status" to "降噪 · 动态 / 低延迟已开启",
+        "glass.preview.card" to "液态玻璃卡片",
+        "glass.preview.description" to "边缘高光、Fresnel 暗边、内部折射光带",
+        "glass.preview.circle" to "Circle",
+        "glass.preview.profile" to "Profile",
 
         "gesture.double_left" to "双击 · 左",
         "gesture.double_right" to "双击 · 右",
@@ -275,7 +379,6 @@ private object DefaultI18nProvider : I18nProvider {
         "gesture.noise.off_an" to "仅降噪",
 
         "gesture.title" to "手势设置",
-        "scan.title" to "选择设备",
         "home.scan" to "扫描设备",
         "permission.title" to "权限引导",
     )
@@ -284,9 +387,375 @@ private object DefaultI18nProvider : I18nProvider {
         val raw = strings[key] ?: key
         return if (args.isEmpty()) raw else runCatching { raw.format(*args) }.getOrDefault(raw)
     }
+
+    fun entries(): Map<String, String> = strings
 }
 
-val LocalI18n = staticCompositionLocalOf<I18nProvider> { DefaultI18nProvider }
+@Immutable
+private object EnglishProvider : I18nProvider {
+    override val localeTag: String = I18nLocale.EN.tag
+
+    private val strings = mapOf(
+        "app.name" to "fxxkHilife",
+        "common.back" to "Back",
+        "common.cancel" to "Cancel",
+        "common.none" to "None",
+        "common.enabled" to "On",
+        "common.disabled" to "Off",
+        "common.loading" to "Loading…",
+        "common.retry" to "Retry",
+        "common.unknown" to "Unknown",
+        "common.default" to "Default",
+        "common.enhanced" to "Enhanced",
+        "anc.mode.off" to "Off",
+        "anc.mode.cancellation" to "Noise cancellation",
+        "anc.mode.awareness" to "Awareness",
+        "anc.level.comfort" to "Comfort",
+        "anc.level.normal" to "Balanced",
+        "anc.level.ultra" to "Deep",
+        "anc.level.dynamic" to "Dynamic",
+        "anc.awareness.normal" to "Standard awareness",
+        "anc.awareness.voice_boost" to "Voice boost",
+        "anc.level_title.cancellation" to "Noise cancellation level",
+        "anc.level_title.awareness" to "Awareness mode",
+        "anc.level_title.default" to "ANC submode",
+        "sound.quality.connectivity" to "Connectivity priority",
+        "sound.quality.quality" to "Sound quality priority",
+        "sound.quality.sound_first" to "Sound first",
+        "eq.preset.default" to "Default",
+        "eq.preset.hardbass" to "Bass boost",
+        "eq.preset.treble" to "Treble boost",
+        "eq.preset.voices" to "Voice",
+        "eq.preset.symphony" to "Symphony",
+        "eq.preset.hifi_live" to "Hi-Fi Live",
+        "notification.channel.bluetooth_status" to "Bluetooth and ANC status",
+        "notification.channel.bluetooth_status_desc" to "Shows ANC mode, listening time, low-latency and sound-quality status",
+        "notification.service.title" to "fxxkHilife",
+        "notification.service.text" to "Earbud service is running",
+        "notification.action.anc_cancellation" to "Noise cancellation",
+        "notification.action.anc_awareness" to "Awareness",
+        "notification.battery" to "Battery: %s",
+        "notification.battery_left" to "L%s%%",
+        "notification.battery_right" to "R%s%%",
+        "notification.battery_case" to "Case %s%%",
+        "notification.sound_quality" to "Sound: %s",
+        "notification.low_latency" to "Low latency: %s",
+        "notification.wearing" to "Wearing: %s",
+        "tile.anc" to "ANC",
+        "tile.switching" to "Switching…",
+        "tile.connecting" to "Connecting to earbuds…",
+        "tile.connected.tap_to" to "Tap to switch to %s",
+        "tile.connection_failed_retry" to "Connection failed, tap to retry",
+        "tile.tap_connect" to "Tap to connect earbuds",
+        "tile.add_device_first" to "Add earbuds in the app first",
+        "tile.switching_to_mode" to "Switching to %s mode",
+        "tile.connecting_saved_device" to "Connecting to earbuds already connected to the phone",
+        "tile.current_tap_to_mode" to "Currently %s mode, tap to switch to %s mode",
+        "tile.earbuds_connecting" to "Earbuds connecting",
+        "tile.connection_failed_retry_desc" to "Connection failed, tap to reconnect earbuds",
+        "tile.connected_state_unknown" to "Syncing status, tap to set noise cancellation",
+        "tile.connected_state_unknown_desc" to "ANC status is not initialized; tap to set noise cancellation",
+        "settings.title" to "Settings",
+        "settings.language" to "Language",
+        "language.zh_cn" to "Simplified Chinese",
+        "language.en" to "English",
+        "language.zh_tw" to "Traditional Chinese",
+        "settings.about" to "About",
+        "settings.version" to "Version",
+        "settings.saved_devices" to "Saved devices (%s)",
+        "settings.connection_preferences" to "Connection preferences",
+        "settings.auto_low_latency" to "Automatic low-latency mode",
+        "settings.auto_low_latency_desc" to "Enable low latency automatically after connecting a saved device",
+        "settings.wallpaper_guide.title" to "Set a wallpaper first",
+        "settings.wallpaper_guide.text" to "Liquid glass uses the background colors for blur and refraction. You can choose a wallpaper first or continue without one.",
+        "settings.wallpaper_guide.pick" to "Choose wallpaper",
+        "settings.wallpaper_guide.continue" to "Enable anyway",
+        "device.group.anc" to "ANC",
+        "device.group.audio" to "Audio",
+        "device.group.dual_connect" to "Dual-device connection",
+        "device.group.background_sync" to "Syncing in background",
+        "device.core_syncing" to "Syncing core state for %s…",
+        "device.pending.device_info" to "Device information",
+        "device.pending.gesture_double" to "Double-tap gesture",
+        "device.pending.gesture_triple" to "Triple-tap gesture",
+        "device.pending.gesture_long" to "Long-press gesture",
+        "device.pending.gesture_swipe" to "Swipe gesture",
+        "device.pending.tws_auto_pause" to "Auto pause",
+        "device.pending.config_sound_quality" to "Sound preference",
+        "device.pending.voice_language" to "Voice language",
+        "device.pending.tws_in_ear" to "Wearing state",
+        "device.pending.battery" to "Battery",
+        "device.pending.low_latency" to "Low latency",
+        "device.pending.config_eq" to "Equalizer",
+        "device.pending.dual_connect" to "Dual connection",
+        "common.settings" to "Settings",
+        "common.delete" to "Delete",
+        "common.clear" to "Clear",
+        "common.continue" to "Continue",
+        "common.scanning" to "Scanning",
+        "common.charging" to "Charging",
+        "home.empty_saved_devices" to "No saved devices yet",
+        "home.scan_new_device" to "Scan for a new device",
+        "home.start_scan" to "Start scan",
+        "home.saved_devices" to "Saved devices",
+        "home.saved_after_connect" to "The device will be saved after scanning and connecting",
+        "home.scan_nearby_huawei" to "Find nearby Huawei / Honor earbuds",
+        "home.tap_start_scan" to "Tap “Start scan” to find nearby devices",
+        "home.bonded" to "Paired",
+        "scan.title" to "Choose device",
+        "scan.rescan" to "Scan again",
+        "scan.empty" to "No devices found",
+        "scan.nearby_devices" to "Nearby devices",
+        "scan.connected_to" to "Connected to %s",
+        "scan.connecting_to" to "Connecting to %s…",
+        "scan.connection_failed" to "Connection failed: %s",
+        "scan.connection_failed_short" to "Connection failed",
+        "scan.huawei_honor_devices" to "Huawei / Honor devices",
+        "scan.other_devices" to "Other devices",
+        "permission.keep_alive" to "Background keep-alive",
+        "permission.auto_start_settings" to "Auto-start settings",
+        "permission.subtitle" to "Huawei / Honor earbud control",
+        "permission.description" to "Bluetooth permission is required to connect earbuds. Notifications and background/auto-start access are recommended for a persistent notification and automatic connection after boot.",
+        "permission.bluetooth_connect" to "Bluetooth scanning and connection",
+        "permission.notification" to "Notification permission",
+        "permission.keep_alive_whitelist" to "Background keep-alive / battery optimization whitelist",
+        "permission.manual_allow_hint" to "Allow this manually in system settings",
+        "permission.auto_start" to "Auto-start / connect after boot",
+        "permission.rom_manual_hint" to "Some Android ROMs require this to be enabled manually",
+        "permission.grant_bluetooth" to "Grant Bluetooth permission",
+        "permission.grant_bluetooth_notification" to "Grant Bluetooth and notification permissions",
+        "permission.privacy_local" to "No data is uploaded; everything runs locally on your device.",
+        "permission.required" to "Required",
+        "permission.recommended" to "Recommended",
+        "permission.granted" to "Granted",
+        "permission.not_granted" to "Not granted",
+        "permission.suggested" to "Suggested",
+        "device.group.gestures" to "Gestures",
+        "device.group.about" to "About",
+        "device.gesture_settings" to "Gesture settings",
+        "device.gesture_settings_desc" to "Double tap / triple tap / swipe / long press",
+        "device.debug_terminal" to "Debug terminal",
+        "device.debug_terminal_desc" to "View raw SPP logs / send commands",
+        "device.battery" to "Battery",
+        "device.model" to "Model",
+        "device.firmware" to "Firmware",
+        "device.battery.left" to "Left",
+        "device.battery.right" to "Right",
+        "device.battery.case" to "Case",
+        "device.battery.earbuds" to "Earbuds",
+        "device.pending.auto_pause" to "Pause when removed",
+        "device.pending.more_suffix" to " and %s more",
+        "device.pending.detail" to "Loading: %s%s. Most items finish within 15–45 seconds; slow items will keep retrying in the background.",
+        "device.option.sound_quality" to "Sound preference",
+        "device.option.equalizer_preset" to "EQ preset",
+        "device.option.custom_eq" to "Custom EQ",
+        "device.option.custom_eq_desc" to "Up to %s custom modes; current bands: %s",
+        "device.eq.read_only" to "Read-only",
+        "device.eq.unsaved" to "Unsaved",
+        "device.option.auto_pause" to "Auto-pause when removed",
+        "device.option.low_latency" to "Low-latency mode",
+        "device.option.dual_connect" to "Dual-device connection",
+        "device.dual.connected" to "Connected",
+        "device.dual.disconnected" to "Disconnected",
+        "device.dual.playing" to "Playing",
+        "device.dual.preferred" to "Preferred",
+        "device.dual.auto_connect" to "Auto-connect",
+        "home.system_connected" to "System connected",
+        "home.control_connected" to "Control channel connected",
+        "home.not_connected" to "Not connected",
+        "settings.theme" to "Theme",
+        "settings.personalization" to "Personalization",
+        "settings.wallpaper" to "Wallpaper",
+        "settings.debug" to "Debug",
+        "settings.debug_terminal" to "Debug terminal",
+        "settings.debug_terminal_desc" to "View raw SPP logs / send commands",
+        "settings.share_log" to "Share logs",
+        "settings.share_log_chooser" to "Share logs",
+        "settings.share_log_desc" to "Export the current log as a text file",
+        "settings.debug_requires_connected" to "Connect earbuds before using the debug terminal",
+        "settings.app_details" to "App details",
+        "settings.project_philosophy" to "Project philosophy",
+        "settings.project_philosophy_desc" to "An open-source third-party control panel for Huawei FreeBuds, bringing back the official app’s features while staying lightweight and efficient.",
+        "settings.update_url" to "Release page",
+        "settings.other_credits" to "Other credits",
+        "settings.third_party_icons" to "Third-party icons",
+        "settings.third_party_icons_desc" to "Expand to view icon sources and licenses",
+        "settings.liquid_glass_personalization" to "Liquid glass personalization",
+        "settings.liquid_glass_personalization_desc" to "Adjust blur, edge refraction, depth and readability",
+        "settings.glass_blur_desc" to "Adjust the transparency and softness of the glass effect",
+        "settings.glass_lens_desc" to "A lens effect that adds edge thickness and refraction",
+        "settings.glass_depth_desc" to "Increase glass thickness, dark edges and depth",
+        "settings.glass_readability_desc" to "Protect text on complex or light wallpapers without changing the glass body’s transparency",
+        "settings.advanced_mode" to "Advanced mode",
+        "settings.edge_highlight_desc" to "Controls the shape of the glass edge highlight",
+        "settings.wallpaper_preview" to "Wallpaper preview",
+        "settings.display_scope" to "Shown on: ",
+        "settings.glass_blur" to "Glass blur strength",
+        "settings.glass_refraction" to "Liquid glass edge refraction",
+        "settings.glass_depth" to "Liquid glass depth",
+        "settings.glass_readability" to "Liquid glass readability",
+        "settings.surface_profile" to "Surface profile",
+        "settings.wallpaper_import" to "Import wallpaper",
+        "settings.wallpaper_change" to "Change wallpaper",
+        "settings.scope.all" to "All screens",
+        "settings.scope.home" to "Home only",
+        "settings.scope.settings" to "Settings only",
+        "settings.theme.system" to "System",
+        "settings.theme.dark" to "Dark",
+        "settings.theme.light" to "Light",
+        "settings.glass.transparent" to "Clear",
+        "settings.glass.low" to "Low",
+        "settings.surface.rounded" to "Rounded",
+        "settings.surface.squircle" to "Squircle",
+        "settings.surface.circle" to "Circle",
+        "settings.display_mode" to "Display mode",
+        "ui.display.classic" to "Classic",
+        "ui.display.classic_desc" to "Stable, clear and lightweight",
+        "ui.display.liquid_glass" to "Liquid glass",
+        "ui.display.liquid_glass_desc" to "Wallpaper, frosted glass, iridescent edges and floating depth",
+        "settings.log_retention" to "Log retention: ",
+        "settings.log_lines" to "%s lines",
+        "settings.glass.misty" to "Misty",
+        "settings.glass.high" to "High",
+        "settings.glass.slider.tint" to "Legacy tint",
+        "settings.glass.slider.readability" to "Readability",
+        "settings.glass.slider.refraction" to "Refraction",
+        "settings.glass.slider.depth" to "Depth",
+        "settings.glass.slider.radius" to "Corner radius",
+        "stats.title" to "Listening statistics",
+        "stats.description" to "These statistics currently use earbud connection time; they can later switch to actual listening time once wearing detection is stable.",
+        "stats.total" to "Total time",
+        "stats.today" to "Today",
+        "stats.heard" to "Heard",
+        "stats.streak" to "Listening streak",
+        "stats.days" to "%s days",
+        "stats.activity" to "Listening activity",
+        "stats.recent_weeks" to "Last 16 weeks",
+        "stats.less" to "Less",
+        "stats.more" to "More",
+        "stats.duration.hours_minutes" to "%s h %s min",
+        "stats.duration.hours" to "%s h",
+        "stats.duration.minutes" to "%s min",
+        "gesture.double_left" to "Double tap · Left",
+        "gesture.double_right" to "Double tap · Right",
+        "gesture.triple_left" to "Triple tap · Left",
+        "gesture.triple_right" to "Triple tap · Right",
+        "gesture.swipe" to "Swipe gesture",
+        "gesture.long_tap" to "Long press",
+        "gesture.action.pause" to "Play / pause",
+        "gesture.action.next" to "Next track",
+        "gesture.action.prev" to "Previous track",
+        "gesture.action.assistant" to "Voice assistant",
+        "gesture.action.answer" to "Answer / hang up",
+        "gesture.action.volume" to "Volume control",
+        "gesture.noise.disabled" to "Disable noise-control switch",
+        "gesture.noise.off_on" to "Cycle noise cancellation",
+        "gesture.noise.off_on_aw" to "Cycle cancellation / awareness",
+        "gesture.noise.on_aw" to "Cycle awareness",
+        "gesture.noise.off_an" to "Noise cancellation only",
+        "gesture.title" to "Gesture settings",
+        "home.scan" to "Scan devices",
+        "permission.title" to "Permissions",
+        "terminal.title" to "Debug terminal",
+        "terminal.clear" to "Clear",
+        "terminal.props" to "Props",
+        "terminal.help" to "Help",
+        "terminal.disconnect" to "Disconnect",
+        "terminal.share" to "Share",
+        "terminal.permissions" to "Props",
+        "terminal.input_hint" to "Type a command…",
+        "terminal.started" to "Debug terminal — return to the main screen for connection management",
+        "terminal.commands" to "Commands: clear | props | set <group.prop> <value> | share | disconnect | help",
+        "terminal.help.clear" to "clear        — Clear screen",
+        "terminal.help.props" to "props        — Show all properties",
+        "terminal.help.set" to "set g.p v    — Write a property",
+        "terminal.help.share" to "share        — Export logs",
+        "terminal.help.disconnect" to "disconnect   — Disconnect and return",
+        "terminal.unknown_command" to "Unknown command: %s",
+        "terminal.not_connected" to "Not connected",
+        "terminal.no_properties" to "No properties",
+        "terminal.usage_set" to "Usage: set <group.prop> <value>",
+        "terminal.export_log" to "Export logs",
+        "settings.credit.anc_cancellation" to "Noise cancellation: noise canceling by Vanicon studio from Noun Project (CC BY 3.0)",
+        "settings.credit.anc_awareness" to "Awareness: noise canceling by Gregor Cresnar from Noun Project (CC BY 3.0)",
+        "settings.credit.anc_off" to "ANC off: Wireless headset by Berkah Icon from Noun Project (CC BY 3.0)",
+        "glass.preview.device" to "FreeBuds Pro",
+        "glass.preview.status" to "Noise cancellation · Dynamic / low latency enabled",
+        "glass.preview.card" to "Liquid glass card",
+        "glass.preview.description" to "Edge highlights, Fresnel dark rim and internal refraction band",
+        "glass.preview.circle" to "Circle",
+        "glass.preview.profile" to "Profile",
+    )
+
+    override fun t(key: String, vararg args: Any?): String {
+        val raw = strings[key] ?: SimplifiedChineseProvider.entries()[key] ?: key
+        return if (args.isEmpty()) raw else runCatching { raw.format(*args) }.getOrDefault(raw)
+    }
+
+    fun entries(): Map<String, String> = strings
+}
+
+@Immutable
+private object TraditionalChineseProvider : I18nProvider {
+    override val localeTag: String = I18nLocale.ZH_TW.tag
+    private val strings = SimplifiedChineseProvider.entries().mapValues { (_, value) -> toTraditional(value) }
+
+    override fun t(key: String, vararg args: Any?): String {
+        val raw = strings[key] ?: key
+        return if (args.isEmpty()) raw else runCatching { raw.format(*args) }.getOrDefault(raw)
+    }
+
+    fun entries(): Map<String, String> = strings
+}
+
+private fun toTraditional(value: String): String {
+    val replacements = listOf(
+        "设置" to "設定", "信息" to "資訊", "音频" to "音訊", "调节" to "調節", "稳定" to "穩定",
+        "后台" to "後台", "设备" to "設備", "电量" to "電量", "耳机" to "耳機", "华为" to "華為",
+        "荣耀" to "榮耀", "连接" to "連接", "优先" to "優先", "默认" to "預設", "开启" to "開啟",
+        "关闭" to "關閉", "加载" to "載入", "降噪" to "降噪", "透传" to "透傳", "舒适" to "舒適",
+        "动态" to "動態", "普通" to "普通", "人声" to "人聲", "强度" to "強度", "声音" to "聲音",
+        "高音" to "高音", "蓝牙" to "藍牙", "状态" to "狀態", "显示" to "顯示", "当前" to "目前",
+        "听音" to "聽音", "时长" to "時長", "低延迟" to "低延遲", "切换" to "切換", "失败" to "失敗",
+        "重试" to "重試", "点按" to "點按", "设为" to "設為", "保存" to "儲存", "扫描" to "掃描",
+        "发现" to "發現", "点击" to "點擊", "选择" to "選擇", "自动" to "自動", "建议" to "建議",
+        "权限" to "權限", "通知" to "通知", "电池" to "電池", "优化" to "優化", "白名单" to "白名單",
+        "系统" to "系統", "手动" to "手動", "国产" to "國產", "上传" to "上傳", "查看" to "查看",
+        "发送" to "發送", "型号" to "型號", "固件" to "韌體", "暂停" to "暫停", "自定义" to "自訂",
+        "频段" to "頻段", "只读" to "唯讀", "未保存" to "未儲存", "已连接" to "已連接", "未连接" to "未連接",
+        "首选" to "首選", "主题" to "主題", "个性化" to "個人化", "壁纸" to "桌布", "调试" to "除錯",
+        "导出" to "匯出", "应用" to "應用程式", "详情" to "詳情", "项目理念" to "專案理念", "图标" to "圖示",
+        "展开" to "展開", "来源" to "來源", "授权" to "授權", "液态" to "液態", "边缘" to "邊緣",
+        "可读性" to "可讀性", "复杂" to "複雜", "浅色" to "淺色", "保护" to "保護", "高级" to "進階",
+        "影响" to "影響", "展示" to "顯示", "范围" to "範圍", "增强" to "增強", "轮廓" to "輪廓", "导入" to "匯入",
+        "更换" to "更換", "界面" to "介面", "跟随" to "跟隨", "较低" to "較低", "圆角" to "圓角", "圆形" to "圓形",
+        "传统" to "傳統", "性能" to "效能", "开销" to "開銷", "毛玻璃" to "磨砂玻璃", "质感" to "質感",
+        "日志" to "日誌", "朦胧" to "朦朧", "统计" to "統計", "累计" to "累計", "后续" to "後續", "真实" to "真實",
+        "总时长" to "總時長", "连续" to "連續", "活动" to "活動", "周" to "週", "小时" to "小時", "语言" to "語言",
+        "简体中文" to "簡體中文", "繁体中文" to "繁體中文", "清屏" to "清除畫面", "属性" to "屬性", "帮助" to "說明",
+        "断开" to "中斷連線", "输入" to "輸入", "命令" to "指令", "未知命令" to "未知指令", "暂无" to "暫無",
+        "充电" to "充電", "已配对" to "已配對", "附近设备" to "附近設備", "未发现设备" to "未發現設備",
+        "连接失败" to "連接失敗", "必需" to "必要", "清除" to "清除", "继续" to "繼續", "扫描设备" to "掃描設備",
+    )
+    val phraseConverted = replacements.fold(value) { text, (from, to) -> text.replace(from, to) }
+    val characterReplacements = mapOf(
+        '设' to '設', '关' to '關', '于' to '於', '务' to '務', '运' to '運', '应' to '應',
+        '无' to '無', '仅' to '僅', '稳' to '穩', '调' to '調', '节' to '節',
+        '项' to '項', '数' to '數', '据' to '據', '线' to '線', '双' to '雙', '击' to '擊',
+        '长' to '長', '动' to '動', '质' to '質', '声' to '聲', '语' to '語', '选' to '選',
+        '择' to '擇', '统' to '統', '计' to '計', '实' to '實', '续' to '續', '时' to '時',
+        '间' to '間', '后' to '後', '为' to '為', '当' to '當', '并' to '並', '与' to '與',
+        '来' to '來', '级' to '級', '强' to '強', '态' to '態', '听' to '聽', '现' to '現',
+        '请' to '請', '从' to '從', '缘' to '緣', '护' to '護', '个' to '個', '复' to '複',
+        '进' to '進', '阶' to '階', '响' to '響', '范' to '範', '围' to '圍', '开' to '開',
+        '销' to '銷', '发' to '發', '断' to '斷', '导' to '導', '换' to '換', '较' to '較',
+        '圆' to '圓', '机' to '機', '陆' to '陸', '径' to '徑', '启' to '啟',
+        '闭' to '閉', '载' to '載', '读' to '讀', '谨' to '謹', '别' to '別', '达' to '達',
+    )
+    return phraseConverted.map { characterReplacements[it] ?: it }.joinToString("")
+}
+
+val LocalI18n = staticCompositionLocalOf<I18nProvider> { SimplifiedChineseProvider }
 
 @Composable
 fun i18n(key: String, vararg args: Any?): String = LocalI18n.current.t(key, *args)

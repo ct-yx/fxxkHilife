@@ -22,6 +22,9 @@ import dev.chrisbanes.haze.hazeSource
 import dev.chrisbanes.haze.rememberHazeState
 import com.freebuds.controller.data.ConnectionState
 import com.freebuds.controller.data.DeviceViewModel
+import com.freebuds.controller.i18n.I18n
+import com.freebuds.controller.i18n.I18nLocale
+import com.freebuds.controller.i18n.LocalI18n
 import com.freebuds.controller.ui.glass.LiquidGlassConfig
 import com.freebuds.controller.ui.glass.LocalLiquidGlassConfig
 import com.freebuds.controller.ui.glass.loadLiquidGlassConfig
@@ -59,6 +62,9 @@ fun AppNavHost(
 
     val initialTheme = remember { loadThemeMode(context) }
     var currentTheme by remember { mutableStateOf(initialTheme) }
+
+    val initialLocale = remember { I18n.loadLocale(context) }
+    var currentLocale by remember { mutableStateOf(initialLocale) }
 
     val savedWallpaper = remember {
         context.getSharedPreferences("fxxk_theme", android.content.Context.MODE_PRIVATE)
@@ -103,7 +109,10 @@ fun AppNavHost(
         WallpaperScope.SETTINGS -> currentRoute == Route.Settings
     }
 
-    CompositionLocalProvider(LocalLiquidGlassConfig provides glassConfig) {
+    CompositionLocalProvider(
+        LocalLiquidGlassConfig provides glassConfig,
+        LocalI18n provides I18n.provider(currentLocale),
+    ) {
         Box(
             modifier = Modifier
             .fillMaxSize()
@@ -233,6 +242,12 @@ fun AppNavHost(
                     onDisplayModeChange = { mode ->
                         displayMode = mode
                         saveUiDisplayMode(context, mode)
+                    },
+                    locale = currentLocale,
+                    onLocaleChange = { locale: I18nLocale ->
+                        currentLocale = locale
+                        I18n.setLocale(locale)
+                        I18n.saveLocale(context, locale)
                     },
                 )
             }

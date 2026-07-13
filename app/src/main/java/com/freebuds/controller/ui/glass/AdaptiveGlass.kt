@@ -38,6 +38,7 @@ import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import com.freebuds.controller.ui.UiDisplayMode
+import com.freebuds.controller.i18n.i18n
 import dev.chrisbanes.haze.HazeState
 import dev.chrisbanes.haze.blur.HazeColorEffect
 import dev.chrisbanes.haze.blur.blurEffect
@@ -490,9 +491,9 @@ private fun LiquidGlassCardPreview() {
                 refractionStrength = 0.82f,
                 depth = 0.46f,
             ) {
-                Text("FreeBuds Pro", style = MaterialTheme.typography.titleLarge)
+                Text(i18n("glass.preview.device"), style = MaterialTheme.typography.titleLarge)
                 Spacer(Modifier.height(8.dp))
-                Text("降噪 · 动态 / 低延迟已开启")
+                Text(i18n("glass.preview.status"))
             }
             LiquidGlassCard(
                 hazeState = hazeState,
@@ -502,9 +503,9 @@ private fun LiquidGlassCardPreview() {
                 shape = RoundedCornerShape(36.dp),
                 cornerRadius = 36.dp,
             ) {
-                Text("液态玻璃卡片", style = MaterialTheme.typography.titleMedium)
+                Text(i18n("glass.preview.card"), style = MaterialTheme.typography.titleMedium)
                 Spacer(Modifier.height(6.dp))
-                Text("边缘高光、Fresnel 暗边、内部折射光带")
+                Text(i18n("glass.preview.description"))
             }
             LiquidGlassCard(
                 hazeState = hazeState,
@@ -516,8 +517,8 @@ private fun LiquidGlassCardPreview() {
                 surfaceProfile = GlassSurfaceProfile.Circle,
                 modifier = Modifier.width(180.dp),
             ) {
-                Text("Circle")
-                Text("Profile")
+                Text(i18n("glass.preview.circle"))
+                Text(i18n("glass.preview.profile"))
             }
         }
     }

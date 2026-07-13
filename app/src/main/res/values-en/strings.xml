@@ -1,0 +1,18 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name">fxxkHilife</string>
+    <string name="service_notification_title">fxxkHilife</string>
+    <string name="service_notification_text">Earbud service is running</string>
+    <string name="version_name">4.2.4</string>
+    <string name="back">Back</string>
+    <string name="saved_devices_count">Saved devices (%d)</string>
+    <string name="connection_preferences">Connection preferences</string>
+    <string name="auto_low_latency">Automatic low-latency mode</string>
+    <string name="terminal_clear">Clear</string>
+    <string name="terminal_props">Props</string>
+    <string name="terminal_help">Help</string>
+    <string name="terminal_disconnect">Disconnect</string>
+    <string name="terminal_share">Share</string>
+    <string name="terminal_input_hint">Type a command...</string>
+    <string name="terminal_title">Debug terminal</string>
+</resources>

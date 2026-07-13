@@ -23,6 +23,8 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import com.freebuds.controller.data.DeviceViewModel
 import com.freebuds.controller.data.ListeningStats
+import com.freebuds.controller.i18n.I18n
+import com.freebuds.controller.i18n.i18n
 import com.freebuds.controller.ui.glass.AdaptiveCard
 import dev.chrisbanes.haze.HazeState
 import java.text.SimpleDateFormat
@@ -42,10 +44,10 @@ fun ListeningStatsScreen(
         containerColor = Color.Transparent,
         topBar = {
             TopAppBar(
-                title = { Text("听音统计") },
+                title = { Text(i18n("stats.title")) },
                 navigationIcon = {
                     IconButton(onClick = onBack) {
-                        Icon(Icons.Default.ArrowBack, contentDescription = "返回")
+                        Icon(Icons.Default.ArrowBack, contentDescription = i18n("common.back"))
                     }
                 },
                 colors = TopAppBarDefaults.topAppBarColors(
@@ -65,7 +67,7 @@ fun ListeningStatsScreen(
             item { ListeningHeatmapCard(stats, displayMode, hazeState) }
             item {
                 Text(
-                    "当前统计按耳机连接时长累计；后续在佩戴状态稳定后可切换为真实佩戴听音时长。",
+                    i18n("stats.description"),
                     style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                     modifier = Modifier.padding(horizontal = 4.dp),
@@ -79,12 +81,12 @@ fun ListeningStatsScreen(
 private fun StatsSummaryGrid(stats: ListeningStats, displayMode: UiDisplayMode, hazeState: HazeState?) {
     Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
         Row(horizontalArrangement = Arrangement.spacedBy(12.dp), modifier = Modifier.fillMaxWidth()) {
-            StatTile(Icons.Default.Schedule, "总时长", formatDuration(stats.totalMs), displayMode, hazeState, Modifier.weight(1f))
-            StatTile(Icons.Default.TextFields, "今日", formatDuration(stats.todayMs), displayMode, hazeState, Modifier.weight(1f))
+            StatTile(Icons.Default.Schedule, i18n("stats.total"), formatDuration(stats.totalMs), displayMode, hazeState, Modifier.weight(1f))
+            StatTile(Icons.Default.TextFields, i18n("stats.today"), formatDuration(stats.todayMs), displayMode, hazeState, Modifier.weight(1f))
         }
         Row(horizontalArrangement = Arrangement.spacedBy(12.dp), modifier = Modifier.fillMaxWidth()) {
-            StatTile(Icons.Default.Book, "已听", "${stats.activeDays}天", displayMode, hazeState, Modifier.weight(1f))
-            StatTile(Icons.Default.LocalFireDepartment, "连续听音", "${stats.streakDays}天", displayMode, hazeState, Modifier.weight(1f))
+            StatTile(Icons.Default.Book, i18n("stats.heard"), i18n("stats.days", stats.activeDays), displayMode, hazeState, Modifier.weight(1f))
+            StatTile(Icons.Default.LocalFireDepartment, i18n("stats.streak"), i18n("stats.days", stats.streakDays), displayMode, hazeState, Modifier.weight(1f))
         }
     }
 }
@@ -122,8 +124,8 @@ private fun ListeningHeatmapCard(stats: ListeningStats, displayMode: UiDisplayMo
     AdaptiveCard(displayMode = displayMode, hazeState = hazeState, modifier = Modifier.fillMaxWidth()) {
         Column(verticalArrangement = Arrangement.spacedBy(14.dp)) {
             Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.fillMaxWidth()) {
-                Text("听音活动", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold, modifier = Modifier.weight(1f))
-                Text("近 16 周", style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                Text(i18n("stats.activity"), style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold, modifier = Modifier.weight(1f))
+                Text(i18n("stats.recent_weeks"), style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
             }
             val days = recentDays(16 * 7)
             Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
@@ -144,7 +146,7 @@ private fun ListeningHeatmapCard(stats: ListeningStats, displayMode: UiDisplayMo
                 }
             }
             Row(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalAlignment = Alignment.CenterVertically) {
-                Text("少", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                Text(i18n("stats.less"), style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
                 listOf(0L, 5 * 60_000L, 30 * 60_000L, 90 * 60_000L, 180 * 60_000L).forEach { ms ->
                     Box(
                         Modifier
@@ -153,7 +155,7 @@ private fun ListeningHeatmapCard(stats: ListeningStats, displayMode: UiDisplayMo
                             .background(heatColor(ms))
                     )
                 }
-                Text("多", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                Text(i18n("stats.more"), style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
             }
         }
     }
@@ -180,8 +182,8 @@ private fun formatDuration(ms: Long): String {
     val hours = totalMinutes / 60
     val mins = totalMinutes % 60
     return when {
-        hours > 0 && mins > 0 -> "${hours}时${mins}分"
-        hours > 0 -> "${hours}时"
-        else -> "${mins}分"
+        hours > 0 && mins > 0 -> I18n.t("stats.duration.hours_minutes", hours, mins)
+        hours > 0 -> I18n.t("stats.duration.hours", hours)
+        else -> I18n.t("stats.duration.minutes", mins)
     }
 }

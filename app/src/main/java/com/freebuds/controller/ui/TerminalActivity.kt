@@ -13,6 +13,7 @@ import androidx.appcompat.app.AppCompatActivity
 import androidx.core.content.FileProvider
 import com.freebuds.controller.HilifeApplication
 import com.freebuds.controller.R
+import com.freebuds.controller.i18n.I18n
 import com.freebuds.controller.util.LogBuffer
 import com.freebuds.controller.util.LogBuffer.OnLogUpdateListener
 import kotlinx.coroutines.CoroutineScope
@@ -35,11 +36,19 @@ class TerminalActivity : AppCompatActivity(), OnLogUpdateListener {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         setContentView(R.layout.activity_terminal)
-        title = "调试终端"
+        title = I18n.t("terminal.title")
 
         outputView = findViewById(R.id.terminal_output)
         inputView  = findViewById(R.id.terminal_input)
         scrollView = findViewById(R.id.terminal_scroll)
+        findViewById<Button>(R.id.btn_clear).text = I18n.t("terminal.clear")
+        findViewById<Button>(R.id.btn_scan).text = I18n.t("terminal.props")
+        findViewById<Button>(R.id.btn_list).text = I18n.t("terminal.help")
+        findViewById<Button>(R.id.btn_disconnect).text = I18n.t("terminal.disconnect")
+        findViewById<Button>(R.id.btn_share).text = I18n.t("terminal.share")
+        findViewById<Button>(R.id.btn_perm).text = I18n.t("terminal.permissions")
+        findViewById<Button>(R.id.btn_help).text = I18n.t("terminal.help")
+        inputView.hint = I18n.t("terminal.input_hint")
 
         inputView.setOnEditorActionListener { _, action, _ ->
             if (action == EditorInfo.IME_ACTION_SEND) {
@@ -59,8 +68,8 @@ class TerminalActivity : AppCompatActivity(), OnLogUpdateListener {
         findViewById<Button>(R.id.btn_help).setOnClickListener { handleCommand("help") }
 
         LogBuffer.registerListener(this)
-        LogBuffer.i("Terminal", "调试终端 — 连接管理请返回主界面")
-        LogBuffer.i("Terminal", "可用命令：clear | props | set <group.prop> <value> | share | disconnect | help")
+        LogBuffer.i("Terminal", I18n.t("terminal.started"))
+        LogBuffer.i("Terminal", I18n.t("terminal.commands"))
         renderAll()
     }
 
@@ -74,22 +83,22 @@ class TerminalActivity : AppCompatActivity(), OnLogUpdateListener {
             trimmed.startsWith("set ", true)   -> setProp(trimmed.removePrefix("set").trim())
             trimmed.equals("disconnect", true) -> { repo.disconnect(); finish() }
             trimmed.equals("help", true)       -> {
-                LogBuffer.i("Terminal", "clear        — 清屏")
-                LogBuffer.i("Terminal", "props        — 查看所有属性")
-                LogBuffer.i("Terminal", "set g.p v    — 写入属性")
-                LogBuffer.i("Terminal", "share        — 导出日志")
-                LogBuffer.i("Terminal", "disconnect   — 断开连接并返回")
+                LogBuffer.i("Terminal", I18n.t("terminal.help.clear"))
+                LogBuffer.i("Terminal", I18n.t("terminal.help.props"))
+                LogBuffer.i("Terminal", I18n.t("terminal.help.set"))
+                LogBuffer.i("Terminal", I18n.t("terminal.help.share"))
+                LogBuffer.i("Terminal", I18n.t("terminal.help.disconnect"))
             }
-            else -> LogBuffer.w("Terminal", "未知命令：$trimmed")
+            else -> LogBuffer.w("Terminal", I18n.t("terminal.unknown_command", trimmed))
         }
     }
 
     private fun printProps() {
         scope.launch {
             val driver = repo.getDriver()
-            if (driver == null) { LogBuffer.w("Prop", "未连接"); return@launch }
+            if (driver == null) { LogBuffer.w("Prop", I18n.t("terminal.not_connected")); return@launch }
             val text = driver.getProperty() ?: ""
-            if (text.isBlank()) LogBuffer.i("Prop", "暂无属性")
+            if (text.isBlank()) LogBuffer.i("Prop", I18n.t("terminal.no_properties"))
             else text.lines().forEach { LogBuffer.i("Prop", it) }
         }
     }
@@ -100,7 +109,7 @@ class TerminalActivity : AppCompatActivity(), OnLogUpdateListener {
         val value = if (firstSpace > 0) payload.substring(firstSpace + 1) else ""
         val dot   = key.indexOf('.')
         if (dot <= 0 || dot == key.lastIndex) {
-            LogBuffer.w("Prop", "用法：set <group.prop> <value>"); return
+            LogBuffer.w("Prop", I18n.t("terminal.usage_set")); return
         }
         scope.launch { repo.setProperty(key.substring(0, dot), key.substring(dot + 1), value) }
     }
@@ -114,7 +123,7 @@ class TerminalActivity : AppCompatActivity(), OnLogUpdateListener {
                 type = "text/plain"
                 putExtra(Intent.EXTRA_STREAM, uri)
                 addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
-            }, "导出日志"
+            }, I18n.t("terminal.export_log")
         ))
     }
 

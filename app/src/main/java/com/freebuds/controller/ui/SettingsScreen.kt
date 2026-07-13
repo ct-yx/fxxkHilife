@@ -28,6 +28,7 @@ import coil.compose.AsyncImage
 import com.freebuds.controller.BuildConfig
 import com.freebuds.controller.data.DeviceViewModel
 import com.freebuds.controller.i18n.i18n
+import com.freebuds.controller.i18n.I18nLocale
 import com.freebuds.controller.util.LogBuffer
 import com.freebuds.controller.ui.glass.AdaptiveCard
 import com.freebuds.controller.ui.glass.GlassSurfaceProfile
@@ -60,6 +61,8 @@ fun SettingsScreen(
     glassConfig: LiquidGlassConfig,
     onGlassConfigChange: (LiquidGlassConfig) -> Unit,
     onDisplayModeChange: (UiDisplayMode) -> Unit,
+    locale: I18nLocale,
+    onLocaleChange: (I18nLocale) -> Unit,
 ) {
     val context = LocalContext.current
     val connState by viewModel.connectionState.collectAsState()
@@ -157,6 +160,16 @@ fun SettingsScreen(
                             onDisplayModeChange(mode)
                         }
                     },
+                )
+            }
+
+            item { SettingsHeader(i18n("settings.language")) }
+            item {
+                LanguageSelector(
+                    displayMode = displayMode,
+                    hazeState = hazeState,
+                    current = locale,
+                    onSelect = onLocaleChange,
                 )
             }
 
@@ -333,35 +346,32 @@ fun SettingsScreen(
                     }
                     AnimatedVisibility(visible = expanded) {
                         Column(modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp)) {
-                            // 降噪
                             Icon(painter = painterResource(com.freebuds.controller.R.drawable.ic_anc_cancellation),
                                 contentDescription = null,
                                 modifier = Modifier.size(20.dp))
                             Spacer(Modifier.height(4.dp))
                             Text(
-                                "降噪模式：noise canceling by Vanicon studio from Noun Project (CC BY 3.0)",
+                                i18n("settings.credit.anc_cancellation"),
                                 style = MaterialTheme.typography.bodySmall
                             )
                             Spacer(Modifier.height(12.dp))
 
-                            // 通透
                             Icon(painter = painterResource(com.freebuds.controller.R.drawable.ic_anc_awareness),
                                 contentDescription = null,
                                 modifier = Modifier.size(20.dp))
                             Spacer(Modifier.height(4.dp))
                             Text(
-                                "通透模式：noise canceling by Gregor Cresnar from Noun Project (CC BY 3.0)",
+                                i18n("settings.credit.anc_awareness"),
                                 style = MaterialTheme.typography.bodySmall
                             )
                             Spacer(Modifier.height(12.dp))
 
-                            // 关闭
                             Icon(painter = painterResource(com.freebuds.controller.R.drawable.ic_anc_normal),
                                 contentDescription = null,
                                 modifier = Modifier.size(20.dp))
                             Spacer(Modifier.height(4.dp))
                             Text(
-                                "ANC关闭：Wireless headset by Berkah Icon from Noun Project (CC BY 3.0)",
+                                i18n("settings.credit.anc_off"),
                                 style = MaterialTheme.typography.bodySmall
                             )
                         }
@@ -530,19 +540,19 @@ private fun LiquidGlassPersonalizationCard(
                 }
                 AnimatedVisibility(visible = advancedExpanded) {
                     Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
-                        GlassSliderRow("Legacy Tint", config.tintAlpha, 0.04f..0.20f) {
+                        GlassSliderRow(i18n("settings.glass.slider.tint"), config.tintAlpha, 0.04f..0.20f) {
                             onConfigChange(config.copy(tintAlpha = it))
                         }
-                        GlassSliderRow("Readability", config.readabilityStrength, 0.00f..0.70f) {
+                        GlassSliderRow(i18n("settings.glass.slider.readability"), config.readabilityStrength, 0.00f..0.70f) {
                             onConfigChange(config.copy(readabilityStrength = it))
                         }
-                        GlassSliderRow("Refraction", config.refractionStrength, 0.30f..1.00f) {
+                        GlassSliderRow(i18n("settings.glass.slider.refraction"), config.refractionStrength, 0.30f..1.00f) {
                             onConfigChange(config.copy(refractionStrength = it))
                         }
-                        GlassSliderRow("Depth", config.depth, 0.10f..0.80f) {
+                        GlassSliderRow(i18n("settings.glass.slider.depth"), config.depth, 0.10f..0.80f) {
                             onConfigChange(config.copy(depth = it))
                         }
-                        GlassSliderRow("Radius", config.cornerRadiusDp, 16f..42f) {
+                        GlassSliderRow(i18n("settings.glass.slider.radius"), config.cornerRadiusDp, 16f..42f) {
                             onConfigChange(config.copy(cornerRadiusDp = it))
                         }
                         ConfigSegmentRow(
@@ -639,7 +649,7 @@ private fun AppDetailsCard(
                 }
                 Spacer(Modifier.width(14.dp))
                 Column(Modifier.weight(1f)) {
-                    Text("fxxkHilife", style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.Bold)
+                    Text(i18n("app.name"), style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.Bold)
                     Text(
                         "v${BuildConfig.VERSION_NAME} (${BuildConfig.VERSION_CODE})",
                         style = MaterialTheme.typography.bodyMedium,
@@ -744,6 +754,38 @@ private fun ThemeSelector(
                         else MaterialTheme.colorScheme.onSurface,
                     )
                 }
+            }
+        }
+    }
+}
+
+@Composable
+private fun LanguageSelector(
+    displayMode: UiDisplayMode,
+    hazeState: HazeState?,
+    current: I18nLocale,
+    onSelect: (I18nLocale) -> Unit,
+) {
+    AdaptiveCard(
+        displayMode = displayMode,
+        hazeState = hazeState,
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(horizontal = 16.dp, vertical = 5.dp),
+    ) {
+        I18nLocale.entries.forEach { locale ->
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .clickable { onSelect(locale) }
+                    .padding(vertical = 4.dp),
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
+                RadioButton(
+                    selected = current == locale,
+                    onClick = { onSelect(locale) },
+                )
+                Text(i18n(locale.labelKey), modifier = Modifier.padding(start = 8.dp))
             }
         }
     }

@@ -16,8 +16,8 @@
   <a href="https://github.com/ct-yx/fxxkHilife/issues">Report / Join testing</a>
 </p>
 
-> **Current version: v4.2.3**
-> Keeps background app-control auto-connect while restoring core-first initialization so EQ / Dual Connect do not block FreeBuds 6i connection.
+> **Current version: v4.2.4**
+> Keeps Simplified Chinese as the default language and adds selectable English / Traditional Chinese across settings, notifications, Quick Settings, and core screens.
 
 ---
 

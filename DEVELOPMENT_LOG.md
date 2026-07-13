@@ -1237,3 +1237,16 @@
 - versionCode: 84
 - versionName: 4.2.3
 - tag: v4.2.3
+
+## v4.2.4 (2026-07-14)
+
+### 国际化
+- 保持简体中文为默认和基准语言，新增可持久化选择的 English 与繁體中文语言包。
+- 应用启动会恢复所选语言；通知、Quick Settings Tile、设备页、听音统计、调试终端和液态玻璃高级设置统一使用当前语言。
+- 新增英语、繁体中文 Android 资源，并将终端、Manifest 标签和主要 Compose 硬编码文本纳入 i18n。
+- 增加语言包 key 一致性测试，确保三套语言的键值覆盖保持同步。
+
+### 发布
+- versionCode: 85
+- versionName: 4.2.4
+- tag: v4.2.4

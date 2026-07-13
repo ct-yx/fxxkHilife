@@ -45,31 +45,31 @@
         <Button
             android:id="@+id/btn_clear"
             style="@style/TerminalShortcut"
-            android:text="clear" />
+            android:text="@string/terminal_clear" />
         <Button
             android:id="@+id/btn_scan"
             style="@style/TerminalShortcut"
-            android:text="scan" />
+            android:text="@string/terminal_props" />
         <Button
             android:id="@+id/btn_list"
             style="@style/TerminalShortcut"
-            android:text="list" />
+            android:text="@string/terminal_help" />
         <Button
             android:id="@+id/btn_disconnect"
             style="@style/TerminalShortcut"
-            android:text="discnct" />
+            android:text="@string/terminal_disconnect" />
         <Button
             android:id="@+id/btn_share"
             style="@style/TerminalShortcut"
-            android:text="share" />
+            android:text="@string/terminal_share" />
         <Button
             android:id="@+id/btn_perm"
             style="@style/TerminalShortcut"
-            android:text="perm" />
+            android:text="@string/terminal_props" />
         <Button
             android:id="@+id/btn_help"
             style="@style/TerminalShortcut"
-            android:text="help" />
+            android:text="@string/terminal_help" />
     </LinearLayout>
 
     <View
@@ -90,7 +90,7 @@
         android:fontFamily="monospace"
         android:textColor="#FF00FF00"
         android:textColorHint="#666666"
-        android:hint="type command..."
+        android:hint="@string/terminal_input_hint"
         android:imeOptions="actionSend"
         android:inputType="text"
         android:padding="12dp"
