@@ -186,6 +186,10 @@ class DeviceRepository {
         connectingJob = scope.launch {
             _connectionState.value = ConnectionState.Connecting(device.name ?: device.address)
             val adapter = adapters.firstOrNull { it.canHandle(device) } ?: HuaweiOpenFreebudsAdapter
+            LogBuffer.putMetadata("earbudName", device.name ?: "unknown")
+            LogBuffer.putMetadata("earbudAddress", device.address)
+            LogBuffer.putMetadata("adapter", adapter.id)
+            LogBuffer.i("Session", "Connect requested device=${device.name ?: "unknown"} address=${device.address} adapter=${adapter.id}")
             val d = LegacySppEarbudSession(device, adapter)
             d.setPropertyChangedListener {
                 scope.launch {
@@ -713,22 +717,27 @@ class DeviceRepository {
 
     // ── 分享日志 ─────────────────────────────────────────────────────────
 
-    fun shareLog(context: Context) {
-        try {
-            val text = LogBuffer.getSnapshotText()
-            val dir = File(context.cacheDir, "logs")
-            dir.mkdirs()
-            val file = File(dir, "fxxkHilife_log_${System.currentTimeMillis()}.txt")
-            file.writeText(text)
-            val uri = FileProvider.getUriForFile(context, "${context.packageName}.fileprovider", file)
-            val intent = Intent(Intent.ACTION_SEND).apply {
-                type = "text/plain"
-                putExtra(Intent.EXTRA_STREAM, uri)
-                addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
+    fun shareLog(context: Context, chooserTitle: String = I18n.t("settings.share_log_chooser")) {
+        scope.launch {
+            try {
+                val dir = File(context.cacheDir, "logs")
+                dir.mkdirs()
+                dir.listFiles()?.filter { it.lastModified() < System.currentTimeMillis() - 7 * 24 * 60 * 60_000L }
+                    ?.forEach { it.delete() }
+                val file = File(dir, "fxxkHilife_diagnostic_${System.currentTimeMillis()}.txt")
+                file.writeText(LogBuffer.getDiagnosticReport())
+                val uri = FileProvider.getUriForFile(context, "${context.packageName}.fileprovider", file)
+                val intent = Intent(Intent.ACTION_SEND).apply {
+                    type = "text/plain"
+                    putExtra(Intent.EXTRA_STREAM, uri)
+                    addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
+                }
+                withContext(Dispatchers.Main) {
+                    context.startActivity(Intent.createChooser(intent, chooserTitle))
+                }
+            } catch (e: Exception) {
+                LogBuffer.e("Share", "Failed to share diagnostic log: ${e.message}")
             }
-            context.startActivity(Intent.createChooser(intent, I18n.t("settings.share_log_chooser")))
-        } catch (e: Exception) {
-            LogBuffer.e("Share", "Failed to share log: ${e.message}")
         }
     }
     // ── 内部：从 session 状态映射同步到 StateFlow ─────────────────────────────

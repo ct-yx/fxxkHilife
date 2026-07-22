@@ -1,5 +1,6 @@
 package com.freebuds.controller.adapter.huawei.protocol
 
+import android.os.SystemClock
 import com.freebuds.controller.bluetooth.HuaweiDeviceHandler
 import com.freebuds.controller.bluetooth.SppDriver
 import com.freebuds.controller.util.LogBuffer
@@ -27,7 +28,10 @@ class HuaweiHandlerInitializer(private val registry: HuaweiHandlerRegistry) {
         val label = deviceLabel ?: "FreeBuds"
         val handlers = coreHandlers()
         val startedAt = System.currentTimeMillis()
-        LogBuffer.i("SPP", "Staggered core init for $label: handlers=${handlers.map { it.id }}, gap=80ms")
+        LogBuffer.i(
+            "SPP",
+            "CORE init start device=$label handlers=${handlers.map { it.id }} mode=staggered gap=80ms parallelHandlers=${handlers.size}"
+        )
 
         val results = coroutineScope {
             handlers.mapIndexed { index, handler ->
@@ -47,7 +51,7 @@ class HuaweiHandlerInitializer(private val registry: HuaweiHandlerRegistry) {
         }
         LogBuffer.i(
             "SPP",
-            "Staggered core init finished in ${System.currentTimeMillis() - startedAt}ms; failed=${registry.failedHandlerIds.filter { id -> handlers.any { it.id == id } }}"
+            "CORE init finish elapsed=${System.currentTimeMillis() - startedAt}ms failed=${registry.failedHandlerIds.filter { id -> handlers.any { it.id == id } }}"
         )
     }
 
@@ -148,28 +152,29 @@ class HuaweiHandlerInitializer(private val registry: HuaweiHandlerRegistry) {
         timeoutMs: Long,
     ): Boolean {
         for (attempt in 0 until maxAttempts) {
+            val attemptStartedAt = SystemClock.elapsedRealtime()
             try {
-                LogBuffer.d("SPP", "Init ${handler.id}, attempt=$attempt")
+                LogBuffer.d("SPP", "INIT start handler=${handler.id} attempt=${attempt + 1}/$maxAttempts timeout=${timeoutMs}ms")
                 withTimeout(timeoutMs) {
                     handler.onInit(driver)
                 }
                 if (hasExpectedInitState(driver, handler.id)) {
-                    LogBuffer.i("SPP", "Init ${handler.id} success (attempt=${attempt + 1})")
+                    LogBuffer.i("SPP", "INIT success handler=${handler.id} attempt=${attempt + 1}/$maxAttempts elapsed=${SystemClock.elapsedRealtime() - attemptStartedAt}ms")
                     return true
                 }
-                LogBuffer.w("SPP", "Init ${handler.id} returned without expected state (attempt=${attempt + 1})")
+                LogBuffer.w("SPP", "INIT missing-state handler=${handler.id} attempt=${attempt + 1}/$maxAttempts elapsed=${SystemClock.elapsedRealtime() - attemptStartedAt}ms")
             } catch (e: TimeoutCancellationException) {
                 if (hasExpectedInitState(driver, handler.id)) {
-                    LogBuffer.i("SPP", "Init ${handler.id} accepted after timeout because expected state is present (attempt=${attempt + 1})")
+                    LogBuffer.i("SPP", "INIT late-success handler=${handler.id} attempt=${attempt + 1}/$maxAttempts elapsed=${SystemClock.elapsedRealtime() - attemptStartedAt}ms")
                     return true
                 }
-                LogBuffer.w("SPP", "Init ${handler.id} timeout (attempt=${attempt + 1}, timeout=${timeoutMs}ms)")
+                LogBuffer.w("SPP", "INIT timeout handler=${handler.id} attempt=${attempt + 1}/$maxAttempts elapsed=${SystemClock.elapsedRealtime() - attemptStartedAt}ms limit=${timeoutMs}ms")
             } catch (e: Exception) {
                 if (hasExpectedInitState(driver, handler.id)) {
-                    LogBuffer.i("SPP", "Init ${handler.id} accepted after error because expected state is present (attempt=${attempt + 1})")
+                    LogBuffer.i("SPP", "INIT late-success handler=${handler.id} attempt=${attempt + 1}/$maxAttempts elapsed=${SystemClock.elapsedRealtime() - attemptStartedAt}ms reason=${e.javaClass.simpleName}")
                     return true
                 }
-                LogBuffer.w("SPP", "Init ${handler.id} failed (attempt=${attempt + 1}): ${e.message}")
+                LogBuffer.w("SPP", "INIT failed handler=${handler.id} attempt=${attempt + 1}/$maxAttempts elapsed=${SystemClock.elapsedRealtime() - attemptStartedAt}ms reason=${e.javaClass.simpleName}:${e.message}")
             }
             delay(120)
         }

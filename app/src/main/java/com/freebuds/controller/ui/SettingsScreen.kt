@@ -278,6 +278,9 @@ fun SettingsScreen(
             item {
                 LogRetentionSelector(displayMode = displayMode, hazeState = hazeState)
             }
+            item {
+                ProtocolFrameLogToggle(displayMode = displayMode, hazeState = hazeState)
+            }
             if (isConnected) {
                 item {
                     SettingsCard(
@@ -969,4 +972,31 @@ private fun LogRetentionSelector(displayMode: UiDisplayMode, hazeState: HazeStat
             }
         }
     }
+}
+
+@Composable
+private fun ProtocolFrameLogToggle(displayMode: UiDisplayMode, hazeState: HazeState?) {
+    val context = LocalContext.current
+    val prefs = context.getSharedPreferences("fxxk_theme", android.content.Context.MODE_PRIVATE)
+    var enabled by remember {
+        mutableStateOf(prefs.getBoolean("log_protocol_frames", LogBuffer.isProtocolFrameLoggingEnabled()))
+    }
+
+    SettingsCard(
+        displayMode = displayMode,
+        hazeState = hazeState,
+        headlineContent = { Text(i18n("settings.log_protocol_frames")) },
+        supportingContent = { Text(i18n("settings.log_protocol_frames_desc")) },
+        leadingContent = { Icon(Icons.Default.DataObject, contentDescription = null) },
+        trailingContent = {
+            Switch(
+                checked = enabled,
+                onCheckedChange = { checked ->
+                    enabled = checked
+                    LogBuffer.setProtocolFrameLogging(checked)
+                    prefs.edit().putBoolean("log_protocol_frames", checked).apply()
+                }
+            )
+        },
+    )
 }

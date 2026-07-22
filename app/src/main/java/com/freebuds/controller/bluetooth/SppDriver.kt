@@ -1,6 +1,7 @@
 package com.freebuds.controller.bluetooth
 
 import android.bluetooth.BluetoothDevice
+import android.os.SystemClock
 import com.freebuds.controller.adapter.huawei.protocol.HuaweiHandlerInitializer
 import com.freebuds.controller.adapter.huawei.protocol.HuaweiHandlerRegistry
 import com.freebuds.controller.adapter.huawei.protocol.HuaweiPendingResponseManager
@@ -128,24 +129,38 @@ class SppDriver(private val device: BluetoothDevice) {
             return null
         }
 
-        val startedAt = System.currentTimeMillis()
+        val startedAt = SystemClock.elapsedRealtime()
         val deferred = pendingResponses.register(respId, timeout)
+        val slotWaitMs = SystemClock.elapsedRealtime() - startedAt
         if (deferred == null) {
             LogBuffer.w(
                 "SPP",
-                "Timeout acquiring response slot for cmd=${pkg.commandId.toHex()} (respId=$respId, timeout=${timeout}ms)"
+                "REQ slot timeout cmd=${pkg.commandId.toHex()} resp=$respId timeout=${timeout}ms"
             )
             return null
         }
+        LogBuffer.d(
+            "SPP",
+            "REQ start cmd=${pkg.commandId.toHex()} resp=$respId timeout=${timeout}ms slotWait=${slotWaitMs}ms"
+        )
 
         try {
             sendNowait(pkg)
-            val elapsed = System.currentTimeMillis() - startedAt
+            val elapsed = SystemClock.elapsedRealtime() - startedAt
             val remaining = (timeout - elapsed).coerceAtLeast(1L)
             val response = withTimeoutOrNull(remaining) { deferred.await() }
-            if (response != null) return response
+            if (response != null) {
+                LogBuffer.d(
+                    "SPP",
+                    "REQ success cmd=${pkg.commandId.toHex()} resp=$respId elapsed=${SystemClock.elapsedRealtime() - startedAt}ms"
+                )
+                return response
+            }
             val pendingKeys = pendingResponses.keys().joinToString(",")
-            LogBuffer.w("SPP", "Timeout waiting for response to cmd=${pkg.commandId.toHex()} (respId=$respId, pending=[$pendingKeys])")
+            LogBuffer.w(
+                "SPP",
+                "REQ response timeout cmd=${pkg.commandId.toHex()} resp=$respId elapsed=${SystemClock.elapsedRealtime() - startedAt}ms pending=[$pendingKeys]"
+            )
             return null
         } catch (e: CancellationException) {
             throw e
@@ -160,7 +175,7 @@ class SppDriver(private val device: BluetoothDevice) {
     /** 发送包不等待（对照 _send_nowait） */
     suspend fun sendNowait(pkg: HuaweiSppPackage) = withContext(Dispatchers.IO) {
         val bytes = pkg.toBytes()
-        LogBuffer.d("SPP", "TX: ${bytes.toHex()}")
+        LogBuffer.frame("TX", bytes)
         try {
             txMutex.withLock {
                 outputStream?.write(bytes)
@@ -203,7 +218,7 @@ class SppDriver(private val device: BluetoothDevice) {
                 readFully(input, body)
 
                 val pkgBytes = head + body
-                LogBuffer.d("SPP", "RX: ${pkgBytes.toHex()}")
+                LogBuffer.frame("RX", pkgBytes)
                 handlePackage(pkgBytes)
                 handleEmbeddedPackages(pkgBytes)
             }
@@ -229,7 +244,7 @@ class SppDriver(private val device: BluetoothDevice) {
                 val end = pos + 4 + len
                 if (len >= 4 && end <= data.size) {
                     val child = data.copyOfRange(pos, end)
-                    LogBuffer.d("SPP", "RX embedded: ${child.toHex()}")
+                    LogBuffer.frame("RX embedded", child)
                     handlePackage(child)
                     pos = end
                     continue
@@ -244,7 +259,7 @@ class SppDriver(private val device: BluetoothDevice) {
         val pkg = HuaweiSppPackage.fromBytes(data) ?: return
         val cmdKey = pkg.commandId.toHex()
         val paramsKeys = pkg.parameters.keys.joinToString(",") { it.toString() }
-        LogBuffer.d("SPP", "RX: ${data.toHex()} | cmd=$cmdKey resp=${pkg.responseId.toHex()} params=[$paramsKeys]")
+        LogBuffer.d("SPP", "RX packet cmd=$cmdKey params=[$paramsKeys] bytes=${data.size}")
 
         if (pendingResponses.complete(cmdKey, pkg)) {
             LogBuffer.d("SPP", "RX → pendingResponses consumed cmd=$cmdKey")

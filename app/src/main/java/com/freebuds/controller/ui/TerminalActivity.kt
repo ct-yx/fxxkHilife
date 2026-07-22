@@ -1,6 +1,5 @@
 package com.freebuds.controller.ui
 
-import android.content.Intent
 import android.os.Bundle
 import android.text.SpannableString
 import android.text.Spanned
@@ -10,16 +9,13 @@ import android.widget.Button
 import android.widget.ScrollView
 import android.widget.TextView
 import androidx.appcompat.app.AppCompatActivity
-import androidx.core.content.FileProvider
+import androidx.lifecycle.lifecycleScope
 import com.freebuds.controller.HilifeApplication
 import com.freebuds.controller.R
 import com.freebuds.controller.i18n.I18n
 import com.freebuds.controller.util.LogBuffer
 import com.freebuds.controller.util.LogBuffer.OnLogUpdateListener
-import kotlinx.coroutines.CoroutineScope
-import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
-import java.io.File
 
 /**
  * 调试终端 —— 只负责日志展示和 props/set 命令。
@@ -30,7 +26,7 @@ class TerminalActivity : AppCompatActivity(), OnLogUpdateListener {
     private lateinit var outputView: TextView
     private lateinit var inputView: TextView
     private lateinit var scrollView: ScrollView
-    private val scope = CoroutineScope(Dispatchers.Main)
+    private var levelFilter: String? = null
     private val repo get() = HilifeApplication.instance.deviceRepository
 
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -79,6 +75,8 @@ class TerminalActivity : AppCompatActivity(), OnLogUpdateListener {
         when {
             trimmed.equals("clear", true)      -> LogBuffer.clear()
             trimmed.equals("share", true)      -> shareLog()
+            trimmed.equals("summary", true)    -> LogBuffer.i("Summary", LogBuffer.getSummaryText())
+            trimmed.startsWith("filter ", true) -> setFilter(trimmed.substringAfter(' '))
             trimmed.equals("props", true)      -> printProps()
             trimmed.startsWith("set ", true)   -> setProp(trimmed.removePrefix("set").trim())
             trimmed.equals("disconnect", true) -> { repo.disconnect(); finish() }
@@ -87,6 +85,8 @@ class TerminalActivity : AppCompatActivity(), OnLogUpdateListener {
                 LogBuffer.i("Terminal", I18n.t("terminal.help.props"))
                 LogBuffer.i("Terminal", I18n.t("terminal.help.set"))
                 LogBuffer.i("Terminal", I18n.t("terminal.help.share"))
+                LogBuffer.i("Terminal", I18n.t("terminal.help.summary"))
+                LogBuffer.i("Terminal", I18n.t("terminal.help.filter"))
                 LogBuffer.i("Terminal", I18n.t("terminal.help.disconnect"))
             }
             else -> LogBuffer.w("Terminal", I18n.t("terminal.unknown_command", trimmed))
@@ -94,7 +94,7 @@ class TerminalActivity : AppCompatActivity(), OnLogUpdateListener {
     }
 
     private fun printProps() {
-        scope.launch {
+        lifecycleScope.launch {
             val driver = repo.getDriver()
             if (driver == null) { LogBuffer.w("Prop", I18n.t("terminal.not_connected")); return@launch }
             val text = driver.getProperty() ?: ""
@@ -111,26 +111,23 @@ class TerminalActivity : AppCompatActivity(), OnLogUpdateListener {
         if (dot <= 0 || dot == key.lastIndex) {
             LogBuffer.w("Prop", I18n.t("terminal.usage_set")); return
         }
-        scope.launch { repo.setProperty(key.substring(0, dot), key.substring(dot + 1), value) }
+        lifecycleScope.launch { repo.setProperty(key.substring(0, dot), key.substring(dot + 1), value) }
     }
 
     private fun shareLog() {
-        val file = File(cacheDir, "fxxkHilife_log_${System.currentTimeMillis()}.txt")
-        file.writeText(LogBuffer.getSnapshotText())
-        val uri = FileProvider.getUriForFile(this, "$packageName.fileprovider", file)
-        startActivity(Intent.createChooser(
-            Intent(Intent.ACTION_SEND).apply {
-                type = "text/plain"
-                putExtra(Intent.EXTRA_STREAM, uri)
-                addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
-            }, I18n.t("terminal.export_log")
-        ))
+        repo.shareLog(this, I18n.t("terminal.export_log"))
     }
 
-    override fun onLogUpdate() = runOnUiThread { renderAll() }
+    private fun setFilter(value: String) {
+        levelFilter = value.trim().uppercase().takeIf { it in setOf("I", "W", "E", "D") }
+        LogBuffer.i("Terminal", I18n.t("terminal.filter_active", levelFilter ?: "ALL"))
+        renderAll()
+    }
+
+    override fun onLogUpdate() = renderAll()
 
     private fun renderAll() {
-        outputView.text = colorize(LogBuffer.getSnapshotText())
+        outputView.text = colorize(LogBuffer.getSnapshotText(levelFilter, maxEntries = 1_200))
         scrollView.post { scrollView.fullScroll(ScrollView.FOCUS_DOWN) }
     }
 

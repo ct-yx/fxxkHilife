@@ -18,11 +18,19 @@ class HilifeApplication : Application() {
         instance = this
         I18n.setLocale(I18n.loadLocale(this))
         deviceRepository.init(this)
-        // 从 SharedPreferences 加载日志保留行数
-        val maxLines = getSharedPreferences("fxxk_theme", MODE_PRIVATE)
-            .getInt("log_max_lines", 2000)
+        // 从 SharedPreferences 加载日志诊断设置。
+        val logPrefs = getSharedPreferences("fxxk_theme", MODE_PRIVATE)
+        val maxLines = logPrefs.getInt("log_max_lines", 2000)
         LogBuffer.setMaxLines(maxLines)
-        LogBuffer.i("App", "fxxkHilife ${BuildConfig.VERSION_NAME} (${BuildConfig.VERSION_CODE}) started")
+        LogBuffer.setProtocolFrameLogging(logPrefs.getBoolean("log_protocol_frames", false))
+        LogBuffer.startSession(
+            mapOf(
+                "appVersion" to "${BuildConfig.VERSION_NAME} (${BuildConfig.VERSION_CODE})",
+                "androidApi" to Build.VERSION.SDK_INT.toString(),
+                "device" to "${Build.MANUFACTURER} ${Build.MODEL}",
+                "locale" to I18n.currentLocale().tag,
+            )
+        )
         createNotificationChannel()
     }
 
