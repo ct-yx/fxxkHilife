@@ -104,22 +104,16 @@ class HuaweiHandlerInitializer(private val registry: HuaweiHandlerRegistry) {
         )
     }
 
-    private val coreIdsInOrder = listOf(
-            "drop_logs",
-            "battery",
-            "anc_global",
-            "low_latency",
-            "config_sound_quality",
-            "tws_in_ear",
-    )
-
     private fun coreHandlers(): List<HuaweiDeviceHandler> {
         val all = registry.allHandlers()
-        return coreIdsInOrder.mapNotNull { id -> all.find { it.id == id } }
+        return HuaweiHandlerInitializationPolicy.CORE_HANDLER_IDS_IN_ORDER
+            .mapNotNull { id -> all.find { it.id == id } }
     }
 
     private fun deferredHandlers(): List<HuaweiDeviceHandler> {
-        return registry.allHandlers().filter { handler -> handler.id !in coreIdsInOrder }
+        return registry.allHandlers().filter { handler ->
+            handler.id !in HuaweiHandlerInitializationPolicy.CORE_HANDLER_IDS_IN_ORDER
+        }
     }
 
     private fun coreFirstHandlers(): List<HuaweiDeviceHandler> {

@@ -150,6 +150,7 @@ class LowLatencyHandler : HuaweiDeviceHandler {
         // Keep the entire write/read-back exchange short.  This is invoked by automatic low
         // latency during initialization, so an unsupported write must not hold the shared SPP
         // request lane for the driver's five-second default timeout.
+        com.freebuds.controller.util.LogBuffer.i("SPP", "Low latency write start target=$value")
         val writeResponse = driver.sendPackage(
             HuaweiSppPackage.changeRequest(
                 HuaweiSppCommand.LOW_LATENCY,
@@ -157,7 +158,12 @@ class LowLatencyHandler : HuaweiDeviceHandler {
             ),
             timeout = WRITE_CONFIRM_TIMEOUT_MS,
         )
-        writeResponse?.let { onPackage(it, driver) }
+        if (writeResponse != null) {
+            com.freebuds.controller.util.LogBuffer.d("SPP", "Low latency write ACK received target=$value")
+            onPackage(writeResponse, driver)
+        } else {
+            com.freebuds.controller.util.LogBuffer.w("SPP", "Low latency write ACK timeout target=$value; reading back")
+        }
 
         val readBack = driver.sendPackage(
             HuaweiSppPackage.readRequest(HuaweiSppCommand.LOW_LATENCY, 2),

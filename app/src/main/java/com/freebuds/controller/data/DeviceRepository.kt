@@ -430,52 +430,70 @@ class DeviceRepository {
         return false
     }
 
-    private fun applyAutoLowLatencyIfEnabled() {
-        val enabled = appContext
-            ?.getSharedPreferences("settings", Context.MODE_PRIVATE)
-            ?.getBoolean("auto_low_latency", true) ?: true
-        if (!enabled) return
+    private fun isAutoLowLatencyEnabled(): Boolean = appContext
+        ?.getSharedPreferences("settings", Context.MODE_PRIVATE)
+        ?.getBoolean("auto_low_latency", true) ?: true
+
+    /**
+     * The automatic mode is a connection action, not a consequence of a successful state read.
+     * FreeBuds 6i can ignore its initial 2b6c read while still accepting a 2b6c write, so
+     * waiting for `lowLatency != null` made the automatic path unreachable.
+     */
+    private suspend fun applyAutoLowLatencyPriorityIfEnabled() {
+        if (!isAutoLowLatencyEnabled()) return
+
+        autoLowLatencyJob?.cancel()
+        if (_props.value.lowLatency == true) {
+            LogBuffer.i("SPP", "Auto low latency priority skipped: already enabled")
+            return
+        }
+
+        LogBuffer.i("SPP", "Auto low latency priority apply current=${_props.value.lowLatency}")
+        applyAutoLowLatencyAttempt(attempt = 1, phase = "priority")
+    }
+
+    /** Starts bounded confirmation retries after the priority write and core reads. */
+    private fun scheduleAutoLowLatencyRetriesIfEnabled() {
+        if (!isAutoLowLatencyEnabled()) return
 
         autoLowLatencyJob?.cancel()
         autoLowLatencyJob = scope.launch {
-            // A successful low-latency read has already completed before this job starts.
-            // Keep any follow-up writes bounded so a firmware that rejects the mode never
-            // leaves the user waiting through the old 30-second retry window.
             val timeoutMs = 10_000L
             val startedAt = System.currentTimeMillis()
-            var attempt = 0
+            var attempt = 1
 
-            LogBuffer.i("SPP", "Auto low latency start current=${_props.value.lowLatency}")
-
+            LogBuffer.i("SPP", "Auto low latency follow-up start current=${_props.value.lowLatency}")
             while (isActive && _connectionState.value is ConnectionState.Connected) {
-                val currentLowLatency = _props.value.lowLatency
-                if (currentLowLatency == true) {
+                if (_props.value.lowLatency == true) {
                     LogBuffer.i("SPP", "Auto low latency confirmed")
                     return@launch
                 }
-
                 if (System.currentTimeMillis() - startedAt >= timeoutMs) break
 
-                // 先让 low_latency handler 完成一次读取；未知状态下立刻写入会抢占核心初始化通道。
-                if (currentLowLatency == null) {
-                    delay(500)
-                    continue
-                }
-
                 attempt++
-                LogBuffer.i("SPP", "Auto low latency apply attempt $attempt")
-                sppQuietUntil = System.currentTimeMillis() + 1_500L
-                try {
-                    setProperty("config", "low_latency", "true")
-                } catch (e: Exception) {
-                    LogBuffer.w("SPP", "Auto low latency apply failed attempt=$attempt reason=${e.javaClass.simpleName}:${e.message}")
-                }
+                applyAutoLowLatencyAttempt(attempt = attempt, phase = "follow-up")
                 delay(900)
             }
 
             if (_connectionState.value is ConnectionState.Connected && _props.value.lowLatency != true) {
                 LogBuffer.w("SPP", "Auto low latency was not confirmed within ${timeoutMs / 1000}s")
             }
+        }
+    }
+
+    private suspend fun applyAutoLowLatencyAttempt(attempt: Int, phase: String) {
+        LogBuffer.i(
+            "SPP",
+            "Auto low latency $phase apply attempt=$attempt current=${_props.value.lowLatency}"
+        )
+        sppQuietUntil = System.currentTimeMillis() + 1_500L
+        try {
+            setProperty("config", "low_latency", "true")
+        } catch (e: Exception) {
+            LogBuffer.w(
+                "SPP",
+                "Auto low latency $phase failed attempt=$attempt reason=${e.javaClass.simpleName}:${e.message}"
+            )
         }
     }
 
@@ -525,6 +543,10 @@ class DeviceRepository {
                 syncProps()
 
                 delay(HuaweiHandlerInitializationPolicy.INITIAL_SETTLE_DELAY_MS)
+                // Restore the original connection-priority behaviour: a saved device gets its
+                // low-latency write before slow battery/ANC reads can occupy the SPP lane.
+                applyAutoLowLatencyPriorityIfEnabled()
+                if (session !== targetSession || targetSession.isConnected != true) return@launch
                 targetSession.initializeCoreHandlers()
                 if (session !== targetSession || targetSession.isConnected != true) return@launch
                 failedHandlers.clear()
@@ -546,13 +568,10 @@ class DeviceRepository {
                 pendingInitHandlers.clear()
                 syncProps()
 
-                // Low latency is independent of battery, ANC, and sound-quality reads. Do not
-                // suppress the automatic setting just because an unrelated core probe failed.
-                if ("low_latency" !in failedHandlers) {
-                    applyAutoLowLatencyIfEnabled()
-                } else {
-                    LogBuffer.w("SPP", "Auto low latency skipped: core low_latency state is unavailable")
-                }
+                // The priority write above is valid even when the first low-latency read did
+                // not answer. Continue bounded confirmation retries independently of other
+                // core probes rather than dropping automatic mode on a null read.
+                scheduleAutoLowLatencyRetriesIfEnabled()
                 delay(1_000)
 
                 pendingInitHandlers.addAll(

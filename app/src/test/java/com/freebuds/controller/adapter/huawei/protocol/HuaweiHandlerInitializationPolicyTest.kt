@@ -13,6 +13,13 @@ class HuaweiHandlerInitializationPolicyTest {
     }
 
     @Test
+    fun ancAndLowLatencyArePrioritizedAheadOfBatteryTelemetry() {
+        val order = HuaweiHandlerInitializationPolicy.CORE_HANDLER_IDS_IN_ORDER
+        assertTrue(order.indexOf("anc_global") < order.indexOf("battery"))
+        assertTrue(order.indexOf("low_latency") < order.indexOf("battery"))
+    }
+
+    @Test
     fun optionalHandlersCannotConsumeTheCoreTimeoutBudget() {
         assertEquals(800L, HuaweiHandlerInitializationPolicy.deferredTimeoutMs("gesture_double", 3_000L))
         assertEquals(1_200L, HuaweiHandlerInitializationPolicy.deferredTimeoutMs("dual_connect", 3_000L))

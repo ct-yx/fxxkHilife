@@ -13,6 +13,17 @@ internal object HuaweiHandlerInitializationPolicy {
     const val CORE_HANDLER_TIMEOUT_MS = 1_000L
     const val CORE_INTER_COMMAND_DELAY_MS = 80L
     const val CORE_RETRY_DELAY_MS = 700L
+
+    /** The control actions users notice first must not wait behind battery telemetry. */
+    val CORE_HANDLER_IDS_IN_ORDER = listOf(
+        "drop_logs",
+        "anc_global",
+        "low_latency",
+        "config_sound_quality",
+        "battery",
+        "tws_in_ear",
+    )
+
     private const val CORE_HANDLER_COUNT = 6
     private const val CORE_REQUEST_HANDLER_COUNT = 4
 
