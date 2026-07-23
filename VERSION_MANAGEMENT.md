@@ -3,17 +3,17 @@
 > 版本号统一修改入口，按清单逐一更新。
 
 ## 当前版本
-- **v4.2.4** (versionCode=85, 2026-07-14)
+- **v4.2.5** (versionCode=86, 2026-07-24)
 
 ## 版本号位置
 
 | 位置 | 当前值 |
 |------|--------|
-| `app/build.gradle.kts` | versionCode=85, versionName="4.2.4" |
-| `app/src/main/res/values/strings.xml` | version_name=4.2.4 |
-| `README.md` | v4.2.4 |
-| `README_EN.md` | v4.2.4 |
-| `DEVELOPMENT_LOG.md` | v4.2.4 (末尾) |
+| `app/build.gradle.kts` | versionCode=86, versionName="4.2.5" |
+| `app/src/main/res/values/strings.xml` | version_name=4.2.5 |
+| `README.md` | v4.2.5 |
+| `README_EN.md` | v4.2.5 |
+| `DEVELOPMENT_LOG.md` | v4.2.5 (末尾) |
 
 ## 一键版本更新脚本
 
@@ -37,6 +37,7 @@ python3 scripts/bump_version.py <versionName> <versionCode> "修复说明"
 
 | 版本 | Code | 日期 | 主要变更 |
 |------|------|------|---------|
+| v4.2.5 | 86 | 2026-07-24 | 串行化 FreeBuds 6i 核心 SPP 请求，限制初始化和自动低延迟等待，并允许控制通道连接后立即进入详情页 |
 | v4.2.4 | 85 | 2026-07-14 | 以简体中文为默认语言，新增 English / 繁體中文，并覆盖设置、通知、快捷开关、统计页和终端文案 |
 | v4.2.3 | 84 | 2026-07-14 | 修复离线日志分享、快捷开关未知状态，并恢复受控并发核心初始化和可靠后台连接发现 |
 | v4.2.2 | 83 | 2026-07-07 | 保留后台自动控制连接，并恢复核心优先初始化，避免 EQ/双设备等慢项阻塞 FreeBuds 6i 连接 |

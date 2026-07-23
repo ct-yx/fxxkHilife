@@ -16,7 +16,7 @@
   <a href="https://github.com/ct-yx/fxxkHilife/issues">Report / Join testing</a>
 </p>
 
-> **Current version: v4.2.4**
+> **Current version: v4.2.5**
 > Keeps Simplified Chinese as the default language and adds selectable English / Traditional Chinese across settings, notifications, Quick Settings, and core screens.
 
 ---
@@ -45,7 +45,7 @@ The project is still evolving quickly. Testers with more earbud models are very 
 
 - **Connection and auto-connect**: scan HUAWEI / HONOR earbuds and save known devices; the foreground service detects saved earbuds already connected by Android Bluetooth and opens the app SPP control channel with backoff.
 - **ANC / Awareness / Off**: switch ANC modes from the in-app pill slider, Quick Settings Tile, or persistent notification actions; on third-party Android phones, you can cycle ANC directly from the system quick settings panel without opening the app.
-- **Low-latency / game mode**: manual switch plus optional auto low-latency; after the earbuds reconnect to the phone and SPP initialization finishes, the app starts immediately and retries every 500ms for up to 30s until confirmed.
+- **Low-latency / game mode**: manual switch plus optional auto low-latency; after the earbuds reconnect and SPP initialization finishes, the app applies it immediately, verifies with a read-back, and retries only within a 10-second bounded window.
 - **Battery and wearing state**: left/right/case battery levels, charging state, wearing detection, auto-pause.
 - **Gestures and audio preferences**: double tap, triple tap, long press, swipe gestures, sound quality vs connectivity preference, EQ preset read/display/write/read-back sync, and voice prompt language read/write.
 - **Dual Connect MVP**: reads the earbud-side dual-connect toggle and paired-device list, displays preferred/playing/connected/auto-connect states, and supports toggling the dual-connect switch, preferred device, connect/disconnect, and auto-connect flags. Android-side control remains a single active SPP session, with UI showing both system Bluetooth state and control-channel state.

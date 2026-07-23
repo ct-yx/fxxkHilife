@@ -12,6 +12,7 @@ import android.content.SharedPreferences
 import android.os.Build
 import androidx.core.content.FileProvider
 import com.freebuds.controller.adapter.huawei.HuaweiOpenFreebudsAdapter
+import com.freebuds.controller.adapter.huawei.protocol.HuaweiHandlerInitializationPolicy
 import com.freebuds.controller.core.adapter.EarbudAdapter
 import com.freebuds.controller.core.adapter.EarbudAdapterCallbacks
 import com.freebuds.controller.core.session.EarbudSession
@@ -133,6 +134,9 @@ class DeviceRepository {
     private var prefs: SharedPreferences? = null
     private var appContext: Context? = null
     private val failedHandlers = mutableSetOf<String>()
+    // A failed optional probe is not equivalent to a probe that is still running.  Keeping these
+    // states separate prevents the details screen from showing "background sync" forever.
+    private val pendingInitHandlers = ConcurrentHashMap.newKeySet<String>()
     private var pollJob: Job? = null
     private var fastPollJob: Job? = null
     private var initJob: Job? = null
@@ -208,6 +212,7 @@ class DeviceRepository {
                 systemConnectedAddresses.add(device.address)
                 manualDisconnectSuppressUntil = 0L
                 failedHandlers.clear()
+                pendingInitHandlers.clear()
                 saveDeviceAddress(device.address)
                 refreshSavedDeviceConnections()
                 deviceInfoFetched = false // 新连接：允许重新获取设备信息
@@ -237,6 +242,7 @@ class DeviceRepository {
         connectedAddress = null
         deviceInfoFetched = false
         failedHandlers.clear()
+        pendingInitHandlers.clear()
         _connectionState.value = ConnectionState.Disconnected
         _props.value = DeviceProps()
         connectedAt = 0
@@ -261,6 +267,7 @@ class DeviceRepository {
         connectedAddress = null
         deviceInfoFetched = false
         failedHandlers.clear()
+        pendingInitHandlers.clear()
         _connectionState.value = ConnectionState.Disconnected
         _props.value = DeviceProps()
         connectedAt = 0
@@ -431,9 +438,14 @@ class DeviceRepository {
 
         autoLowLatencyJob?.cancel()
         autoLowLatencyJob = scope.launch {
-            val timeoutMs = 30_000L
+            // A successful low-latency read has already completed before this job starts.
+            // Keep any follow-up writes bounded so a firmware that rejects the mode never
+            // leaves the user waiting through the old 30-second retry window.
+            val timeoutMs = 10_000L
             val startedAt = System.currentTimeMillis()
             var attempt = 0
+
+            LogBuffer.i("SPP", "Auto low latency start current=${_props.value.lowLatency}")
 
             while (isActive && _connectionState.value is ConnectionState.Connected) {
                 val currentLowLatency = _props.value.lowLatency
@@ -453,7 +465,11 @@ class DeviceRepository {
                 attempt++
                 LogBuffer.i("SPP", "Auto low latency apply attempt $attempt")
                 sppQuietUntil = System.currentTimeMillis() + 1_500L
-                setProperty("config", "low_latency", "true")
+                try {
+                    setProperty("config", "low_latency", "true")
+                } catch (e: Exception) {
+                    LogBuffer.w("SPP", "Auto low latency apply failed attempt=$attempt reason=${e.javaClass.simpleName}:${e.message}")
+                }
                 delay(900)
             }
 
@@ -503,18 +519,23 @@ class DeviceRepository {
                 // Android's RFCOMM socket can report connected before the earbud command loop is
                 // ready. The log showed the first battery query only 62ms after connect and both
                 // attempts were dropped, so give the device a short settling window.
-                delay(250)
+                val coreHandlers = targetSession.handlerIds.filter { it in coreRetryOrder }
+                pendingInitHandlers.clear()
+                pendingInitHandlers.addAll(coreHandlers)
+                syncProps()
+
+                delay(HuaweiHandlerInitializationPolicy.INITIAL_SETTLE_DELAY_MS)
                 targetSession.initializeCoreHandlers()
                 if (session !== targetSession || targetSession.isConnected != true) return@launch
                 failedHandlers.clear()
                 failedHandlers.addAll(targetSession.failedHandlerIds)
                 syncProps()
 
-                // The first wave is intentionally one attempt per handler and staggered in
-                // parallel. Retry only the failed core handlers once, still without letting one
-                // timeout serialize every other core state.
+                // A single RFCOMM request/response exchange is reliable on the target earbuds.
+                // Retry only failed core reads once; HuaweiHandlerInitializer keeps each wave
+                // serialized so a later read cannot overtake the previous response.
                 if (failedHandlers.any { it in coreRetryOrder }) {
-                    delay(700)
+                    delay(HuaweiHandlerInitializationPolicy.CORE_RETRY_DELAY_MS)
                     targetSession.initializeCoreHandlers()
                     if (session !== targetSession || targetSession.isConnected != true) return@launch
                     failedHandlers.clear()
@@ -522,13 +543,27 @@ class DeviceRepository {
                     syncProps()
                 }
                 logDegradedHandlersOnce()
-                applyAutoLowLatencyIfEnabled()
+                pendingInitHandlers.clear()
+                syncProps()
+
+                // Low latency is independent of battery, ANC, and sound-quality reads. Do not
+                // suppress the automatic setting just because an unrelated core probe failed.
+                if ("low_latency" !in failedHandlers) {
+                    applyAutoLowLatencyIfEnabled()
+                } else {
+                    LogBuffer.w("SPP", "Auto low latency skipped: core low_latency state is unavailable")
+                }
                 delay(1_000)
 
+                pendingInitHandlers.addAll(
+                    targetSession.handlerIds.filterNot { it in coreRetryOrder || it == "drop_logs" }
+                )
+                syncProps()
                 targetSession.initializeDeferredHandlers()
                 if (session !== targetSession || targetSession.isConnected != true) return@launch
                 failedHandlers.clear()
                 failedHandlers.addAll(targetSession.failedHandlerIds)
+                pendingInitHandlers.clear()
                 syncProps()
                 logDegradedHandlersOnce()
             } catch (e: CancellationException) {
@@ -538,6 +573,7 @@ class DeviceRepository {
                     LogBuffer.w("SPP", "Handler initialization stopped: ${e.message}")
                     failedHandlers.clear()
                     failedHandlers.addAll(targetSession.failedHandlerIds)
+                    pendingInitHandlers.clear()
                     syncProps()
                 }
             }
@@ -745,7 +781,7 @@ class DeviceRepository {
     private suspend fun syncProps() {
         val d = session ?: return
         _props.value = d.mapState(
-            failedHandlers = failedHandlers,
+            failedHandlers = pendingInitHandlers.toSet(),
             connectedSince = connectedAt.takeIf { it > 0 },
         )
         ensureDefaultAncOptions()

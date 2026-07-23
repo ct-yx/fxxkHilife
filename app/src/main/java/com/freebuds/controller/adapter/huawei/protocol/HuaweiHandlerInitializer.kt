@@ -5,9 +5,6 @@ import com.freebuds.controller.bluetooth.HuaweiDeviceHandler
 import com.freebuds.controller.bluetooth.SppDriver
 import com.freebuds.controller.util.LogBuffer
 import kotlinx.coroutines.TimeoutCancellationException
-import kotlinx.coroutines.async
-import kotlinx.coroutines.awaitAll
-import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.withTimeout
 
@@ -30,24 +27,24 @@ class HuaweiHandlerInitializer(private val registry: HuaweiHandlerRegistry) {
         val startedAt = System.currentTimeMillis()
         LogBuffer.i(
             "SPP",
-            "CORE init start device=$label handlers=${handlers.map { it.id }} mode=staggered gap=80ms parallelHandlers=${handlers.size}"
+            "CORE init start device=$label handlers=${handlers.map { it.id }} mode=serial " +
+                "timeout=${HuaweiHandlerInitializationPolicy.CORE_HANDLER_TIMEOUT_MS}ms " +
+                "gap=${HuaweiHandlerInitializationPolicy.CORE_INTER_COMMAND_DELAY_MS}ms"
         )
 
-        val results = coroutineScope {
-            handlers.mapIndexed { index, handler ->
-                async {
-                    if (index > 0) delay(index * 80L)
-                    handler to initializeHandlerIfNeeded(
-                        driver = driver,
-                        handler = handler,
-                        maxAttempts = 1,
-                        timeoutMs = handler.initTimeoutMs.coerceAtMost(1_500L),
-                    )
-                }
-            }.awaitAll()
-        }
-        results.forEach { (handler, success) ->
+        handlers.forEachIndexed { index, handler ->
+            val success = initializeHandlerIfNeeded(
+                driver = driver,
+                handler = handler,
+                maxAttempts = 1,
+                timeoutMs = handler.initTimeoutMs.coerceAtMost(
+                    HuaweiHandlerInitializationPolicy.CORE_HANDLER_TIMEOUT_MS
+                ),
+            )
             recordResult(handler, success, maxAttempts = 1)
+            if (index != handlers.lastIndex) {
+                delay(HuaweiHandlerInitializationPolicy.CORE_INTER_COMMAND_DELAY_MS)
+            }
         }
         LogBuffer.i(
             "SPP",
@@ -60,17 +57,30 @@ class HuaweiHandlerInitializer(private val registry: HuaweiHandlerRegistry) {
         val handlers = deferredHandlers()
         if (handlers.isEmpty()) return
         val startedAt = System.currentTimeMillis()
-        LogBuffer.i("SPP", "Deferred init for $label: handlers=${handlers.map { it.id }}")
-        for (handler in handlers) {
-            initializeAndRecord(driver, handler, maxAttempts = 1, timeoutMs = handler.initTimeoutMs.coerceAtMost(1_500L))
-            delay(120)
+        LogBuffer.i(
+            "SPP",
+            "DEFERRED init start device=$label handlers=${handlers.map { it.id }} mode=best-effort"
+        )
+        handlers.forEachIndexed { index, handler ->
+            initializeAndRecord(
+                driver = driver,
+                handler = handler,
+                maxAttempts = 1,
+                timeoutMs = HuaweiHandlerInitializationPolicy.deferredTimeoutMs(
+                    handler.id,
+                    handler.initTimeoutMs,
+                ),
+            )
+            if (index != handlers.lastIndex) {
+                delay(HuaweiHandlerInitializationPolicy.DEFERRED_INTER_COMMAND_DELAY_MS)
+            }
         }
         LogBuffer.i(
             "SPP",
             if (registry.failedHandlerIds.isEmpty()) {
-                "Deferred init completed in ${System.currentTimeMillis() - startedAt}ms: all handlers ready"
+                "DEFERRED init finish elapsed=${System.currentTimeMillis() - startedAt}ms allHandlersReady=true"
             } else {
-                "Deferred init completed in ${System.currentTimeMillis() - startedAt}ms with degraded handlers=${registry.failedHandlerIds}"
+                "DEFERRED init finish elapsed=${System.currentTimeMillis() - startedAt}ms failed=${registry.failedHandlerIds}"
             }
         )
     }

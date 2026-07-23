@@ -128,6 +128,10 @@ class AutoPauseHandler : HuaweiDeviceHandler {
 }
 
 class LowLatencyHandler : HuaweiDeviceHandler {
+    private companion object {
+        const val WRITE_CONFIRM_TIMEOUT_MS = 1_000L
+    }
+
     override val id = "low_latency"
     override val commandIds = listOf(HuaweiSppCommand.LOW_LATENCY)
     override val properties = listOf("config" to "low_latency")
@@ -143,9 +147,42 @@ class LowLatencyHandler : HuaweiDeviceHandler {
     }
 
     override suspend fun setProperty(driver: SppDriver, group: String, prop: String, value: String) {
-        driver.putProperty(group, prop, value)
-        driver.sendPackage(HuaweiSppPackage.changeRequest(HuaweiSppCommand.LOW_LATENCY, 1 to b(if (value == "true") 1 else 0)))
-        onInit(driver)
+        // Keep the entire write/read-back exchange short.  This is invoked by automatic low
+        // latency during initialization, so an unsupported write must not hold the shared SPP
+        // request lane for the driver's five-second default timeout.
+        val writeResponse = driver.sendPackage(
+            HuaweiSppPackage.changeRequest(
+                HuaweiSppCommand.LOW_LATENCY,
+                1 to b(if (value == "true") 1 else 0),
+            ),
+            timeout = WRITE_CONFIRM_TIMEOUT_MS,
+        )
+        writeResponse?.let { onPackage(it, driver) }
+
+        val readBack = driver.sendPackage(
+            HuaweiSppPackage.readRequest(HuaweiSppCommand.LOW_LATENCY, 2),
+            timeout = WRITE_CONFIRM_TIMEOUT_MS,
+        )
+        if (readBack != null) {
+            onPackage(readBack, driver)
+            val actual = driver.getProperty(group, prop)
+            if (actual == value) {
+                com.freebuds.controller.util.LogBuffer.i(
+                    "SPP",
+                    "Low latency write confirmed target=$value"
+                )
+            } else {
+                com.freebuds.controller.util.LogBuffer.w(
+                    "SPP",
+                    "Low latency write read-back mismatch target=$value actual=${actual ?: "unknown"}"
+                )
+            }
+        } else {
+            com.freebuds.controller.util.LogBuffer.w(
+                "SPP",
+                "Low latency write was not confirmed by read-back target=$value"
+            )
+        }
     }
 }
 

@@ -17,6 +17,8 @@ interface EarbudSession {
     val displayName: String
     val isConnected: Boolean
     val failedHandlerIds: Set<String>
+    val handlerIds: List<String>
+        get() = emptyList()
 
     fun setPropertyChangedListener(listener: (() -> Unit)?)
     fun setDisconnectedListener(listener: (() -> Unit)?)

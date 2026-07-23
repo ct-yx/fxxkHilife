@@ -23,6 +23,7 @@ class LegacySppEarbudSession(
     override val displayName: String = adapter.displayName
     override val isConnected: Boolean get() = driver.isConnected
     override val failedHandlerIds: Set<String> get() = driver.failedHandlerIds
+    override val handlerIds: List<String> get() = driver.handlerIds
 
     override fun setPropertyChangedListener(listener: (() -> Unit)?) {
         driver.onPropertyChanged = listener

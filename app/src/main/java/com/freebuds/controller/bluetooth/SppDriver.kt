@@ -41,6 +41,10 @@ class SppDriver(private val device: BluetoothDevice) {
     private var scope = CoroutineScope(Dispatchers.IO + SupervisorJob())
 
     private val pendingResponses = HuaweiPendingResponseManager()
+    // The device accepts only one request/response exchange reliably. txMutex protects bytes
+    // from interleaving; this mutex additionally keeps every later command (including a
+    // fire-and-forget write) from overtaking a reply.
+    private val requestMutex = Mutex()
     private val txMutex = Mutex()
 
     private val handlerRegistry = HuaweiHandlerRegistry()
@@ -59,6 +63,9 @@ class SppDriver(private val device: BluetoothDevice) {
     }
 
     fun getHandlerById(id: String): HuaweiDeviceHandler? = handlerRegistry.findById(id)
+
+    val handlerIds: List<String>
+        get() = handlerRegistry.allHandlers().map { it.id }
 
     suspend fun putProperty(group: String, prop: String?, value: String?, extendGroup: Boolean = false) {
         propertyStore.put(group, prop, value, extendGroup)
@@ -123,57 +130,75 @@ class SppDriver(private val device: BluetoothDevice) {
 
     /** 发送包并等响应（对照 send_package） */
     suspend fun sendPackage(pkg: HuaweiSppPackage, timeout: Long = 5_000): HuaweiSppPackage? {
-        val respId = pkg.responseId.toHex()
-        if (respId.isEmpty()) {
-            sendNowait(pkg)
-            return null
-        }
-
-        val startedAt = SystemClock.elapsedRealtime()
-        val deferred = pendingResponses.register(respId, timeout)
-        val slotWaitMs = SystemClock.elapsedRealtime() - startedAt
-        if (deferred == null) {
-            LogBuffer.w(
-                "SPP",
-                "REQ slot timeout cmd=${pkg.commandId.toHex()} resp=$respId timeout=${timeout}ms"
-            )
-            return null
-        }
-        LogBuffer.d(
-            "SPP",
-            "REQ start cmd=${pkg.commandId.toHex()} resp=$respId timeout=${timeout}ms slotWait=${slotWaitMs}ms"
-        )
-
-        try {
-            sendNowait(pkg)
-            val elapsed = SystemClock.elapsedRealtime() - startedAt
-            val remaining = (timeout - elapsed).coerceAtLeast(1L)
-            val response = withTimeoutOrNull(remaining) { deferred.await() }
-            if (response != null) {
-                LogBuffer.d(
-                    "SPP",
-                    "REQ success cmd=${pkg.commandId.toHex()} resp=$respId elapsed=${SystemClock.elapsedRealtime() - startedAt}ms"
-                )
-                return response
+        val queuedAt = SystemClock.elapsedRealtime()
+        return requestMutex.withLock {
+            val queueWaitMs = SystemClock.elapsedRealtime() - queuedAt
+            val respId = pkg.responseId.toHex()
+            if (respId.isEmpty()) {
+                sendNowaitLocked(pkg)
+                return@withLock null
             }
-            val pendingKeys = pendingResponses.keys().joinToString(",")
-            LogBuffer.w(
+
+            val startedAt = SystemClock.elapsedRealtime()
+            val deferred = pendingResponses.register(respId, timeout)
+            val slotWaitMs = SystemClock.elapsedRealtime() - startedAt
+            if (deferred == null) {
+                LogBuffer.w(
+                    "SPP",
+                    "REQ slot timeout cmd=${pkg.commandId.toHex()} resp=$respId timeout=${timeout}ms"
+                )
+                return@withLock null
+            }
+            LogBuffer.d(
                 "SPP",
-                "REQ response timeout cmd=${pkg.commandId.toHex()} resp=$respId elapsed=${SystemClock.elapsedRealtime() - startedAt}ms pending=[$pendingKeys]"
+                "REQ start cmd=${pkg.commandId.toHex()} resp=$respId timeout=${timeout}ms " +
+                    "queueWait=${queueWaitMs}ms slotWait=${slotWaitMs}ms"
             )
-            return null
-        } catch (e: CancellationException) {
-            throw e
-        } catch (e: Exception) {
-            LogBuffer.w("SPP", "Failed waiting for response to cmd=${pkg.commandId.toHex()} (respId=$respId): ${e.message}")
-            return null
-        } finally {
-            pendingResponses.remove(respId, deferred)
+
+            try {
+                sendNowaitLocked(pkg)
+                val elapsed = SystemClock.elapsedRealtime() - startedAt
+                val remaining = (timeout - elapsed).coerceAtLeast(1L)
+                val response = withTimeoutOrNull(remaining) { deferred.await() }
+                if (response != null) {
+                    LogBuffer.d(
+                        "SPP",
+                        "REQ success cmd=${pkg.commandId.toHex()} resp=$respId elapsed=${SystemClock.elapsedRealtime() - startedAt}ms"
+                    )
+                    return@withLock response
+                }
+                val pendingKeys = pendingResponses.keys().joinToString(",")
+                LogBuffer.w(
+                    "SPP",
+                    "REQ response timeout cmd=${pkg.commandId.toHex()} resp=$respId elapsed=${SystemClock.elapsedRealtime() - startedAt}ms pending=[$pendingKeys]"
+                )
+                return@withLock null
+            } catch (e: CancellationException) {
+                throw e
+            } catch (e: Exception) {
+                LogBuffer.w("SPP", "Failed waiting for response to cmd=${pkg.commandId.toHex()} (respId=$respId): ${e.message}")
+                return@withLock null
+            } finally {
+                pendingResponses.remove(respId, deferred)
+            }
         }
     }
 
-    /** 发送包不等待（对照 _send_nowait） */
-    suspend fun sendNowait(pkg: HuaweiSppPackage) = withContext(Dispatchers.IO) {
+    /**
+     * Sends a packet without waiting for its own response.
+     *
+     * It still waits for an in-flight request/response exchange to complete. Otherwise a
+     * fire-and-forget write could overtake an initialization read and reproduce the exact
+     * request-loss race that the serialized request lane prevents.
+     */
+    suspend fun sendNowait(pkg: HuaweiSppPackage) {
+        requestMutex.withLock {
+            sendNowaitLocked(pkg)
+        }
+    }
+
+    /** Caller must hold [requestMutex] when a response exchange is in progress. */
+    private suspend fun sendNowaitLocked(pkg: HuaweiSppPackage) = withContext(Dispatchers.IO) {
         val bytes = pkg.toBytes()
         LogBuffer.frame("TX", bytes)
         try {
