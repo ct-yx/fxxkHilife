@@ -28,7 +28,7 @@ class ConnectionAttemptTimelineTest {
         val duplicate = timeline.mark(ConnectionPhase.TransportReady)
         assertFalse(duplicate.firstMark)
         assertEquals(160L, duplicate.elapsedSinceStartMs)
-        assertEquals(410L, timeline.elapsedSinceStartMs())
+        assertEquals(410L, timeline.elapsedSinceStart())
     }
 
     @Test
