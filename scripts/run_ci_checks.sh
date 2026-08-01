@@ -63,7 +63,7 @@ run_step() {
 
 chmod +x ./gradlew 2>/dev/null || true
 run_step "diff-check" git diff --check
-run_step "gradle" ./gradlew --no-daemon clean test assembleRelease --stacktrace
+run_step "gradle" ./gradlew --no-daemon clean test assembleDebug assembleRelease --stacktrace
 
 # Keep the standard Gradle reports beside the console logs for one-click download.
 if [[ -d app/build/test-results ]]; then

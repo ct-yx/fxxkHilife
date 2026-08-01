@@ -730,7 +730,7 @@ BT-0 必须产出一份能力证据表：
 
 ##### BT-0.2：连接速度专项基线 `[~] 进行中`
 
-> 当前记录：2026-08-01；已加入可测试的 `ConnectionAttemptTimeline`、attemptId、触发来源和连接阶段日志。尚未取得实机 10 次/场景的数据，因此不能标记为已完成。
+> 当前记录：2026-08-01；已加入可测试的 `ConnectionAttemptTimeline`、attemptId、触发来源和连接阶段日志，并在 Debug 调试终端加入“自动实机测试”按钮。按钮会自动执行 A-F 各 10 轮、ANC/低延迟读回、Service/Tile 去重和断开/重连检查，完成后自动分享包含 P50/P95 和完整诊断日志的报告。尚未取得实机数据，因此不能标记为已完成。
 
 已收到主验证设备的 `a.txt`、`b.txt` 两份诊断报告，作为问题定位证据，不作为阶段完成证据：
 
@@ -816,7 +816,7 @@ python3 scripts/analyze_connection_timing.py /path/to/fxxkHilife_diagnostic.txt
 6. **断开与重连**：手动断开、系统 ACL 断开、重新连接各执行一次，确认没有旧会话继续轮询、发送或触发自动低延迟。
 7. **重复入口**：从应用进入、Service/Tile、ACL 自动连接和扫描结束触发连接各覆盖一次，确认同一 attempt 不产生并行 Socket。
 
-每项测试导出一份诊断日志；目标受阻时一次性上传日志和 `summary.md`，再统一判断 BT-0.2、BT-0.3 和 BT-1 的完成标记，不拆成多轮零散测试。
+每项测试由 Debug 按钮自动记录；日志缓存会在测试期间临时提升到 50,000 行，完成后恢复原设置。目标受阻时一次性分享测试报告，再统一判断 BT-0.2、BT-0.3 和 BT-1 的完成标记，不拆成多轮零散测试。注意：ACL 广播本身由系统触发，按钮同时执行同一清理路径的标记性回归；报告会区分 live broadcast 与 synthetic cleanup。
 
 #### BT-2：CommandClient 与 Feature 拆分 `[ ] 未开始`
 
@@ -909,12 +909,13 @@ python3 scripts/analyze_connection_timing.py /path/to/fxxkHilife_diagnostic.txt
 ./scripts/run_ci_checks.sh ci-output
 ```
 
-该入口会自动执行 `git diff --check`、`clean test assembleRelease`，并在 `ci-output/` 保留命令日志、JUnit XML、HTML 报告、版本/提交信息、APK 数量和 SHA-256 摘要；即使构建失败也会先收集报告再返回失败码。
+该入口会自动执行 `git diff --check`、`clean test assembleDebug assembleRelease`，并在 `ci-output/` 保留命令日志、JUnit XML、HTML 报告、版本/提交信息、APK 数量和 SHA-256 摘要；即使构建失败也会先收集报告再返回失败码。
 
 GitHub 上点击 **Actions → Build & Release → Run workflow → Run workflow** 即可执行同一流程。运行结束后：
 
 - 下载 `automated-test-report-*`：查看 `summary.md`、`gradle.log` 和测试报告。
 - 下载 `fxxkHilife-*`：取得 Release APK；只有自动化检查成功时才上传 APK。
+- 下载 `fxxkHilife-debug-*`：取得开发阶段实机回归 APK；其中包含“自动实机测试”按钮。该按钮由 `BuildConfig.DEBUG` 控制，Release APK 不显示此按钮。
 - 自动化失败时先下载报告定位问题，不把失败构建当作可测试包。
 
 蓝牙相关提交还应附：

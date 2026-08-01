@@ -4,18 +4,24 @@ import android.os.Bundle
 import android.text.SpannableString
 import android.text.Spanned
 import android.text.style.ForegroundColorSpan
+import android.view.View
 import android.view.inputmethod.EditorInfo
 import android.widget.Button
 import android.widget.ScrollView
 import android.widget.TextView
 import androidx.appcompat.app.AppCompatActivity
+import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.lifecycleScope
+import androidx.lifecycle.repeatOnLifecycle
+import com.freebuds.controller.BuildConfig
 import com.freebuds.controller.HilifeApplication
 import com.freebuds.controller.R
+import com.freebuds.controller.data.BluetoothRegressionRunner
 import com.freebuds.controller.i18n.I18n
 import com.freebuds.controller.util.LogBuffer
 import com.freebuds.controller.util.LogBuffer.OnLogUpdateListener
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.flow.collect
 
 /**
  * 调试终端 —— 只负责日志展示和 props/set 命令。
@@ -28,6 +34,7 @@ class TerminalActivity : AppCompatActivity(), OnLogUpdateListener {
     private lateinit var scrollView: ScrollView
     private var levelFilter: String? = null
     private val repo get() = HilifeApplication.instance.deviceRepository
+    private lateinit var regressionRunner: BluetoothRegressionRunner
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -37,6 +44,7 @@ class TerminalActivity : AppCompatActivity(), OnLogUpdateListener {
         outputView = findViewById(R.id.terminal_output)
         inputView  = findViewById(R.id.terminal_input)
         scrollView = findViewById(R.id.terminal_scroll)
+        regressionRunner = BluetoothRegressionRunner(this, repo)
         findViewById<Button>(R.id.btn_clear).text = I18n.t("terminal.clear")
         findViewById<Button>(R.id.btn_scan).text = I18n.t("terminal.props")
         findViewById<Button>(R.id.btn_list).text = I18n.t("terminal.help")
@@ -44,7 +52,44 @@ class TerminalActivity : AppCompatActivity(), OnLogUpdateListener {
         findViewById<Button>(R.id.btn_share).text = I18n.t("terminal.share")
         findViewById<Button>(R.id.btn_perm).text = I18n.t("terminal.permissions")
         findViewById<Button>(R.id.btn_help).text = I18n.t("terminal.help")
+        val regressionButton = findViewById<Button>(R.id.btn_regression)
+        regressionButton.text = I18n.t("terminal.regression")
         inputView.hint = I18n.t("terminal.input_hint")
+
+        // This is a development-only control. Release builds retain normal diagnostics but do
+        // not expose the long-running hardware regression workflow.
+        if (BuildConfig.DEBUG) {
+            regressionButton.visibility = View.VISIBLE
+            regressionButton.setOnClickListener {
+                when {
+                    regressionRunner.isRunning() -> regressionRunner.cancel()
+                    regressionRunner.state.value.reportReady -> regressionRunner.shareLastReport(this)
+                    else -> {
+                        LogBuffer.i("HwTest", "Debug-only hardware regression button pressed")
+                        regressionRunner.start(lifecycleScope)
+                    }
+                }
+            }
+            lifecycleScope.launch {
+                repeatOnLifecycle(Lifecycle.State.RESUMED) {
+                    var reportShared = false
+                    regressionRunner.state.collect { state ->
+                        regressionButton.text = when {
+                            state.running -> "${I18n.t("terminal.regression.running")} " +
+                                "${state.completed}/${state.totalIterations * 6}"
+                            state.reportReady -> I18n.t("terminal.regression.share_title")
+                            else -> I18n.t("terminal.regression")
+                        }
+                        if (!state.running && state.reportReady && !reportShared) {
+                            reportShared = true
+                            regressionRunner.shareLastReport(this@TerminalActivity)
+                        }
+                    }
+                }
+            }
+        } else {
+            regressionButton.visibility = View.GONE
+        }
 
         inputView.setOnEditorActionListener { _, action, _ ->
             if (action == EditorInfo.IME_ACTION_SEND) {
@@ -59,7 +104,13 @@ class TerminalActivity : AppCompatActivity(), OnLogUpdateListener {
         findViewById<Button>(R.id.btn_scan).setOnClickListener { handleCommand("props") }
         findViewById<Button>(R.id.btn_list).setOnClickListener { handleCommand("help") }
         findViewById<Button>(R.id.btn_disconnect).setOnClickListener { handleCommand("disconnect") }
-        findViewById<Button>(R.id.btn_share).setOnClickListener { handleCommand("share") }
+        findViewById<Button>(R.id.btn_share).setOnClickListener {
+            if (BuildConfig.DEBUG && regressionRunner.state.value.reportReady) {
+                regressionRunner.shareLastReport(this)
+            } else {
+                handleCommand("share")
+            }
+        }
         findViewById<Button>(R.id.btn_perm).setOnClickListener { handleCommand("props") }
         findViewById<Button>(R.id.btn_help).setOnClickListener { handleCommand("help") }
 
@@ -152,6 +203,7 @@ class TerminalActivity : AppCompatActivity(), OnLogUpdateListener {
     }
 
     override fun onDestroy() {
+        if (BuildConfig.DEBUG) regressionRunner.cancel()
         LogBuffer.unregisterListener(this)
         super.onDestroy()
     }

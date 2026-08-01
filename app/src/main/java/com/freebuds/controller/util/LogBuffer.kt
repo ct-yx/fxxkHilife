@@ -32,7 +32,9 @@ object LogBuffer {
 
     private const val DEFAULT_MAX_LINES = 2_000
     private const val MIN_LINES = 100
-    private const val MAX_LINES = 10_000
+    // A normal session stays small; the debug-only hardware regression runner temporarily raises
+    // this through setMaxLines() so six scenarios x ten iterations retain their evidence.
+    private const val MAX_LINES = 50_000
 
     private val logLock = Any()
     private val listenerLock = Any()

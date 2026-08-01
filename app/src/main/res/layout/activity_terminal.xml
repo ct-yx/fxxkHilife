@@ -31,8 +31,7 @@
         android:id="@+id/terminal_shortcuts"
         android:layout_width="0dp"
         android:layout_height="wrap_content"
-        android:orientation="horizontal"
-        android:gravity="center"
+        android:orientation="vertical"
         android:background="#FF0D0D1A"
         android:paddingHorizontal="4dp"
         android:paddingVertical="6dp"
@@ -42,33 +41,53 @@
         app:layout_constraintTop_toBottomOf="@id/terminal_scroll">
 
         <Button
-            android:id="@+id/btn_clear"
+            android:id="@+id/btn_regression"
             style="@style/TerminalShortcut"
-            android:text="@string/terminal_clear" />
-        <Button
-            android:id="@+id/btn_scan"
-            style="@style/TerminalShortcut"
-            android:text="@string/terminal_props" />
-        <Button
-            android:id="@+id/btn_list"
-            style="@style/TerminalShortcut"
-            android:text="@string/terminal_help" />
-        <Button
-            android:id="@+id/btn_disconnect"
-            style="@style/TerminalShortcut"
-            android:text="@string/terminal_disconnect" />
-        <Button
-            android:id="@+id/btn_share"
-            style="@style/TerminalShortcut"
-            android:text="@string/terminal_share" />
-        <Button
-            android:id="@+id/btn_perm"
-            style="@style/TerminalShortcut"
-            android:text="@string/terminal_props" />
-        <Button
-            android:id="@+id/btn_help"
-            style="@style/TerminalShortcut"
-            android:text="@string/terminal_help" />
+            android:layout_width="match_parent"
+            android:visibility="gone"
+            android:text="@string/terminal_regression" />
+
+        <HorizontalScrollView
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:scrollbars="none">
+
+            <LinearLayout
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:orientation="horizontal"
+                android:gravity="center">
+
+                <Button
+                    android:id="@+id/btn_clear"
+                    style="@style/TerminalShortcut"
+                    android:text="@string/terminal_clear" />
+                <Button
+                    android:id="@+id/btn_scan"
+                    style="@style/TerminalShortcut"
+                    android:text="@string/terminal_props" />
+                <Button
+                    android:id="@+id/btn_list"
+                    style="@style/TerminalShortcut"
+                    android:text="@string/terminal_help" />
+                <Button
+                    android:id="@+id/btn_disconnect"
+                    style="@style/TerminalShortcut"
+                    android:text="@string/terminal_disconnect" />
+                <Button
+                    android:id="@+id/btn_share"
+                    style="@style/TerminalShortcut"
+                    android:text="@string/terminal_share" />
+                <Button
+                    android:id="@+id/btn_perm"
+                    style="@style/TerminalShortcut"
+                    android:text="@string/terminal_props" />
+                <Button
+                    android:id="@+id/btn_help"
+                    style="@style/TerminalShortcut"
+                    android:text="@string/terminal_help" />
+            </LinearLayout>
+        </HorizontalScrollView>
     </LinearLayout>
 
     <View

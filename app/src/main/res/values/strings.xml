@@ -13,6 +13,7 @@
     <string name="terminal_help">帮助</string>
     <string name="terminal_disconnect">断开</string>
     <string name="terminal_share">分享</string>
+    <string name="terminal_regression">自动实机测试</string>
     <string name="terminal_input_hint">输入命令…</string>
     <string name="terminal_title">调试终端</string>
 </resources>

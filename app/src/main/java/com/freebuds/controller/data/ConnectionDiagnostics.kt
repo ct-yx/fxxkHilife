@@ -14,6 +14,8 @@ enum class ConnectionTrigger {
     PeriodicCheck,
     ScanCompleted,
     TileAction,
+    /** A real-device regression run started from the debug terminal. */
+    HardwareRegression,
 }
 
 /**

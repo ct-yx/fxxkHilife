@@ -268,6 +268,8 @@ class DeviceRepository {
     }
 
     fun disconnect() {
+        connectingJob?.cancel()
+        connectingJob = null
         manualDisconnectSuppressUntil = System.currentTimeMillis() + 10 * 60_000L
         activeConnectionAttempt?.let { markConnectionPhase(it, ConnectionPhase.Disconnecting) }
         initJob?.cancel()
@@ -288,6 +290,38 @@ class DeviceRepository {
         activeConnectionAttempt = null
         refreshSavedDeviceConnections()
     }
+
+    /**
+     * Test-only entry point used by the in-app hardware regression runner.
+     * It executes the same cleanup path as ACTION_ACL_DISCONNECTED while leaving the real
+     * broadcast receiver intact for normal operation. The report labels this as synthetic.
+     */
+    fun regressionSimulateAclDisconnect() {
+        val source = session
+        val address = connectedAddress
+        if (source == null && address == null) {
+            LogBuffer.w("HwTest", "Synthetic ACL disconnect skipped: no active session")
+            return
+        }
+        LogBuffer.i("HwTest", "Synthetic ACL disconnect requested")
+        handleRemoteDisconnected(source, "Bluetooth ACL disconnected (regression runner)")
+        address?.let { systemConnectedAddresses.remove(it) }
+        refreshSavedDeviceConnections()
+    }
+
+    /** Device selected by the one-click real-device regression runner. */
+    fun getRegressionDevice(): BluetoothDevice? {
+        val address = connectedAddress ?: getSavedAddress() ?: return null
+        return runCatching { BluetoothAdapter.getDefaultAdapter()?.getRemoteDevice(address) }.getOrNull()
+    }
+
+    fun getRegressionAttemptId(): String? = activeConnectionAttempt?.attemptId
+
+    fun getRegressionEndpoint(): String = session
+        ?.legacyDriverOrNull()
+        ?.transportConfig
+        ?.endpointDescription()
+        ?: "unavailable"
 
     fun clearManualDisconnectSuppression() {
         manualDisconnectSuppressUntil = 0L

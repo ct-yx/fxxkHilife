@@ -98,6 +98,22 @@ jobs:
           echo "path=$OUT" >> "$GITHUB_OUTPUT"
           echo "available=true" >> "$GITHUB_OUTPUT"
 
+      - name: Locate debug APK
+        id: debug_apk
+        if: always()
+        shell: bash
+        run: |
+          APK=$(find app/build/outputs/apk/debug -name '*.apk' -type f | head -1)
+          if [ -z "$APK" ]; then
+            echo "No debug APK found."
+            echo "available=false" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+          OUT="fxxkHilife-debug-${TAG}-${VERSION_CODE}.apk"
+          cp "$APK" "$OUT"
+          echo "path=$OUT" >> "$GITHUB_OUTPUT"
+          echo "available=true" >> "$GITHUB_OUTPUT"
+
       - name: Upload automated test report
         if: always()
         uses: actions/upload-artifact@v4
@@ -112,6 +128,14 @@ jobs:
         with:
           name: fxxkHilife-${{ steps.version.outputs.tag }}-${{ steps.version.outputs.version_code }}
           path: ${{ steps.apk.outputs.path }}
+          if-no-files-found: error
+
+      - name: Upload debug APK artifact
+        if: steps.debug_apk.outputs.available == 'true'
+        uses: actions/upload-artifact@v4
+        with:
+          name: fxxkHilife-debug-${{ steps.version.outputs.tag }}-${{ steps.version.outputs.version_code }}
+          path: ${{ steps.debug_apk.outputs.path }}
           if-no-files-found: error
 
       - name: Fail workflow when automated checks failed
