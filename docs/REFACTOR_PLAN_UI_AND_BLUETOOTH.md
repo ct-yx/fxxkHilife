@@ -789,7 +789,7 @@ python3 scripts/analyze_connection_timing.py /path/to/fxxkHilife_diagnostic.txt
 
 #### BT-1：唯一生产传输路径 `[~] 进行中`
 
-> 进度记录：2026-08-01；代码已将生产 RFCOMM Socket、输入输出流、读循环和关闭逻辑收敛到 `RfcommSppTransport`，`SppDriver` 通过 `ProtocolSession` 使用 `HuaweiSppFramer`。本地和 GitHub Actions 自动流程均已通过：Debug/Release 各 21 个单元测试、0 failure、Release 构建成功；最新运行是 [run 30692854851](https://github.com/ct-yx/fxxkHilife/actions/runs/30692854851)，生成 `automated-test-report-v4.2.6-87` 与 `fxxkHilife-v4.2.6-87`。由于当前没有新的主设备实机回归日志，暂不标记为 `[x]`，版本仍冻结为 `4.2.6 (87)`。
+> 进度记录：2026-08-01；代码已将生产 RFCOMM Socket、输入输出流、读循环和关闭逻辑收敛到 `RfcommSppTransport`，`SppDriver` 通过 `ProtocolSession` 使用 `HuaweiSppFramer`。本地和 GitHub Actions 自动流程均已通过：Debug/Release 各 23 个单元测试、0 failure、Debug/Release 构建成功；验证运行是 [run 30693967119](https://github.com/ct-yx/fxxkHilife/actions/runs/30693967119)，生成 `automated-test-report-v4.2.6-87`、`fxxkHilife-debug-v4.2.6-87` 与 `fxxkHilife-v4.2.6-87`。由于当前没有新的主设备实机回归日志，暂不标记为 `[x]`，版本仍冻结为 `4.2.6 (87)`。
 
 已完成：
 
