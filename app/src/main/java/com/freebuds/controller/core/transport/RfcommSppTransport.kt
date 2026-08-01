@@ -3,6 +3,7 @@ package com.freebuds.controller.core.transport
 import android.bluetooth.BluetoothDevice
 import com.freebuds.controller.util.LogBuffer
 import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.SupervisorJob
@@ -10,9 +11,12 @@ import kotlinx.coroutines.cancel
 import kotlinx.coroutines.currentCoroutineContext
 import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.runInterruptible
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
 import kotlinx.coroutines.withContext
+import kotlinx.coroutines.withTimeout
+import kotlinx.coroutines.TimeoutCancellationException
 import java.io.EOFException
 import java.io.InputStream
 import java.io.OutputStream
@@ -30,7 +34,7 @@ import java.lang.reflect.Method
  */
 class RfcommSppTransport(
     private val device: BluetoothDevice,
-    private val port: Int = DEFAULT_SPP_PORT,
+    val config: RfcommTransportConfig = RfcommTransportConfig.compatibilityFallback(),
     private val onDiscoveryChecked: ((wasDiscovering: Boolean) -> Unit)? = null,
 ) : EarbudTransport {
 
@@ -39,6 +43,8 @@ class RfcommSppTransport(
     @Volatile
     override var isConnected: Boolean = false
         private set
+
+    val endpointDescription: String get() = config.endpointDescription()
 
     private var inputStream: InputStream? = null
     private var outputStream: OutputStream? = null
@@ -54,15 +60,33 @@ class RfcommSppTransport(
     override suspend fun connect(): Boolean = withContext(Dispatchers.IO) {
         if (isConnected) return@withContext true
         try {
-            LogBuffer.i("Transport", "Connecting RFCOMM SPP to ${device.name} (${device.address}) port=$port")
+            LogBuffer.i(
+                "Transport",
+                "Connecting RFCOMM SPP to ${device.name} (${device.address}) " +
+                    "${config.endpointDescription()} timeout=${config.connectTimeoutMs}ms"
+            )
             scope.cancel()
             scope = CoroutineScope(Dispatchers.IO + SupervisorJob())
-            val connectedSocket = RfcommSocketBridge.connect(
-                device = device,
-                port = port,
-                logTag = "Transport",
-                onDiscoveryChecked = onDiscoveryChecked,
-            )
+            val connectedSocket = try {
+                withTimeout(config.connectTimeoutMs) {
+                    runInterruptible(Dispatchers.IO) {
+                        RfcommSocketBridge.connect(
+                            device = device,
+                            port = config.channel,
+                            logTag = "Transport",
+                            onDiscoveryChecked = onDiscoveryChecked,
+                        )
+                    }
+                }
+            } catch (e: TimeoutCancellationException) {
+                LogBuffer.w(
+                    "Transport",
+                    "RFCOMM connect timeout after ${config.connectTimeoutMs}ms ${config.endpointDescription()}"
+                )
+                closeSocket()
+                isConnected = false
+                return@withContext false
+            }
             socket = connectedSocket.socket
             closeMethod = connectedSocket.closeMethod
             inputStream = connectedSocket.inputStream
@@ -70,6 +94,10 @@ class RfcommSppTransport(
             isConnected = true
             readJob = scope.launch { readLoop() }
             true
+        } catch (e: CancellationException) {
+            closeSocket()
+            isConnected = false
+            throw e
         } catch (e: Exception) {
             LogBuffer.e("Transport", "RFCOMM SPP connect failed: ${e.message}")
             closeSocket()
@@ -135,7 +163,6 @@ class RfcommSppTransport(
     }
 
     companion object {
-        const val DEFAULT_SPP_PORT = 1
         private const val DEFAULT_READ_BUFFER_SIZE = 4096
     }
 }

@@ -4,6 +4,8 @@ import android.bluetooth.BluetoothDevice
 import com.freebuds.controller.bluetooth.HuaweiDeviceHandler
 import com.freebuds.controller.bluetooth.SppDriver
 import com.freebuds.controller.core.adapter.EarbudAdapter
+import com.freebuds.controller.core.transport.RfcommTransportConfig
+import com.freebuds.controller.core.transport.RfcommTransportConfigProvider
 import com.freebuds.controller.data.DeviceProps
 
 /**
@@ -17,7 +19,11 @@ class LegacySppEarbudSession(
     private val device: BluetoothDevice,
     private val adapter: EarbudAdapter,
 ) : EarbudSession {
-    private val driver = SppDriver(device)
+    private val transportConfig =
+        (adapter as? RfcommTransportConfigProvider)
+            ?.rfcommTransportConfig(device.name)
+            ?: RfcommTransportConfig.compatibilityFallback()
+    private val driver = SppDriver(device, transportConfig)
 
     override val id: String = adapter.id
     override val displayName: String = adapter.displayName

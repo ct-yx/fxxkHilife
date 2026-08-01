@@ -206,7 +206,6 @@ class DeviceRepository {
             LogBuffer.putMetadata("adapter", adapter.id)
             LogBuffer.putMetadata("connectionAttemptId", attempt.attemptId)
             LogBuffer.putMetadata("connectionTrigger", trigger.name)
-            LogBuffer.putMetadata("connectionEndpoint", "rfcomm-port=${com.freebuds.controller.bluetooth.SppDriver.SPP_SERVICE_PORT}")
             LogBuffer.i(
                 "Session",
                 "Connect requested attempt=${attempt.attemptId} trigger=${trigger.name} " +
@@ -218,7 +217,12 @@ class DeviceRepository {
                 LogBuffer.d("ConnPhase", "attempt=${attempt.attemptId} phase=${ConnectionPhase.SystemLinkObserved} observed=false")
             }
             val d = LegacySppEarbudSession(device, adapter)
-            d.legacyDriverOrNull()?.onDiscoveryChecked = { wasDiscovering ->
+            val driver = d.legacyDriverOrNull()
+            LogBuffer.putMetadata(
+                "connectionEndpoint",
+                driver.transportConfig.endpointDescription()
+            )
+            driver.onDiscoveryChecked = { wasDiscovering ->
                 markConnectionPhase(
                     attempt,
                     ConnectionPhase.DiscoveryStopped,

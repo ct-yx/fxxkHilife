@@ -324,25 +324,19 @@ ViewModel 负责把事件交给用例；用例再调用协议无关的控制接�
 
 ### 4.1 现存问题
 
-#### A. `SppDriver` 边界仍然过大
+#### A. `SppDriver` 的命令边界仍需继续收敛
 
-`SppDriver.kt` 当前同时负责：
+BT-1 已移除 `SppDriver` 对 Socket、输入输出流和原始收包循环的直接持有；当前它仍负责：
 
-- RFCOMM Socket 建立、关闭和输入输出流。
-- 收包循环、5A 包头识别、长度读取和嵌套包扫描。
 - 发送串行化、请求响应等待、超时和 pending response。
 - Handler 注册、命令分发、属性仓库和初始化入口。
-- 断开回调、日志和兼容桥接。
+- 断开回调、日志和旧 Handler 兼容桥接。
 
-这使得传输、协议和业务 Handler 的修改相互影响，也让断开时序和并发问题难以单独测试。
+这些职责将在 BT-2 迁移到 `CommandClient`、`CommandScheduler` 和按能力划分的 Feature；BT-1 不提前扩大修改范围。
 
-#### B. 传输实现有重复路径
+#### B. 重复 Transport 路径（BT-1 已处理）
 
-`SppDriver` 和 `RfcommSppTransport` 都持有 RFCOMM Socket、读循环、发送锁和断开逻辑。现在前者是生产路径，后者是迁移骨架。继续并行演进会导致：
-
-- 两套连接行为不一致。
-- 一处修复没有同步到另一处。
-- 日志、超时和关闭语义不一致。
+当前只有 `RfcommSppTransport` 建立/关闭 RFCOMM Socket、读原始字节和写输出流；`SppDriver` 通过 `ProtocolSession` 使用它。该项仍保留在问题清单中，是为了记录迁移前的风险，验收证据见 BT-1 进度记录。
 
 #### C. 指令定义和 Handler 组织分散
 
@@ -509,13 +503,14 @@ Disconnected     = Failed / Disconnected
 
 #### 4.3.3 RFCOMM 端点策略
 
-将端点从 `SppDriver.SPP_SERVICE_PORT` 移到型号能力配置：
+端点由 `RfcommTransportConfig` 统一承载，并由型号适配器提供：
 
 ```kotlin
-data class RfcommEndpoint(
+data class RfcommTransportConfig(
     val serviceUuid: UUID? = null,
-    val channel: Int? = null,
+    val channel: Int = 1,
     val source: EndpointSource,
+    val connectTimeoutMs: Long = 10_000L,
 )
 
 enum class EndpointSource {
@@ -533,9 +528,11 @@ enum class EndpointSource {
 3. Android Service Record 动态发现。
 4. 兼容 fallback；每次使用都记录原因和结果。
 
-约束：
+当前实现状态与约束：
 
 - `HuaweiModel.sppPort`、Service UUID 和最终 Transport 端点必须来自同一份配置，禁止表中有值但连接层继续硬编码。
+- 已知型号的 channel 已通过 `RfcommTransportConfigProvider` 传入 Transport；未知名称使用 channel 1 的兼容 fallback，并在日志中记录 `source`。
+- 当前 Android bridge 仍使用 channel API；`serviceUuid` 已进入配置契约并记录，Service Record/UUID 选择留待后续端点实机证据。
 - 未验证端点不能静默覆盖已验证端点。
 - UUID 与 channel 的对比测试必须固定设备、系统版本、蓝牙系统连接状态和 discovery 状态。
 - `socket.connect()` 必须由 Transport 统一执行，并有取消和应用层超时；超时后关闭当前 Socket，再进入统一 backoff。
@@ -806,6 +803,20 @@ python3 scripts/analyze_connection_timing.py /path/to/fxxkHilife_diagnostic.txt
 - `[ ]` 将 UUID、channel、连接超时、取消和重试收敛为 `RfcommTransportConfig`，移除固定 port 常量。
 - `[ ]` 在主验证设备上回归 ANC、自动低延迟、初始化持续推进、断开/重连，并记录回退结果。
 - `[ ]` 实机回归通过后再提升到 `4.3.0 (88)` 并标记 `[x]`。
+
+#### 实机回归待测队列（BT-0.2 / BT-1 合并收集）
+
+以下项目先累计，等 BT-1 代码和 CI 稳定后一次性请求目标受阻测试；在此之前不反复打断用户：
+
+1. **连接基线**：场景 A-F 各执行至少 10 次，记录同一设备、系统版本、固件、触发来源、discovery、attemptId，以及 SystemLink、Transport、Core、Ready 各阶段耗时，计算 P50/P95。
+2. **端点选择**：已知型号连接一次，确认日志中的 `rfcomm-channel`、`source` 与型号配置一致；未知名称再确认兼容 fallback 仍可记录。
+3. **首轮初始化**：连续进入应用/连接，确认 ANC、电量、音质、低延迟的初始化结果不再随机缺失；特别观察 10 秒后仍有失败能力时是否继续推进恢复。
+4. **ANC 控制**：连接后读取 ANC 模式/级别，切换一次模式并确认 UI 状态读回；记录失败 Handler 和对应命令响应。
+5. **自动低延迟**：分别关闭/开启自动低延迟连接，确认写入、ACK、延迟回读和最终 `config.low_latency` 状态；不能只依据 ACK 判断成功。
+6. **断开与重连**：手动断开、系统 ACL 断开、重新连接各执行一次，确认没有旧会话继续轮询、发送或触发自动低延迟。
+7. **重复入口**：从应用进入、Service/Tile、ACL 自动连接和扫描结束触发连接各覆盖一次，确认同一 attempt 不产生并行 Socket。
+
+每项测试导出一份诊断日志；目标受阻时一次性上传日志和 `summary.md`，再统一判断 BT-0.2、BT-0.3 和 BT-1 的完成标记，不拆成多轮零散测试。
 
 #### BT-2：CommandClient 与 Feature 拆分 `[ ] 未开始`
 

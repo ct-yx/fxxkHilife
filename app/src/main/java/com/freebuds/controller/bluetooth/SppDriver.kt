@@ -8,6 +8,7 @@ import com.freebuds.controller.adapter.huawei.protocol.HuaweiHandlerRegistry
 import com.freebuds.controller.adapter.huawei.protocol.HuaweiPendingResponseManager
 import com.freebuds.controller.adapter.huawei.protocol.HuaweiPropertyStore
 import com.freebuds.controller.adapter.huawei.protocol.HuaweiSppProtocol
+import com.freebuds.controller.core.transport.RfcommTransportConfig
 import com.freebuds.controller.core.transport.RfcommSppTransport
 import com.freebuds.controller.protocol.HuaweiSppPackage
 import com.freebuds.controller.util.LogBuffer
@@ -23,18 +24,16 @@ import kotlinx.coroutines.sync.withLock
  * 通过 Android RFCOMM Socket 连接耳机，读写 5A 封包。
  * SPP 端口号由型号配置决定（FreeBuds 6i 使用 port=1）。
  */
-class SppDriver(private val device: BluetoothDevice) {
-
-    companion object {
-        /** SPP 端口号，对照 OpenFreebuds 型号配置的 _spp_service_port */
-        const val SPP_SERVICE_PORT = 1
-    }
+class SppDriver(
+    private val device: BluetoothDevice,
+    val transportConfig: RfcommTransportConfig = RfcommTransportConfig.compatibilityFallback(),
+) {
 
     val isConnected: Boolean get() = transport.isConnected
 
     private val transport = RfcommSppTransport(
         device = device,
-        port = SPP_SERVICE_PORT,
+        config = transportConfig,
         onDiscoveryChecked = { wasDiscovering -> onDiscoveryChecked?.invoke(wasDiscovering) },
     )
     private val protocolSession = HuaweiSppProtocol.createSession(transport)
@@ -102,12 +101,19 @@ class SppDriver(private val device: BluetoothDevice) {
             return@withContext true
         }
 
-        LogBuffer.i("SPP", "Connecting to ${device.name} (${device.address}) via RFCOMM port=$SPP_SERVICE_PORT...")
+        LogBuffer.i(
+            "SPP",
+            "Connecting to ${device.name} (${device.address}) via RFCOMM " +
+                transportConfig.endpointDescription() + "..."
+        )
         try {
             val connected = protocolSession.connect()
             if (!connected) return@withContext false
             LogBuffer.i("SPP", "Connected to ${device.name}")
             true
+        } catch (e: CancellationException) {
+            protocolSession.disconnect()
+            throw e
         } catch (e: Exception) {
             LogBuffer.e("SPP", "Connection failed: ${e.message}")
             protocolSession.disconnect()

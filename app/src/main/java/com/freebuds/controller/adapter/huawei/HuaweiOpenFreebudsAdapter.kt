@@ -4,6 +4,9 @@ import android.bluetooth.BluetoothDevice
 import com.freebuds.controller.bluetooth.*
 import com.freebuds.controller.core.adapter.EarbudAdapter
 import com.freebuds.controller.core.adapter.EarbudAdapterCallbacks
+import com.freebuds.controller.core.transport.EndpointSource
+import com.freebuds.controller.core.transport.RfcommTransportConfig
+import com.freebuds.controller.core.transport.RfcommTransportConfigProvider
 import com.freebuds.controller.data.DeviceProps
 import com.freebuds.controller.data.EarbudStateMapper
 import com.freebuds.controller.protocol.HuaweiCapability
@@ -21,13 +24,22 @@ import kotlinx.coroutines.launch
  * of the adapter is to move vendor/model/handler selection out of DeviceRepository first, so
  * future vendor adapters can be added without making the repository branchier.
  */
-object HuaweiOpenFreebudsAdapter : EarbudAdapter {
+object HuaweiOpenFreebudsAdapter : EarbudAdapter, RfcommTransportConfigProvider {
     override val id: String = "huawei_openfreebuds"
     override val displayName: String = "HUAWEI / HONOR (OpenFreebuds)"
 
     private val callbackScope = CoroutineScope(Dispatchers.IO + SupervisorJob())
 
     override fun canHandle(device: BluetoothDevice): Boolean = isHuaweiOrHonorName(device.name)
+
+    override fun rfcommTransportConfig(deviceName: String?): RfcommTransportConfig {
+        val model = detectModel(deviceName.orEmpty())
+        return RfcommTransportConfig(
+            channel = model?.sppPort ?: RfcommTransportConfig.DEFAULT_CHANNEL,
+            source = if (model == null) EndpointSource.CompatibilityFallback
+            else EndpointSource.VerifiedModelConfig,
+        )
+    }
 
     override fun registerHandlers(driver: SppDriver, deviceName: String, callbacks: EarbudAdapterCallbacks) {
         val model = detectModel(deviceName)
