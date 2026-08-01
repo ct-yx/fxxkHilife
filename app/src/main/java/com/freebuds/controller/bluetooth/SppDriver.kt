@@ -58,6 +58,9 @@ class SppDriver(private val device: BluetoothDevice) {
     /** Called when RFCOMM receive loop ends unexpectedly. */
     var onDisconnected: (() -> Unit)? = null
 
+    /** Diagnostic hook used by BT-0.2 to bind discovery timing to a connection attempt. */
+    var onDiscoveryChecked: ((wasDiscovering: Boolean) -> Unit)? = null
+
     fun registerHandler(handler: HuaweiDeviceHandler) {
         handlerRegistry.register(handler)
     }
@@ -97,7 +100,12 @@ class SppDriver(private val device: BluetoothDevice) {
             // 使用端口号连接（对照 OpenFreebuds _spp_service_port）
             scope.cancel()
             scope = CoroutineScope(Dispatchers.IO + SupervisorJob())
-            val connectedSocket = RfcommSocketBridge.connect(device, SPP_SERVICE_PORT, "SPP")
+            val connectedSocket = RfcommSocketBridge.connect(
+                device = device,
+                port = SPP_SERVICE_PORT,
+                logTag = "SPP",
+                onDiscoveryChecked = onDiscoveryChecked,
+            )
             socket = connectedSocket.socket
             closeMethod = connectedSocket.closeMethod
             inputStream = connectedSocket.inputStream

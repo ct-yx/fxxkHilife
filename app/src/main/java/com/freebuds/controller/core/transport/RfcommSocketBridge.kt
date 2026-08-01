@@ -38,8 +38,13 @@ object RfcommSocketBridge {
     private val deviceMethodCache = ConcurrentHashMap<Class<*>, DeviceMethods>()
     private val socketMethodCache = ConcurrentHashMap<Class<*>, SocketMethods>()
 
-    fun connect(device: BluetoothDevice, port: Int, logTag: String): ConnectedSocket {
-        cancelDiscoveryIfNeeded(logTag)
+    fun connect(
+        device: BluetoothDevice,
+        port: Int,
+        logTag: String,
+        onDiscoveryChecked: ((wasDiscovering: Boolean) -> Unit)? = null,
+    ): ConnectedSocket {
+        cancelDiscoveryIfNeeded(logTag, onDiscoveryChecked)
 
         val startedAt = System.currentTimeMillis()
         val deviceMethods = deviceMethodCache.getOrPut(device.javaClass) {
@@ -78,14 +83,24 @@ object RfcommSocketBridge {
         }
     }
 
-    private fun cancelDiscoveryIfNeeded(logTag: String) {
-        val adapter = BluetoothAdapter.getDefaultAdapter() ?: return
+    private fun cancelDiscoveryIfNeeded(
+        logTag: String,
+        onDiscoveryChecked: ((wasDiscovering: Boolean) -> Unit)?,
+    ) {
+        val adapter = BluetoothAdapter.getDefaultAdapter() ?: run {
+            onDiscoveryChecked?.invoke(false)
+            return
+        }
+        var wasDiscovering = false
         try {
-            if (adapter.isDiscovering) {
+            wasDiscovering = adapter.isDiscovering
+            if (wasDiscovering) {
                 LogBuffer.i(logTag, "Bluetooth discovery active; cancelling before RFCOMM connect")
                 adapter.cancelDiscovery()
             }
+            onDiscoveryChecked?.invoke(wasDiscovering)
         } catch (e: SecurityException) {
+            onDiscoveryChecked?.invoke(wasDiscovering)
             LogBuffer.w(logTag, "Bluetooth discovery check/cancel denied: ${e.message}")
         }
     }

@@ -1,5 +1,7 @@
 # 架构重构 TODO：可插拔耳机协议与能力层
 
+专项重构规划见：[`REFACTOR_PLAN_UI_AND_BLUETOOTH.md`](./REFACTOR_PLAN_UI_AND_BLUETOOTH.md)。本文继续保留通用 Adapter / Protocol / Capability 架构 TODO；UI 与蓝牙指令/连接的阶段化执行、验收标准和迁移顺序以专项文档为准。
+
 > 目标：把当前偏 Huawei / OpenFreebuds 的实现，逐步整理成可接入更多逆向耳机项目的插件式架构。
 
 ## 背景

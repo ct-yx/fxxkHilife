@@ -9,6 +9,7 @@ import androidx.annotation.RequiresApi
 import com.freebuds.controller.HilifeApplication
 import com.freebuds.controller.R
 import com.freebuds.controller.data.ConnectionState
+import com.freebuds.controller.data.ConnectionTrigger
 import com.freebuds.controller.i18n.I18n
 import com.freebuds.controller.ui.MainActivity
 import kotlinx.coroutines.MainScope
@@ -94,7 +95,7 @@ class QuickSettingsTileService : TileService() {
 
     private fun connectLastSavedOrOpenApp() {
         val repo = HilifeApplication.instance.deviceRepository
-        if (repo.autoConnectLastSaved()) {
+        if (repo.autoConnectLastSaved(ConnectionTrigger.TileAction)) {
             qsTile?.apply {
                 label = I18n.t("tile.anc")
                 subtitle = I18n.t("tile.connecting")

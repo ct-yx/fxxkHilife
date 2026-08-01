@@ -20,6 +20,7 @@ import android.os.IBinder
 import androidx.core.app.NotificationCompat
 import com.freebuds.controller.HilifeApplication
 import com.freebuds.controller.data.ConnectionState
+import com.freebuds.controller.data.ConnectionTrigger
 import com.freebuds.controller.i18n.I18n
 import com.freebuds.controller.ui.MainActivity
 import com.freebuds.controller.util.LogBuffer
@@ -59,7 +60,10 @@ class BluetoothService : Service() {
                 BluetoothProfile.A2DP -> a2dpProfile = proxy
                 BluetoothProfile.HEADSET -> headsetProfile = proxy
             }
-            triggerFromKnownProfiles("Bluetooth profile connected")
+            triggerFromKnownProfiles(
+                "Bluetooth profile connected",
+                trigger = ConnectionTrigger.AudioProfileConnected,
+            )
         }
 
         override fun onServiceDisconnected(profile: Int) {
@@ -140,7 +144,11 @@ class BluetoothService : Service() {
 
     private fun autoConnectLastSavedDevice() {
         HilifeApplication.instance.deviceRepository.clearManualDisconnectSuppression()
-        triggerAutoControlConnect("service command", force = true)
+        triggerAutoControlConnect(
+            "service command",
+            force = true,
+            trigger = ConnectionTrigger.ServiceCommand,
+        )
     }
 
     private fun setAncMode(mode: String) {
@@ -190,15 +198,30 @@ class BluetoothService : Service() {
                 when {
                     action == BluetoothDevice.ACTION_ACL_CONNECTED -> {
                         LogBuffer.i("AutoConnect", "System ACL connected address=${address ?: "unknown"}")
-                        triggerAutoControlConnect("ACL connected", device, force = true)
+                        triggerAutoControlConnect(
+                            "ACL connected",
+                            device,
+                            force = true,
+                            trigger = ConnectionTrigger.AclConnected,
+                        )
                     }
                     action == BluetoothA2dp.ACTION_CONNECTION_STATE_CHANGED && state == BluetoothProfile.STATE_CONNECTED -> {
                         LogBuffer.i("AutoConnect", "System A2DP connected address=${address ?: "unknown"}")
-                        triggerAutoControlConnect("A2DP connected", device, force = true)
+                        triggerAutoControlConnect(
+                            "A2DP connected",
+                            device,
+                            force = true,
+                            trigger = ConnectionTrigger.AudioProfileConnected,
+                        )
                     }
                     action == BluetoothHeadset.ACTION_CONNECTION_STATE_CHANGED && state == BluetoothProfile.STATE_CONNECTED -> {
                         LogBuffer.i("AutoConnect", "System HEADSET connected address=${address ?: "unknown"}")
-                        triggerAutoControlConnect("HEADSET connected", device, force = true)
+                        triggerAutoControlConnect(
+                            "HEADSET connected",
+                            device,
+                            force = true,
+                            trigger = ConnectionTrigger.AudioProfileConnected,
+                        )
                     }
                     action == BluetoothDevice.ACTION_ACL_DISCONNECTED -> {
                         LogBuffer.i("AutoConnect", "System ACL disconnected address=${address ?: "unknown"}")
@@ -240,11 +263,21 @@ class BluetoothService : Service() {
         addAll(runCatching { headsetProfile?.connectedDevices.orEmpty() }.getOrDefault(emptyList()))
     }.distinctBy { it.address }
 
-    private fun triggerFromKnownProfiles(reason: String, logMisses: Boolean = true) {
+    private fun triggerFromKnownProfiles(
+        reason: String,
+        logMisses: Boolean = true,
+        trigger: ConnectionTrigger = ConnectionTrigger.AudioProfileConnected,
+    ) {
         val repo = HilifeApplication.instance.deviceRepository
         val saved = repo.getSavedAddresses().toSet()
         val device = knownProfileDevices().firstOrNull { it.address in saved }
-        triggerAutoControlConnect(reason, device, force = device != null, logMisses = logMisses)
+        triggerAutoControlConnect(
+            reason,
+            device,
+            force = device != null,
+            logMisses = logMisses,
+            trigger = trigger,
+        )
     }
 
     private fun startSystemBluetoothMonitor() {
@@ -252,7 +285,11 @@ class BluetoothService : Service() {
         autoConnectJob = scope.launch {
             delay(1_000)
             while (isActive) {
-                triggerFromKnownProfiles("periodic system-connected check", logMisses = false)
+                triggerFromKnownProfiles(
+                    "periodic system-connected check",
+                    logMisses = false,
+                    trigger = ConnectionTrigger.PeriodicCheck,
+                )
                 delay(30_000)
             }
         }
@@ -263,6 +300,7 @@ class BluetoothService : Service() {
         knownDevice: BluetoothDevice? = null,
         force: Boolean = false,
         logMisses: Boolean = true,
+        trigger: ConnectionTrigger = ConnectionTrigger.ServiceCommand,
     ) {
         val now = System.currentTimeMillis()
         val repo = HilifeApplication.instance.deviceRepository
@@ -280,9 +318,9 @@ class BluetoothService : Service() {
         }
 
         val started = if (knownDevice != null) {
-            repo.autoConnectKnownSystemConnected(knownDevice, logMisses)
+            repo.autoConnectKnownSystemConnected(knownDevice, logMisses, trigger)
         } else {
-            repo.autoConnectSystemConnectedSaved(logMisses)
+            repo.autoConnectSystemConnectedSaved(logMisses, trigger)
         }
         if (started) {
             LogBuffer.i("AutoConnect", "Auto control connect triggered by $reason")

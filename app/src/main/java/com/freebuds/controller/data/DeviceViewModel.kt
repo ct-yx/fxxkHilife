@@ -72,7 +72,7 @@ class DeviceViewModel : ViewModel() {
                 // 扫描完成后，尝试自动连接华为设备
                 val huawei = s.found.firstOrNull { it.isHuaweiOrHonor }
                 if (huawei != null && repo.connectionState.value !is ConnectionState.Connected) {
-                    repo.connect(huawei.device)
+                    repo.connect(huawei.device, ConnectionTrigger.ScanCompleted)
                 }
             }
             // 立即同步已配对设备
