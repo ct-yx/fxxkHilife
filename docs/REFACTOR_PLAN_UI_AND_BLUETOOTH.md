@@ -789,7 +789,7 @@ python3 scripts/analyze_connection_timing.py /path/to/fxxkHilife_diagnostic.txt
 
 #### BT-1：唯一生产传输路径 `[~] 进行中`
 
-> 进度记录：2026-08-01；代码已将生产 RFCOMM Socket、输入输出流、读循环和关闭逻辑收敛到 `RfcommSppTransport`，`SppDriver` 通过 `ProtocolSession` 使用 `HuaweiSppFramer`。本地自动流程已验证 17 个单元测试和 Release 构建通过；GitHub Actions [run 30692123820](https://github.com/ct-yx/fxxkHilife/actions/runs/30692123820) 也已成功，并生成 `automated-test-report-v4.2.6-87` 与 `fxxkHilife-v4.2.6-87`。由于当前没有新的主设备实机回归日志，暂不标记为 `[x]`，版本仍冻结为 `4.2.6 (87)`。
+> 进度记录：2026-08-01；代码已将生产 RFCOMM Socket、输入输出流、读循环和关闭逻辑收敛到 `RfcommSppTransport`，`SppDriver` 通过 `ProtocolSession` 使用 `HuaweiSppFramer`。本地和 GitHub Actions 自动流程均已通过：Debug/Release 各 21 个单元测试、0 failure、Release 构建成功；最新运行是 [run 30692854851](https://github.com/ct-yx/fxxkHilife/actions/runs/30692854851)，生成 `automated-test-report-v4.2.6-87` 与 `fxxkHilife-v4.2.6-87`。由于当前没有新的主设备实机回归日志，暂不标记为 `[x]`，版本仍冻结为 `4.2.6 (87)`。
 
 已完成：
 
@@ -800,7 +800,7 @@ python3 scripts/analyze_connection_timing.py /path/to/fxxkHilife_diagnostic.txt
 
 仍待完成：
 
-- `[ ]` 将 UUID、channel、连接超时、取消和重试收敛为 `RfcommTransportConfig`，移除固定 port 常量。
+- `[x]` 将 UUID、channel、连接超时、取消和重试收敛为 `RfcommTransportConfig`，移除生产路径中的固定 port 常量；已知型号使用型号端点，未知型号保留 channel 1 compatibility fallback，并将 endpoint/source 写入连接元数据和日志。
 - `[ ]` 在主验证设备上回归 ANC、自动低延迟、初始化持续推进、断开/重连，并记录回退结果。
 - `[ ]` 实机回归通过后再提升到 `4.3.0 (88)` 并标记 `[x]`。
 
