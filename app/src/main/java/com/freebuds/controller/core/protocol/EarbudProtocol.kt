@@ -41,8 +41,15 @@ class ProtocolSession<P : ProtocolPacket>(
         }
     }
 
-    suspend fun connect(): Boolean = transport.connect()
-    fun disconnect() = transport.disconnect()
+    suspend fun connect(): Boolean {
+        framer.reset()
+        return transport.connect()
+    }
+
+    fun disconnect() {
+        framer.reset()
+        transport.disconnect()
+    }
     suspend fun send(packet: P) = transport.send(protocol.encode(packet))
     fun setDisconnectListener(listener: (() -> Unit)?) = transport.setDisconnectListener(listener)
 }

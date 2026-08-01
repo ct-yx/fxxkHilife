@@ -3,3 +3,7 @@ OpenFreebuds/
 .gradle/
 third_party/
 reference/
+
+# Generated local build and one-click test reports.
+/app/build/
+/ci-output/

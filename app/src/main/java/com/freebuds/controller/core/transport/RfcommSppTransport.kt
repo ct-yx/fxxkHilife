@@ -24,18 +24,19 @@ import java.lang.reflect.Method
  * This class deliberately knows nothing about Huawei package format, command ids or handlers.
  * It only opens a BluetoothSocket, writes raw bytes and forwards raw read chunks to the caller.
  *
- * Current production path still uses the legacy SppDriver. This transport is introduced as the
- * future migration target so protocols can be layered as:
+ * The Huawei command driver sits above this transport so protocols can be layered as:
  *
  *     RfcommSppTransport -> VendorProtocol -> VendorAdapter -> Repository/UI
  */
 class RfcommSppTransport(
     private val device: BluetoothDevice,
     private val port: Int = DEFAULT_SPP_PORT,
+    private val onDiscoveryChecked: ((wasDiscovering: Boolean) -> Unit)? = null,
 ) : EarbudTransport {
 
     override val id: String = "rfcomm_spp"
 
+    @Volatile
     override var isConnected: Boolean = false
         private set
 
@@ -56,7 +57,12 @@ class RfcommSppTransport(
             LogBuffer.i("Transport", "Connecting RFCOMM SPP to ${device.name} (${device.address}) port=$port")
             scope.cancel()
             scope = CoroutineScope(Dispatchers.IO + SupervisorJob())
-            val connectedSocket = RfcommSocketBridge.connect(device, port, "Transport")
+            val connectedSocket = RfcommSocketBridge.connect(
+                device = device,
+                port = port,
+                logTag = "Transport",
+                onDiscoveryChecked = onDiscoveryChecked,
+            )
             socket = connectedSocket.socket
             closeMethod = connectedSocket.closeMethod
             inputStream = connectedSocket.inputStream
@@ -103,7 +109,9 @@ class RfcommSppTransport(
                 val n = input.read(buffer)
                 if (n == -1) throw EOFException("RFCOMM stream closed")
                 if (n > 0) {
-                    packetListener?.invoke(buffer.copyOf(n))
+                    val chunk = buffer.copyOf(n)
+                    LogBuffer.frame("RX", chunk)
+                    packetListener?.invoke(chunk)
                 }
             }
         } catch (e: Exception) {

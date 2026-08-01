@@ -35,7 +35,7 @@
 | BT-0.1 协议/能力本地审计 | [x] 已完成 | 2026-08-01；完成现有 Kotlin 协议、能力表、上游资料快照存在性核对；未提升未经实机验证的能力状态 |
 | BT-0.2 连接速度实机基线 | [~] 进行中 | 已加入 attemptId/阶段计时/触发来源日志；已收到主设备两份初始化日志，仍需同一设备每个场景至少 10 次，产出 P50/P95、失败原因和阶段耗时 |
 | BT-0.3 连接路线决策门 | [ ] 未开始 | 依据 BT-0.2 的数据决定先改端点、初始化调度或连接编排 |
-| BT-1 唯一生产 Transport | [ ] 未开始 | 只有 `RfcommSppTransport` 建立和关闭 Socket，并通过回归测试 |
+| BT-1 唯一生产 Transport | [~] 进行中 | 已切换到唯一 `RfcommSppTransport` Socket 路径并通过本地自动化回归；仍待主设备实机回归后才能完成 |
 | BT-2 CommandClient / Scheduler / Feature | [ ] 未开始 | 指令目录、请求队列和 Feature 边界稳定，核心命令实机回归通过 |
 | BT-3 ConnectionManager 收敛入口 | [ ] 未开始 | ACL/A2DP/HEADSET/Service/Tile/周期检查不会并行建连 |
 | BT-4 通用蓝牙状态输出 | [ ] 未开始 | 输出 SystemLink、Transport、Core、Deferred 分层状态，供 UI-1 消费 |
@@ -106,7 +106,7 @@ flowchart TD
     Service --> Driver
 ```
 
-现有骨架已经具备 `core/transport`、`core/protocol`、`core/session` 和 `core/adapter`，但生产连接路径仍由 `SppDriver` 直接承载，`RfcommSppTransport` / `HuaweiSppFramer` 主要还是迁移目标。后续应优先把已有骨架变成唯一生产路径，而不是再增加第二套并行实现。
+现有骨架已经具备 `core/transport`、`core/protocol`、`core/session` 和 `core/adapter`。BT-1 迁移后，生产 Socket、输入流、输出流和关闭逻辑统一由 `RfcommSppTransport` 承载；`SppDriver` 只保留 Huawei 分帧会话、请求响应、Handler 和属性兼容层。后续不再增加第二套并行 Socket 实现。
 
 ## 3. 大项一：UI 规范与重构
 
@@ -790,15 +790,22 @@ python3 scripts/analyze_connection_timing.py /path/to/fxxkHilife_diagnostic.txt
 3. 多入口重复触发明显：先完成 `EarbudConnectionManager`，再继续 Transport 迁移。
 4. 只有少数型号失败：保持通用连接路径，新增型号级 endpoint/settle/retry 配置，不在全局增加固定等待。
 
-#### BT-1：唯一生产传输路径 `[ ] 未开始`
+#### BT-1：唯一生产传输路径 `[~] 进行中`
 
-- 让 `RfcommSppTransport` 成为唯一 Socket 实现。
-- 将 `SppDriver.recvLoop`、`sendNowaitLocked` 和 Socket 关闭逻辑迁移到 Transport + ProtocolSession。
-- `SppDriver` 暂时改成兼容性的 `HuaweiCommandSession`，只协调命令和 Handler。
-- Transport 对外发布 `TransportReady`，不等待电量、ANC 或其它 Handler 初始化。
-- 将 UUID、channel、连接超时、取消和重试作为 `RfcommTransportConfig` 注入，移除固定 port 常量。
-- 连接失败的每次尝试都必须关闭 Socket，并向 `ConnectionManager` 返回结构化错误：endpoint、阶段、异常类型、耗时。
-- 用测试确认断开后不会继续发送轮询、重试或自动低延迟命令。
+> 进度记录：2026-08-01；代码已将生产 RFCOMM Socket、输入输出流、读循环和关闭逻辑收敛到 `RfcommSppTransport`，`SppDriver` 通过 `ProtocolSession` 使用 `HuaweiSppFramer`。本地自动流程已验证 17 个单元测试和 Release 构建通过；由于当前没有新的主设备实机回归日志，暂不标记为 `[x]`，版本仍冻结为 `4.2.6 (87)`。
+
+已完成：
+
+- `[x]` `RfcommSppTransport` 成为唯一生产 Socket 实现。
+- `[x]` 将 `SppDriver` 的接收循环、Socket 关闭和原始发送路径迁移到 Transport + ProtocolSession。
+- `[x]` 分帧层覆盖分片、粘包、噪声重同步、跨读取 magic 和重连清理；`ProtocolSession` 覆盖分片转发和重连重置。
+- `[x]` 删除上层重复 TX 锁，保留请求队列串行化；fire-and-forget 仍不能越过正在等待的响应。
+
+仍待完成：
+
+- `[ ]` 将 UUID、channel、连接超时、取消和重试收敛为 `RfcommTransportConfig`，移除固定 port 常量。
+- `[ ]` 在主验证设备上回归 ANC、自动低延迟、初始化持续推进、断开/重连，并记录回退结果。
+- `[ ]` 实机回归通过后再提升到 `4.3.0 (88)` 并标记 `[x]`。
 
 #### BT-2：CommandClient 与 Feature 拆分 `[ ] 未开始`
 
@@ -834,7 +841,7 @@ python3 scripts/analyze_connection_timing.py /path/to/fxxkHilife_diagnostic.txt
 1. **BT-0.1 `[x]`**：完成协议/能力本地审计，冻结 `v4.2.6 / versionCode 87` 基线。
 2. **BT-0.2 `[~]`**：在主验证设备上完成连接速度实机基线，先区分 Transport、Core、Deferred 三段耗时；代码观测已就绪，等待实机数据。
 3. **BT-0.3 `[ ]`**：依据数据决定端点、初始化调度或连接入口的优先改造方向。
-4. **BT-1 `[ ]`**：让 `RfcommSppTransport` 成为唯一生产 Socket 路径，发布 `TransportReady`。
+4. **BT-1 `[~]`**：让 `RfcommSppTransport` 成为唯一生产 Socket 路径，发布 `TransportReady`；当前等待实机回归。
 5. **BT-2 `[ ]`**：拆出 `CommandClient`、`CommandScheduler` 和按能力划分的 Feature，稳定指令与状态接口。
 6. **BT-3 `[ ]`**：由 `EarbudConnectionManager` 收敛 ACL/A2DP/HEADSET/Service/Tile/周期检查等连接入口。
 7. **BT-4 `[ ]`**：输出通用 `EarbudState` 和 SystemLink/Transport/Core/Deferred 分层状态，冻结 UI 消费契约。
@@ -883,13 +890,21 @@ python3 scripts/analyze_connection_timing.py /path/to/fxxkHilife_diagnostic.txt
 - 暂不在重构期更换产品视觉方向；只统一已有 classic/glass 两种展示的工程边界。
 - 暂不把所有历史日志和终端调试文本做用户化改写，原始协议日志继续保留可检索性。
 
-## 8. 每次提交的最小检查
+## 8. 一键自动测试与每次提交的最小检查
+
+以后默认使用同一入口，不再要求手动拼接 Gradle 命令：
 
 ```bash
-./gradlew :app:test
-./gradlew :app:assembleDebug
-git diff --check
+./scripts/run_ci_checks.sh ci-output
 ```
+
+该入口会自动执行 `git diff --check`、`clean test assembleRelease`，并在 `ci-output/` 保留命令日志、JUnit XML、HTML 报告、版本/提交信息、APK 数量和 SHA-256 摘要；即使构建失败也会先收集报告再返回失败码。
+
+GitHub 上点击 **Actions → Build & Release → Run workflow → Run workflow** 即可执行同一流程。运行结束后：
+
+- 下载 `automated-test-report-*`：查看 `summary.md`、`gradle.log` 和测试报告。
+- 下载 `fxxkHilife-*`：取得 Release APK；只有自动化检查成功时才上传 APK。
+- 自动化失败时先下载报告定位问题，不把失败构建当作可测试包。
 
 蓝牙相关提交还应附：
 

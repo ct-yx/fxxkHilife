@@ -75,30 +75,53 @@ jobs:
             exit 1
           fi
 
-      - name: Build APK
+      - name: Run automated tests and build
+        id: checks
+        continue-on-error: true
         run: |
-          chmod +x gradlew
-          ./gradlew clean test assembleRelease --stacktrace
+          chmod +x gradlew scripts/run_ci_checks.sh
+          scripts/run_ci_checks.sh ci-output
 
       - name: Locate APK
         id: apk
+        if: always()
         shell: bash
         run: |
           APK=$(find app/build/outputs/apk/release -name '*.apk' -type f | head -1)
           if [ -z "$APK" ]; then
-            echo "No release APK found" >&2
-            exit 1
+            echo "No release APK found; test report will still be uploaded."
+            echo "available=false" >> "$GITHUB_OUTPUT"
+            exit 0
           fi
           OUT="fxxkHilife-${TAG}-${VERSION_CODE}.apk"
           cp "$APK" "$OUT"
           echo "path=$OUT" >> "$GITHUB_OUTPUT"
+          echo "available=true" >> "$GITHUB_OUTPUT"
+
+      - name: Upload automated test report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: automated-test-report-${{ steps.version.outputs.tag }}-${{ steps.version.outputs.version_code }}
+          path: ci-output/
+          if-no-files-found: error
 
       - name: Upload APK artifact
+        if: steps.apk.outputs.available == 'true'
         uses: actions/upload-artifact@v4
         with:
           name: fxxkHilife-${{ steps.version.outputs.tag }}-${{ steps.version.outputs.version_code }}
           path: ${{ steps.apk.outputs.path }}
           if-no-files-found: error
+
+      - name: Fail workflow when automated checks failed
+        if: always()
+        shell: bash
+        run: |
+          if [ "${{ steps.checks.outcome }}" != "success" ]; then
+            echo "Automated checks failed. Download the automated-test-report artifact." >&2
+            exit 1
+          fi
 
       - name: Create release notes
         if: startsWith(github.ref, 'refs/tags/v')

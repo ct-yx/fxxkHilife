@@ -3,9 +3,9 @@ package com.freebuds.controller.core.transport
 /**
  * Generic transport boundary for earbud control channels.
  *
- * The first production implementation is still the existing Huawei RFCOMM SPP driver,
- * but keeping this interface separate makes later BLE / native bridge / vendor SDK
- * transports possible without pushing more branches into DeviceRepository.
+ * The production Huawei path uses RFCOMM/SPP through this seam. Keeping it separate makes later
+ * BLE / native bridge / vendor SDK transports possible without pushing more branches into
+ * DeviceRepository.
  */
 interface EarbudTransport {
     val id: String

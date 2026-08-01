@@ -18,9 +18,8 @@ object HuaweiSppProtocol : EarbudProtocol<HuaweiSppPackage> {
 /**
  * Incremental decoder for Huawei SPP frames.
  *
- * Existing SppDriver reads exact frames from InputStream. This framer is for the new Transport
- * path where reads may return arbitrary chunks, so it maintains a small byte buffer and emits all
- * complete 5A frames, including embedded frames observed in some logs.
+ * RFCOMM reads may return arbitrary chunks, so this framer maintains a small byte buffer and
+ * emits all complete 5A frames, including embedded frames observed in some logs.
  */
 class HuaweiSppFramer : ProtocolFramer<HuaweiSppPackage> {
     private val buffer = ArrayList<Byte>(4096)
@@ -32,7 +31,12 @@ class HuaweiSppFramer : ProtocolFramer<HuaweiSppPackage> {
         while (true) {
             val start = findMagic()
             if (start < 0) {
+                // Keep a trailing 0x5a: the following read may contain the second magic byte.
+                // Clearing it loses a frame whenever the transport splits the two-byte magic
+                // marker across reads.
+                val trailing = buffer.lastOrNull()
                 buffer.clear()
+                if (trailing == 0x5A.toByte()) buffer.add(trailing)
                 return out
             }
             if (start > 0) repeat(start) { buffer.removeAt(0) }
