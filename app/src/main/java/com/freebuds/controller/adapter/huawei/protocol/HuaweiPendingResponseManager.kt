@@ -13,22 +13,31 @@ import kotlinx.coroutines.yield
  * command/response ids, matching HuaweiSppPackage.toHex() call sites.
  */
 class HuaweiPendingResponseManager {
+    private data class PendingResponse(
+        val deferred: CompletableDeferred<HuaweiSppPackage>,
+        val accepts: (HuaweiSppPackage) -> Boolean,
+    )
+
     private val lock = Any()
-    private val pendingResponses = mutableMapOf<String, CompletableDeferred<HuaweiSppPackage>>()
+    private val pendingResponses = mutableMapOf<String, PendingResponse>()
 
     suspend fun register(
         responseId: String,
         timeoutMs: Long,
+        accepts: (HuaweiSppPackage) -> Boolean = { true },
     ): CompletableDeferred<HuaweiSppPackage>? = withTimeoutOrNull(timeoutMs) {
-        acquire(responseId)
+        acquire(responseId, accepts)
     }
 
-    private suspend fun acquire(responseId: String): CompletableDeferred<HuaweiSppPackage> {
+    private suspend fun acquire(
+        responseId: String,
+        accepts: (HuaweiSppPackage) -> Boolean,
+    ): CompletableDeferred<HuaweiSppPackage> {
         while (true) {
             var acquired: CompletableDeferred<HuaweiSppPackage>? = null
             val current = synchronized(lock) {
-                pendingResponses[responseId] ?: CompletableDeferred<HuaweiSppPackage>().also {
-                    pendingResponses[responseId] = it
+                pendingResponses[responseId]?.deferred ?: CompletableDeferred<HuaweiSppPackage>().also {
+                    pendingResponses[responseId] = PendingResponse(it, accepts)
                     acquired = it
                 }
             }
@@ -42,9 +51,9 @@ class HuaweiPendingResponseManager {
     }
 
     suspend fun complete(commandId: String, pkg: HuaweiSppPackage): Boolean = synchronized(lock) {
-        val deferred = pendingResponses[commandId]
-        if (deferred != null && !deferred.isCompleted) {
-            deferred.complete(pkg)
+        val pending = pendingResponses[commandId]
+        if (pending != null && !pending.deferred.isCompleted && pending.accepts(pkg)) {
+            pending.deferred.complete(pkg)
             true
         } else {
             false
@@ -53,7 +62,7 @@ class HuaweiPendingResponseManager {
 
     fun remove(responseId: String, deferred: CompletableDeferred<HuaweiSppPackage>) {
         synchronized(lock) {
-            if (pendingResponses[responseId] === deferred) {
+            if (pendingResponses[responseId]?.deferred === deferred) {
                 pendingResponses.remove(responseId)
             }
         }
@@ -77,7 +86,7 @@ class HuaweiPendingResponseManager {
     }
 
     private fun clearLocked() {
-        pendingResponses.values.forEach { it.cancel() }
+        pendingResponses.values.forEach { it.deferred.cancel() }
         pendingResponses.clear()
     }
 }

@@ -129,7 +129,8 @@ class AutoPauseHandler : HuaweiDeviceHandler {
 
 class LowLatencyHandler : HuaweiDeviceHandler {
     private companion object {
-        const val WRITE_CONFIRM_TIMEOUT_MS = 1_000L
+        const val WRITE_CONFIRM_TIMEOUT_MS = 2_000L
+        const val WRITE_TO_READBACK_DELAY_MS = 1_000L
     }
 
     override val id = "low_latency"
@@ -165,9 +166,15 @@ class LowLatencyHandler : HuaweiDeviceHandler {
             com.freebuds.controller.util.LogBuffer.w("SPP", "Low latency write ACK timeout target=$value; reading back")
         }
 
+        // FreeBuds 6i applies 2b6c asynchronously.  Reading immediately after the write can
+        // consume the write ACK (param 127) as if it were the read response and leaves the
+        // property unset.  Keep this exchange on the single request lane and give the device
+        // the same settle window used by the upstream implementation.
+        kotlinx.coroutines.delay(WRITE_TO_READBACK_DELAY_MS)
         val readBack = driver.sendPackage(
             HuaweiSppPackage.readRequest(HuaweiSppCommand.LOW_LATENCY, 2),
             timeout = WRITE_CONFIRM_TIMEOUT_MS,
+            responsePredicate = { it.findParam(2).isNotEmpty() },
         )
         if (readBack != null) {
             onPackage(readBack, driver)
@@ -622,7 +629,10 @@ class AncHandler(
     private val awarenessOptions = mapOf(1 to "voice_boost", 2 to "normal")
 
     override suspend fun onInit(driver: SppDriver) {
-        driver.sendPackage(HuaweiSppPackage.readRequest(b(0x2b, 0x2a), 1, 2))?.let { onPackage(it, driver) }
+        driver.sendPackage(
+            HuaweiSppPackage.readRequest(b(0x2b, 0x2a), 1, 2),
+            responsePredicate = { it.findParam(1).isNotEmpty() },
+        )?.let { onPackage(it, driver) }
     }
 
     override suspend fun onDriverPackage(driver: SppDriver, pkg: HuaweiSppPackage) {

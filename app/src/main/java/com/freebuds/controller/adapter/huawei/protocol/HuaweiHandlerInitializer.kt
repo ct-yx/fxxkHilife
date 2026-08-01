@@ -21,14 +21,19 @@ class HuaweiHandlerInitializer(private val registry: HuaweiHandlerRegistry) {
         initializeOpenFreebudsStyle(driver, label)
     }
 
-    suspend fun initializeCore(driver: SppDriver, deviceLabel: String?) {
+    suspend fun initializeCore(
+        driver: SppDriver,
+        deviceLabel: String?,
+        timeoutMs: Long = HuaweiHandlerInitializationPolicy.CORE_HANDLER_TIMEOUT_MS,
+        maxAttempts: Int = 1,
+    ) {
         val label = deviceLabel ?: "FreeBuds"
         val handlers = coreHandlers()
         val startedAt = System.currentTimeMillis()
         LogBuffer.i(
             "SPP",
             "CORE init start device=$label handlers=${handlers.map { it.id }} mode=serial " +
-                "timeout=${HuaweiHandlerInitializationPolicy.CORE_HANDLER_TIMEOUT_MS}ms " +
+                "timeout=${timeoutMs}ms attempts=$maxAttempts " +
                 "gap=${HuaweiHandlerInitializationPolicy.CORE_INTER_COMMAND_DELAY_MS}ms"
         )
 
@@ -36,12 +41,12 @@ class HuaweiHandlerInitializer(private val registry: HuaweiHandlerRegistry) {
             val success = initializeHandlerIfNeeded(
                 driver = driver,
                 handler = handler,
-                maxAttempts = 1,
+                maxAttempts = maxAttempts,
                 timeoutMs = handler.initTimeoutMs.coerceAtMost(
-                    HuaweiHandlerInitializationPolicy.CORE_HANDLER_TIMEOUT_MS
+                    timeoutMs
                 ),
             )
-            recordResult(handler, success, maxAttempts = 1)
+            recordResult(handler, success, maxAttempts = maxAttempts)
             if (index != handlers.lastIndex) {
                 delay(HuaweiHandlerInitializationPolicy.CORE_INTER_COMMAND_DELAY_MS)
             }

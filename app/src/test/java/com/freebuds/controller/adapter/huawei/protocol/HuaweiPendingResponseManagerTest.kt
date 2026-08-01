@@ -1,12 +1,15 @@
 package com.freebuds.controller.adapter.huawei.protocol
 
+import com.freebuds.controller.protocol.HuaweiSppPackage
 import kotlinx.coroutines.async
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.runBlocking
 import kotlinx.coroutines.withTimeout
+import org.junit.Assert.assertTrue
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertNotNull
 import org.junit.Assert.assertNull
+import org.junit.Assert.assertSame
 import org.junit.Test
 
 class HuaweiPendingResponseManagerTest {
@@ -44,5 +47,24 @@ class HuaweiPendingResponseManagerTest {
 
         assertNull(manager.register("2b2a", 80))
         manager.remove("2b2a", first)
+    }
+
+    @Test
+    fun responsePredicateLeavesAnAckForTheCorrectReadback() = runBlocking {
+        val manager = HuaweiPendingResponseManager()
+        val pending = manager.register("2b6c", 500) { it.findParam(2).isNotEmpty() }!!
+        val ack = HuaweiSppPackage(
+            commandId = byteArrayOf(0x2b, 0x6c),
+            parameters = mutableMapOf(127 to byteArrayOf(1)),
+        )
+        val readback = HuaweiSppPackage(
+            commandId = byteArrayOf(0x2b, 0x6c),
+            parameters = mutableMapOf(2 to byteArrayOf(1)),
+        )
+
+        assertFalse(manager.complete("2b6c", ack))
+        assertTrue(manager.complete("2b6c", readback))
+        assertSame(readback, pending.await())
+        manager.remove("2b6c", pending)
     }
 }

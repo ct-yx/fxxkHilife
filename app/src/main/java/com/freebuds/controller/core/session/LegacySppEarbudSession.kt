@@ -41,7 +41,8 @@ class LegacySppEarbudSession(
 
     override suspend fun connect(): Boolean = driver.connect()
 
-    override suspend fun initializeCoreHandlers() = driver.initializeCoreHandlers()
+    override suspend fun initializeCoreHandlers(timeoutMs: Long, maxAttempts: Int) =
+        driver.initializeCoreHandlers(timeoutMs, maxAttempts)
 
     override suspend fun initializeDeferredHandlers() = driver.initializeDeferredHandlers()
 

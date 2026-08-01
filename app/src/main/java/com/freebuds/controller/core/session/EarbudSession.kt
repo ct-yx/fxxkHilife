@@ -27,7 +27,7 @@ interface EarbudSession {
     fun getHandlerById(id: String): HuaweiDeviceHandler?
 
     suspend fun connect(): Boolean
-    suspend fun initializeCoreHandlers() {}
+    suspend fun initializeCoreHandlers(timeoutMs: Long = 3_000L, maxAttempts: Int = 1) {}
     suspend fun initializeDeferredHandlers() {}
     fun disconnect()
     suspend fun setProperty(group: String, prop: String, value: String)

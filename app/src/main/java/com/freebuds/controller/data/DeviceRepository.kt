@@ -142,7 +142,6 @@ class DeviceRepository {
     private var pollJob: Job? = null
     private var fastPollJob: Job? = null
     private var initJob: Job? = null
-    private var autoLowLatencyJob: Job? = null
     private var listeningStatsJob: Job? = null
     private var lastListeningTick: Long = 0L
     private var sppQuietUntil: Long = 0L
@@ -270,7 +269,6 @@ class DeviceRepository {
         initJob?.cancel()
         pollJob?.cancel()
         fastPollJob?.cancel()
-        autoLowLatencyJob?.cancel()
         stopListeningStatsTicker()
         sppQuietUntil = 0L
         session?.disconnect()
@@ -298,7 +296,6 @@ class DeviceRepository {
         initJob?.cancel()
         pollJob?.cancel()
         fastPollJob?.cancel()
-        autoLowLatencyJob?.cancel()
         stopListeningStatsTicker()
         sppQuietUntil = 0L
         session = null
@@ -418,7 +415,9 @@ class DeviceRepository {
             return false
         }
         if (_connectionState.value is ConnectionState.Connecting ||
-            _connectionState.value is ConnectionState.Connected) return true
+            _connectionState.value is ConnectionState.Connected ||
+            connectingJob?.isActive == true
+        ) return true
 
         val device = getSystemConnectedDevice(address) ?: run {
             if (logMisses) {
@@ -447,7 +446,8 @@ class DeviceRepository {
             return false
         }
         if (_connectionState.value is ConnectionState.Connecting ||
-            _connectionState.value is ConnectionState.Connected
+            _connectionState.value is ConnectionState.Connected ||
+            connectingJob?.isActive == true
         ) return true
 
         systemConnectedAddresses.add(address)
@@ -490,46 +490,40 @@ class DeviceRepository {
      * FreeBuds 6i can ignore its initial 2b6c read while still accepting a 2b6c write, so
      * waiting for `lowLatency != null` made the automatic path unreachable.
      */
-    private suspend fun applyAutoLowLatencyPriorityIfEnabled() {
+    /**
+     * Retry automatic low latency on the same initialization coroutine as every other command.
+     * The old implementation launched a second job while Deferred handlers were running; both
+     * jobs shared the response-id lane and a 2b6c ACK could be mistaken for the read-back result.
+     */
+    private suspend fun recoverAutoLowLatencyIfEnabled() {
         if (!isAutoLowLatencyEnabled()) return
 
-        autoLowLatencyJob?.cancel()
-        if (_props.value.lowLatency == true) {
-            LogBuffer.i("SPP", "Auto low latency priority skipped: already enabled")
-            return
-        }
-
-        LogBuffer.i("SPP", "Auto low latency priority apply current=${_props.value.lowLatency}")
-        applyAutoLowLatencyAttempt(attempt = 1, phase = "priority")
-    }
-
-    /** Starts bounded confirmation retries after the priority write and core reads. */
-    private fun scheduleAutoLowLatencyRetriesIfEnabled() {
-        if (!isAutoLowLatencyEnabled()) return
-
-        autoLowLatencyJob?.cancel()
-        autoLowLatencyJob = scope.launch {
-            val timeoutMs = 10_000L
-            val startedAt = System.currentTimeMillis()
-            var attempt = 1
-
-            LogBuffer.i("SPP", "Auto low latency follow-up start current=${_props.value.lowLatency}")
-            while (isActive && _connectionState.value is ConnectionState.Connected) {
-                if (_props.value.lowLatency == true) {
-                    LogBuffer.i("SPP", "Auto low latency confirmed")
-                    return@launch
-                }
-                if (System.currentTimeMillis() - startedAt >= timeoutMs) break
-
-                attempt++
-                applyAutoLowLatencyAttempt(attempt = attempt, phase = "follow-up")
-                delay(900)
+        val maxAttempts = 3
+        LogBuffer.i("SPP", "Auto low latency recovery start current=${_props.value.lowLatency}")
+        repeat(maxAttempts) { index ->
+            if (_connectionState.value !is ConnectionState.Connected) return
+            syncProps()
+            if (_props.value.lowLatency == true) {
+                LogBuffer.i("SPP", "Auto low latency confirmed")
+                failedHandlers.remove("low_latency")
+                return
             }
 
-            if (_connectionState.value is ConnectionState.Connected && _props.value.lowLatency != true) {
-                LogBuffer.w("SPP", "Auto low latency was not confirmed within ${timeoutMs / 1000}s")
+            val attempt = index + 1
+            applyAutoLowLatencyAttempt(
+                attempt = attempt,
+                phase = if (attempt == 1) "post-core" else "recovery",
+            )
+            syncProps()
+            if (_props.value.lowLatency == true) {
+                LogBuffer.i("SPP", "Auto low latency confirmed attempt=$attempt")
+                failedHandlers.remove("low_latency")
+                return
             }
+            if (attempt < maxAttempts) delay(900L)
         }
+
+        LogBuffer.w("SPP", "Auto low latency was not confirmed after $maxAttempts serialized attempts")
     }
 
     private suspend fun applyAutoLowLatencyAttempt(attempt: Int, phase: String) {
@@ -589,8 +583,8 @@ class DeviceRepository {
         initJob = scope.launch {
             try {
                 // Android's RFCOMM socket can report connected before the earbud command loop is
-                // ready. The log showed the first battery query only 62ms after connect and both
-                // attempts were dropped, so give the device a short settling window.
+                // ready. The real-device baseline showed that a one-second outer timeout loses
+                // the first ANC/low-latency reads while later battery/sound reads succeed.
                 val coreHandlers = targetSession.handlerIds.filter { it in coreRetryOrder }
                 pendingInitHandlers.clear()
                 pendingInitHandlers.addAll(coreHandlers)
@@ -599,9 +593,6 @@ class DeviceRepository {
                 markConnectionPhase(attempt, ConnectionPhase.Settling)
                 delay(HuaweiHandlerInitializationPolicy.INITIAL_SETTLE_DELAY_MS)
                 markConnectionPhase(attempt, ConnectionPhase.CoreInitializing)
-                // Restore the original connection-priority behaviour: a saved device gets its
-                // low-latency write before slow battery/ANC reads can occupy the SPP lane.
-                applyAutoLowLatencyPriorityIfEnabled()
                 if (session !== targetSession || targetSession.isConnected != true) return@launch
                 targetSession.initializeCoreHandlers()
                 if (session !== targetSession || targetSession.isConnected != true) return@launch
@@ -609,29 +600,29 @@ class DeviceRepository {
                 failedHandlers.addAll(targetSession.failedHandlerIds)
                 syncProps()
 
-                // A single RFCOMM request/response exchange is reliable on the target earbuds.
-                // Retry only failed core reads once; HuaweiHandlerInitializer keeps each wave
-                // serialized so a later read cannot overtake the previous response.
-                if (failedHandlers.any { it in coreRetryOrder }) {
-                    delay(HuaweiHandlerInitializationPolicy.CORE_RETRY_DELAY_MS)
-                    targetSession.initializeCoreHandlers()
-                    if (session !== targetSession || targetSession.isConnected != true) return@launch
-                    failedHandlers.clear()
-                    failedHandlers.addAll(targetSession.failedHandlerIds)
-                    syncProps()
-                }
-                logDegradedHandlersOnce()
-                pendingInitHandlers.clear()
-                syncProps()
-
-                // The priority write above is valid even when the first low-latency read did
-                // not answer. Continue bounded confirmation retries independently of other
-                // core probes rather than dropping automatic mode on a null read.
-                scheduleAutoLowLatencyRetriesIfEnabled()
                 markConnectionPhase(attempt, ConnectionPhase.CoreReady)
                 if (failedHandlers.any { it in coreRetryOrder }) {
                     markConnectionPhase(attempt, ConnectionPhase.Degraded)
                 }
+
+                // Recover failed core reads before Deferred work takes the request lane. This is
+                // intentionally serialized in initJob; the previous retry job competed with
+                // Deferred handlers and made 2b6c/2b2a responses nondeterministic.
+                recoverCoreHandlers(
+                    targetSession = targetSession,
+                    rounds = 1,
+                )
+                if (session !== targetSession || targetSession.isConnected != true) return@launch
+                pendingInitHandlers.clear()
+                pendingInitHandlers.addAll(failedHandlers.filter { it in coreRetryOrder })
+                syncProps()
+
+                // Automatic low latency is an action, not a prerequisite for TransportReady.
+                // Apply it only after the first core recovery and keep all confirmation attempts
+                // on this same command lane.
+                recoverAutoLowLatencyIfEnabled()
+                if (session !== targetSession || targetSession.isConnected != true) return@launch
+
                 delay(1_000)
 
                 pendingInitHandlers.addAll(
@@ -643,6 +634,17 @@ class DeviceRepository {
                 if (session !== targetSession || targetSession.isConnected != true) return@launch
                 failedHandlers.clear()
                 failedHandlers.addAll(targetSession.failedHandlerIds)
+
+                // Optional probes are best-effort, but an ANC/battery/low-latency read that was
+                // lost during the warm-up window deserves further bounded recovery. This keeps
+                // initialization progressing after the first ten seconds instead of dropping
+                // the failed handlers permanently.
+                recoverCoreHandlers(
+                    targetSession = targetSession,
+                    rounds = HuaweiHandlerInitializationPolicy.CORE_RECOVERY_ROUNDS - 1,
+                )
+                if (session !== targetSession || targetSession.isConnected != true) return@launch
+
                 pendingInitHandlers.clear()
                 syncProps()
                 logDegradedHandlersOnce()
@@ -663,6 +665,33 @@ class DeviceRepository {
                     syncProps()
                 }
             }
+        }
+    }
+
+    private suspend fun recoverCoreHandlers(
+        targetSession: EarbudSession,
+        rounds: Int,
+    ) {
+        repeat(rounds.coerceAtLeast(0)) { index ->
+            val failedCore = failedHandlers.filter { it in coreRetryOrder }
+            if (failedCore.isEmpty()) return
+
+            pendingInitHandlers.clear()
+            pendingInitHandlers.addAll(failedCore)
+            syncProps()
+            delay(HuaweiHandlerInitializationPolicy.CORE_RECOVERY_ROUND_DELAY_MS)
+            LogBuffer.i(
+                "SPP",
+                "CORE recovery round=${index + 1}/$rounds handlers=$failedCore " +
+                    "timeout=${HuaweiHandlerInitializationPolicy.CORE_RECOVERY_TIMEOUT_MS}ms"
+            )
+            targetSession.initializeCoreHandlers(
+                timeoutMs = HuaweiHandlerInitializationPolicy.CORE_RECOVERY_TIMEOUT_MS,
+                maxAttempts = 1,
+            )
+            failedHandlers.clear()
+            failedHandlers.addAll(targetSession.failedHandlerIds)
+            syncProps()
         }
     }
 

@@ -7,9 +7,11 @@ import org.junit.Test
 class HuaweiHandlerInitializationPolicyTest {
     @Test
     fun coreStateReadsHaveAShortBoundedTimeout() {
-        assertEquals(1_000L, HuaweiHandlerInitializationPolicy.CORE_HANDLER_TIMEOUT_MS)
+        assertEquals(3_000L, HuaweiHandlerInitializationPolicy.CORE_HANDLER_TIMEOUT_MS)
         assertEquals(80L, HuaweiHandlerInitializationPolicy.CORE_INTER_COMMAND_DELAY_MS)
-        assertTrue(HuaweiHandlerInitializationPolicy.worstCaseCoreReadyMs() <= 10_000L)
+        assertEquals(3_000L, HuaweiHandlerInitializationPolicy.CORE_RECOVERY_TIMEOUT_MS)
+        assertEquals(3, HuaweiHandlerInitializationPolicy.CORE_RECOVERY_ROUNDS)
+        assertTrue(HuaweiHandlerInitializationPolicy.worstCaseCoreReadyMs() <= 13_000L)
     }
 
     @Test

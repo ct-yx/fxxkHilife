@@ -10,9 +10,13 @@ package com.freebuds.controller.adapter.huawei.protocol
  */
 internal object HuaweiHandlerInitializationPolicy {
     const val INITIAL_SETTLE_DELAY_MS = 250L
-    const val CORE_HANDLER_TIMEOUT_MS = 1_000L
+    // The first command is often ignored while the earbud command loop is waking up.  A one
+    // second outer timeout made ANC and low-latency initialization depend on connection timing.
+    const val CORE_HANDLER_TIMEOUT_MS = 3_000L
     const val CORE_INTER_COMMAND_DELAY_MS = 80L
-    const val CORE_RETRY_DELAY_MS = 700L
+    const val CORE_RECOVERY_TIMEOUT_MS = 3_000L
+    const val CORE_RECOVERY_ROUNDS = 3
+    const val CORE_RECOVERY_ROUND_DELAY_MS = 1_000L
 
     /** The control actions users notice first must not wait behind battery telemetry. */
     val CORE_HANDLER_IDS_IN_ORDER = listOf(
@@ -37,13 +41,10 @@ internal object HuaweiHandlerInitializationPolicy {
         else -> declaredTimeoutMs.coerceAtMost(DEFERRED_HANDLER_TIMEOUT_MS)
     }
 
-    /**
-     * Two serialized core waves cover the four request-based core handlers.  `drop_logs` and
-     * `tws_in_ear` complete locally, but both retain their inter-command position.
-     */
+    /** One serialized initial wave covers the four request-based core handlers. */
     fun worstCaseCoreReadyMs(): Long {
         val commandGaps = (CORE_HANDLER_COUNT - 1) * CORE_INTER_COMMAND_DELAY_MS
         val oneWave = CORE_REQUEST_HANDLER_COUNT * CORE_HANDLER_TIMEOUT_MS + commandGaps
-        return INITIAL_SETTLE_DELAY_MS + oneWave + CORE_RETRY_DELAY_MS + oneWave
+        return INITIAL_SETTLE_DELAY_MS + oneWave
     }
 }

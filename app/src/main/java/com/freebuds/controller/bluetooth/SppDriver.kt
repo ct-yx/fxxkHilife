@@ -3,6 +3,7 @@ package com.freebuds.controller.bluetooth
 import android.bluetooth.BluetoothDevice
 import android.os.SystemClock
 import com.freebuds.controller.adapter.huawei.protocol.HuaweiHandlerInitializer
+import com.freebuds.controller.adapter.huawei.protocol.HuaweiHandlerInitializationPolicy
 import com.freebuds.controller.adapter.huawei.protocol.HuaweiHandlerRegistry
 import com.freebuds.controller.adapter.huawei.protocol.HuaweiPendingResponseManager
 import com.freebuds.controller.adapter.huawei.protocol.HuaweiPropertyStore
@@ -128,8 +129,11 @@ class SppDriver(private val device: BluetoothDevice) {
 
     // Handler initialization is delegated to HuaweiHandlerInitializer and is intentionally
     // kept outside connect(), so UI/control state can become connected as soon as RFCOMM is ready.
-    suspend fun initializeCoreHandlers() {
-        handlerInitializer.initializeCore(this, device.name)
+    suspend fun initializeCoreHandlers(
+        timeoutMs: Long = HuaweiHandlerInitializationPolicy.CORE_HANDLER_TIMEOUT_MS,
+        maxAttempts: Int = 1,
+    ) {
+        handlerInitializer.initializeCore(this, device.name, timeoutMs, maxAttempts)
     }
 
     suspend fun initializeDeferredHandlers() {
@@ -137,7 +141,11 @@ class SppDriver(private val device: BluetoothDevice) {
     }
 
     /** 发送包并等响应（对照 send_package） */
-    suspend fun sendPackage(pkg: HuaweiSppPackage, timeout: Long = 5_000): HuaweiSppPackage? {
+    suspend fun sendPackage(
+        pkg: HuaweiSppPackage,
+        timeout: Long = 5_000,
+        responsePredicate: (HuaweiSppPackage) -> Boolean = { true },
+    ): HuaweiSppPackage? {
         val queuedAt = SystemClock.elapsedRealtime()
         return requestMutex.withLock {
             val queueWaitMs = SystemClock.elapsedRealtime() - queuedAt
@@ -148,7 +156,7 @@ class SppDriver(private val device: BluetoothDevice) {
             }
 
             val startedAt = SystemClock.elapsedRealtime()
-            val deferred = pendingResponses.register(respId, timeout)
+            val deferred = pendingResponses.register(respId, timeout, responsePredicate)
             val slotWaitMs = SystemClock.elapsedRealtime() - startedAt
             if (deferred == null) {
                 LogBuffer.w(
