@@ -78,7 +78,7 @@ jobs:
       - name: Build APK
         run: |
           chmod +x gradlew
-          ./gradlew clean assembleRelease --stacktrace
+          ./gradlew clean test assembleRelease --stacktrace
 
       - name: Locate APK
         id: apk
