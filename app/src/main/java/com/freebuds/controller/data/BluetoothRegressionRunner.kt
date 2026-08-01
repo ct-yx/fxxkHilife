@@ -119,7 +119,15 @@ class BluetoothRegressionRunner(
                 val dir = File(chooserContext.cacheDir, "logs")
                 dir.mkdirs()
                 val file = File(dir, "fxxkHilife_hardware_regression_${System.currentTimeMillis()}.txt")
-                file.writeText(report)
+                val boundedReport = limitReportBytes(report, REGRESSION_REPORT_MAX_BYTES)
+                val reportBytes = boundedReport.toByteArray(Charsets.UTF_8)
+                check(reportBytes.size <= REGRESSION_REPORT_MAX_BYTES) {
+                    "regression report exceeds byte budget: ${reportBytes.size}"
+                }
+                file.outputStream().use { it.write(reportBytes) }
+                check(file.length() <= REGRESSION_REPORT_MAX_BYTES) {
+                    "written regression report exceeds byte budget: ${file.length()}"
+                }
                 val uri = FileProvider.getUriForFile(
                     chooserContext,
                     "${chooserContext.packageName}.fileprovider",
@@ -148,126 +156,133 @@ class BluetoothRegressionRunner(
         val startedAt = System.currentTimeMillis()
         val attempts = mutableListOf<RegressionAttempt>()
         val featureChecks = mutableListOf<RegressionFeatureCheck>()
-        val originalMaxLogLines = LogBuffer.getMaxLines()
-        LogBuffer.setMaxLines(REGRESSION_MAX_LOG_LINES)
-        val originalAutoLowLatency = appContext
-            .getSharedPreferences(SETTINGS_PREFS, Context.MODE_PRIVATE)
-            .getBoolean(AUTO_LOW_LATENCY_KEY, true)
-        val device = repository.getRegressionDevice()
-
-        LogBuffer.putMetadata("hardwareRegressionIterations", iterations.toString())
-        LogBuffer.putMetadata("hardwareRegressionStartedAt", startedAt.toString())
-        LogBuffer.i("HwTest", "START iterations=$iterations")
-
-        if (device == null) {
-            val detail = "No saved or currently connected Bluetooth device"
-            LogBuffer.e("HwTest", "SKIP $detail")
-            val report = buildReport(startedAt, null, attempts, featureChecks, detail)
-            LogBuffer.setMaxLines(originalMaxLogLines)
-            finish(report, failed = 1, message = I18n.t("terminal.regression.no_device"))
-            return
-        }
-
+        val captureToken = LogBuffer.beginBoundedCapture(REGRESSION_CAPTURE_MAX_BYTES)
+        // A regression report must describe this run only; do not mix it with an older terminal
+        // session. The byte budget, rather than a line count, is the active test-mode limit.
+        LogBuffer.clear()
         try {
+            val originalAutoLowLatency = appContext
+                .getSharedPreferences(SETTINGS_PREFS, Context.MODE_PRIVATE)
+                .getBoolean(AUTO_LOW_LATENCY_KEY, true)
+            val device = repository.getRegressionDevice()
+
+            LogBuffer.putMetadata("hardwareRegressionIterations", iterations.toString())
+            LogBuffer.putMetadata("hardwareRegressionStartedAt", startedAt.toString())
+            LogBuffer.putMetadata("hardwareRegressionLogCaptureBytes", REGRESSION_CAPTURE_MAX_BYTES.toString())
+            LogBuffer.putMetadata("hardwareRegressionReportMaxBytes", REGRESSION_REPORT_MAX_BYTES.toString())
+            LogBuffer.i("HwTest", "START iterations=$iterations logLines=unlimited captureBytes=$REGRESSION_CAPTURE_MAX_BYTES")
+
+            if (device == null) {
+                val detail = "No saved or currently connected Bluetooth device"
+                LogBuffer.e("HwTest", "SKIP $detail")
+                val report = buildReport(startedAt, null, attempts, featureChecks, detail)
+                finish(report, failed = 1, message = I18n.t("terminal.regression.no_device"))
+                return
+            }
+
             LogBuffer.putMetadata("hardwareRegressionDevice", device.name ?: device.address)
             LogBuffer.putMetadata("hardwareRegressionAddress", device.address)
-            for (scenario in RegressionScenario.entries) {
-                _state.value = _state.value.copy(scenario = scenario, iteration = 0, message = scenario.title)
-                for (iteration in 1..iterations) {
-                    ensureDisconnected()
-                    _state.value = _state.value.copy(scenario = scenario, iteration = iteration)
-                    val attempt = when (scenario) {
-                        RegressionScenario.A -> runConnectionAttempt(
-                            device,
-                            scenario,
-                            iteration,
-                            ConnectionTrigger.HardwareRegression,
-                            autoLowLatency = false,
-                            requestConnection = {
-                                repository.autoConnectKnownSystemConnected(
-                                    device,
-                                    trigger = ConnectionTrigger.HardwareRegression,
-                                )
-                            },
+            try {
+                for (scenario in RegressionScenario.entries) {
+                    _state.value = _state.value.copy(scenario = scenario, iteration = 0, message = scenario.title)
+                    for (iteration in 1..iterations) {
+                        ensureDisconnected()
+                        _state.value = _state.value.copy(scenario = scenario, iteration = iteration)
+                        val attempt = when (scenario) {
+                            RegressionScenario.A -> runConnectionAttempt(
+                                device,
+                                scenario,
+                                iteration,
+                                ConnectionTrigger.HardwareRegression,
+                                autoLowLatency = false,
+                                requestConnection = {
+                                    repository.autoConnectKnownSystemConnected(
+                                        device,
+                                        trigger = ConnectionTrigger.HardwareRegression,
+                                    )
+                                },
+                            )
+                            RegressionScenario.B -> runConnectionAttempt(
+                                device,
+                                scenario,
+                                iteration,
+                                ConnectionTrigger.HardwareRegression,
+                                autoLowLatency = true,
+                                requestConnection = {
+                                    repository.autoConnectKnownSystemConnected(
+                                        device,
+                                        trigger = ConnectionTrigger.HardwareRegression,
+                                    )
+                                },
+                            )
+                            RegressionScenario.C -> runConnectionAttempt(
+                                device,
+                                scenario,
+                                iteration,
+                                ConnectionTrigger.AclConnected,
+                                autoLowLatency = originalAutoLowLatency,
+                                requestConnection = {
+                                    repository.autoConnectKnownSystemConnected(
+                                        device,
+                                        trigger = ConnectionTrigger.AclConnected,
+                                    )
+                                },
+                            )
+                            RegressionScenario.D -> runDiscoveryAttempt(device, iteration)
+                            RegressionScenario.E -> runRetryAttempt(device, iteration, originalAutoLowLatency)
+                            RegressionScenario.F -> runManualDisconnectAttempt(device, iteration, originalAutoLowLatency)
+                        }
+                        attempts += attempt
+                        val completed = attempts.size
+                        _state.value = _state.value.copy(
+                            completed = completed,
+                            failed = attempts.count { it.result == RegressionResult.FAIL },
+                            message = "${scenario.id} $iteration/$iterations: ${attempt.result}",
                         )
-                        RegressionScenario.B -> runConnectionAttempt(
-                            device,
-                            scenario,
-                            iteration,
-                            ConnectionTrigger.HardwareRegression,
-                            autoLowLatency = true,
-                            requestConnection = {
-                                repository.autoConnectKnownSystemConnected(
-                                    device,
-                                    trigger = ConnectionTrigger.HardwareRegression,
-                                )
-                            },
-                        )
-                        RegressionScenario.C -> runConnectionAttempt(
-                            device,
-                            scenario,
-                            iteration,
-                            ConnectionTrigger.AclConnected,
-                            autoLowLatency = originalAutoLowLatency,
-                            requestConnection = {
-                                repository.autoConnectKnownSystemConnected(
-                                    device,
-                                    trigger = ConnectionTrigger.AclConnected,
-                                )
-                            },
-                        )
-                        RegressionScenario.D -> runDiscoveryAttempt(device, iteration)
-                        RegressionScenario.E -> runRetryAttempt(device, iteration, originalAutoLowLatency)
-                        RegressionScenario.F -> runManualDisconnectAttempt(device, iteration, originalAutoLowLatency)
                     }
-                    attempts += attempt
-                    val completed = attempts.size
-                    _state.value = _state.value.copy(
-                        completed = completed,
-                        failed = attempts.count { it.result == RegressionResult.FAIL },
-                        message = "${scenario.id} $iteration/$iterations: ${attempt.result}",
-                    )
+                }
+
+                ensureDisconnected()
+                featureChecks += runAncCheck(device)
+                ensureDisconnected()
+                featureChecks += runLowLatencyCheck(device)
+                ensureDisconnected()
+                featureChecks += runTriggerDeduplicationCheck(device)
+            } catch (e: CancellationException) {
+                LogBuffer.w("HwTest", "CANCELLED")
+                throw e
+            } catch (e: Exception) {
+                LogBuffer.e("HwTest", "Runner failed: ${e.javaClass.simpleName}: ${e.message}")
+                featureChecks += RegressionFeatureCheck(
+                    name = "runner",
+                    result = RegressionResult.FAIL,
+                    detail = "${e.javaClass.simpleName}: ${e.message}",
+                )
+            } finally {
+                appContext.getSharedPreferences(SETTINGS_PREFS, Context.MODE_PRIVATE)
+                    .edit()
+                    .putBoolean(AUTO_LOW_LATENCY_KEY, originalAutoLowLatency)
+                    .apply()
+                try {
+                    ensureDisconnected()
+                } catch (e: Exception) {
+                    LogBuffer.w("HwTest", "Final disconnect cleanup failed: ${e.message}")
                 }
             }
 
-            ensureDisconnected()
-            featureChecks += runAncCheck(device)
-            ensureDisconnected()
-            featureChecks += runLowLatencyCheck(device)
-            ensureDisconnected()
-            featureChecks += runTriggerDeduplicationCheck(device)
-        } catch (e: CancellationException) {
-            LogBuffer.setMaxLines(originalMaxLogLines)
-            LogBuffer.w("HwTest", "CANCELLED")
-            throw e
-        } catch (e: Exception) {
-            LogBuffer.e("HwTest", "Runner failed: ${e.javaClass.simpleName}: ${e.message}")
-            featureChecks += RegressionFeatureCheck(
-                name = "runner",
-                result = RegressionResult.FAIL,
-                detail = "${e.javaClass.simpleName}: ${e.message}",
+            val report = buildReport(startedAt, device, attempts, featureChecks, null)
+            val failures = attempts.count { it.result == RegressionResult.FAIL } +
+                featureChecks.count { it.result == RegressionResult.FAIL }
+            finish(
+                report = report,
+                failed = failures,
+                message = I18n.t("terminal.regression.finished", attempts.size, failures),
             )
         } finally {
-            appContext.getSharedPreferences(SETTINGS_PREFS, Context.MODE_PRIVATE)
-                .edit()
-                .putBoolean(AUTO_LOW_LATENCY_KEY, originalAutoLowLatency)
-                .apply()
-            try {
-                ensureDisconnected()
-            } catch (e: Exception) {
-                LogBuffer.w("HwTest", "Final disconnect cleanup failed: ${e.message}")
-            }
+            // Restore the normal line/byte policy on success, cancellation, no-device and error
+            // paths. The current run has already built its report before this restoration.
+            LogBuffer.endBoundedCapture(captureToken)
         }
-
-        val report = buildReport(startedAt, device, attempts, featureChecks, null)
-        LogBuffer.setMaxLines(originalMaxLogLines)
-        val failures = attempts.count { it.result == RegressionResult.FAIL } +
-            featureChecks.count { it.result == RegressionResult.FAIL }
-        finish(
-            report = report,
-            failed = failures,
-            message = I18n.t("terminal.regression.finished", attempts.size, failures),
-        )
     }
 
     private suspend fun runConnectionAttempt(
@@ -631,6 +646,43 @@ class BluetoothRegressionRunner(
         append(LogBuffer.getDiagnosticReport())
     }
 
+    private fun limitReportBytes(report: String, maxBytes: Long): String {
+        val bytes = report.toByteArray(Charsets.UTF_8)
+        if (bytes.size.toLong() <= maxBytes) return report
+
+        val limit = maxBytes.coerceAtMost(Int.MAX_VALUE.toLong()).toInt()
+        val marker = "\n\n[report truncated to ${maxBytes} bytes]\n"
+        val markerBytes = marker.toByteArray(Charsets.UTF_8)
+        if (markerBytes.size >= limit) return String(bytes, 0, limit, Charsets.UTF_8)
+
+        val remaining = limit - markerBytes.size
+        val headLimit = remaining / 2
+        val tailLimit = remaining - headLimit
+        val head = decodeUtf8Prefix(bytes, headLimit)
+        val tail = decodeUtf8Suffix(bytes, tailLimit)
+        return head + marker + tail
+    }
+
+    private fun decodeUtf8Prefix(bytes: ByteArray, maxBytes: Int): String {
+        var end = maxBytes.coerceIn(0, bytes.size)
+        while (end > 0) {
+            val value = String(bytes, 0, end, Charsets.UTF_8)
+            if (value.toByteArray(Charsets.UTF_8).size <= maxBytes) return value
+            end--
+        }
+        return ""
+    }
+
+    private fun decodeUtf8Suffix(bytes: ByteArray, maxBytes: Int): String {
+        var start = (bytes.size - maxBytes).coerceAtLeast(0)
+        while (start < bytes.size) {
+            val value = String(bytes, start, bytes.size - start, Charsets.UTF_8)
+            if (value.toByteArray(Charsets.UTF_8).size <= maxBytes) return value
+            start++
+        }
+        return ""
+    }
+
     private fun finish(report: String, failed: Int, message: String) {
         lastReport = report
         LogBuffer.putMetadata("hardwareRegressionReportReady", "true")
@@ -658,6 +710,9 @@ class BluetoothRegressionRunner(
         private const val DISCONNECT_TIMEOUT_MS = 5_000L
         private const val INITIALIZATION_OBSERVATION_MS = 10_000L
         private const val READ_BACK_TIMEOUT_MS = 8_000L
-        private const val REGRESSION_MAX_LOG_LINES = 50_000
+        // The test mode has no line-count cap. Keep a headroom below the 200 MB share/file limit
+        // so the report header, scenario tables and UTF-8 encoding remain processable.
+        private const val REGRESSION_CAPTURE_MAX_BYTES = 160_000_000L
+        private const val REGRESSION_REPORT_MAX_BYTES = 190_000_000L
     }
 }

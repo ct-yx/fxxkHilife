@@ -8,6 +8,7 @@ import java.time.ZoneId
 import java.time.format.DateTimeFormatter
 import java.util.ArrayDeque
 import java.util.Locale
+import kotlin.math.max
 
 /**
  * 进程内诊断日志。
@@ -16,6 +17,11 @@ import java.util.Locale
  * 刷新的做法。导出的报告包含会话元信息与摘要，便于直接定位连接/初始化问题。
  */
 object LogBuffer {
+
+    class BoundedCaptureToken internal constructor(
+        internal val previousMaxLines: Int,
+        internal val previousMaxBytes: Long?,
+    )
 
     enum class Level { I, W, E, D }
 
@@ -32,8 +38,9 @@ object LogBuffer {
 
     private const val DEFAULT_MAX_LINES = 2_000
     private const val MIN_LINES = 100
-    // A normal session stays small; the debug-only hardware regression runner temporarily raises
-    // this through setMaxLines() so six scenarios x ten iterations retain their evidence.
+    // A normal session stays small. The debug-only hardware regression runner switches to a byte
+    // budget instead of a line limit, so long A-F runs retain all lines without producing a file
+    // that is too large to share or process.
     private const val MAX_LINES = 50_000
 
     private val logLock = Any()
@@ -47,6 +54,8 @@ object LogBuffer {
         .withZone(ZoneId.systemDefault())
 
     @Volatile private var maxLines = DEFAULT_MAX_LINES
+    @Volatile private var maxBytes: Long? = null
+    private var storedBytes = 0L
     @Volatile private var protocolFrameLoggingEnabled = false
     private var notificationQueued = false
     @Volatile private var sessionStartedAt = System.currentTimeMillis()
@@ -84,10 +93,49 @@ object LogBuffer {
         synchronized(logLock) { metadata[key] = value }
     }
 
-    private fun add(level: Level, tag: String, msg: String) {
+    /**
+     * Enter a capture mode with no line-count limit and a hard byte budget.
+     * The token restores the normal logging policy after the report is built.
+     */
+    fun beginBoundedCapture(maxBytes: Long): BoundedCaptureToken {
+        require(maxBytes > 0) { "capture byte budget must be positive" }
         synchronized(logLock) {
-            while (log.size >= maxLines) log.removeFirst()
-            log.addLast(LogEntry(level = level, tag = tag, message = msg))
+            val token = BoundedCaptureToken(
+                previousMaxLines = this.maxLines,
+                previousMaxBytes = this.maxBytes,
+            )
+            this.maxLines = Int.MAX_VALUE
+            this.maxBytes = maxBytes
+            trimToLimits()
+            return token
+        }
+    }
+
+    fun endBoundedCapture(token: BoundedCaptureToken) {
+        synchronized(logLock) {
+            maxLines = token.previousMaxLines
+            maxBytes = token.previousMaxBytes
+            trimToLimits()
+        }
+    }
+
+    fun isBoundedCaptureActive(): Boolean = maxBytes != null
+
+    fun getStoredBytes(): Long = synchronized(logLock) { storedBytes }
+
+    private fun add(level: Level, tag: String, msg: String) {
+        val entry = LogEntry(level = level, tag = tag, message = msg)
+        val entryBytes = entry.estimatedBytes()
+        synchronized(logLock) {
+            // A single pathological message must not bypass the active byte budget. Normal
+            // protocol/frame entries are far below this size; dropping only this oversized entry
+            // preserves the hard upper bound for the test capture.
+            if (maxBytes?.let { entryBytes > it } == true) return
+            while (log.isNotEmpty() && (log.size >= maxLines || exceedsByteBudget(entryBytes))) {
+                removeFirstEntry()
+            }
+            log.addLast(entry)
+            storedBytes += entryBytes
         }
         notifyListeners()
     }
@@ -135,14 +183,17 @@ object LogBuffer {
     }
 
     fun clear() {
-        synchronized(logLock) { log.clear() }
+        synchronized(logLock) {
+            log.clear()
+            storedBytes = 0L
+        }
         notifyListeners()
     }
 
     fun setMaxLines(max: Int) {
         synchronized(logLock) {
             maxLines = max.coerceIn(MIN_LINES, MAX_LINES)
-            while (log.size > maxLines) log.removeFirst()
+            trimToLimits()
         }
         notifyListeners()
     }
@@ -180,6 +231,33 @@ object LogBuffer {
             if (index != entries.lastIndex) append('\n')
         }
     }
+
+    private fun exceedsByteBudget(nextEntryBytes: Long): Boolean =
+        maxBytes?.let { storedBytes + nextEntryBytes > it } == true
+
+    private fun trimToLimits() {
+        while (log.isNotEmpty() && (log.size > maxLines || exceedsByteBudget(0L))) {
+            removeFirstEntry()
+        }
+    }
+
+    private fun removeFirstEntry() {
+        val removed = log.removeFirst()
+        storedBytes = max(0L, storedBytes - removed.estimatedBytes())
+    }
+
+    private fun LogEntry.estimatedBytes(): Long = buildString {
+        append(formattedTime)
+        append(" +")
+        append(monotonicMs)
+        append("ms [")
+        append(levelChar)
+        append("] [")
+        append(tag)
+        append("] ")
+        append(message)
+        append('\n')
+    }.toByteArray(Charsets.UTF_8).size.toLong()
 
     /** Coalesce bursts so a terminal never renders once for every packet event. */
     private fun notifyListeners() {
