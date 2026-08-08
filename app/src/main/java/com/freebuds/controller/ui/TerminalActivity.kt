@@ -18,6 +18,7 @@ import com.freebuds.controller.HilifeApplication
 import com.freebuds.controller.R
 import com.freebuds.controller.data.BluetoothRegressionRunner
 import com.freebuds.controller.data.ConnectionCommand
+import com.freebuds.controller.data.RegressionProfile
 import com.freebuds.controller.i18n.I18n
 import com.freebuds.controller.util.LogBuffer
 import com.freebuds.controller.util.LogBuffer.OnLogUpdateListener
@@ -67,7 +68,10 @@ class TerminalActivity : AppCompatActivity(), OnLogUpdateListener {
                     regressionRunner.state.value.reportReady -> regressionRunner.shareLastReport(this)
                     else -> {
                         LogBuffer.i("HwTest", "Debug-only hardware regression button pressed")
-                        regressionRunner.start(lifecycleScope)
+                        regressionRunner.start(
+                            scope = lifecycleScope,
+                            profile = RegressionProfile.ANC_WEAR_STATE,
+                        )
                     }
                 }
             }

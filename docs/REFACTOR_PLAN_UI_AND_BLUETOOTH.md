@@ -4,7 +4,7 @@
 >
 > 基线：v4.2.6，2026-08-01
 >
-> 当前测试包：v4.3.2 / versionCode 90，2026-08-08（BT-1/BT-2 热重连恢复与初始化回归门槛）
+> 当前测试包：v4.3.3 / versionCode 91，2026-08-09（BT-2 ANC 摘戴状态稳定性定向回归门槛）
 >
 > 目标：把当前“能工作但边界偏大”的 UI、蓝牙连接和 SPP 指令实现整理成可持续迭代的结构。先稳定现有 HUAWEI / HONOR + RFCOMM SPP 路线，再为后续型号和协议扩展留出边界。
 
@@ -43,23 +43,25 @@
 | 重连、ACL、并发入口和连接耗时 | 每个相关场景 10 轮 | 需要观察竞态并计算 P50/P95 |
 | 跨模块发布验收 | 100 项 | BT 阶段合并、Release 候选或多个模块同时改动 |
 
-当前 `4.3.2 / 90` 只针对上轮日志暴露的问题，测试清单为 **36 项**：
+上一轮 `4.3.2 / 90` 的定向清单为 **36 项**，本轮只针对新诊断暴露的 ANC 摘戴竞态，不重新执行连接矩阵：
 
-1. B 场景 10 轮：immediate rejection、`attempt=1/3 → 2/3 → 3/3`、`250ms/500ms` 排水、最终 attemptId 和 Transport P50/P95。
-2. F 场景 10 轮：手动断开、旧 session/reader/init 清理、ACL 重连、immediate rejection 和最终 attemptId；记录 Transport/Core/terminal P50/P95。
-3. “应用入口 / 10 秒初始化持续推进”功能项 10 轮：最终必须是 `Ready/Degraded`，核心状态有效，pending 为空；`CoreReady` 单独作为通过依据的样本记为失败。
-4. D 场景 3 轮：只核对 `saved-fallback`、endpoint/channel/source 和扫描终态回调次数。
-5. E 场景 3 轮：只核对 `outerRetryExercised` 与 Transport 内部恢复的区分；自然运行未触发外层失败时，不扩展为全量测试。
+1. **ANC 摘戴竞态 10 轮**：先确认设备处于降噪，再摘下并放置，随后双耳重新佩戴；每轮记录摘下、重新佩戴期间的 `2b2c` 通知、`2b2a` 权威读取和最终 UI/设备状态。
+2. **状态来源一致性**：报告中不得出现 `State accepted source=2b2c`；最终稳定状态必须以 `2b2a` 的实际 payload 为准，不能被通透/关闭的瞬时通知覆盖。
+3. **定时刷新收敛**：同一摘戴事件的连续 `2b2c` 只允许合并为一次安静窗口后的 `anc.notification.refresh`，记录刷新次数和最终 `mode/level`。
 
-上轮已经完成且本轮代码没有触及的 ANC、自动低延迟 ACK/读回、全部入口去重，不重复执行 10 轮。后续若改动命令调度或对应 Feature，只增加对应功能项 5 轮；若改动连接生命周期，只增加受影响场景 10 轮。完整 100 项矩阵保留给跨模块验收，不作为每次修复的默认门槛。
+本轮共 **10 个 ANC 摘戴循环**，不执行 A-F、B/F 重连、低延迟、入口去重或完整 100 项矩阵。后续若只改 ANC 状态解析，继续增加 ANC 定向轮次；改动连接生命周期时，再恢复受影响场景的 10 轮强度。
+
+> **当前目标受阻**：代码和 JVM 测试已经完成，仍需主验证设备运行 `4.3.3 / 91` 的上述 10 个 ANC 摘戴循环并回传报告，才能关闭 BT-2 的 ANC 稳定性验收门。
 
 ### 0.2 本轮执行记录（先蓝牙，后实机测试）
 
 本轮继续完成蓝牙组件重构、定向实机测试矩阵和本地验证；代码/CI 完成后，只安排与本轮改动对应的测试项。
 
-- 当前测试包已切换为 `4.3.2 / 90`，对应 BT-1/BT-2 热重连恢复与初始化回归门槛；`4.3.1 / 89` 为本轮实机报告所用版本，`4.3.0 / 88` 仅作为上一轮实机报告包，`4.2.6 / 87` 仅保留为重构前基线。
+- 当前测试包已切换为 `4.3.3 / 91`，对应 BT-2 ANC 摘戴状态稳定性定向回归门槛；`4.3.2 / 90` 为上一轮热重连/初始化回归包，`4.3.1 / 89` 为更早的完整实机报告包，`4.3.0 / 88` 仅作为 BT-1 首轮实机报告包，`4.2.6 / 87` 仅保留为重构前基线。
 - 保留未跟踪的 `.DS_Store` 和 `对话历史记录.md`，不纳入代码提交。
 - 本轮重点：唯一命令 lane、优先级/静默窗口调度、命令目录、共享命令多路分发、typed connection command、连接 attempt 归属、旧 RFCOMM session 生命周期和 `startDiscovery=false` 的绑定设备回退；调整前实机报告已纳入，本轮修复后的 APK 仍需同设备复测。
+- 2026-08-09 ANC 诊断回灌：`/Users/chenhong/Downloads/fxxkHilife_diagnostic_1786212455286.txt` 的 `2b2c` 在摘戴期间以短 burst 连续出现，旧 Handler 直接把它当成模式快照写入属性；日志只记录参数键，尚未形成可验证的 mode 值证据。
+- 2026-08-09 ANC 状态修复：`2b2a` 保持唯一权威状态来源；`2b2c` 只作为变化提示，不直接更新 ANC 属性，并在 250ms 安静窗口后通过同一 command lane 发起一次无等待 `2b2a` 读取；收到权威 `2b2a` 后取消未执行的刷新任务。
 
 本轮新增的代码边界：
 
@@ -74,8 +76,8 @@
 - `BluetoothScanner` 的终态回调增加一次性闸门；绑定设备回退、正常 discovery 完成和 stopScan 竞态不会重复触发 ScanCompleted 建连。
 - `SystemBluetoothMonitor` 已从 `BluetoothService` 抽出，统一持有 ACL/A2DP/HEADSET 广播、Profile Proxy 和周期检查；Service 只负责生命周期与通知。
 - `EarbudStateStore` 已接管 `ControlChannelState` 与 `DeviceProps` 的可变 StateFlow；Repository 只通过 store 发布 attempt-aware 阶段、能力 pending/failed 和属性兼容快照。
-- 本轮已将版本从 `4.3.1 / 89` 提升到 `4.3.2 / 90`；Debug 自动测试按钮继续执行 A-F 各 10 轮，并将初始化持续推进、ANC、自动低延迟、入口去重四类功能检查也各执行 10 轮。
-- 自动测试按钮进度现在按 100 个检查单元显示（60 个 A-F 连接样本 + 40 个功能检查）；功能检查报告同样输出 PASS/FAIL、P50/P95 和最大耗时，低延迟检查额外记录 ACK phase、读回和最终状态。
+- 本轮将版本从 `4.3.2 / 90` 提升到 `4.3.3 / 91`；Debug 自动测试按钮本轮只执行 ANC 摘戴定向测试，不改变 Release 行为。
+- 自动测试按钮默认使用 `ANC_WEAR_STATE` profile，仅显示并执行 10 个 ANC 摘戴检查单元；每轮自动连接、设为降噪、记录 10 秒摘戴窗口、分析 `2b2c`/`2b2a` 来源并生成 PASS/FAIL。`FULL_MATRIX` 仍保留给 Release 候选或跨模块验收，执行 60 个 A-F 连接样本加 40 个功能检查。
 - 2026-08-02 连接速度优化：已知型号首轮 Core 初始化使用 1 秒快速超时；3 秒恢复、自动低延迟重试和 Deferred 探测移到同一 command lane 的后台初始化任务，不再阻塞首轮 CoreReady；未知/兼容端点继续使用 3 秒首轮预算。
 - 2026-08-02 实机报告回灌：调整前报告 `/Users/chenhong/Downloads/fxxkHilife_hardware_regression_1785615540067.txt` 的 A/B/C/E 各 10 轮为 PASS，但约 30 秒耗时是后续 `PeriodicCheck` 连接被旧 Runner 误归属；D 为 0/10（`startDiscovery=false` 未走绑定设备回退），F 为 0/10（ACL 断开后旧 session/连接入口未收敛），功能检查因同一归属问题未建立有效控制通道。每次有效 attempt 的 endpoint 均为 `rfcomm-channel=1 source=VerifiedModelConfig`；诊断阶段样本的 Transport→CoreReady P50/P95 约 `829/888ms`，CoreReady→Ready P50/P95 约 `2087/2163ms`。这些结果作为重构前基线，不作为新代码的通过证据。
 - 2026-08-02 报告回灌后的代码修复：自动测试的自动连接结果现在从 `ConnectionCommandResult.Accepted.attemptId` 直接取得，不再在请求后读取易被周期检查覆盖的当前 attempt；空 attempt 不再接受后续后台连接作为样本结果。D 走 `startDiscovery=false` 的绑定设备回退并用一次性终态回调防重复建连；F 的真实 ACL 断开现在由 `SystemBluetoothMonitor` 发出 `SystemAclDisconnected` typed command，统一执行 session/reader/init 清理，再保留 250ms RFCOMM 重连排水窗口。报告新增 `TransportConnect`、`Transport→CoreReady`、`CoreReady→Ready` 的 P50/P95 字段。
@@ -85,6 +87,7 @@
 - 2026-08-08 报告回灌后的修复：回归 Runner 在 discovery 成功但没有 `ACTION_FOUND` 时使用保存设备作为明确的 `saved-fallback`，并保留扫描终态一次性闸门；测试期间只暂停 `PeriodicCheck`/`AudioProfileConnected` 后台探测，Service/Tile/ACL/HardwareRegression 等显式入口仍走生产 command path；F 场景先等待 CoreReady，再执行手动断开、RFCOMM 重连和 ACL 清理，`SystemAclDisconnected` 改为同步清理旧 session/reader/init，避免立即 ACL 重连复用旧 attempt；ANC、低延迟和入口去重检查也先等待 CoreReady。
 - 2026-08-08 修复后本地验证：`./scripts/run_ci_checks.sh ci-output-acl-sync-regression-escalated` 通过（diff-check、Debug/Release 单元测试、Debug/Release 构建）；Debug APK SHA-256=`f24f2ebde90055ed662f073771463b4cac77a153a2d67b25825caf73888c4309`，Release APK SHA-256=`d34186d03a9ccb6cf1081f1abc1f10c45ee570e7ff254fa6e91d046b24ec101f`。该次构建使用当时的 `4.2.6 / 87` 基线；D/F 和 100 项新报告仍需同一设备重新运行后才能更新阶段完成标记。
 - 2026-08-08 版本区分后的本地验证：`./scripts/run_ci_checks.sh ci-output-bt-4.3.0-88-final` 通过（diff-check、Debug/Release 单元测试、Debug/Release 构建）；当前测试包为 `4.3.0 / 88`，Debug APK SHA-256=`ba4c0cc9ea8cbd6716d1bde7821e9b6d2b3b6488062782c1f7218ed5ae5a8500`，Release APK SHA-256=`4c584ff640e701a7a6eab91cc2051bf15ab3c83a25e5dbf2836e8107d9c45906`。仍需同一设备重新运行 D/F 和 100 项实机矩阵后更新阶段完成标记。
+- 2026-08-09 ANC 定向包本地验证：`./scripts/run_ci_checks.sh ci-output-bt-4.3.3-91` 通过（diff-check、Debug/Release 单元测试、Debug/Release 构建）；Debug APK SHA-256=`dc770772ffb36ac5dc2a4dbbc4143e863406d96dca9d5193345ba7e61f9dbcbb`，Release APK SHA-256=`5b083d9242a07908d306d3fda66ba3200f0c27dc503328d5cb66bc8ad8269bb`。默认自动测试 profile 已切换为 `ANC_WEAR_STATE`，每轮 10 秒摘戴观察；仍需主验证设备实机回归。
 
 - 2026-08-08 实机报告 `/Users/chenhong/Downloads/fxxkHilife_hardware_regression_1786177384365.txt` 回灌：顶层 `format=2`，包含 A-F 60 轮和功能 40 轮；endpoint=`rfcomm-channel=1`，source=`VerifiedModelConfig`。A-F 为 `7/10、5/10、5/10、5/10、10/10、9/10`，初始化持续推进 `5/10`，ANC/自动低延迟/入口去重均 `10/10`。A-D 失败在约 `240ms` 进入 `transport_connect_returned_false`，旧 Runner 却等待约 30 秒；E 的首次失败后重试全部恢复，支持在统一 Transport 边界增加一次有界重试。成功样本 Transport→CoreReady 约 `0.8s`，CoreReady→Ready 约 `1.3s`；F 的 `coreToReady=0` 属于旧 Runner 把 CoreReady 当完整 Ready 的统计语义问题。
 - 2026-08-08 报告后的代码修复已落地到 `4.3.1 / 89`：立即非超时 RFCOMM 拒绝默认重试 1 次、间隔 `250ms`，真实连接超时不重复延长；Transport 增加 generation 检查、旧 socket 清理和底层 cause 日志；Runner 按当前 `attemptId` 将 `Failed` 作为终态，控制通道阶段失败也立即结束等待，ANC/低延迟/入口去重从 `CoreReady` 开始，F 必须达到完整 `Ready/Degraded`。本轮仍需同一设备运行新 Debug 包后才能更新实机阶段完成标记。
@@ -101,9 +104,9 @@
 |---|---|---|
 | BT-0.1 协议/能力本地审计 | [x] 已完成 | 2026-08-01；完成现有 Kotlin 协议、能力表、上游资料快照存在性核对；未提升未经实机验证的能力状态 |
 | BT-0.2 连接速度实机基线 | [~] 进行中 | 调整前主设备 A-F 各 10 轮已归档；报告中的 30 秒样本已判定为旧 Runner 误归属，D/F 失败已分别落到绑定设备回退和 ACL session 清理；需新 APK 在同设备比较 Transport→CoreReady、CoreReady→Ready 和最终可用时间 |
-| BT-0.3 连接路线决策门 | [x] 已完成 | 2026-08-01；endpoint/channel 已被实机确认，优先改连接编排、attempt 归属、session 生命周期和命令调度；当前测试包为 4.3.2 / 90 |
+| BT-0.3 连接路线决策门 | [x] 已完成 | 2026-08-01；endpoint/channel 已被实机确认，优先改连接编排、attempt 归属、session 生命周期和命令调度；当前测试包为 4.3.3 / 91 |
 | BT-1 唯一生产 Transport | [~] 进行中 | 已切换到唯一 `RfcommSppTransport` Socket 路径；当前只需定向复测 B/F 各 10 轮及 D 3 轮，确认第三次 Socket 创建、排水、fallback 和阶段 P50/P95 |
-| BT-2 CommandClient / Scheduler / Feature | [~] 进行中 | 命令目录、单一优先级 command lane、quiet window、ACK/读回结果模型已有实机证据；本轮只复测初始化持续推进 10 轮和 E 3 轮日志语义，命令代码再次变更时再增加对应功能项 |
+| BT-2 CommandClient / Scheduler / Feature | [~] 进行中（目标受阻） | 命令目录、单一优先级 command lane、quiet window、ACK/读回结果模型已落地；本轮修复 ANC `2b2c` 瞬时状态覆盖，等待 `4.3.3 / 91` 实机完成 10 个摘戴循环 |
 | BT-3 ConnectionManager 收敛入口 | [~] 进行中 | UI/Service/Tile/Terminal/回归 Runner 已统一发送 typed command；Manager 已接管 session registry、attempt coordinator、ACL 清理和 identity check；Repository 的连接编排 job/state 迁移仍待后续收敛 |
 | BT-4 通用蓝牙状态输出 | [~] 进行中 | 已新增 `ControlChannelState`、`ControlChannelStateReducer` 和 `DeviceViewModel.controlChannelState`，页面尚未迁移消费 |
 | UI-0 UI 行为基线 | [ ] 未开始 | 截图、交互路径、字段读写清单和测试基线齐备 |
@@ -114,7 +117,7 @@
 
 ### 0.4 应用版本号方案
 
-当前应用测试包为 **versionName `4.3.2` / versionCode `90`**；`4.3.1 / 89` 是本轮完整实机报告包，`4.3.0 / 88` 是上一版 BT-1 实机报告包，`4.2.6 / 87` 仅作为本次重构的历史基线。BT-0 的审计、研究、日志和测试准备不单独发版。
+当前应用测试包为 **versionName `4.3.3` / versionCode `91`**；`4.3.2 / 90` 是上一轮热重连/初始化回归包，`4.3.1 / 89` 是更早的完整实机报告包，`4.3.0 / 88` 是上一版 BT-1 实机报告包，`4.2.6 / 87` 仅作为本次重构的历史基线。BT-0 的审计、研究、日志和测试准备不单独发版。
 
 | 里程碑 | 计划 versionName | 计划 versionCode | 说明 |
 |---|---:|---:|---|
@@ -122,8 +125,9 @@
 | BT-1 Transport 统一 | 4.3.0 | 88 | 第一版可回归的蓝牙传输重构 |
 | BT-2 指令调度与 Feature | 4.3.1 | 89 | 命令目录、队列和能力拆分 |
 | BT-1/BT-2 热重连回归包 | 4.3.2 | 90 | 第三次 Socket 创建、线性排水和严格初始化验收 |
-| BT-3 连接管理收敛 | 4.3.3 | 91 | 单一连接编排入口 |
-| BT-4 通用蓝牙状态输出 | 4.3.4 | 92 | 分层连接状态和通用状态输出 |
+| BT-2 ANC 摘戴状态稳定性包 | 4.3.3 | 91 | `2b2c` 只作变化提示，安静窗口后以 `2b2a` 作为权威状态 |
+| BT-3 连接管理收敛 | 4.3.4 | 92 | 单一连接编排入口 |
+| BT-4 通用蓝牙状态输出 | 4.3.5 | 93 | 分层连接状态和通用状态输出 |
 | UI-1 + UI-2 | 4.4.0 | 93 | UI State/Event 与页面组件拆分 |
 | UI-3 全局状态与持久化 | 4.4.1 | 94 | 全局状态、设置仓库和导航收敛 |
 | UI-4 移除兼容层 | 4.5.0 | 95 | 完成 UI 重构；若产生不兼容变更，再单独评估大版本 |
@@ -131,7 +135,7 @@
 版本规则：
 
 - 只有能独立编译、测试、回归和回退的代码里程碑才提升版本号；只改本文件或只做诊断不提升版本。
-- `versionCode` 每次发布递增 1；BT-1 测试包使用 `88`，BT-1/BT-2 首轮修复包使用 `89`，本轮热重连回归包使用 `90`，后续以 `90` 为当前基准顺延。
+- `versionCode` 每次发布递增 1；BT-1 测试包使用 `88`，BT-1/BT-2 首轮修复包使用 `89`，热重连回归包使用 `90`，ANC 摘戴状态稳定性包使用 `91`，后续以 `91` 为当前基准顺延。
 - 统一使用 `python3 scripts/bump_version.py <versionName> <versionCode> "变更说明"` 更新应用版本、资源、README、`VERSION_MANAGEMENT.md` 和 `DEVELOPMENT_LOG.md`。
 - 阶段完成时，同时更新本文件的 `[x]`、`VERSION_MANAGEMENT.md` 的历史记录和 `DEVELOPMENT_LOG.md`；版本号不因提前勾选计划项而变更。
 
@@ -449,7 +453,7 @@ BT-1 已移除 `SppDriver` 对 Socket、输入输出流和原始收包循环的�
 | 功能 | 读取/状态 | 写入/动作 | 备注 |
 |---|---|---|---|
 | 电量 | `01 08` | — | `01 27` 为通知 |
-| ANC | `2b 2a` | `2b 04` | `2b 2c` 为状态通知；存在旧包覆盖新状态问题 |
+| ANC | `2b 2a` | `2b 04` | `2b 2c` 只作摘戴/模式变化提示；不直接写入 UI，burst 安静后刷新 `2b 2a` |
 | 低延迟 | `2b 6c` | `2b 6c` | 写入后读回确认 |
 | 音质偏好 | `2b a3` | `2b a2` | 写入可能只收到异步 `2b a3` |
 | 自动暂停 | `2b 11` | `2b 10` | ACK 后读回确认 |
@@ -831,7 +835,7 @@ BT-0 必须产出一份能力证据表：
 - 自动连接请求现在返回 `accepted + attemptId`，回归 runner 对空 id、超时和后续周期连接严格隔离；F 的 ACL 重连通过 `AutoConnectKnownSystemConnected` typed command 进入同一入口。
 - 手动/ACL/EOF 清理后仅对热重连增加 `250ms` RFCOMM 排水窗口，冷连接不增加等待；测试报告的场景明细与统计同步记录三个阶段耗时。
 
-下一轮实机验收重点：4.3.2 的第三次 RFCOMM Socket 创建是否能覆盖 B/F 的热断开排水窗口；同时确认 D 的绑定设备回退、F 的旧 session 竞态、A-F 的 attempt 归属，以及优化后的 `Transport→CoreReady`、`CoreReady→Ready`、ANC/低延迟 ACK 与读回结果。已知主设备应重点确认日志出现 `attempt=3/3`（仅在前两次 immediate rejection 时出现）、`CORE first pass timeout=1000ms`，首轮 CoreReady 是否回到上一版速度，同时确认后台恢复仍能在 10 秒观察窗口内继续推进到 `Ready/Degraded`。
+上一轮 `4.3.2 / 90` 的实机验收重点是第三次 RFCOMM Socket 创建、B/F 热断开排水窗口、D 回退和初始化终态；本轮 `4.3.3 / 91` 不重复这些连接测试，只验证 ANC 摘戴状态来源和刷新收敛。
 
 该小阶段只增加观测和测试，不调整生产时序。每个测试场景至少执行 10 次，记录成功次数、P50、P95、最大值和失败原因：
 
@@ -895,28 +899,27 @@ python3 scripts/analyze_connection_timing.py /path/to/fxxkHilife_diagnostic.txt
 
 - `[x]` 将 UUID、channel、连接超时、取消和重试收敛为 `RfcommTransportConfig`，移除生产路径中的固定 port 常量；已知型号使用型号端点，未知型号保留 channel 1 compatibility fallback，并将 endpoint/source 写入连接元数据和日志。
 - `[ ]` 在主验证设备上回归 ANC、自动低延迟、初始化持续推进、断开/重连，并记录回退结果。
-- `[~]` 已发布 `4.3.2 (90)` 作为本轮热重连恢复和严格初始化判定的实机回归测试包；实机回归通过后再将 BT-1/BT-2 相关阶段标记为 `[x]`。
+- `[~]` 已发布 `4.3.2 (90)` 作为热重连恢复和严格初始化判定的实机回归测试包；BT-1 仍等待同一设备的连接阶段汇总。
+- `[~]` 已发布 `4.3.3 (91)` 作为 ANC 摘戴状态稳定性定向测试包；该项当前标记为“目标受阻”，等待同一设备报告。
 
 #### 实机回归待测队列（按当前改动定向收集）
 
 以下项目只覆盖当前版本实际改动；每完成一个子阶段就在本文件回写 `[x]`、版本、测试轮次和报告路径：
 
-1. **B 热重连**：10 轮。
-2. **F ACL/session 生命周期**：10 轮。
-3. **初始化终态契约**：10 轮。
-4. **D saved-fallback 与 endpoint/source**：3 轮。
-5. **E 外层重试日志语义**：3 轮。
+1. **ANC 摘戴竞态**：10 个完整循环；每轮为“降噪 → 摘下放置 → 双耳佩戴”。
+2. **ANC 状态来源**：核对 `2b2c` 不直接产生 `State accepted`，最终状态来自 `2b2a`。
+3. **ANC 刷新合并**：核对连续通知只产生一次安静窗口后的 `anc.notification.refresh`，并记录实际 payload。
 
-每个项目由 Debug 自动测试按钮记录。当前 4.3.2 包的旧按钮仍执行完整矩阵；下一次测试包先增加 `BT_4_3_2_TARGETED` profile，默认只执行以上 36 项，`FULL_MATRIX` 保留给发布验收。测试报告沿用小于 200 MB 的字节预算。出现新问题时，只在本表追加对应场景或功能项，保持定向范围。
+每个项目由 Debug 自动测试按钮记录。`4.3.3 / 91` 默认使用 `ANC_WEAR_STATE`，每轮开始时日志会提示“摘下放置后双耳佩戴”，物理摘戴仍由测试者完成，连接、计时、payload、来源判断和报告导出由按钮自动完成；`FULL_MATRIX` 保留给发布验收。测试报告沿用小于 200 MB 的字节预算。出现新问题时，只在本表追加对应场景或功能项，保持定向范围。
 
 定向运行输出与全量运行使用同一报告格式：每项输出 PASS/FAIL、P50/P95、最大耗时和失败详情；B/F 额外输出 Socket 尝试、排水间隔和 attemptId，初始化项额外输出观察前后 stage、pendingHandlers、failedHandlers 和最终 core 状态。完整 100 项矩阵只在跨模块验收、Release 候选或多个 BT 阶段同时变更时启用。激活测试模式后仍使用约 160,000,000 字节的 UTF-8 缓存预算，报告写入分享文件前限制为 190,000,000 字节以内，最终文件保持小于 200 MB；测试结束、取消、无设备和异常路径都会恢复正常日志策略。ACL 广播本身由系统触发，按钮中的 ACL 断开使用同一清理路径的 synthetic regression hook；报告会区分真实入口和 synthetic cleanup。
 
-#### BT-2：CommandClient 与 Feature 拆分 `[~] 进行中`
+#### BT-2：CommandClient 与 Feature 拆分 `[~] 进行中（目标受阻）`
 
-> 本轮进度：2026-08-08；代码已新增 `HuaweiCommandCatalog`、`HuaweiCommandClient`、`HuaweiCommandScheduler`，并将核心 Handler 的读写迁移到目录。Scheduler 现在按优先级选择排队请求，并在 granted operation 前执行 quiet window；保留旧 `HuaweiDeviceHandler` 作为兼容适配层。4.3.1 实机的 ANC、自动低延迟 ACK/读回和入口去重均为 10/10，但连接热重试 B/F 各有 1 次 immediate rejection 失败；4.3.2 已增加有界第三次 Socket 创建、外层 attemptId 日志和严格初始化回归判定。本地单元测试与 Debug/Release 构建通过，核心命令仍待新版本实机回归。
+> 本轮进度：2026-08-09；代码已新增 `HuaweiCommandCatalog`、`HuaweiCommandClient`、`HuaweiCommandScheduler`，并将核心 Handler 的读写迁移到目录。针对诊断日志暴露的 ANC 摘戴竞态，`2b2a` 被固定为权威快照，`2b2c` 只触发 250ms 安静窗口后的同 lane 刷新；`AncStatePolicyTest` 已覆盖命令来源分类和 payload 解码。`4.3.3 / 91` 的 10 个 ANC 摘戴循环仍待实机报告，因此本子阶段暂保持目标受阻。
 
 - `[x]` 建立 Huawei 命令目录和 `HuaweiCommandSpec`，消除主要 Handler 中散落的命令字节。
-- `[~]` Battery、ANC、LowLatency、SoundQuality、Gesture、EQ、DualConnect 已经通过兼容 Handler 使用目录；按能力拆文件的 Feature 迁移留在后续小阶段。
+- `[~]` Battery、ANC、LowLatency、SoundQuality、Gesture、EQ、DualConnect 已经通过兼容 Handler 使用目录；ANC 的 `2b2c`/`2b2a` 状态来源修复已落地，按能力拆文件的 Feature 迁移留在后续小阶段。
 - 把初始化顺序、核心/延迟能力、超时和重试从 Handler 本体移到策略配置。
 - `[x]` 增加单一 `HuaweiCommandScheduler`，普通请求、写入确认、读回确认和 fire-and-forget 均经过同一 command lane；USER_ACTION 会优先于已排队的 Deferred/Background 请求，且不会越过已在执行的交换。
 - `[x]` 将 `sppQuietUntil` 接入 Scheduler 的实际发送前门控，并让 disconnect 取消活动/排队命令。
@@ -953,8 +956,8 @@ python3 scripts/analyze_connection_timing.py /path/to/fxxkHilife_diagnostic.txt
 1. **BT-0.1 `[x]`**：完成协议/能力本地审计，冻结 `v4.2.6 / versionCode 87` 基线。
 2. **BT-0.2 `[~]`**：已在主验证设备上完成 A-F 各 10 轮基线并记录 P50/P95；下一大轮代码完成后复测修复结果。
 3. **BT-0.3 `[x]`**：依据数据决定不先换端点，优先处理连接入口、attempt/session 生命周期和命令调度。
-4. **BT-1 `[~]`**：让 `RfcommSppTransport` 成为唯一生产 Socket 路径，发布 `TransportReady`；当前测试包为 `4.3.2 / 90`，加入第三次 Socket 创建和线性排水，等待同设备实机回归。
-5. **BT-2 `[~]`**：已落地 `CommandClient`、`CommandScheduler` 和命令目录兼容层；本轮收紧初始化持续推进判定，继续按能力划分 Feature 并等待新版本实机确认。
+4. **BT-1 `[~]`**：让 `RfcommSppTransport` 成为唯一生产 Socket 路径，发布 `TransportReady`；`4.3.2 / 90` 已加入第三次 Socket 创建和线性排水，连接阶段仍按同设备报告收口。
+5. **BT-2 `[~]`**：已落地 `CommandClient`、`CommandScheduler` 和命令目录兼容层；`4.3.3 / 91` 修复 ANC 摘戴期间的状态来源竞态，等待 10 个定向循环后再收口。
 6. **BT-3 `[~]`**：已完成 attempt/session 竞态的第一轮收敛，后续再由 `EarbudConnectionManager` 统一 ACL/A2DP/HEADSET/Service/Tile/周期检查入口。
 7. **BT-4 `[~]`**：已输出 `ControlChannelState` 和 SystemLink/Transport/Core/Deferred 分层状态，下一步冻结 UI 消费契约。
 8. **UI-0 `[ ]`**：蓝牙链路稳定后，再记录页面截图、交互和字段读写基线。

@@ -43,6 +43,15 @@ enum class RegressionResult {
     SKIPPED,
 }
 
+/**
+ * A debug run follows the scope of the current change instead of always replaying the whole
+ * connection matrix.  FULL_MATRIX remains available for release-candidate acceptance.
+ */
+enum class RegressionProfile(val id: String) {
+    ANC_WEAR_STATE("ANC_WEAR_STATE"),
+    FULL_MATRIX("FULL_MATRIX"),
+}
+
 data class RegressionAttempt(
     val scenario: RegressionScenario,
     val iteration: Int,
@@ -62,6 +71,7 @@ data class RegressionFeatureCheck(
 
 data class BluetoothRegressionState(
     val running: Boolean = false,
+    val profile: RegressionProfile = RegressionProfile.ANC_WEAR_STATE,
     val scenario: RegressionScenario? = null,
     val iteration: Int = 0,
     val totalIterations: Int = 10,
@@ -91,17 +101,22 @@ class BluetoothRegressionRunner(
 
     val state: StateFlow<BluetoothRegressionState> = _state.asStateFlow()
 
-    fun start(scope: CoroutineScope, iterations: Int = DEFAULT_ITERATIONS): Boolean {
+    fun start(
+        scope: CoroutineScope,
+        iterations: Int = DEFAULT_ITERATIONS,
+        profile: RegressionProfile = DEFAULT_PROFILE,
+    ): Boolean {
         if (runJob?.isActive == true) return false
         val count = iterations.coerceIn(1, MAX_ITERATIONS)
         lastReport = null
         _state.value = BluetoothRegressionState(
             running = true,
+            profile = profile,
             totalIterations = count,
-            totalOperations = count * (RegressionScenario.entries.size + FEATURE_CHECK_NAMES.size),
+            totalOperations = count * operationCount(profile),
             message = I18n.t("terminal.regression.starting"),
         )
-        runJob = scope.launch(Dispatchers.IO) { run(count) }
+        runJob = scope.launch(Dispatchers.IO) { run(count, profile) }
         return true
     }
 
@@ -160,7 +175,7 @@ class BluetoothRegressionRunner(
         }
     }
 
-    private suspend fun run(iterations: Int) {
+    private suspend fun run(iterations: Int, profile: RegressionProfile) {
         val startedAt = System.currentTimeMillis()
         val attempts = mutableListOf<RegressionAttempt>()
         val featureChecks = mutableListOf<RegressionFeatureCheck>()
@@ -183,81 +198,29 @@ class BluetoothRegressionRunner(
             if (device == null) {
                 val detail = "No saved or currently connected Bluetooth device"
                 LogBuffer.e("HwTest", "SKIP $detail")
-                val report = buildReport(startedAt, null, attempts, featureChecks, detail)
+                val report = buildReport(startedAt, profile, null, attempts, featureChecks, detail)
                 finish(report, failed = 1, message = I18n.t("terminal.regression.no_device"))
                 return
             }
 
             LogBuffer.putMetadata("hardwareRegressionDevice", device.name ?: device.address)
             LogBuffer.putMetadata("hardwareRegressionAddress", device.address)
+            LogBuffer.putMetadata("hardwareRegressionProfile", profile.id)
             try {
                 connectionManager.setHardwareRegressionActive(true)
-                for (scenario in RegressionScenario.entries) {
-                    _state.value = _state.value.copy(scenario = scenario, iteration = 0, message = scenario.title)
-                    for (iteration in 1..iterations) {
-                        ensureDisconnected()
-                        _state.value = _state.value.copy(scenario = scenario, iteration = iteration)
-                        val attempt = when (scenario) {
-                            RegressionScenario.A -> runConnectionAttempt(
-                                device,
-                                scenario,
-                                iteration,
-                                ConnectionTrigger.HardwareRegression,
-                                autoLowLatency = false,
-                                requestConnection = {
-                                    submitKnownAutoConnect(device, ConnectionTrigger.HardwareRegression)
-                                },
-                            )
-                            RegressionScenario.B -> runConnectionAttempt(
-                                device,
-                                scenario,
-                                iteration,
-                                ConnectionTrigger.HardwareRegression,
-                                autoLowLatency = true,
-                                requestConnection = {
-                                    submitKnownAutoConnect(device, ConnectionTrigger.HardwareRegression)
-                                },
-                            )
-                            RegressionScenario.C -> runConnectionAttempt(
-                                device,
-                                scenario,
-                                iteration,
-                                ConnectionTrigger.AclConnected,
-                                autoLowLatency = originalAutoLowLatency,
-                                requestConnection = {
-                                    submitKnownAutoConnect(device, ConnectionTrigger.AclConnected)
-                                },
-                            )
-                            RegressionScenario.D -> runDiscoveryAttempt(device, iteration)
-                            RegressionScenario.E -> runRetryAttempt(device, iteration, originalAutoLowLatency)
-                            RegressionScenario.F -> runManualDisconnectAttempt(device, iteration, originalAutoLowLatency)
-                        }
-                        attempts += attempt
-                        val completed = attempts.size
-                        _state.value = _state.value.copy(
-                            completed = completed,
-                            failed = attempts.count { it.result == RegressionResult.FAIL },
-                            message = "${scenario.id} $iteration/$iterations: ${attempt.result}",
-                        )
-                    }
-                }
-
-                // The feature items are part of the fixed regression matrix as well.  Each one
-                // runs the requested number of rounds instead of being a single smoke check
-                // after the A-F connection samples.
-                val featureRunners: List<suspend (BluetoothDevice, Int) -> RegressionFeatureCheck> = listOf(
-                    ::runInitializationProgressCheck,
-                    ::runAncCheck,
-                    ::runLowLatencyCheck,
-                    ::runTriggerDeduplicationCheck,
-                )
-                featureRunners.forEach { runner ->
-                    for (iteration in 1..iterations) {
-                        ensureDisconnected()
-                        val check = runFeatureCheckSafely(runner, device, iteration)
-                        featureChecks += check
-                        recordFeatureProgress(check)
-                    }
+                when (profile) {
+                    RegressionProfile.ANC_WEAR_STATE -> runAncWearStateProfile(
+                        device = device,
+                        iterations = iterations,
+                        featureChecks = featureChecks,
+                    )
+                    RegressionProfile.FULL_MATRIX -> runFullMatrixProfile(
+                        device = device,
+                        iterations = iterations,
+                        originalAutoLowLatency = originalAutoLowLatency,
+                        attempts = attempts,
+                        featureChecks = featureChecks,
+                    )
                 }
                 ensureDisconnected()
             } catch (e: CancellationException) {
@@ -285,7 +248,7 @@ class BluetoothRegressionRunner(
                 connectionManager.setHardwareRegressionActive(false)
             }
 
-            val report = buildReport(startedAt, device, attempts, featureChecks, null)
+            val report = buildReport(startedAt, profile, device, attempts, featureChecks, null)
             val failures = attempts.count { it.result == RegressionResult.FAIL } +
                 featureChecks.count { it.result == RegressionResult.FAIL }
             finish(
@@ -297,6 +260,108 @@ class BluetoothRegressionRunner(
             // Restore the normal line/byte policy on success, cancellation, no-device and error
             // paths. The current run has already built its report before this restoration.
             LogBuffer.endBoundedCapture(captureToken)
+        }
+    }
+
+    private suspend fun runFullMatrixProfile(
+        device: BluetoothDevice,
+        iterations: Int,
+        originalAutoLowLatency: Boolean,
+        attempts: MutableList<RegressionAttempt>,
+        featureChecks: MutableList<RegressionFeatureCheck>,
+    ) {
+        for (scenario in RegressionScenario.entries) {
+            _state.value = _state.value.copy(scenario = scenario, iteration = 0, message = scenario.title)
+            for (iteration in 1..iterations) {
+                ensureDisconnected()
+                _state.value = _state.value.copy(scenario = scenario, iteration = iteration)
+                val attempt = when (scenario) {
+                    RegressionScenario.A -> runConnectionAttempt(
+                        device,
+                        scenario,
+                        iteration,
+                        ConnectionTrigger.HardwareRegression,
+                        autoLowLatency = false,
+                        requestConnection = {
+                            submitKnownAutoConnect(device, ConnectionTrigger.HardwareRegression)
+                        },
+                    )
+                    RegressionScenario.B -> runConnectionAttempt(
+                        device,
+                        scenario,
+                        iteration,
+                        ConnectionTrigger.HardwareRegression,
+                        autoLowLatency = true,
+                        requestConnection = {
+                            submitKnownAutoConnect(device, ConnectionTrigger.HardwareRegression)
+                        },
+                    )
+                    RegressionScenario.C -> runConnectionAttempt(
+                        device,
+                        scenario,
+                        iteration,
+                        ConnectionTrigger.AclConnected,
+                        autoLowLatency = originalAutoLowLatency,
+                        requestConnection = {
+                            submitKnownAutoConnect(device, ConnectionTrigger.AclConnected)
+                        },
+                    )
+                    RegressionScenario.D -> runDiscoveryAttempt(device, iteration)
+                    RegressionScenario.E -> runRetryAttempt(device, iteration, originalAutoLowLatency)
+                    RegressionScenario.F -> runManualDisconnectAttempt(device, iteration, originalAutoLowLatency)
+                }
+                attempts += attempt
+                val completed = attempts.size
+                _state.value = _state.value.copy(
+                    completed = completed,
+                    failed = attempts.count { it.result == RegressionResult.FAIL },
+                    message = "${scenario.id} $iteration/$iterations: ${attempt.result}",
+                )
+            }
+        }
+
+        // The feature items are part of the full matrix.  Each one runs the requested number of
+        // rounds instead of being a single smoke check after the A-F connection samples.
+        val featureRunners: List<suspend (BluetoothDevice, Int) -> RegressionFeatureCheck> = listOf(
+            ::runInitializationProgressCheck,
+            ::runAncCheck,
+            ::runLowLatencyCheck,
+            ::runTriggerDeduplicationCheck,
+        )
+        featureRunners.forEach { runner ->
+            for (iteration in 1..iterations) {
+                ensureDisconnected()
+                val check = runFeatureCheckSafely(runner, device, iteration)
+                featureChecks += check
+                recordFeatureProgress(check)
+            }
+        }
+    }
+
+    /**
+     * Collects one physical remove/place/wear cycle per round.  The app automates the connection,
+     * logging and verdict; the physical earbud movement remains the only user action.
+     */
+    private suspend fun runAncWearStateProfile(
+        device: BluetoothDevice,
+        iterations: Int,
+        featureChecks: MutableList<RegressionFeatureCheck>,
+    ) {
+        _state.value = _state.value.copy(scenario = null, iteration = 0, message = "ANC 摘戴定向测试")
+        for (iteration in 1..iterations) {
+            ensureDisconnected()
+            _state.value = _state.value.copy(
+                scenario = null,
+                iteration = iteration,
+                message = "ANC 摘戴：第 $iteration/$iterations 轮，请摘下放置后双耳佩戴",
+            )
+            val check = runFeatureCheckSafely(
+                runner = { selectedDevice, round -> runAncWearStateCheck(selectedDevice, round, iterations) },
+                device = device,
+                iteration = iteration,
+            )
+            featureChecks += check
+            recordFeatureProgress(check)
         }
     }
 
@@ -653,6 +718,98 @@ class BluetoothRegressionRunner(
         )
     }
 
+    private suspend fun runAncWearStateCheck(
+        device: BluetoothDevice,
+        iteration: Int,
+        totalIterations: Int,
+    ): RegressionFeatureCheck {
+        val name = "ANC wear-state stability"
+        val started = android.os.SystemClock.elapsedRealtime()
+        clearManualDisconnectSuppression()
+        val attemptId = submitConnect(device, ConnectionTrigger.HardwareRegression)
+        if (!waitForConnected(CONNECTION_TIMEOUT_MS, attemptId)) {
+            return featureCheck(name, iteration, RegressionResult.FAIL, started, "control channel did not connect")
+        }
+        if (!waitForCoreReady(CONNECTION_READY_TIMEOUT_MS, attemptId)) {
+            return featureCheck(name, iteration, RegressionResult.FAIL, started, "control channel did not reach core-ready")
+        }
+
+        val options = repository.props.value.ancModeOptions
+        val target = "cancellation"
+        if (target !in options) {
+            return featureCheck(
+                name,
+                iteration,
+                RegressionResult.FAIL,
+                started,
+                "device ANC options do not include cancellation options=$options",
+            )
+        }
+        repository.setProperty("anc", "mode", target)
+        val baselineConfirmed = waitUntil(READ_BACK_TIMEOUT_MS) {
+            repository.props.value.ancMode == target
+        }
+        if (!baselineConfirmed) {
+            return featureCheck(
+                name,
+                iteration,
+                RegressionResult.FAIL,
+                started,
+                "failed to establish cancellation baseline actual=${repository.props.value.ancMode}",
+            )
+        }
+
+        // Exclude the mode-setting exchange from the physical wear-state sample.  The next ten
+        // seconds are the only observation window for this round.
+        delay(600)
+        val baselineLogSize = LogBuffer.getSnapshot().size
+        LogBuffer.i(
+            "HwTest",
+            "ANC_WEAR_ACTION round=$iteration/$totalIterations " +
+                "action=remove_place_then_wear_both expectedMode=cancellation expectedModeByte=1",
+        )
+        delay(ANC_WEAR_OBSERVATION_MS)
+
+        val snapshot = LogBuffer.getSnapshot()
+        val delta = if (baselineLogSize <= snapshot.size) {
+            snapshot.drop(baselineLogSize)
+        } else {
+            snapshot
+        }
+        val notifications = delta.count {
+            it.tag == "ANC" && it.message.startsWith("Notification source=2b2c")
+        }
+        val staleAccepted = delta.count {
+            it.tag == "ANC" && it.message.startsWith("State accepted source=2b2c")
+        }
+        val refreshes = delta.count {
+            it.tag == "ANC" && it.message.startsWith("Notification burst quiet; read authoritative 2b2a")
+        }
+        val authoritativeStates = delta.filter {
+            it.tag == "ANC" && it.message.startsWith("State accepted source=2b2a")
+        }
+        val authoritativeModes = authoritativeStates.mapNotNull { entry ->
+            ANC_MODE_REGEX.find(entry.message)?.groupValues?.getOrNull(1)?.toIntOrNull()
+        }
+        val wrongModes = authoritativeModes.filter { it != ANC_CANCELLATION_MODE }
+        val finalMode = repository.props.value.ancMode
+        val exercised = notifications > 0
+        val stable = staleAccepted == 0 && wrongModes.isEmpty() && finalMode == target
+        val refreshed = refreshes > 0 || authoritativeStates.isNotEmpty()
+        val result = if (exercised && stable && refreshed) {
+            RegressionResult.PASS
+        } else {
+            RegressionResult.FAIL
+        }
+        val detail = "baseline=$baselineConfirmed notifications2b2c=$notifications " +
+            "accepted2b2c=$staleAccepted refreshes=$refreshes " +
+            "authoritative2b2a=${authoritativeStates.size} modes=$authoritativeModes " +
+            "wrongModes=$wrongModes final=$finalMode exercised=$exercised stable=$stable " +
+            "refreshed=$refreshed expected=cancellation"
+        LogBuffer.i("HwTest", "FEATURE=anc_wear_state iteration=$iteration result=$result $detail")
+        return featureCheck(name, iteration, result, started, detail)
+    }
+
     private suspend fun runLowLatencyCheck(
         device: BluetoothDevice,
         iteration: Int,
@@ -978,6 +1135,7 @@ class BluetoothRegressionRunner(
 
     private fun buildReport(
         startedAt: Long,
+        profile: RegressionProfile,
         device: BluetoothDevice?,
         attempts: List<RegressionAttempt>,
         features: List<RegressionFeatureCheck>,
@@ -987,6 +1145,7 @@ class BluetoothRegressionRunner(
         appendLine("format=2")
         appendLine("startedAt=$startedAt")
         appendLine("finishedAt=${System.currentTimeMillis()}")
+        appendLine("profile=${profile.id}")
         appendLine("appVersion=${BuildConfig.VERSION_NAME}")
         appendLine("versionCode=${BuildConfig.VERSION_CODE}")
         appendLine("device=${device?.name ?: "unknown"}")
@@ -1132,6 +1291,7 @@ class BluetoothRegressionRunner(
     companion object {
         const val DEFAULT_ITERATIONS = 10
         const val MAX_ITERATIONS = 10
+        private val DEFAULT_PROFILE = RegressionProfile.ANC_WEAR_STATE
         private val FEATURE_CHECK_NAMES = listOf(
             "application entry / 10s initialization progression",
             "ANC read / switch / read-back",
@@ -1144,10 +1304,18 @@ class BluetoothRegressionRunner(
         private const val CONNECTION_READY_TIMEOUT_MS = 12_000L
         private const val DISCONNECT_TIMEOUT_MS = 5_000L
         private const val INITIALIZATION_OBSERVATION_MS = 10_000L
+        private const val ANC_WEAR_OBSERVATION_MS = 10_000L
+        private const val ANC_CANCELLATION_MODE = 1
         private const val READ_BACK_TIMEOUT_MS = 8_000L
         // The test mode has no line-count cap. Keep a headroom below the 200 MB share/file limit
         // so the report header, scenario tables and UTF-8 encoding remain processable.
         private const val REGRESSION_CAPTURE_MAX_BYTES = 160_000_000L
         private const val REGRESSION_REPORT_MAX_BYTES = 190_000_000L
+        private val ANC_MODE_REGEX = Regex("\\bmode=(\\d+)")
+
+        private fun operationCount(profile: RegressionProfile): Int = when (profile) {
+            RegressionProfile.ANC_WEAR_STATE -> 1
+            RegressionProfile.FULL_MATRIX -> RegressionScenario.entries.size + FEATURE_CHECK_NAMES.size
+        }
     }
 }

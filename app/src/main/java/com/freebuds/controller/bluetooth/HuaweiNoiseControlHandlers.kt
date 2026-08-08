@@ -1,8 +1,15 @@
 package com.freebuds.controller.bluetooth
 
 import com.freebuds.controller.adapter.huawei.protocol.HuaweiCommandCatalog
+import com.freebuds.controller.adapter.huawei.protocol.HuaweiCommandPriority
 import com.freebuds.controller.protocol.HuaweiCapability
 import com.freebuds.controller.protocol.HuaweiSppPackage
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Job
+import kotlinx.coroutines.currentCoroutineContext
+import kotlinx.coroutines.delay
+import kotlinx.coroutines.isActive
+import kotlinx.coroutines.launch
 
 class VoiceLanguageHandler : HuaweiDeviceHandler {
     private val command = HuaweiCommandCatalog.voiceLanguage
@@ -65,6 +72,7 @@ class AncHandler(
     private var pendingLevel: Int? = null
     private var pendingLevelMode: Int = 0
     private var pendingLevelUntil: Long = 0L
+    private var notificationRefreshJob: Job? = null
     private val modeOptions = mapOf(0 to "normal", 1 to "cancellation", 2 to "awareness")
     private val cancelOptions = linkedMapOf(1 to "comfort", 0 to "normal", 2 to "ultra", 3 to "dynamic")
     private val awarenessOptions = mapOf(1 to "voice_boost", 2 to "normal")
@@ -78,15 +86,25 @@ class AncHandler(
     }
 
     override suspend fun onDriverPackage(driver: SppDriver, pkg: HuaweiSppPackage) {
-        onPackage(pkg, driver)
+        when (ancPacketAction(pkg.commandId)) {
+            AncPacketAction.APPLY_STATE -> onPackage(pkg, driver)
+            AncPacketAction.REFRESH_STATE -> refreshFromNotification(driver, pkg)
+            AncPacketAction.IGNORE -> Unit
+        }
     }
 
     private suspend fun onPackage(pkg: HuaweiSppPackage, driver: SppDriver) {
         val data = pkg.findParam(1)
-        if (data.size >= 1) {
-            val modeByte = if (data.size == 2) data[1] else data[0]
-            val level = if (data.size == 2) data[0].toInt() and 0xFF else 0
-            val mode = modeByte.toInt() and 0xFF
+        val reading = decodeAncReading(data) ?: return
+        val mode = reading.mode
+        val level = reading.level
+        notificationRefreshJob?.cancel()
+        notificationRefreshJob = null
+        com.freebuds.controller.util.LogBuffer.d(
+            "ANC",
+            "State candidate source=${pkg.commandKey} p1=${data.hex()} mode=$mode level=$level",
+        )
+        run {
             val now = System.currentTimeMillis()
             val targetMode = pendingMode
             if (targetMode != null && now >= pendingModeUntil) {
@@ -108,8 +126,12 @@ class AncHandler(
             }
             // Keep the pending guard for the whole short window even after the first
             // target confirmation. Some earbuds send a correct 2b2a first and then
-            // a stale 2b2c from the previous mode, which otherwise causes UI jump.
+            // another stale state during the same transition, which otherwise causes UI jump.
             activeMode = mode
+            com.freebuds.controller.util.LogBuffer.i(
+                "ANC",
+                "State accepted source=${pkg.commandKey} mode=$mode level=$level",
+            )
             val out = linkedMapOf(
                 "mode" to (modeOptions[mode] ?: mode.toString()),
                 "mode_options" to options(modeOptions),
@@ -126,6 +148,44 @@ class AncHandler(
             }
             driver.putProperty("anc", null, out.entries.joinToString("\n") { "${it.key}=${it.value}" })
         }
+    }
+
+    /**
+     * 2b2c is a change hint, not a stable mode snapshot.  FreeBuds 6i can emit several hints
+     * during a wear-state transition; reading its p1 value directly caused cancellation to
+     * briefly become normal/awareness in the UI while the hardware stayed in cancellation.
+     *
+     * Do not apply the notification payload itself.  It is emitted in a burst during a wear-state
+     * transition and can describe the transient effective mode rather than the configured ANC
+     * mode.  Wait until the burst is quiet, then issue one un-awaited 2b2a read.  Its response is
+     * dispatched through the normal handler path, so the receive loop is never blocked waiting
+     * for the state response.
+     */
+    private suspend fun refreshFromNotification(driver: SppDriver, pkg: HuaweiSppPackage) {
+        val data = pkg.findParam(1)
+        com.freebuds.controller.util.LogBuffer.d(
+            "ANC",
+            "Notification source=${pkg.commandKey} p1=${data.hex()} defer authoritative 2b2a",
+        )
+        notificationRefreshJob?.cancel()
+        val parentContext = currentCoroutineContext()
+        notificationRefreshJob = CoroutineScope(parentContext).launch {
+            delay(ANC_NOTIFICATION_REFRESH_DEBOUNCE_MS)
+            if (!isActive) return@launch
+            com.freebuds.controller.util.LogBuffer.d(
+                "ANC",
+                "Notification burst quiet; read authoritative 2b2a",
+            )
+            driver.sendNowait(
+                HuaweiCommandCatalog.anc.readRequestNoWait(),
+                priority = HuaweiCommandPriority.BACKGROUND,
+                operation = "anc.notification.refresh",
+            )
+        }
+    }
+
+    private companion object {
+        const val ANC_NOTIFICATION_REFRESH_DEBOUNCE_MS = 250L
     }
 
     override suspend fun setProperty(driver: SppDriver, group: String, prop: String, value: String) {

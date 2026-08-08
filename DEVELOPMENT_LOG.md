@@ -1310,3 +1310,14 @@
 - versionCode: 90
 - versionName: 4.3.2
 - tag: v4.3.2
+
+## v4.3.3 (2026-08-09)
+
+### 发布
+- 修复 ANC 摘戴期间瞬时状态覆盖并加入定向实机测试
+- `2b2a` 作为唯一 ANC 权威快照；`2b2c` 仅作为变化提示，burst 安静后通过同一 command lane 刷新 `2b2a`
+- Debug 自动实机测试默认使用 `ANC_WEAR_STATE`，执行 10 个“降噪 → 摘下放置 → 双耳佩戴”循环；`FULL_MATRIX` 保留给发布验收
+- 本地 CI：Debug/Release 单元测试与构建通过；实机 10 轮仍待主验证设备回报
+- versionCode: 91
+- versionName: 4.3.3
+- tag: v4.3.3
