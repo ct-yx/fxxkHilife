@@ -1290,3 +1290,11 @@
 - versionCode: 88
 - versionName: 4.3.0
 - tag: v4.3.0
+
+## v4.3.1 (2026-08-08)
+
+### 发布
+- 修复 RFCOMM 立即失败重试、回归等待归属和初始化阶段终态
+- versionCode: 89
+- versionName: 4.3.1
+- tag: v4.3.1

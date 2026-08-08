@@ -41,6 +41,38 @@ enum class ConnectionPhase {
     Disconnected,
 }
 
+/**
+ * Terminal observation used by the hardware runner while waiting for one specific attempt.
+ * A failed attempt is terminal too; waiting only for Connected turns an immediate RFCOMM
+ * rejection into the full runner timeout and hides the real failure timing.
+ */
+internal enum class ConnectionAttemptWaitResult {
+    Pending,
+    Connected,
+    Failed,
+}
+
+internal fun connectionAttemptWaitResult(
+    state: ConnectionState,
+    expectedAttemptId: String,
+): ConnectionAttemptWaitResult = when (state) {
+    is ConnectionState.Connected ->
+        if (state.attemptId == expectedAttemptId) {
+            ConnectionAttemptWaitResult.Connected
+        } else {
+            ConnectionAttemptWaitResult.Pending
+        }
+
+    is ConnectionState.Failed ->
+        if (state.attemptId == expectedAttemptId) {
+            ConnectionAttemptWaitResult.Failed
+        } else {
+            ConnectionAttemptWaitResult.Pending
+        }
+
+    else -> ConnectionAttemptWaitResult.Pending
+}
+
 data class ConnectionPhaseMark(
     val phase: ConnectionPhase,
     val elapsedSinceStartMs: Long,

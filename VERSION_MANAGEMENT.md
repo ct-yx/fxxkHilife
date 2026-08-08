@@ -3,17 +3,17 @@
 > 版本号统一修改入口，按清单逐一更新。
 
 ## 当前版本
-- **v4.3.0** (versionCode=88, 2026-08-08)
+- **v4.3.1** (versionCode=89, 2026-08-08)
 
 ## 版本号位置
 
 | 位置 | 当前值 |
 |------|--------|
-| `app/build.gradle.kts` | versionCode=88, versionName="4.3.0" |
-| `app/src/main/res/values/strings.xml` | version_name=4.3.0 |
-| `README.md` | v4.3.0 |
-| `README_EN.md` | v4.3.0 |
-| `DEVELOPMENT_LOG.md` | v4.3.0 (末尾) |
+| `app/build.gradle.kts` | versionCode=89, versionName="4.3.1" |
+| `app/src/main/res/values/strings.xml` | version_name=4.3.1 |
+| `README.md` | v4.3.1 |
+| `README_EN.md` | v4.3.1 |
+| `DEVELOPMENT_LOG.md` | v4.3.1 (末尾) |
 
 ## 一键版本更新脚本
 
@@ -37,6 +37,7 @@ python3 scripts/bump_version.py <versionName> <versionCode> "修复说明"
 
 | 版本 | Code | 日期 | 主要变更 |
 |------|------|------|---------|
+| v4.3.1 | 89 | 2026-08-08 | 修复 RFCOMM 立即失败重试、回归等待归属和初始化阶段终态 |
 | v4.3.0 | 88 | 2026-08-08 | 蓝牙传输与连接重构测试版，供 BT-1 实机回归 |
 | v4.2.6 | 87 | 2026-07-24 | 恢复控制通道建立后的自动低延迟优先写入，提升 ANC/低延迟在电池同步前的响应优先级 |
 | v4.2.5 | 86 | 2026-07-24 | 串行化 FreeBuds 6i 核心 SPP 请求，限制初始化和自动低延迟等待，并允许控制通道连接后立即进入详情页 |

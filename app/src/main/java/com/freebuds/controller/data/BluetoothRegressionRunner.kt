@@ -3,6 +3,7 @@ package com.freebuds.controller.data
 import android.bluetooth.BluetoothDevice
 import android.content.Context
 import androidx.core.content.FileProvider
+import com.freebuds.controller.BuildConfig
 import com.freebuds.controller.bluetooth.BluetoothScanner
 import com.freebuds.controller.i18n.I18n
 import com.freebuds.controller.util.LogBuffer
@@ -16,6 +17,7 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.filter
 import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.suspendCancellableCoroutine
 import kotlinx.coroutines.withTimeoutOrNull
@@ -597,7 +599,7 @@ class BluetoothRegressionRunner(
         if (!waitForConnected(CONNECTION_TIMEOUT_MS, attemptId)) {
             return featureCheck(name, iteration, RegressionResult.FAIL, started, "control channel did not connect")
         }
-        if (!waitForReady(CONNECTION_READY_TIMEOUT_MS, attemptId)) {
+        if (!waitForCoreReady(CONNECTION_READY_TIMEOUT_MS, attemptId)) {
             return featureCheck(name, iteration, RegressionResult.FAIL, started, "control channel did not reach core-ready")
         }
         delay(1_000)
@@ -632,7 +634,7 @@ class BluetoothRegressionRunner(
         if (!waitForConnected(CONNECTION_TIMEOUT_MS, attemptId)) {
             return featureCheck(name, iteration, RegressionResult.FAIL, started, "control channel did not connect")
         }
-        if (!waitForReady(CONNECTION_READY_TIMEOUT_MS, attemptId)) {
+        if (!waitForCoreReady(CONNECTION_READY_TIMEOUT_MS, attemptId)) {
             return featureCheck(name, iteration, RegressionResult.FAIL, started, "control channel did not reach core-ready")
         }
         val readBefore = repository.props.value.lowLatency
@@ -678,7 +680,7 @@ class BluetoothRegressionRunner(
         if (!waitForConnected(CONNECTION_TIMEOUT_MS, appAttempt)) {
             return featureCheck(name, iteration, RegressionResult.FAIL, started, "application entry did not connect")
         }
-        if (!waitForReady(CONNECTION_READY_TIMEOUT_MS, appAttempt)) {
+        if (!waitForCoreReady(CONNECTION_READY_TIMEOUT_MS, appAttempt)) {
             return featureCheck(name, iteration, RegressionResult.FAIL, started, "application entry did not reach core-ready")
         }
 
@@ -828,25 +830,51 @@ class BluetoothRegressionRunner(
         // later periodic/background connection as the result of this sample.
         if (expectedAttemptId == null) return false
         return withTimeoutOrNull(timeoutMs) {
-            repository.connectionState.filter {
-                it is ConnectionState.Connected && it.attemptId == expectedAttemptId
-            }.first()
-            true
+            repository.connectionState
+                .map { connectionAttemptWaitResult(it, expectedAttemptId) }
+                .filter { it != ConnectionAttemptWaitResult.Pending }
+                .first() == ConnectionAttemptWaitResult.Connected
         } ?: false
     }
 
     private suspend fun waitForReady(timeoutMs: Long, expectedAttemptId: String?): Boolean {
+        return waitForControlStage(
+            timeoutMs = timeoutMs,
+            expectedAttemptId = expectedAttemptId,
+            acceptedStages = setOf(
+                ControlChannelStage.Ready,
+                ControlChannelStage.Degraded,
+            ),
+        )
+    }
+
+    private suspend fun waitForCoreReady(timeoutMs: Long, expectedAttemptId: String?): Boolean {
+        return waitForControlStage(
+            timeoutMs = timeoutMs,
+            expectedAttemptId = expectedAttemptId,
+            acceptedStages = setOf(
+                ControlChannelStage.CoreReady,
+                ControlChannelStage.InitializingDeferred,
+                ControlChannelStage.Ready,
+                ControlChannelStage.Degraded,
+            ),
+        )
+    }
+
+    private suspend fun waitForControlStage(
+        timeoutMs: Long,
+        expectedAttemptId: String?,
+        acceptedStages: Set<ControlChannelStage>,
+    ): Boolean {
         if (expectedAttemptId == null) return false
         return withTimeoutOrNull(timeoutMs) {
-            repository.controlChannelState.filter { state ->
-                state.attemptId == expectedAttemptId && state.stage in setOf(
-                    ControlChannelStage.CoreReady,
-                    ControlChannelStage.InitializingDeferred,
-                    ControlChannelStage.Ready,
-                    ControlChannelStage.Degraded,
-                )
-            }.first()
-            true
+            val terminalStage = repository.controlChannelState
+                .filter { state ->
+                    state.attemptId == expectedAttemptId &&
+                        (state.stage in acceptedStages || state.stage == ControlChannelStage.Failed)
+                }
+                .first()
+            terminalStage.stage in acceptedStages
         } ?: false
     }
 
@@ -927,6 +955,8 @@ class BluetoothRegressionRunner(
         appendLine("format=2")
         appendLine("startedAt=$startedAt")
         appendLine("finishedAt=${System.currentTimeMillis()}")
+        appendLine("appVersion=${BuildConfig.VERSION_NAME}")
+        appendLine("versionCode=${BuildConfig.VERSION_CODE}")
         appendLine("device=${device?.name ?: "unknown"}")
         appendLine("address=${device?.address ?: "unknown"}")
         appendLine("endpoint=${repository.getRegressionEndpoint()}")

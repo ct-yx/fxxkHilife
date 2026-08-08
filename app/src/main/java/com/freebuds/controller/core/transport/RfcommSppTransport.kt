@@ -9,6 +9,7 @@ import kotlinx.coroutines.Job
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.cancel
 import kotlinx.coroutines.currentCoroutineContext
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.runInterruptible
@@ -74,25 +75,8 @@ class RfcommSppTransport(
                 "Connecting RFCOMM SPP to ${device.name} (${device.address}) " +
                     "${config.endpointDescription()} timeout=${config.connectTimeoutMs}ms"
             )
-            val connectedSocket = try {
-                withTimeout(config.connectTimeoutMs) {
-                    runInterruptible(Dispatchers.IO) {
-                        RfcommSocketBridge.connect(
-                            device = device,
-                            port = config.channel,
-                            logTag = "Transport",
-                            onDiscoveryChecked = onDiscoveryChecked,
-                        )
-                    }
-                }
-            } catch (e: TimeoutCancellationException) {
-                LogBuffer.w(
-                    "Transport",
-                    "RFCOMM connect timeout after ${config.connectTimeoutMs}ms ${config.endpointDescription()}"
-                )
-                invalidateGeneration(generation)
-                return@withContext false
-            }
+            val connectedSocket = connectSocketWithImmediateRetry(generation)
+                ?: return@withContext false
             val accepted = synchronized(lifecycleLock) {
                 if (generation != lifecycleGeneration) {
                     false
@@ -121,6 +105,70 @@ class RfcommSppTransport(
             invalidateGeneration(generation)
             false
         }
+    }
+
+    /**
+     * Android can reject a new RFCOMM socket while the previous socket is still draining.  Retry
+     * that bounded, non-timeout failure once without turning a genuine connect timeout into a
+     * longer wait budget.
+     */
+    private suspend fun connectSocketWithImmediateRetry(
+        generation: Long,
+    ): RfcommSocketBridge.ConnectedSocket? {
+        val totalAttempts = config.immediateRetryCount + 1
+        var attemptIndex = 0
+        while (attemptIndex < totalAttempts) {
+            if (!isGenerationCurrent(generation)) return null
+            if (attemptIndex > 0) {
+                LogBuffer.w(
+                    "Transport",
+                    "Retrying RFCOMM connect attempt=${attemptIndex + 1}/$totalAttempts " +
+                        "after ${config.immediateRetryDelayMs}ms ${config.endpointDescription()}"
+                )
+                delay(config.immediateRetryDelayMs)
+                if (!isGenerationCurrent(generation)) return null
+            }
+            try {
+                return withTimeout(config.connectTimeoutMs) {
+                    runInterruptible(Dispatchers.IO) {
+                        RfcommSocketBridge.connect(
+                            device = device,
+                            port = config.channel,
+                            logTag = "Transport",
+                            onDiscoveryChecked = onDiscoveryChecked,
+                        )
+                    }
+                }
+            } catch (e: TimeoutCancellationException) {
+                LogBuffer.w(
+                    "Transport",
+                    "RFCOMM connect timeout after ${config.connectTimeoutMs}ms " +
+                        "attempt=${attemptIndex + 1}/$totalAttempts ${config.endpointDescription()}"
+                )
+                invalidateGeneration(generation)
+                return null
+            } catch (e: CancellationException) {
+                throw e
+            } catch (e: Exception) {
+                val failure = rootCause(e)
+                if (attemptIndex + 1 >= totalAttempts) {
+                    LogBuffer.e(
+                        "Transport",
+                        "RFCOMM SPP connect failed after ${attemptIndex + 1}/$totalAttempts " +
+                            "${failure.javaClass.simpleName}: ${failure.message ?: "unknown"}"
+                    )
+                    invalidateGeneration(generation)
+                    return null
+                }
+                LogBuffer.w(
+                    "Transport",
+                    "RFCOMM SPP immediate rejection on attempt=${attemptIndex + 1}/$totalAttempts " +
+                        "${failure.javaClass.simpleName}: ${failure.message ?: "unknown"}"
+                )
+            }
+            attemptIndex++
+        }
+        return null
     }
 
     override fun disconnect() {
@@ -194,6 +242,10 @@ class RfcommSppTransport(
         lifecycleGeneration
     }
 
+    private fun isGenerationCurrent(generation: Long): Boolean = synchronized(lifecycleLock) {
+        generation == lifecycleGeneration
+    }
+
     private fun invalidateGeneration(generation: Long) {
         synchronized(lifecycleLock) {
             if (generation != lifecycleGeneration) return
@@ -219,6 +271,14 @@ class RfcommSppTransport(
         runCatching { connected.inputStream.close() }
         runCatching { connected.outputStream.close() }
         runCatching { connected.closeMethod.invoke(connected.socket) }
+    }
+
+    private fun rootCause(error: Throwable): Throwable {
+        var current = error
+        while (current.cause != null && current.cause !== current) {
+            current = current.cause!!
+        }
+        return current
     }
 
     companion object {
