@@ -1298,3 +1298,15 @@
 - versionCode: 89
 - versionName: 4.3.1
 - tag: v4.3.1
+
+## v4.3.2 (2026-08-08)
+
+### 发布
+- BT-1/BT-2 热重连恢复与初始化回归门槛
+- immediate rejection 最多 3 次 Socket 创建，按 250ms/500ms 线性排水，真实 connect timeout 不重试
+- Transport 日志绑定外层 connection attemptId；初始化功能项严格要求 Ready/Degraded、核心状态有效且 pending 为空
+- 回归报告增加手机/Android/固件字段和各阶段有效样本数、coreToTerminal P50/P95
+- 本地 CI 通过：Debug SHA-256=85665804ecd3efd29635c2931acb01d4363300f5e4bb6467709a377e27ef9e67；Release SHA-256=7db4c5ee28ebb0767d4d77dddeecf6f2d8cbf6df307522d1db444d7c99de41c9
+- versionCode: 90
+- versionName: 4.3.2
+- tag: v4.3.2

@@ -26,6 +26,7 @@ import kotlinx.coroutines.*
 class SppDriver(
     private val device: BluetoothDevice,
     val transportConfig: RfcommTransportConfig = RfcommTransportConfig.compatibilityFallback(),
+    private val connectionAttemptId: String? = null,
 ) {
 
     val isConnected: Boolean get() = transport.isConnected
@@ -34,6 +35,7 @@ class SppDriver(
         device = device,
         config = transportConfig,
         onDiscoveryChecked = { wasDiscovering -> onDiscoveryChecked?.invoke(wasDiscovering) },
+        connectionAttemptId = connectionAttemptId,
     )
     private val protocolSession = HuaweiSppProtocol.createSession(transport)
     private val commandClient = HuaweiCommandClient(protocolSession)
@@ -99,12 +101,16 @@ class SppDriver(
         LogBuffer.i(
             "SPP",
             "Connecting to ${device.name} (${device.address}) via RFCOMM " +
-                transportConfig.endpointDescription() + "..."
+                transportConfig.endpointDescription() +
+                " attemptId=${connectionAttemptId ?: "unknown"}..."
         )
         try {
             val connected = protocolSession.connect()
             if (!connected) return@withContext false
-            LogBuffer.i("SPP", "Connected to ${device.name}")
+            LogBuffer.i(
+                "SPP",
+                "Connected to ${device.name} attemptId=${connectionAttemptId ?: "unknown"}",
+            )
             true
         } catch (e: CancellationException) {
             protocolSession.disconnect()

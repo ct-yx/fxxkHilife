@@ -12,8 +12,10 @@ class RfcommTransportConfigTest {
 
         assertEquals(1, config.channel)
         assertEquals(EndpointSource.CompatibilityFallback, config.source)
-        assertEquals(1, config.immediateRetryCount)
+        assertEquals(2, config.immediateRetryCount)
         assertEquals(250L, config.immediateRetryDelayMs)
+        assertEquals(250L, config.immediateRetryDelayFor(1))
+        assertEquals(500L, config.immediateRetryDelayFor(2))
         assertTrue(config.endpointDescription().contains("rfcomm-channel=1"))
     }
 
@@ -35,6 +37,11 @@ class RfcommTransportConfigTest {
     @Test(expected = IllegalArgumentException::class)
     fun rejectsNegativeImmediateRetryDelay() {
         RfcommTransportConfig(immediateRetryDelayMs = -1)
+    }
+
+    @Test(expected = IllegalArgumentException::class)
+    fun rejectsZeroRetryNumber() {
+        RfcommTransportConfig.compatibilityFallback().immediateRetryDelayFor(0)
     }
 
     @Test

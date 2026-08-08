@@ -16,7 +16,7 @@
   <a href="https://github.com/ct-yx/fxxkHilife/issues">Report / Join testing</a>
 </p>
 
-> **Current version: v4.3.1**
+> **Current version: v4.3.2**
 > Keeps Simplified Chinese as the default language and adds selectable English / Traditional Chinese across settings, notifications, Quick Settings, and core screens.
 
 ---

@@ -18,12 +18,13 @@ import com.freebuds.controller.data.DeviceProps
 class LegacySppEarbudSession(
     private val device: BluetoothDevice,
     private val adapter: EarbudAdapter,
+    private val connectionAttemptId: String? = null,
 ) : EarbudSession {
     private val transportConfig =
         (adapter as? RfcommTransportConfigProvider)
             ?.rfcommTransportConfig(device.name)
             ?: RfcommTransportConfig.compatibilityFallback()
-    private val driver = SppDriver(device, transportConfig)
+    private val driver = SppDriver(device, transportConfig, connectionAttemptId)
 
     override val id: String = adapter.id
     override val displayName: String = adapter.displayName

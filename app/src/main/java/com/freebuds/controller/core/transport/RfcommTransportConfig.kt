@@ -36,10 +36,22 @@ data class RfcommTransportConfig(
         }
     }
 
+    /**
+     * Returns the drain delay before the given immediate-retry number.
+     *
+     * Retry number 1 is the delay before socket attempt 2, retry number 2 is the
+     * delay before socket attempt 3.  A real connect timeout never calls this
+     * method, so it cannot silently extend the timeout budget.
+     */
+    fun immediateRetryDelayFor(retryNumber: Int): Long {
+        require(retryNumber > 0) { "retryNumber must be positive" }
+        return immediateRetryDelayMs * retryNumber
+    }
+
     companion object {
         const val DEFAULT_CHANNEL = 1
         const val DEFAULT_CONNECT_TIMEOUT_MS = 10_000L
-        const val DEFAULT_IMMEDIATE_RETRY_COUNT = 1
+        const val DEFAULT_IMMEDIATE_RETRY_COUNT = 2
         const val DEFAULT_IMMEDIATE_RETRY_DELAY_MS = 250L
         private const val MIN_CHANNEL = 1
         private const val MAX_CHANNEL = 30

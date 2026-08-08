@@ -37,6 +37,7 @@ class RfcommSppTransport(
     private val device: BluetoothDevice,
     val config: RfcommTransportConfig = RfcommTransportConfig.compatibilityFallback(),
     private val onDiscoveryChecked: ((wasDiscovering: Boolean) -> Unit)? = null,
+    private val connectionAttemptId: String? = null,
 ) : EarbudTransport {
 
     override val id: String = "rfcomm_spp"
@@ -73,7 +74,8 @@ class RfcommSppTransport(
             LogBuffer.i(
                 "Transport",
                 "Connecting RFCOMM SPP to ${device.name} (${device.address}) " +
-                    "${config.endpointDescription()} timeout=${config.connectTimeoutMs}ms"
+                    "${config.endpointDescription()} timeout=${config.connectTimeoutMs}ms " +
+                    "attemptId=${connectionAttemptId ?: "unknown"}"
             )
             val connectedSocket = connectSocketWithImmediateRetry(generation)
                 ?: return@withContext false
@@ -109,27 +111,31 @@ class RfcommSppTransport(
 
     /**
      * Android can reject a new RFCOMM socket while the previous socket is still draining.  Retry
-     * that bounded, non-timeout failure once without turning a genuine connect timeout into a
-     * longer wait budget.
+     * that bounded, non-timeout failure without turning a genuine connect timeout into a longer
+     * wait budget. The attempt number is deliberately visible in every retry log so the hardware
+     * report can distinguish a transport retry from a new outer connection attempt.
      */
     private suspend fun connectSocketWithImmediateRetry(
         generation: Long,
     ): RfcommSocketBridge.ConnectedSocket? {
         val totalAttempts = config.immediateRetryCount + 1
         var attemptIndex = 0
+        var immediateRejectionCount = 0
         while (attemptIndex < totalAttempts) {
             if (!isGenerationCurrent(generation)) return null
             if (attemptIndex > 0) {
+                val retryDelayMs = config.immediateRetryDelayFor(attemptIndex)
                 LogBuffer.w(
                     "Transport",
                     "Retrying RFCOMM connect attempt=${attemptIndex + 1}/$totalAttempts " +
-                        "after ${config.immediateRetryDelayMs}ms ${config.endpointDescription()}"
+                        "after ${retryDelayMs}ms ${config.endpointDescription()} " +
+                        "attemptId=${connectionAttemptId ?: "unknown"}"
                 )
-                delay(config.immediateRetryDelayMs)
+                delay(retryDelayMs)
                 if (!isGenerationCurrent(generation)) return null
             }
             try {
-                return withTimeout(config.connectTimeoutMs) {
+                val connected = withTimeout(config.connectTimeoutMs) {
                     runInterruptible(Dispatchers.IO) {
                         RfcommSocketBridge.connect(
                             device = device,
@@ -139,11 +145,19 @@ class RfcommSppTransport(
                         )
                     }
                 }
+                LogBuffer.i(
+                    "Transport",
+                    "RFCOMM socket attempt=${attemptIndex + 1}/$totalAttempts connected " +
+                        "immediateRejections=$immediateRejectionCount " +
+                        "attemptId=${connectionAttemptId ?: "unknown"}",
+                )
+                return connected
             } catch (e: TimeoutCancellationException) {
                 LogBuffer.w(
                     "Transport",
                     "RFCOMM connect timeout after ${config.connectTimeoutMs}ms " +
-                        "attempt=${attemptIndex + 1}/$totalAttempts ${config.endpointDescription()}"
+                        "attempt=${attemptIndex + 1}/$totalAttempts ${config.endpointDescription()} " +
+                        "attemptId=${connectionAttemptId ?: "unknown"}"
                 )
                 invalidateGeneration(generation)
                 return null
@@ -151,11 +165,13 @@ class RfcommSppTransport(
                 throw e
             } catch (e: Exception) {
                 val failure = rootCause(e)
+                immediateRejectionCount++
                 if (attemptIndex + 1 >= totalAttempts) {
                     LogBuffer.e(
                         "Transport",
                         "RFCOMM SPP connect failed after ${attemptIndex + 1}/$totalAttempts " +
-                            "${failure.javaClass.simpleName}: ${failure.message ?: "unknown"}"
+                            "${failure.javaClass.simpleName}: ${failure.message ?: "unknown"} " +
+                            "attemptId=${connectionAttemptId ?: "unknown"}"
                     )
                     invalidateGeneration(generation)
                     return null
@@ -163,7 +179,8 @@ class RfcommSppTransport(
                 LogBuffer.w(
                     "Transport",
                     "RFCOMM SPP immediate rejection on attempt=${attemptIndex + 1}/$totalAttempts " +
-                        "${failure.javaClass.simpleName}: ${failure.message ?: "unknown"}"
+                        "${failure.javaClass.simpleName}: ${failure.message ?: "unknown"} " +
+                        "attemptId=${connectionAttemptId ?: "unknown"}"
                 )
             }
             attemptIndex++
@@ -179,7 +196,10 @@ class RfcommSppTransport(
             closeSocketLocked()
             isConnected = false
         }
-        LogBuffer.i("Transport", "RFCOMM SPP disconnected")
+        LogBuffer.i(
+            "Transport",
+            "RFCOMM SPP disconnected attemptId=${connectionAttemptId ?: "unknown"}",
+        )
     }
 
     override suspend fun send(raw: ByteArray) = withContext(Dispatchers.IO) {

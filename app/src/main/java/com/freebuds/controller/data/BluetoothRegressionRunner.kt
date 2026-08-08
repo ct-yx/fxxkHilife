@@ -381,10 +381,18 @@ class BluetoothRegressionRunner(
         delay(INITIALIZATION_OBSERVATION_MS)
         val props = repository.props.value
         val ready = repository.isCoreStateReady()
+        val controlState = repository.controlChannelState.value
+        val sameAttempt = controlState.attemptId == expectedAttemptId
+        val finalStage = controlState.stage
+        val initializationSettled = finalStage in setOf(
+            ControlChannelStage.Ready,
+            ControlChannelStage.Degraded,
+        ) && ready
         val endpoint = repository.getRegressionEndpoint()
         val actualAttemptId = (repository.connectionState.value as? ConnectionState.Connected)?.attemptId
         val timing = repository.getRegressionTiming(expectedAttemptId)
-        val detail = "ready=$ready lowLatency=${props.lowLatency} anc=${props.ancMode} " +
+        val detail = "ready=$initializationSettled coreReady=$ready finalStage=$finalStage " +
+            "sameAttempt=$sameAttempt lowLatency=${props.lowLatency} anc=${props.ancMode} " +
             "pending=${props.pendingInitHandlers} endpoint=$endpoint " +
             "expectedAttempt=$expectedAttemptId actualAttempt=$actualAttemptId " +
             timingDetail(timing)
@@ -392,7 +400,7 @@ class BluetoothRegressionRunner(
         return attempt(
             scenario,
             iteration,
-            if (ready) RegressionResult.PASS else RegressionResult.FAIL,
+            if (sameAttempt && initializationSettled) RegressionResult.PASS else RegressionResult.FAIL,
             started,
             detail,
             timing,
@@ -445,33 +453,53 @@ class BluetoothRegressionRunner(
             }
             delay(INITIALIZATION_OBSERVATION_MS)
             val props = repository.props.value
+            val controlState = repository.controlChannelState.value
+            val coreReady = repository.isCoreStateReady()
+            val initializationSettled = controlState.attemptId == retryAttemptId &&
+                controlState.stage in setOf(ControlChannelStage.Ready, ControlChannelStage.Degraded) &&
+                coreReady
             val timing = repository.getRegressionTiming(retryAttemptId)
-            val detail = "firstAttempt=${firstOutcome::class.simpleName} ready=${repository.isCoreStateReady()} " +
+            val detail = "firstAttempt=${firstOutcome::class.simpleName} outerRetryExercised=true " +
+                "ready=$initializationSettled " +
+                "coreReady=$coreReady finalStage=${controlState.stage} " +
                 "pending=${props.pendingInitHandlers} endpoint=${repository.getRegressionEndpoint()} " +
                 timingDetail(timing)
             return attempt(
                 RegressionScenario.E,
                 iteration,
-                if (repository.isCoreStateReady()) RegressionResult.PASS else RegressionResult.FAIL,
+                if (initializationSettled) RegressionResult.PASS else RegressionResult.FAIL,
                 started,
                 detail,
                 timing,
             )
         } else if (firstOutcome !is ConnectionState.Connected) {
-            return attempt(RegressionScenario.E, iteration, RegressionResult.FAIL, started, "first attempt timed out")
+            return attempt(
+                RegressionScenario.E,
+                iteration,
+                RegressionResult.FAIL,
+                started,
+                "first attempt timed out outerRetryExercised=false",
+            )
         } else {
             LogBuffer.i("HwTest", "CASE=E iteration=$iteration first attempt passed; retry gate not needed")
         }
         delay(INITIALIZATION_OBSERVATION_MS)
         val props = repository.props.value
+        val controlState = repository.controlChannelState.value
+        val coreReady = repository.isCoreStateReady()
+        val initializationSettled = controlState.attemptId == firstAttemptId &&
+            controlState.stage in setOf(ControlChannelStage.Ready, ControlChannelStage.Degraded) &&
+            coreReady
         val timing = repository.getRegressionTiming(firstAttemptId)
-        val detail = "firstAttempt=${firstOutcome::class.simpleName} ready=${repository.isCoreStateReady()} " +
+        val detail = "firstAttempt=${firstOutcome::class.simpleName} outerRetryExercised=false " +
+            "ready=$initializationSettled " +
+            "coreReady=$coreReady finalStage=${controlState.stage} " +
             "pending=${props.pendingInitHandlers} endpoint=${repository.getRegressionEndpoint()} " +
             timingDetail(timing)
         return attempt(
             RegressionScenario.E,
             iteration,
-            if (repository.isCoreStateReady()) RegressionResult.PASS else RegressionResult.FAIL,
+            if (initializationSettled) RegressionResult.PASS else RegressionResult.FAIL,
             started,
             detail,
             timing,
@@ -565,24 +593,26 @@ class BluetoothRegressionRunner(
         delay(INITIALIZATION_OBSERVATION_MS)
         val after = repository.controlChannelState.value
         val props = repository.props.value
-        val progressed = after.stage in setOf(
-            ControlChannelStage.CoreReady,
-            ControlChannelStage.InitializingDeferred,
+        val sameAttempt = after.attemptId == expectedAttemptId
+        val terminalStage = after.stage in setOf(
             ControlChannelStage.Ready,
             ControlChannelStage.Degraded,
         )
         val pendingChanged = beforePending != after.pendingHandlers
         val coreReady = repository.isCoreStateReady()
+        val initializationSettled = sameAttempt && terminalStage &&
+            coreReady && after.pendingHandlers.isEmpty()
         val detail = "expectedAttempt=$expectedAttemptId actualAttempt=${after.attemptId} " +
             "beforeStage=${before.stage} afterStage=${after.stage} " +
             "beforePending=$beforePending afterPending=${after.pendingHandlers} " +
-            "failed=${after.failedHandlers} coreReady=$coreReady pendingChanged=$pendingChanged " +
-            "propsPending=${props.pendingInitHandlers}"
+            "failed=${after.failedHandlers} coreReady=$coreReady sameAttempt=$sameAttempt " +
+            "terminalStage=$terminalStage initializationSettled=$initializationSettled " +
+            "pendingChanged=$pendingChanged propsPending=${props.pendingInitHandlers}"
         LogBuffer.i("HwTest", "FEATURE=initialization_progress iteration=$iteration $detail")
         return featureCheck(
             name,
             iteration,
-            if (progressed || coreReady || pendingChanged) RegressionResult.PASS else RegressionResult.FAIL,
+            if (initializationSettled) RegressionResult.PASS else RegressionResult.FAIL,
             started,
             detail,
         )
@@ -940,9 +970,11 @@ class BluetoothRegressionRunner(
     }
 
     private fun timingDetail(timing: ConnectionTimingSnapshot?): String =
-        "transportConnect=${timing?.transportConnectMs ?: 0}ms " +
-            "transportToCore=${timing?.transportToCoreReadyMs ?: 0}ms " +
-            "coreToReady=${timing?.coreToReadyMs ?: 0}ms"
+        "transportConnect=${timing?.transportConnectMs?.let { "${it}ms" } ?: "NA"} " +
+            "transportToCore=${timing?.transportToCoreReadyMs?.let { "${it}ms" } ?: "NA"} " +
+            "coreToReady=${timing?.coreToReadyMs?.let { "${it}ms" } ?: "NA"} " +
+            "coreToDegraded=${timing?.coreToDegradedMs?.let { "${it}ms" } ?: "NA"} " +
+            "finalStage=${timing?.finalStage ?: "NA"}"
 
     private fun buildReport(
         startedAt: Long,
@@ -959,6 +991,9 @@ class BluetoothRegressionRunner(
         appendLine("versionCode=${BuildConfig.VERSION_CODE}")
         appendLine("device=${device?.name ?: "unknown"}")
         appendLine("address=${device?.address ?: "unknown"}")
+        appendLine("phoneModel=${android.os.Build.MODEL}")
+        appendLine("androidVersion=${android.os.Build.VERSION.SDK_INT}")
+        appendLine("firmware=${repository.props.value.firmwareVersion ?: "unknown"}")
         appendLine("endpoint=${repository.getRegressionEndpoint()}")
         appendLine("iterations=${_state.value.totalIterations}")
         appendLine("scenarioSamples=${attempts.size}")
@@ -971,7 +1006,19 @@ class BluetoothRegressionRunner(
             val durations = values.map { it.elapsedMs }
             val transportConnect = values.mapNotNull { it.timing?.transportConnectMs }
             val transportToCore = values.mapNotNull { it.timing?.transportToCoreReadyMs }
-            val coreToReady = values.mapNotNull { it.timing?.coreToReadyMs }
+            val coreToReady = values.filter { it.timing?.finalStage == ControlChannelStage.Ready }
+                .mapNotNull { it.timing?.coreToReadyMs }
+            val coreToDegraded = values.filter { it.timing?.finalStage == ControlChannelStage.Degraded }
+                .mapNotNull { it.timing?.coreToDegradedMs }
+            val coreToTerminal = values.mapNotNull { value ->
+                when (value.timing?.finalStage) {
+                    ControlChannelStage.Ready -> value.timing.coreToReadyMs
+                    ControlChannelStage.Degraded -> value.timing.coreToDegradedMs
+                    else -> null
+                }
+            }
+            fun timingPercentile(samples: List<Long>, percentile: Double): String =
+                if (samples.isEmpty()) "NA" else "${RegressionMetrics.percentile(samples, percentile)}ms"
             appendLine(
                 "${scenario.id}\t${scenario.title}\tsamples=${values.size}" +
                     "\tpass=${values.count { it.result == RegressionResult.PASS }}" +
@@ -979,12 +1026,23 @@ class BluetoothRegressionRunner(
                     "\tp50=${RegressionMetrics.percentile(durations, 0.50)}ms" +
                     "\tp95=${RegressionMetrics.percentile(durations, 0.95)}ms" +
                     "\tmax=${durations.maxOrNull() ?: 0}ms" +
-                    "\ttransportConnectP50=${RegressionMetrics.percentile(transportConnect, 0.50)}ms" +
-                    "\ttransportConnectP95=${RegressionMetrics.percentile(transportConnect, 0.95)}ms" +
-                    "\ttransportToCoreP50=${RegressionMetrics.percentile(transportToCore, 0.50)}ms" +
-                    "\ttransportToCoreP95=${RegressionMetrics.percentile(transportToCore, 0.95)}ms" +
-                    "\tcoreToReadyP50=${RegressionMetrics.percentile(coreToReady, 0.50)}ms" +
-                    "\tcoreToReadyP95=${RegressionMetrics.percentile(coreToReady, 0.95)}ms",
+                    "\ttransportConnectP50=${timingPercentile(transportConnect, 0.50)}" +
+                    "\ttransportConnectP95=${timingPercentile(transportConnect, 0.95)}" +
+                    "\ttransportConnectSamples=${transportConnect.size}" +
+                    "\ttransportToCoreP50=${timingPercentile(transportToCore, 0.50)}" +
+                    "\ttransportToCoreP95=${timingPercentile(transportToCore, 0.95)}" +
+                    "\ttransportToCoreSamples=${transportToCore.size}" +
+                    "\tcoreToReadyP50=${timingPercentile(coreToReady, 0.50)}" +
+                    "\tcoreToReadyP95=${timingPercentile(coreToReady, 0.95)}" +
+                    "\tcoreToReadySamples=${coreToReady.size}" +
+                    "\tcoreToDegradedP50=${timingPercentile(coreToDegraded, 0.50)}" +
+                    "\tcoreToDegradedP95=${timingPercentile(coreToDegraded, 0.95)}" +
+                    "\tcoreToDegradedSamples=${coreToDegraded.size}" +
+                    "\tcoreToTerminalP50=${timingPercentile(coreToTerminal, 0.50)}" +
+                    "\tcoreToTerminalP95=${timingPercentile(coreToTerminal, 0.95)}" +
+                    "\tcoreToTerminalSamples=${coreToTerminal.size}" +
+                    "\tterminalReady=${values.count { it.timing?.finalStage == ControlChannelStage.Ready }}" +
+                    "\tterminalDegraded=${values.count { it.timing?.finalStage == ControlChannelStage.Degraded }}",
             )
         }
         appendLine()

@@ -57,6 +57,8 @@ data class ConnectionTimingSnapshot(
     val transportConnectMs: Long? = null,
     val transportToCoreReadyMs: Long? = null,
     val coreToReadyMs: Long? = null,
+    val coreToDegradedMs: Long? = null,
+    val finalStage: ControlChannelStage? = null,
 )
 
 data class ListeningStats(
@@ -274,7 +276,7 @@ class DeviceRepository {
             } else {
                 LogBuffer.d("ConnPhase", "attempt=${attempt.attemptId} phase=${ConnectionPhase.SystemLinkObserved} observed=false")
             }
-            val d = LegacySppEarbudSession(device, adapter)
+            val d = LegacySppEarbudSession(device, adapter, attempt.attemptId)
             targetSession = d
             val driver = d.legacyDriverOrNull()
             LogBuffer.putMetadata(
@@ -535,6 +537,13 @@ class DeviceRepository {
                 ConnectionPhase.CoreReady,
                 ConnectionPhase.Ready,
             ),
+            coreToDegradedMs = attempt.elapsed(
+                ConnectionPhase.CoreReady,
+                ConnectionPhase.Degraded,
+            ),
+            finalStage = stateStore.controlChannelState.value
+                .takeIf { it.attemptId == attemptId }
+                ?.stage,
         )
     }
 
