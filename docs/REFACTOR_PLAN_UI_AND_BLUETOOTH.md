@@ -32,9 +32,30 @@
 
 当前已完成的是 **BT-0.1 的本地协议/能力代码审计与资料存在性核对**；这不代表所有型号和所有指令都已经实机验证。BT-0.2 已取得主设备基线但等待重构后复测，BT-0.3 已完成路线决策。
 
+### 0.1.1 定向实机测试规则
+
+实机测试规模跟随本轮代码改动，不再默认启动完整 100 项矩阵：
+
+| 改动类型 | 默认强度 | 适用场景 |
+|---|---:|---|
+| 日志字段、报告格式、状态判定 | 3 轮 | 核对字段存在、attempt 归属和终态输出 |
+| 普通能力读写 | 5 轮 | ANC、低延迟、读回一致性等功能行为 |
+| 重连、ACL、并发入口和连接耗时 | 每个相关场景 10 轮 | 需要观察竞态并计算 P50/P95 |
+| 跨模块发布验收 | 100 项 | BT 阶段合并、Release 候选或多个模块同时改动 |
+
+当前 `4.3.2 / 90` 只针对上轮日志暴露的问题，测试清单为 **36 项**：
+
+1. B 场景 10 轮：immediate rejection、`attempt=1/3 → 2/3 → 3/3`、`250ms/500ms` 排水、最终 attemptId 和 Transport P50/P95。
+2. F 场景 10 轮：手动断开、旧 session/reader/init 清理、ACL 重连、immediate rejection 和最终 attemptId；记录 Transport/Core/terminal P50/P95。
+3. “应用入口 / 10 秒初始化持续推进”功能项 10 轮：最终必须是 `Ready/Degraded`，核心状态有效，pending 为空；`CoreReady` 单独作为通过依据的样本记为失败。
+4. D 场景 3 轮：只核对 `saved-fallback`、endpoint/channel/source 和扫描终态回调次数。
+5. E 场景 3 轮：只核对 `outerRetryExercised` 与 Transport 内部恢复的区分；自然运行未触发外层失败时，不扩展为全量测试。
+
+上轮已经完成且本轮代码没有触及的 ANC、自动低延迟 ACK/读回、全部入口去重，不重复执行 10 轮。后续若改动命令调度或对应 Feature，只增加对应功能项 5 轮；若改动连接生命周期，只增加受影响场景 10 轮。完整 100 项矩阵保留给跨模块验收，不作为每次修复的默认门槛。
+
 ### 0.2 本轮执行记录（先蓝牙，后实机测试）
 
-本轮继续完成蓝牙组件重构、自动实机测试矩阵和本地验证；代码/CI 完成后，再一次性安排主设备运行完整矩阵。
+本轮继续完成蓝牙组件重构、定向实机测试矩阵和本地验证；代码/CI 完成后，只安排与本轮改动对应的测试项。
 
 - 当前测试包已切换为 `4.3.2 / 90`，对应 BT-1/BT-2 热重连恢复与初始化回归门槛；`4.3.1 / 89` 为本轮实机报告所用版本，`4.3.0 / 88` 仅作为上一轮实机报告包，`4.2.6 / 87` 仅保留为重构前基线。
 - 保留未跟踪的 `.DS_Store` 和 `对话历史记录.md`，不纳入代码提交。
@@ -81,8 +102,8 @@
 | BT-0.1 协议/能力本地审计 | [x] 已完成 | 2026-08-01；完成现有 Kotlin 协议、能力表、上游资料快照存在性核对；未提升未经实机验证的能力状态 |
 | BT-0.2 连接速度实机基线 | [~] 进行中 | 调整前主设备 A-F 各 10 轮已归档；报告中的 30 秒样本已判定为旧 Runner 误归属，D/F 失败已分别落到绑定设备回退和 ACL session 清理；需新 APK 在同设备比较 Transport→CoreReady、CoreReady→Ready 和最终可用时间 |
 | BT-0.3 连接路线决策门 | [x] 已完成 | 2026-08-01；endpoint/channel 已被实机确认，优先改连接编排、attempt 归属、session 生命周期和命令调度；当前测试包为 4.3.2 / 90 |
-| BT-1 唯一生产 Transport | [~] 进行中 | 已切换到唯一 `RfcommSppTransport` Socket 路径；4.3.1 实机为 B/F 各 9/10，4.3.2 增加第三次 Socket 创建和线性排水，仍待同设备复测后完成 |
-| BT-2 CommandClient / Scheduler / Feature | [~] 进行中 | 命令目录、单一优先级 command lane、quiet window、ACK/读回结果模型和共享命令多路分发已通过 4.3.1 的功能检查；4.3.2 收紧初始化回归判定，仍待核心命令在新版本实机复测 |
+| BT-1 唯一生产 Transport | [~] 进行中 | 已切换到唯一 `RfcommSppTransport` Socket 路径；当前只需定向复测 B/F 各 10 轮及 D 3 轮，确认第三次 Socket 创建、排水、fallback 和阶段 P50/P95 |
+| BT-2 CommandClient / Scheduler / Feature | [~] 进行中 | 命令目录、单一优先级 command lane、quiet window、ACK/读回结果模型已有实机证据；本轮只复测初始化持续推进 10 轮和 E 3 轮日志语义，命令代码再次变更时再增加对应功能项 |
 | BT-3 ConnectionManager 收敛入口 | [~] 进行中 | UI/Service/Tile/Terminal/回归 Runner 已统一发送 typed command；Manager 已接管 session registry、attempt coordinator、ACL 清理和 identity check；Repository 的连接编排 job/state 迁移仍待后续收敛 |
 | BT-4 通用蓝牙状态输出 | [~] 进行中 | 已新增 `ControlChannelState`、`ControlChannelStateReducer` 和 `DeviceViewModel.controlChannelState`，页面尚未迁移消费 |
 | UI-0 UI 行为基线 | [ ] 未开始 | 截图、交互路径、字段读写清单和测试基线齐备 |
@@ -876,21 +897,19 @@ python3 scripts/analyze_connection_timing.py /path/to/fxxkHilife_diagnostic.txt
 - `[ ]` 在主验证设备上回归 ANC、自动低延迟、初始化持续推进、断开/重连，并记录回退结果。
 - `[~]` 已发布 `4.3.2 (90)` 作为本轮热重连恢复和严格初始化判定的实机回归测试包；实机回归通过后再将 BT-1/BT-2 相关阶段标记为 `[x]`。
 
-#### 实机回归待测队列（BT-0.2 / BT-1 合并收集）
+#### 实机回归待测队列（按当前改动定向收集）
 
-以下项目先累计，等 BT-1 代码和 CI 稳定后一次性请求目标受阻测试；在此之前不反复打断用户：
+以下项目只覆盖当前版本实际改动；每完成一个子阶段就在本文件回写 `[x]`、版本、测试轮次和报告路径：
 
-1. **连接基线**：场景 A-F 各执行 10 次，共 60 个连接样本；记录同一设备、系统版本、固件、触发来源、discovery、attemptId，以及 SystemLink、Transport、Core、Ready 各阶段耗时，计算每个场景 P50/P95。
-2. **端点选择**：每个连接样本记录 `rfcomm-channel`、`source` 和型号配置；报告头部及每次 `CASE` 明细都必须能确认 channel/source，未知名称保留 compatibility fallback 记录。
-3. **首轮初始化**：新增“应用入口 / 10 秒初始化持续推进”功能项，执行 10 次；A-F 每轮也保留完整 10 秒观察，记录观察前后的 stage、pendingHandlers、failedHandlers 和最终 core 状态。
-4. **ANC 控制**：功能项执行 10 次；每次连接后读取 ANC 模式，切换到另一模式并确认状态读回，记录失败 Handler 和对应命令响应。
-5. **自动低延迟**：功能项执行 10 次；分别写入关闭/开启，记录每次写入的 ACK、`HuaweiCommandPhase`、设备读回和最终 `config.low_latency`，ACK 存在但读回不一致仍判定失败。
-6. **断开与重连**：场景 F 执行 10 次；每轮覆盖手动断开/抑制、重连、模拟 ACL 断开和 ACL 触发重连，确认没有旧会话继续轮询、发送或触发自动低延迟。
-7. **重复入口**：功能项执行 10 次；覆盖应用/UserAction、Service、Tile、ACL 入口的连接去重和新入口 attempt 区分；扫描完成入口由场景 D 各执行 10 次覆盖，并检查没有并行 Socket。
-8. **热重连 immediate rejection 恢复**：不新增独立按钮；在 B、E、F 的现有轮次中逐条检查 `[Transport]` 日志。若出现 immediate rejection，必须看到最多 `3/3` 的有界 Socket 尝试、`250ms/500ms` 排水间隔或更早成功，不能把真实 connect timeout 重复延长；日志中的 `attemptId` 必须与 Runner 请求的 `expectedAttempt` 一致。
-9. **E 外层重试证据**：逐轮查看 `outerRetryExercised=true/false`；Transport 内部 immediate rejection 后在同一连接请求内恢复时只能记为 Transport recovery，不能当作 Runner 外层“首轮失败后重试”的证据。
+1. **B 热重连**：10 轮。
+2. **F ACL/session 生命周期**：10 轮。
+3. **初始化终态契约**：10 轮。
+4. **D saved-fallback 与 endpoint/source**：3 轮。
+5. **E 外层重试日志语义**：3 轮。
 
-每项测试由 Debug 按钮自动记录。默认一次运行包含 **60 个 A-F 连接样本 + 40 个功能检查样本 = 100 个检查单元**；A-F 与四类功能项分别输出 PASS/FAIL、基于全部样本（含失败样本）的 P50/P95、最大耗时和失败详情。4.3.2 本轮不改变总样本数量，而是把 B/E/F 的 immediate rejection 恢复、第三次 Socket 创建和同一 attempt 归属列为硬性判读项；初始化持续推进项要求 10 秒后达到 `Ready/Degraded`，不能停在 `CoreReady`。激活测试模式后不再使用行数上限，而是使用约 160,000,000 字节的 UTF-8 缓存预算；报告写入分享文件前限制为 190,000,000 字节以内，最终文件保持小于 200 MB。测试结束、取消、无设备和异常路径都会恢复正常日志策略。目标受阻时一次性分享完整报告，再统一判断 BT-0.2、BT-3 和 BT-1 的完成标记，不拆成多轮零散测试。ACL 广播本身由系统触发，按钮中的 ACL 断开使用同一清理路径的 synthetic regression hook；报告会区分真实入口和 synthetic cleanup。
+每个项目由 Debug 自动测试按钮记录。当前 4.3.2 包的旧按钮仍执行完整矩阵；下一次测试包先增加 `BT_4_3_2_TARGETED` profile，默认只执行以上 36 项，`FULL_MATRIX` 保留给发布验收。测试报告沿用小于 200 MB 的字节预算。出现新问题时，只在本表追加对应场景或功能项，保持定向范围。
+
+定向运行输出与全量运行使用同一报告格式：每项输出 PASS/FAIL、P50/P95、最大耗时和失败详情；B/F 额外输出 Socket 尝试、排水间隔和 attemptId，初始化项额外输出观察前后 stage、pendingHandlers、failedHandlers 和最终 core 状态。完整 100 项矩阵只在跨模块验收、Release 候选或多个 BT 阶段同时变更时启用。激活测试模式后仍使用约 160,000,000 字节的 UTF-8 缓存预算，报告写入分享文件前限制为 190,000,000 字节以内，最终文件保持小于 200 MB；测试结束、取消、无设备和异常路径都会恢复正常日志策略。ACL 广播本身由系统触发，按钮中的 ACL 断开使用同一清理路径的 synthetic regression hook；报告会区分真实入口和 synthetic cleanup。
 
 #### BT-2：CommandClient 与 Feature 拆分 `[~] 进行中`
 
