@@ -59,13 +59,19 @@ def main() -> int:
     s = replace_regex(s, r'<string name="version_name">[^<]+</string>', f'<string name="version_name">{version}</string>')
     write("app/src/main/res/values/strings.xml", s)
 
-    # README / docs: replace old vX.Y.Z tokens with new tag where they describe current version.
-    for path in ["README.md", "README_EN.md", "docs/index.html"]:
+    # README / docs: update only the current-version markers. Do not rewrite
+    # historical version references in feature notes or compatibility tables.
+    markers = {
+        "README.md": (r"(?m)^> \*\*当前版本：v\d+\.\d+\.\d+\*\*$", f"> **当前版本：{tag}**"),
+        "README_EN.md": (r"(?m)^> \*\*Current version: v\d+\.\d+\.\d+\*\*$", f"> **Current version: {tag}**"),
+        "docs/index.html": (r'(id="heroVersion">)v\d+\.\d+\.\d+(</span>)', rf"\g<1>{tag}\g<2>"),
+    }
+    for path, (pattern, replacement) in markers.items():
         p = ROOT / path
         if not p.exists():
             continue
         s = p.read_text(encoding="utf-8")
-        s = re.sub(r"v\d+\.\d+\.\d+", tag, s)
+        s = replace_regex(s, pattern, replacement)
         p.write_text(s, encoding="utf-8")
 
     # VERSION_MANAGEMENT.md

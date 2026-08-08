@@ -1282,3 +1282,11 @@
 - versionCode: 87
 - versionName: 4.2.6
 - tag: v4.2.6
+
+## v4.3.0 (2026-08-08)
+
+### 发布
+- 蓝牙传输与连接重构测试版，供 BT-1 实机回归
+- versionCode: 88
+- versionName: 4.3.0
+- tag: v4.3.0

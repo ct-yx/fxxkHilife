@@ -1,11 +1,12 @@
 package com.freebuds.controller.bluetooth
 
 import android.bluetooth.BluetoothDevice
-import android.os.SystemClock
 import com.freebuds.controller.adapter.huawei.protocol.HuaweiHandlerInitializer
 import com.freebuds.controller.adapter.huawei.protocol.HuaweiHandlerInitializationPolicy
 import com.freebuds.controller.adapter.huawei.protocol.HuaweiHandlerRegistry
-import com.freebuds.controller.adapter.huawei.protocol.HuaweiPendingResponseManager
+import com.freebuds.controller.adapter.huawei.protocol.HuaweiCommandClient
+import com.freebuds.controller.adapter.huawei.protocol.HuaweiCommandExchange
+import com.freebuds.controller.adapter.huawei.protocol.HuaweiCommandPriority
 import com.freebuds.controller.adapter.huawei.protocol.HuaweiPropertyStore
 import com.freebuds.controller.adapter.huawei.protocol.HuaweiSppProtocol
 import com.freebuds.controller.core.transport.RfcommTransportConfig
@@ -13,8 +14,6 @@ import com.freebuds.controller.core.transport.RfcommSppTransport
 import com.freebuds.controller.protocol.HuaweiSppPackage
 import com.freebuds.controller.util.LogBuffer
 import kotlinx.coroutines.*
-import kotlinx.coroutines.sync.Mutex
-import kotlinx.coroutines.sync.withLock
 
 /**
  * Huawei command/session driver above the generic RFCOMM SPP transport.
@@ -37,16 +36,12 @@ class SppDriver(
         onDiscoveryChecked = { wasDiscovering -> onDiscoveryChecked?.invoke(wasDiscovering) },
     )
     private val protocolSession = HuaweiSppProtocol.createSession(transport)
-
-    private val pendingResponses = HuaweiPendingResponseManager()
-    // The device accepts only one request/response exchange reliably. This mutex keeps every
-    // later command (including a fire-and-forget write) from overtaking a reply. Raw byte writes
-    // are serialized by RfcommSppTransport itself.
-    private val requestMutex = Mutex()
+    private val commandClient = HuaweiCommandClient(protocolSession)
 
     private val handlerRegistry = HuaweiHandlerRegistry()
     private val handlerInitializer = HuaweiHandlerInitializer(handlerRegistry)
     private val propertyStore = HuaweiPropertyStore()
+    @Volatile private var lastCommandExchange: HuaweiCommandExchange? = null
     val failedHandlerIds: MutableSet<String> get() = handlerRegistry.failedHandlerIds
 
     /** Called whenever a handler updates the property store. */
@@ -139,60 +134,9 @@ class SppDriver(
         pkg: HuaweiSppPackage,
         timeout: Long = 5_000,
         responsePredicate: (HuaweiSppPackage) -> Boolean = { true },
-    ): HuaweiSppPackage? {
-        val queuedAt = SystemClock.elapsedRealtime()
-        return requestMutex.withLock {
-            val queueWaitMs = SystemClock.elapsedRealtime() - queuedAt
-            val respId = pkg.responseId.toHex()
-            if (respId.isEmpty()) {
-                sendNowaitLocked(pkg)
-                return@withLock null
-            }
-
-            val startedAt = SystemClock.elapsedRealtime()
-            val deferred = pendingResponses.register(respId, timeout, responsePredicate)
-            val slotWaitMs = SystemClock.elapsedRealtime() - startedAt
-            if (deferred == null) {
-                LogBuffer.w(
-                    "SPP",
-                    "REQ slot timeout cmd=${pkg.commandId.toHex()} resp=$respId timeout=${timeout}ms"
-                )
-                return@withLock null
-            }
-            LogBuffer.d(
-                "SPP",
-                "REQ start cmd=${pkg.commandId.toHex()} resp=$respId timeout=${timeout}ms " +
-                    "queueWait=${queueWaitMs}ms slotWait=${slotWaitMs}ms"
-            )
-
-            try {
-                sendNowaitLocked(pkg)
-                val elapsed = SystemClock.elapsedRealtime() - startedAt
-                val remaining = (timeout - elapsed).coerceAtLeast(1L)
-                val response = withTimeoutOrNull(remaining) { deferred.await() }
-                if (response != null) {
-                    LogBuffer.d(
-                        "SPP",
-                        "REQ success cmd=${pkg.commandId.toHex()} resp=$respId elapsed=${SystemClock.elapsedRealtime() - startedAt}ms"
-                    )
-                    return@withLock response
-                }
-                val pendingKeys = pendingResponses.keys().joinToString(",")
-                LogBuffer.w(
-                    "SPP",
-                    "REQ response timeout cmd=${pkg.commandId.toHex()} resp=$respId elapsed=${SystemClock.elapsedRealtime() - startedAt}ms pending=[$pendingKeys]"
-                )
-                return@withLock null
-            } catch (e: CancellationException) {
-                throw e
-            } catch (e: Exception) {
-                LogBuffer.w("SPP", "Failed waiting for response to cmd=${pkg.commandId.toHex()} (respId=$respId): ${e.message}")
-                return@withLock null
-            } finally {
-                pendingResponses.remove(respId, deferred)
-            }
-        }
-    }
+        priority: HuaweiCommandPriority = HuaweiCommandPriority.BACKGROUND,
+        operation: String = "request-${pkg.commandKey}",
+    ): HuaweiSppPackage? = commandClient.sendPackage(pkg, timeout, responsePredicate, priority, operation)
 
     /**
      * Sends a packet without waiting for its own response.
@@ -201,51 +145,81 @@ class SppDriver(
      * fire-and-forget write could overtake an initialization read and reproduce the exact
      * request-loss race that the serialized request lane prevents.
      */
-    suspend fun sendNowait(pkg: HuaweiSppPackage) {
-        requestMutex.withLock {
-            sendNowaitLocked(pkg)
-        }
+    suspend fun sendNowait(
+        pkg: HuaweiSppPackage,
+        priority: HuaweiCommandPriority = HuaweiCommandPriority.BACKGROUND,
+        operation: String = "send-${pkg.commandKey}",
+    ) {
+        commandClient.sendNowait(pkg, priority, operation)
     }
 
-    /** Caller must hold [requestMutex] when a response exchange is in progress. */
-    private suspend fun sendNowaitLocked(pkg: HuaweiSppPackage) = withContext(Dispatchers.IO) {
-        val bytes = pkg.toBytes()
-        LogBuffer.frame("TX", bytes)
-        try {
-            protocolSession.send(pkg)
-        } catch (e: Exception) {
-            LogBuffer.e("SPP", "TX failed: ${e.message}")
-            throw e
-        }
+    suspend fun writeAndReadBack(
+        operation: String,
+        write: HuaweiSppPackage,
+        read: HuaweiSppPackage,
+        writeTimeoutMs: Long = HuaweiCommandClient.DEFAULT_TIMEOUT_MS,
+        readTimeoutMs: Long = HuaweiCommandClient.DEFAULT_TIMEOUT_MS,
+        settleDelayMs: Long = 0L,
+        writeResponsePredicate: (HuaweiSppPackage) -> Boolean = { true },
+        readResponsePredicate: (HuaweiSppPackage) -> Boolean = { true },
+        readBackPredicate: (HuaweiSppPackage) -> Boolean,
+        priority: HuaweiCommandPriority = HuaweiCommandPriority.USER_ACTION,
+    ): HuaweiCommandExchange {
+        val result = commandClient.writeAndReadBack(
+            operation = operation,
+            write = write,
+            read = read,
+            writeTimeoutMs = writeTimeoutMs,
+            readTimeoutMs = readTimeoutMs,
+            settleDelayMs = settleDelayMs,
+            writeResponsePredicate = writeResponsePredicate,
+            readResponsePredicate = readResponsePredicate,
+            readBackPredicate = readBackPredicate,
+            priority = priority,
+        )
+        lastCommandExchange = result
+        return result
+    }
+
+    /** Debug regression hook for verifying the write ACK separately from state read-back. */
+    fun getLastCommandExchange(operation: String): HuaweiCommandExchange? =
+        lastCommandExchange?.takeIf { it.operation == operation }
+
+    fun clearLastCommandExchange(operation: String) {
+        if (lastCommandExchange?.operation == operation) lastCommandExchange = null
     }
 
     /** Processes typed packets emitted by [HuaweiSppProtocol]'s incremental framer. */
     private suspend fun handlePackage(pkg: HuaweiSppPackage) {
-        val cmdKey = pkg.commandId.toHex()
+        val cmdKey = pkg.commandKey
         val paramsKeys = pkg.parameters.keys.joinToString(",") { it.toString() }
         LogBuffer.d("SPP", "RX packet cmd=$cmdKey params=[$paramsKeys]")
 
-        if (pendingResponses.complete(cmdKey, pkg)) {
+        if (commandClient.complete(pkg)) {
             LogBuffer.d("SPP", "RX → pendingResponses consumed cmd=$cmdKey")
             return
         }
 
         if (handlerRegistry.hasCommand(cmdKey)) {
-            val handler = handlerRegistry.handlerForCommand(cmdKey)
-            if (handler != null) {
+            val handlers = handlerRegistry.handlersForCommand(cmdKey)
+            for (handler in handlers) {
                 LogBuffer.d("SPP", "RX → onDriverPackage handler=${handler.id} cmd=$cmdKey")
                 handler.onDriverPackage(this, pkg)
             }
         } else {
-            LogBuffer.d("SPP", "No handler for cmd=$cmdKey (pending=${pendingResponses.keys().joinToString(",")})")
+            LogBuffer.d("SPP", "No handler for cmd=$cmdKey")
         }
     }
 
     fun disconnect() {
-        pendingResponses.cancelAll()
+        commandClient.cancelAll()
         protocolSession.disconnect()
         LogBuffer.i("SPP", "Disconnected")
     }
 
-    private fun ByteArray.toHex(): String = joinToString("") { "%02x".format(it) }
+    /**
+     * Makes the repository's post-write quiet window a real command-lane gate instead of a
+     * polling-only hint.
+     */
+    fun setCommandQuietUntil(untilMs: Long) = commandClient.setQuietUntil(untilMs)
 }

@@ -11,17 +11,21 @@ import com.freebuds.controller.bluetooth.HuaweiDeviceHandler
  */
 class HuaweiHandlerRegistry {
     private val handlers = mutableListOf<HuaweiDeviceHandler>()
-    private val commandHandlers = mutableMapOf<String, HuaweiDeviceHandler?>()
+    private val commandHandlers = mutableMapOf<String, MutableList<HuaweiDeviceHandler>>()
+    private val ignoredCommands = mutableSetOf<String>()
     private val propertyHandlers = mutableMapOf<String, HuaweiDeviceHandler>()
     val failedHandlerIds: MutableSet<String> = mutableSetOf()
 
     fun register(handler: HuaweiDeviceHandler) {
         handlers.add(handler)
         for (cmd in handler.commandIds) {
-            commandHandlers[cmd.toHexKey()] = handler
+            val key = cmd.toHexKey()
+            commandHandlers.getOrPut(key) { mutableListOf() }.apply {
+                if (handler !in this) add(handler)
+            }
         }
         for (cmd in handler.ignoreCommandIds) {
-            commandHandlers[cmd.toHexKey()] = null
+            ignoredCommands.add(cmd.toHexKey())
         }
         for ((group, prop) in handler.properties) {
             propertyHandlers[propertyKey(group, prop)] = handler
@@ -32,9 +36,15 @@ class HuaweiHandlerRegistry {
 
     fun findById(id: String): HuaweiDeviceHandler? = handlers.find { it.id == id }
 
-    fun hasCommand(commandKey: String): Boolean = commandHandlers.containsKey(commandKey)
+    fun hasCommand(commandKey: String): Boolean =
+        commandHandlers.containsKey(commandKey) || commandKey in ignoredCommands
 
-    fun handlerForCommand(commandKey: String): HuaweiDeviceHandler? = commandHandlers[commandKey]
+    fun handlerForCommand(commandKey: String): HuaweiDeviceHandler? =
+        commandHandlers[commandKey]?.firstOrNull()
+
+    /** Multiple features may legitimately observe the same notification command. */
+    fun handlersForCommand(commandKey: String): List<HuaweiDeviceHandler> =
+        commandHandlers[commandKey]?.toList().orEmpty()
 
     fun handlerForProperty(group: String, prop: String): HuaweiDeviceHandler? =
         propertyHandlers[propertyKey(group, prop)] ?: propertyHandlers[propertyKey(group, "")]

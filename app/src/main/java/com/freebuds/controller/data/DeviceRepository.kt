@@ -4,20 +4,20 @@ import android.bluetooth.BluetoothAdapter
 import android.bluetooth.BluetoothDevice
 import android.bluetooth.BluetoothManager
 import android.bluetooth.BluetoothProfile
-import android.content.BroadcastReceiver
 import android.content.Context
 import android.content.Intent
-import android.content.IntentFilter
 import android.content.SharedPreferences
-import android.os.Build
 import android.os.SystemClock
 import androidx.core.content.FileProvider
 import com.freebuds.controller.adapter.huawei.HuaweiOpenFreebudsAdapter
+import com.freebuds.controller.adapter.huawei.protocol.HuaweiCommandExchange
 import com.freebuds.controller.adapter.huawei.protocol.HuaweiHandlerInitializationPolicy
 import com.freebuds.controller.core.adapter.EarbudAdapter
 import com.freebuds.controller.core.adapter.EarbudAdapterCallbacks
 import com.freebuds.controller.core.session.EarbudSession
 import com.freebuds.controller.core.session.LegacySppEarbudSession
+import com.freebuds.controller.core.transport.EndpointSource
+import com.freebuds.controller.core.transport.RfcommTransportConfigProvider
 import com.freebuds.controller.i18n.I18n
 import com.freebuds.controller.util.LogBuffer
 import kotlinx.coroutines.*
@@ -28,15 +28,36 @@ import java.io.File
 import java.util.Calendar
 import java.util.Locale
 import java.util.concurrent.ConcurrentHashMap
-import java.util.concurrent.atomic.AtomicLong
+
+private const val RFCOMM_RECONNECT_GUARD_MS = 250L
 
 /** 连接状态 */
 sealed class ConnectionState {
     object Disconnected : ConnectionState()
-    data class Connecting(val deviceName: String) : ConnectionState()
-    data class Connected(val deviceName: String) : ConnectionState()
-    data class Failed(val reason: String) : ConnectionState()
+    data class Connecting(val deviceName: String, val attemptId: String = "") : ConnectionState()
+    data class Connected(val deviceName: String, val attemptId: String = "") : ConnectionState()
+    data class Failed(val reason: String, val attemptId: String? = null) : ConnectionState()
 }
+
+/**
+ * Result of an automatic connection request.
+ *
+ * The boolean alone is not sufficient for callers that need to observe a particular attempt:
+ * a periodic Service check can start a different attempt between the request and the caller's
+ * next read of [connectionState]. Returning the id together with acceptance keeps attribution
+ * deterministic without exposing repository internals to the UI.
+ */
+data class ConnectionRequestResult(
+    val accepted: Boolean,
+    val attemptId: String? = null,
+)
+
+/** Phase timings captured for one regression sample; null means that phase was not reached. */
+data class ConnectionTimingSnapshot(
+    val transportConnectMs: Long? = null,
+    val transportToCoreReadyMs: Long? = null,
+    val coreToReadyMs: Long? = null,
+)
 
 data class ListeningStats(
     val totalMs: Long = 0L,
@@ -114,11 +135,17 @@ class DeviceRepository {
     private val scope = CoroutineScope(Dispatchers.IO + SupervisorJob())
     private val adapters: List<EarbudAdapter> = listOf(HuaweiOpenFreebudsAdapter)
 
+    /** Typed command boundary used by UI, Service, Tile and regression entry points. */
+    val connectionManager: EarbudConnectionManager = EarbudConnectionManager(this)
+
     private val _connectionState = MutableStateFlow<ConnectionState>(ConnectionState.Disconnected)
     val connectionState: StateFlow<ConnectionState> = _connectionState.asStateFlow()
 
-    private val _props = MutableStateFlow(DeviceProps())
-    val props: StateFlow<DeviceProps> = _props.asStateFlow()
+    private val stateStore = EarbudStateStore()
+    /** Typed SystemLink/Transport/Core/Deferred state for the upcoming UI migration. */
+    val controlChannelState: StateFlow<ControlChannelState> = stateStore.controlChannelState
+
+    val props: StateFlow<DeviceProps> = stateStore.props
 
     private val _listeningStats = MutableStateFlow(ListeningStats())
     val listeningStats: StateFlow<ListeningStats> = _listeningStats.asStateFlow()
@@ -127,12 +154,13 @@ class DeviceRepository {
     val savedDeviceConnections: StateFlow<List<SavedDeviceConnection>> = _savedDeviceConnections.asStateFlow()
 
     fun isCoreStateReady(): Boolean {
-        val p = _props.value
+        val p = stateStore.props.value
         val hasBattery = p.batteryGlobal != null || p.batteryLeft != null || p.batteryRight != null || p.batteryCase != null
         return p.ancMode != null && p.lowLatency != null && hasBattery
     }
 
-    private var session: EarbudSession? = null
+    private val session: EarbudSession?
+        get() = connectionManager.currentSession
     private var prefs: SharedPreferences? = null
     private var appContext: Context? = null
     private val failedHandlers = mutableSetOf<String>()
@@ -142,17 +170,24 @@ class DeviceRepository {
     private var pollJob: Job? = null
     private var fastPollJob: Job? = null
     private var initJob: Job? = null
+    private var backgroundInitJob: Job? = null
     private var listeningStatsJob: Job? = null
     private var lastListeningTick: Long = 0L
     private var sppQuietUntil: Long = 0L
     private var foregroundMode: Boolean = false
     private var connectedAddress: String? = null
-    private var aclReceiver: BroadcastReceiver? = null
     private var connectingJob: Job? = null
     private var manualDisconnectSuppressUntil: Long = 0L
+    /** Prevents service/profile probes from racing the debug hardware regression matrix. */
+    @Volatile
+    private var hardwareRegressionActive: Boolean = false
+    // A recently closed Android RFCOMM socket can reject an immediate replacement. The guard is
+    // only armed by teardown, so a cold connection keeps the fast path unchanged.
+    @Volatile
+    private var reconnectNotBeforeElapsedMs: Long = 0L
     private val systemConnectedAddresses = ConcurrentHashMap.newKeySet<String>()
-    private val connectionAttemptSequence = AtomicLong(0L)
-    private var activeConnectionAttempt: ConnectionAttemptTimeline? = null
+    private val activeConnectionAttempt: ConnectionAttemptTimeline?
+        get() = connectionManager.currentAttempt
 
     // 设备信息是否已获取（本次进程生命周期内）
     private var deviceInfoFetched: Boolean = false
@@ -179,27 +214,50 @@ class DeviceRepository {
         prefs = context.getSharedPreferences("fxxk_device", Context.MODE_PRIVATE)
         refreshListeningStats()
         deviceInfoFetched = false // 每次进程启动重置
-        registerAclDisconnectReceiver(context.applicationContext)
         refreshSavedDeviceConnections()
     }
 
     // ── 连接 ─────────────────────────────────────────────────────────────────
 
-    fun connect(device: BluetoothDevice, trigger: ConnectionTrigger = ConnectionTrigger.UserAction) {
-        if (connectingJob?.isActive == true ||
-            _connectionState.value is ConnectionState.Connecting ||
-            _connectionState.value is ConnectionState.Connected) return
-
-        connectingJob = scope.launch {
-            val attempt = ConnectionAttemptTimeline(
-                attemptId = "attempt-${System.currentTimeMillis()}-${connectionAttemptSequence.incrementAndGet()}",
+    /**
+     * Requests one control-channel attempt and returns the attempt id that owns the request.
+     * Returning the existing id for a deduplicated request lets Service/Tile/regression callers
+     * wait for the same attempt instead of accidentally attributing a later background attempt.
+     */
+    fun connect(device: BluetoothDevice, trigger: ConnectionTrigger = ConnectionTrigger.UserAction): String? {
+        val reservation = connectionManager.withLifecycleLock {
+            val result = connectionManager.reserveAttempt(
                 address = device.address,
                 trigger = trigger,
-                nowMs = { SystemClock.elapsedRealtime() },
+                busy = connectingJob?.isActive == true ||
+                _connectionState.value is ConnectionState.Connecting ||
+                _connectionState.value is ConnectionState.Connected,
             )
-            activeConnectionAttempt = attempt
-            markConnectionPhase(attempt, ConnectionPhase.Requested)
-            _connectionState.value = ConnectionState.Connecting(device.name ?: device.address)
+            if (result?.ownsAttempt == true) {
+                _connectionState.value = ConnectionState.Connecting(
+                    device.name ?: device.address,
+                    result.attempt.attemptId,
+                )
+                stateStore.beginAttempt(
+                    systemLink = systemLinkState(device.address),
+                    deviceName = device.name ?: device.address,
+                    address = device.address,
+                    attemptId = result.attempt.attemptId,
+                    trigger = trigger,
+                )
+            }
+            result?.also { if (it.ownsAttempt) markConnectionPhase(it.attempt, ConnectionPhase.Requested) }
+        } ?: return null
+        val attempt = reservation.attempt
+
+        // A duplicate request above returns the currently active timeline without launching a
+        // second job. Only the owner of a newly-created timeline reaches the body below.
+        if (!reservation.ownsAttempt) return attempt.attemptId
+
+        val newConnectionJob = scope.launch {
+            var targetSession: EarbudSession? = null
+            try {
+            if (!isCurrentConnectionAttempt(attempt)) return@launch
             val adapter = adapters.firstOrNull { it.canHandle(device) } ?: HuaweiOpenFreebudsAdapter
             LogBuffer.putMetadata("earbudName", device.name ?: "unknown")
             LogBuffer.putMetadata("earbudAddress", device.address)
@@ -217,10 +275,15 @@ class DeviceRepository {
                 LogBuffer.d("ConnPhase", "attempt=${attempt.attemptId} phase=${ConnectionPhase.SystemLinkObserved} observed=false")
             }
             val d = LegacySppEarbudSession(device, adapter)
+            targetSession = d
             val driver = d.legacyDriverOrNull()
             LogBuffer.putMetadata(
                 "connectionEndpoint",
                 driver.transportConfig.endpointDescription()
+            )
+            stateStore.updateEndpoint(
+                address = device.address,
+                endpoint = driver.transportConfig.endpointDescription(),
             )
             driver.onDiscoveryChecked = { wasDiscovering ->
                 markConnectionPhase(
@@ -231,22 +294,64 @@ class DeviceRepository {
             }
             d.setPropertyChangedListener {
                 scope.launch {
-                    if (session === d) syncProps()
+                    if (connectionManager.isCurrentSession(d)) syncProps()
                 }
             }
             d.setDisconnectedListener {
                 scope.launch { handleRemoteDisconnected(d, "SPP receive loop ended") }
             }
             registerHandlers(adapter, d, device.name ?: "")
-            session = d
+            if (!isCurrentConnectionAttempt(attempt)) {
+                d.disconnect()
+                return@launch
+            }
+            val installed = connectionManager.withLifecycleLock {
+                if (!isCurrentConnectionAttempt(attempt)) {
+                    false
+                } else {
+                    // Install the session and validate the attempt under the same lock.  A
+                    // replacement connection can otherwise slip in between the check above and
+                    // this assignment, leaving the old session in the repository after a rapid
+                    // disconnect/reconnect.
+                    connectionManager.installSession(attempt.attemptId, device.address, d)
+                }
+            }
+            if (!installed) {
+                d.disconnect()
+                return@launch
+            }
             markConnectionPhase(attempt, ConnectionPhase.TransportConnecting)
+            updateControlChannelStage(ControlChannelStage.ConnectingTransport, attempt)
+            val reconnectDelay = connectionManager.withLifecycleLock {
+                (reconnectNotBeforeElapsedMs - SystemClock.elapsedRealtime()).coerceAtLeast(0L)
+            }
+            if (reconnectDelay > 0L) {
+                LogBuffer.d("Transport", "Waiting ${reconnectDelay}ms for RFCOMM reconnect window")
+                delay(reconnectDelay)
+            }
+            if (!isCurrentConnectionAttempt(attempt)) {
+                d.disconnect()
+                return@launch
+            }
             if (d.connect()) {
-                markConnectionPhase(attempt, ConnectionPhase.TransportReady)
-                _connectionState.value = ConnectionState.Connected(device.name ?: device.address)
-                connectedAt = System.currentTimeMillis()
-                connectedAddress = device.address
-                systemConnectedAddresses.add(device.address)
-                manualDisconnectSuppressUntil = 0L
+                val accepted = connectionManager.withLifecycleLock {
+                    if (!isCurrentConnectionAttempt(attempt) || !connectionManager.isCurrentSession(d)) {
+                        false
+                    } else {
+                        markConnectionPhase(attempt, ConnectionPhase.TransportReady)
+                        updateControlChannelStage(ControlChannelStage.TransportReady, attempt)
+                        _connectionState.value = ConnectionState.Connected(device.name ?: device.address, attempt.attemptId)
+                        connectedAt = System.currentTimeMillis()
+                        connectedAddress = device.address
+                        systemConnectedAddresses.add(device.address)
+                        manualDisconnectSuppressUntil = 0L
+                        true
+                    }
+                }
+                if (!accepted) {
+                    d.disconnect()
+                    return@launch
+                }
                 failedHandlers.clear()
                 pendingInitHandlers.clear()
                 saveDeviceAddress(device.address)
@@ -258,36 +363,107 @@ class DeviceRepository {
                 if (foregroundMode) startFastPolling()
                 startHandlerInitialization(d, attempt)
             } else {
-                session = null
-                connectedAddress = null
-                markConnectionPhase(attempt, ConnectionPhase.Failed, "transport connect returned false")
-                _connectionState.value = ConnectionState.Failed(I18n.t("scan.connection_failed_short"))
-                activeConnectionAttempt = null
+                val ownsFailure = connectionManager.withLifecycleLock {
+                    if (!isCurrentConnectionAttempt(attempt) || !connectionManager.isCurrentSession(d)) {
+                        false
+                    } else {
+                        connectionManager.detachSessionIfCurrent(d)
+                        connectedAddress = null
+                        markConnectionPhase(attempt, ConnectionPhase.Failed, "transport connect returned false")
+                        updateControlChannelStage(
+                            ControlChannelStage.Failed,
+                            attempt,
+                            reason = "transport connect returned false",
+                        )
+                        _connectionState.value = ConnectionState.Failed(
+                            I18n.t("scan.connection_failed_short"),
+                            attempt.attemptId,
+                        )
+                        true
+                    }
+                }
+                if (ownsFailure) {
+                    LogBuffer.w("Session", "Connection attempt returned false attempt=${attempt.attemptId}")
+                } else {
+                    d.disconnect()
+                }
+            }
+            } catch (e: CancellationException) {
+                // disconnect() owns state cleanup. A cancelled old attempt must not clear or
+                // overwrite the state of a replacement attempt.
+                throw e
+            } catch (e: Exception) {
+                val ownsFailure = connectionManager.withLifecycleLock {
+                    if (!isCurrentConnectionAttempt(attempt) ||
+                        targetSession == null ||
+                        !connectionManager.isCurrentSession(targetSession)
+                    ) {
+                        false
+                    } else {
+                        connectionManager.detachSessionIfCurrent(targetSession)
+                        connectedAddress = null
+                        markConnectionPhase(attempt, ConnectionPhase.Failed, "${e.javaClass.simpleName}:${e.message}")
+                        updateControlChannelStage(
+                            ControlChannelStage.Failed,
+                            attempt,
+                            reason = "${e.javaClass.simpleName}:${e.message}",
+                        )
+                        _connectionState.value = ConnectionState.Failed(
+                            I18n.t("scan.connection_failed_short"),
+                            attempt.attemptId,
+                        )
+                        true
+                    }
+                }
+                targetSession?.disconnect()
+                if (ownsFailure) {
+                    LogBuffer.e("Session", "Connection attempt failed: ${e.message}")
+                }
             }
         }
+        val installedJob = connectionManager.withLifecycleLock {
+            if (isCurrentConnectionAttempt(attempt)) {
+                connectingJob = newConnectionJob
+                true
+            } else {
+                false
+            }
+        }
+        if (!installedJob) newConnectionJob.cancel()
+        return attempt.attemptId
     }
 
     fun disconnect() {
-        connectingJob?.cancel()
-        connectingJob = null
-        manualDisconnectSuppressUntil = System.currentTimeMillis() + 10 * 60_000L
-        activeConnectionAttempt?.let { markConnectionPhase(it, ConnectionPhase.Disconnecting) }
+        var oldSession: EarbudSession? = null
+        connectionManager.withLifecycleLock {
+            connectingJob?.cancel()
+            connectingJob = null
+            manualDisconnectSuppressUntil = System.currentTimeMillis() + 10 * 60_000L
+            reconnectNotBeforeElapsedMs = SystemClock.elapsedRealtime() + RFCOMM_RECONNECT_GUARD_MS
+            activeConnectionAttempt?.let {
+                markConnectionPhase(it, ConnectionPhase.Disconnecting)
+                updateControlChannelStage(ControlChannelStage.Disconnecting, it)
+            }
+            oldSession = connectionManager.detachSession()
+            val oldAddress = connectedAddress
+            connectedAddress = null
+            activeConnectionAttempt?.let { markConnectionPhase(it, ConnectionPhase.Disconnected) }
+            connectionManager.clearAttempt()
+            _connectionState.value = ConnectionState.Disconnected
+            stateStore.replaceProps(DeviceProps())
+            connectedAt = 0
+            stateStore.resetControlChannel(systemLinkState(oldAddress))
+        }
         initJob?.cancel()
+        backgroundInitJob?.cancel()
         pollJob?.cancel()
         fastPollJob?.cancel()
         stopListeningStatsTicker()
         sppQuietUntil = 0L
-        session?.disconnect()
-        session = null
-        connectedAddress = null
+        oldSession?.disconnect()
         deviceInfoFetched = false
         failedHandlers.clear()
         pendingInitHandlers.clear()
-        _connectionState.value = ConnectionState.Disconnected
-        _props.value = DeviceProps()
-        connectedAt = 0
-        activeConnectionAttempt?.let { markConnectionPhase(it, ConnectionPhase.Disconnected) }
-        activeConnectionAttempt = null
         refreshSavedDeviceConnections()
     }
 
@@ -305,8 +481,22 @@ class DeviceRepository {
         }
         LogBuffer.i("HwTest", "Synthetic ACL disconnect requested")
         handleRemoteDisconnected(source, "Bluetooth ACL disconnected (regression runner)")
-        address?.let { systemConnectedAddresses.remove(it) }
+        address?.let {
+            systemConnectedAddresses.remove(it)
+            if (stateStore.controlChannelState.value.address == it) {
+                updateControlChannelState { state -> state.copy(systemLink = SystemLinkState.Disconnected) }
+            }
+        }
         refreshSavedDeviceConnections()
+    }
+
+    /**
+     * The debug runner owns the connection slot for the duration of its matrix. Only background
+     * periodic/profile probes are paused; explicit test commands still traverse production code.
+     */
+    internal fun setHardwareRegressionActive(active: Boolean) {
+        hardwareRegressionActive = active
+        LogBuffer.i("HwTest", "background_auto_connect_paused=$active")
     }
 
     /** Device selected by the one-click real-device regression runner. */
@@ -317,59 +507,125 @@ class DeviceRepository {
 
     fun getRegressionAttemptId(): String? = activeConnectionAttempt?.attemptId
 
-    fun getRegressionEndpoint(): String = session
-        ?.legacyDriverOrNull()
-        ?.transportConfig
-        ?.endpointDescription()
-        ?: "unavailable"
+    /**
+     * Returns the active attempt only when it belongs to [address].  Entry-point code must not
+     * use a global "current attempt" as proof that a request for another saved device was
+     * accepted; the single-session invariant is address-scoped.
+     */
+    fun getActiveConnectionAttemptId(address: String? = null): String? {
+        val attempt = activeConnectionAttempt ?: return null
+        if (address != null && !attempt.address.equals(address, ignoreCase = true)) return null
+        return attempt.attemptId
+    }
+
+    fun getRegressionTiming(attemptId: String?): ConnectionTimingSnapshot? {
+        if (attemptId == null) return null
+        val attempt = activeConnectionAttempt ?: return null
+        if (attempt.attemptId != attemptId) return null
+        return ConnectionTimingSnapshot(
+            transportConnectMs = attempt.elapsed(
+                ConnectionPhase.TransportConnecting,
+                ConnectionPhase.TransportReady,
+            ),
+            transportToCoreReadyMs = attempt.elapsed(
+                ConnectionPhase.TransportReady,
+                ConnectionPhase.CoreReady,
+            ),
+            coreToReadyMs = attempt.elapsed(
+                ConnectionPhase.CoreReady,
+                ConnectionPhase.Ready,
+            ),
+        )
+    }
+
+    fun getRegressionCommandExchange(operation: String): HuaweiCommandExchange? =
+        session?.legacyDriverOrNull()?.getLastCommandExchange(operation)
+
+    fun clearRegressionCommandExchange(operation: String) {
+        session?.legacyDriverOrNull()?.clearLastCommandExchange(operation)
+    }
+
+    private fun isCurrentConnectionAttempt(attempt: ConnectionAttemptTimeline): Boolean =
+        connectionManager.isCurrentAttempt(attempt)
+
+    fun getRegressionEndpoint(): String {
+        session?.legacyDriverOrNull()?.transportConfig?.endpointDescription()?.let { return it }
+
+        // The runner builds its report after the final disconnect. Keep endpoint/channel/source
+        // observable then as well; otherwise the report would misleadingly say "unavailable"
+        // even though every attempt used the model adapter's endpoint.
+        val device = getRegressionDevice() ?: return "unavailable"
+        val adapter = adapters.firstOrNull { it.canHandle(device) } ?: HuaweiOpenFreebudsAdapter
+        return (adapter as? RfcommTransportConfigProvider)
+            ?.rfcommTransportConfig(runCatching { device.name }.getOrNull())
+            ?.endpointDescription()
+            ?: "unavailable"
+    }
 
     fun clearManualDisconnectSuppression() {
         manualDisconnectSuppressUntil = 0L
     }
 
+    /**
+     * Handles the single system ACL-disconnect command emitted by [SystemBluetoothMonitor].
+     * Keeping this in the connection boundary is important: merely clearing the system-link
+     * flag leaves the RFCOMM reader and an in-flight initialization job alive, which was the
+     * failure mode seen in the F regression scenario.
+     */
+    internal fun handleSystemBluetoothDisconnected(address: String) {
+        systemConnectedAddresses.remove(address)
+        if (stateStore.controlChannelState.value.address == address) {
+            updateControlChannelState { state -> state.copy(systemLink = SystemLinkState.Disconnected) }
+        }
+        val sourceSession = session?.takeIf { connectedAddress.equals(address, ignoreCase = true) }
+        val activeAttemptMatches = activeConnectionAttempt?.address?.equals(address, ignoreCase = true) == true
+        if (sourceSession != null || activeAttemptMatches) {
+            // Cleanup is deliberately synchronous at the command boundary. An ACL reconnect can
+            // arrive immediately after the broadcast; launching cleanup asynchronously lets it
+            // observe the old session and incorrectly deduplicate the new ACL attempt into it.
+            handleRemoteDisconnected(sourceSession, "Bluetooth ACL disconnected")
+        } else {
+            refreshSavedDeviceConnections()
+        }
+    }
+
     private fun handleRemoteDisconnected(sourceSession: EarbudSession?, reason: String) {
-        if (sourceSession != null && session !== sourceSession) return
-        if (_connectionState.value !is ConnectionState.Connected && session == null) return
-        LogBuffer.w("SPP", "Remote disconnected: $reason")
+        var oldSession: EarbudSession? = null
+        var oldAddress: String? = null
+        connectionManager.withLifecycleLock {
+            if (sourceSession != null && !connectionManager.isCurrentSession(sourceSession)) return
+            if (_connectionState.value !is ConnectionState.Connected &&
+                session == null &&
+                activeConnectionAttempt == null
+            ) return
+            LogBuffer.w("SPP", "Remote disconnected: $reason")
+            connectingJob?.cancel()
+            connectingJob = null
+            oldSession = connectionManager.detachSession()
+            oldAddress = connectedAddress
+            reconnectNotBeforeElapsedMs = SystemClock.elapsedRealtime() + RFCOMM_RECONNECT_GUARD_MS
+            connectedAddress = null
+            _connectionState.value = ConnectionState.Disconnected
+            stateStore.replaceProps(DeviceProps())
+            connectedAt = 0
+            activeConnectionAttempt?.let { markConnectionPhase(it, ConnectionPhase.Disconnected, reason) }
+            connectionManager.clearAttempt()
+            stateStore.resetControlChannel(systemLinkState(oldAddress), reason)
+        }
         initJob?.cancel()
+        backgroundInitJob?.cancel()
         pollJob?.cancel()
         fastPollJob?.cancel()
         stopListeningStatsTicker()
         sppQuietUntil = 0L
-        session = null
-        connectedAddress = null
         deviceInfoFetched = false
         failedHandlers.clear()
         pendingInitHandlers.clear()
-        _connectionState.value = ConnectionState.Disconnected
-        _props.value = DeviceProps()
-        connectedAt = 0
-        activeConnectionAttempt?.let { markConnectionPhase(it, ConnectionPhase.Disconnected, reason) }
-        activeConnectionAttempt = null
+        // ACL loss and the regression hook can arrive before the transport read loop notices the
+        // closed stream. Close the old session explicitly so its RFCOMM reader cannot survive
+        // into the next attempt and contend with the new socket.
+        oldSession?.disconnect()
         refreshSavedDeviceConnections()
-    }
-
-    private fun registerAclDisconnectReceiver(context: Context) {
-        if (aclReceiver != null) return
-        aclReceiver = object : BroadcastReceiver() {
-            override fun onReceive(ctx: Context?, intent: Intent?) {
-                if (intent?.action != BluetoothDevice.ACTION_ACL_DISCONNECTED) return
-                val device = intent.getParcelableExtra<BluetoothDevice>(BluetoothDevice.EXTRA_DEVICE)
-                val address = device?.address ?: return
-                if (address == connectedAddress) {
-                    scope.launch { handleRemoteDisconnected(session, "Bluetooth ACL disconnected") }
-                }
-                systemConnectedAddresses.remove(address)
-                refreshSavedDeviceConnections()
-            }
-        }
-        val filter = IntentFilter(BluetoothDevice.ACTION_ACL_DISCONNECTED)
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
-            context.registerReceiver(aclReceiver, filter, Context.RECEIVER_NOT_EXPORTED)
-        } else {
-            @Suppress("DEPRECATION")
-            context.registerReceiver(aclReceiver, filter)
-        }
     }
 
     // ── 持久化设备地址（集合）───────────────────────────────────────────
@@ -444,79 +700,133 @@ class DeviceRepository {
         address: String,
         logMisses: Boolean = true,
         trigger: ConnectionTrigger = ConnectionTrigger.UserAction,
-    ): Boolean {
+    ): Boolean = autoConnectSavedRequest(address, logMisses, trigger).accepted
+
+    internal fun autoConnectSavedRequest(
+        address: String,
+        logMisses: Boolean = true,
+        trigger: ConnectionTrigger = ConnectionTrigger.UserAction,
+    ): ConnectionRequestResult {
+        if (isBackgroundAutoConnectSuppressed(trigger, hardwareRegressionActive)) {
+            if (logMisses) LogBuffer.d("AutoConnect", "Skip $address: hardware regression owns connection slot")
+            return ConnectionRequestResult(accepted = false)
+        }
         val suppressRemaining = manualDisconnectSuppressUntil - System.currentTimeMillis()
         if (suppressRemaining > 0) {
             if (logMisses) {
                 LogBuffer.i("AutoConnect", "Skip $address: manual disconnect suppression ${suppressRemaining / 1000}s left")
             }
-            return false
+            return ConnectionRequestResult(accepted = false)
         }
         if (_connectionState.value is ConnectionState.Connecting ||
             _connectionState.value is ConnectionState.Connected ||
             connectingJob?.isActive == true
-        ) return true
+        ) {
+            val currentAttempt = activeConnectionAttempt
+            val sameAddressAttempt = currentAttempt?.takeIf {
+                it.address.equals(address, ignoreCase = true)
+            }
+            return if (sameAddressAttempt != null) {
+                ConnectionRequestResult(true, sameAddressAttempt.attemptId)
+            } else {
+                LogBuffer.d("AutoConnect", "Skip $address: another device control channel is active")
+                ConnectionRequestResult(accepted = false)
+            }
+        }
 
         val device = getSystemConnectedDevice(address) ?: run {
             if (logMisses) {
                 LogBuffer.d("AutoConnect", "Skip $address: system Bluetooth is not connected")
             }
-            return false
+            return ConnectionRequestResult(accepted = false)
         }
-        return autoConnectKnownSystemConnected(device, logMisses, trigger)
+        return autoConnectKnownSystemConnectedRequest(device, logMisses, trigger)
     }
 
     fun autoConnectKnownSystemConnected(
         device: BluetoothDevice,
         logMisses: Boolean = true,
         trigger: ConnectionTrigger = ConnectionTrigger.ServiceCommand,
-    ): Boolean {
+    ): Boolean = autoConnectKnownSystemConnectedRequest(device, logMisses, trigger).accepted
+
+    internal fun autoConnectKnownSystemConnectedRequest(
+        device: BluetoothDevice,
+        logMisses: Boolean = true,
+        trigger: ConnectionTrigger = ConnectionTrigger.ServiceCommand,
+    ): ConnectionRequestResult {
         val address = device.address
+        if (isBackgroundAutoConnectSuppressed(trigger, hardwareRegressionActive)) {
+            if (logMisses) LogBuffer.d("AutoConnect", "Skip $address: hardware regression owns connection slot")
+            return ConnectionRequestResult(accepted = false)
+        }
         if (address !in getSavedAddresses()) {
             if (logMisses) LogBuffer.d("AutoConnect", "Ignore unsaved system-connected device $address")
-            return false
+            return ConnectionRequestResult(accepted = false)
         }
         val suppressRemaining = manualDisconnectSuppressUntil - System.currentTimeMillis()
         if (suppressRemaining > 0) {
             if (logMisses) {
                 LogBuffer.i("AutoConnect", "Skip $address: manual disconnect suppression ${suppressRemaining / 1000}s left")
             }
-            return false
+            return ConnectionRequestResult(accepted = false)
         }
         if (_connectionState.value is ConnectionState.Connecting ||
             _connectionState.value is ConnectionState.Connected ||
             connectingJob?.isActive == true
-        ) return true
+        ) {
+            val currentAttempt = activeConnectionAttempt
+            val sameAddressAttempt = currentAttempt?.takeIf {
+                it.address.equals(address, ignoreCase = true)
+            }
+            return if (sameAddressAttempt != null) {
+                ConnectionRequestResult(true, sameAddressAttempt.attemptId)
+            } else {
+                if (logMisses) {
+                    LogBuffer.d(
+                        "AutoConnect",
+                        "Skip $address: another device control channel is active",
+                    )
+                }
+                ConnectionRequestResult(accepted = false)
+            }
+        }
 
         systemConnectedAddresses.add(address)
         LogBuffer.i("AutoConnect", "System Bluetooth connected for ${device.name ?: address}; opening app SPP control channel")
-        connect(device, trigger)
-        return true
-    }
-
-    fun noteSystemBluetoothDisconnected(address: String) {
-        systemConnectedAddresses.remove(address)
-        refreshSavedDeviceConnections()
+        val attemptId = connect(device, trigger)
+        return ConnectionRequestResult(accepted = attemptId != null, attemptId = attemptId)
     }
 
     fun autoConnectLastSaved(trigger: ConnectionTrigger = ConnectionTrigger.ServiceCommand): Boolean {
-        val address = getSavedAddress() ?: return false
-        return autoConnectSaved(address, trigger = trigger)
+        return autoConnectLastSavedRequest(trigger).accepted
+    }
+
+    internal fun autoConnectLastSavedRequest(
+        trigger: ConnectionTrigger = ConnectionTrigger.ServiceCommand,
+    ): ConnectionRequestResult {
+        val address = getSavedAddress() ?: return ConnectionRequestResult(accepted = false)
+        return autoConnectSavedRequest(address, trigger = trigger)
     }
 
     fun autoConnectSystemConnectedSaved(
         logMisses: Boolean = true,
         trigger: ConnectionTrigger = ConnectionTrigger.PeriodicCheck,
-    ): Boolean {
+    ): Boolean = autoConnectSystemConnectedSavedRequest(logMisses, trigger).accepted
+
+    internal fun autoConnectSystemConnectedSavedRequest(
+        logMisses: Boolean = true,
+        trigger: ConnectionTrigger = ConnectionTrigger.PeriodicCheck,
+    ): ConnectionRequestResult {
         val addresses = getSavedAddresses().asReversed()
         if (addresses.isEmpty()) {
             if (logMisses) LogBuffer.d("AutoConnect", "No saved devices for background control connect")
-            return false
+            return ConnectionRequestResult(accepted = false)
         }
         for (address in addresses) {
-            if (autoConnectSaved(address, logMisses, trigger)) return true
+            val result = autoConnectSavedRequest(address, logMisses, trigger)
+            if (result.accepted) return result
         }
-        return false
+        return ConnectionRequestResult(accepted = false)
     }
 
     private fun isAutoLowLatencyEnabled(): Boolean = appContext
@@ -537,11 +847,11 @@ class DeviceRepository {
         if (!isAutoLowLatencyEnabled()) return
 
         val maxAttempts = 3
-        LogBuffer.i("SPP", "Auto low latency recovery start current=${_props.value.lowLatency}")
+        LogBuffer.i("SPP", "Auto low latency recovery start current=${stateStore.props.value.lowLatency}")
         repeat(maxAttempts) { index ->
             if (_connectionState.value !is ConnectionState.Connected) return
             syncProps()
-            if (_props.value.lowLatency == true) {
+            if (stateStore.props.value.lowLatency == true) {
                 LogBuffer.i("SPP", "Auto low latency confirmed")
                 failedHandlers.remove("low_latency")
                 return
@@ -553,7 +863,7 @@ class DeviceRepository {
                 phase = if (attempt == 1) "post-core" else "recovery",
             )
             syncProps()
-            if (_props.value.lowLatency == true) {
+            if (stateStore.props.value.lowLatency == true) {
                 LogBuffer.i("SPP", "Auto low latency confirmed attempt=$attempt")
                 failedHandlers.remove("low_latency")
                 return
@@ -567,9 +877,9 @@ class DeviceRepository {
     private suspend fun applyAutoLowLatencyAttempt(attempt: Int, phase: String) {
         LogBuffer.i(
             "SPP",
-            "Auto low latency $phase apply attempt=$attempt current=${_props.value.lowLatency}"
+            "Auto low latency $phase apply attempt=$attempt current=${stateStore.props.value.lowLatency}"
         )
-        sppQuietUntil = System.currentTimeMillis() + 1_500L
+        setSppQuietUntil(System.currentTimeMillis() + 1_500L)
         try {
             setProperty("config", "low_latency", "true")
         } catch (e: Exception) {
@@ -578,6 +888,11 @@ class DeviceRepository {
                 "Auto low latency $phase failed attempt=$attempt reason=${e.javaClass.simpleName}:${e.message}"
             )
         }
+    }
+
+    private fun setSppQuietUntil(untilMs: Long) {
+        sppQuietUntil = untilMs
+        session?.legacyDriverOrNull()?.setCommandQuietUntil(untilMs)
     }
 
     fun removeSavedDevice(address: String) {
@@ -618,89 +933,141 @@ class DeviceRepository {
         attempt: ConnectionAttemptTimeline,
     ) {
         initJob?.cancel()
+        backgroundInitJob?.cancel()
         initJob = scope.launch {
             try {
                 // Android's RFCOMM socket can report connected before the earbud command loop is
-                // ready. The real-device baseline showed that a one-second outer timeout loses
-                // the first ANC/low-latency reads while later battery/sound reads succeed.
+                // ready. Keep the verified-model first pass short; failed handlers are recovered
+                // later with a longer budget so a slow optional response does not delay the
+                // normal connection path.
                 val coreHandlers = targetSession.handlerIds.filter { it in coreRetryOrder }
                 pendingInitHandlers.clear()
                 pendingInitHandlers.addAll(coreHandlers)
                 syncProps()
 
                 markConnectionPhase(attempt, ConnectionPhase.Settling)
+                updateControlChannelStage(ControlChannelStage.Settling, attempt)
                 delay(HuaweiHandlerInitializationPolicy.INITIAL_SETTLE_DELAY_MS)
                 markConnectionPhase(attempt, ConnectionPhase.CoreInitializing)
-                if (session !== targetSession || targetSession.isConnected != true) return@launch
-                targetSession.initializeCoreHandlers()
-                if (session !== targetSession || targetSession.isConnected != true) return@launch
+                updateControlChannelStage(ControlChannelStage.InitializingCore, attempt)
+                if (!connectionManager.isCurrentSession(targetSession) || targetSession.isConnected != true) return@launch
+                val initialCoreTimeoutMs = HuaweiHandlerInitializationPolicy.initialCoreTimeoutMs(
+                    targetSession.legacyDriverOrNull()?.transportConfig?.source
+                        ?: EndpointSource.CompatibilityFallback,
+                )
+                LogBuffer.i(
+                    "SPP",
+                    "CORE first pass timeout=${initialCoreTimeoutMs}ms " +
+                        "endpoint=${targetSession.legacyDriverOrNull()?.transportConfig?.endpointDescription() ?: "unknown"}",
+                )
+                targetSession.initializeCoreHandlers(timeoutMs = initialCoreTimeoutMs, maxAttempts = 1)
+                if (!connectionManager.isCurrentSession(targetSession) || targetSession.isConnected != true) return@launch
                 failedHandlers.clear()
                 failedHandlers.addAll(targetSession.failedHandlerIds)
                 syncProps()
 
                 markConnectionPhase(attempt, ConnectionPhase.CoreReady)
+                updateControlChannelStage(ControlChannelStage.CoreReady, attempt)
                 if (failedHandlers.any { it in coreRetryOrder }) {
                     markConnectionPhase(attempt, ConnectionPhase.Degraded)
+                    updateControlChannelStage(ControlChannelStage.Degraded, attempt)
                 }
-
-                // Recover failed core reads before Deferred work takes the request lane. This is
-                // intentionally serialized in initJob; the previous retry job competed with
-                // Deferred handlers and made 2b6c/2b2a responses nondeterministic.
-                recoverCoreHandlers(
-                    targetSession = targetSession,
-                    rounds = 1,
-                )
-                if (session !== targetSession || targetSession.isConnected != true) return@launch
                 pendingInitHandlers.clear()
                 pendingInitHandlers.addAll(failedHandlers.filter { it in coreRetryOrder })
                 syncProps()
 
-                // Automatic low latency is an action, not a prerequisite for TransportReady.
-                // Apply it only after the first core recovery and keep all confirmation attempts
-                // on this same command lane.
+                // Recovery and optional capability probing stay on the same serialized command
+                // lane, but run in the background after the fast core result is published.
+                // User actions can therefore reach the scheduler without waiting for a failed
+                // 3-second probe or automatic low-latency retry.
+                startBackgroundInitialization(targetSession, attempt)
+            } catch (e: CancellationException) {
+                throw e
+            } catch (e: Exception) {
+                if (connectionManager.isCurrentSession(targetSession)) {
+                    LogBuffer.w("SPP", "Handler initialization stopped: ${e.message}")
+                    markConnectionPhase(attempt, ConnectionPhase.Failed, "initialization ${e.javaClass.simpleName}")
+                    updateControlChannelStage(
+                        ControlChannelStage.Failed,
+                        attempt,
+                        reason = "initialization ${e.javaClass.simpleName}",
+                    )
+                    failedHandlers.clear()
+                    failedHandlers.addAll(targetSession.failedHandlerIds)
+                    pendingInitHandlers.clear()
+                    syncProps()
+                }
+            }
+        }
+    }
+
+    private fun startBackgroundInitialization(
+        targetSession: EarbudSession,
+        attempt: ConnectionAttemptTimeline,
+    ) {
+        backgroundInitJob?.cancel()
+        backgroundInitJob = scope.launch {
+            try {
+                if (!connectionManager.isCurrentSession(targetSession) || targetSession.isConnected != true) return@launch
+
+                // Recover failed core reads before Deferred work takes the request lane. This is
+                // still serialized; it is simply no longer part of the first usable result.
+                recoverCoreHandlers(
+                    targetSession = targetSession,
+                    rounds = 1,
+                )
+                if (!connectionManager.isCurrentSession(targetSession) || targetSession.isConnected != true) return@launch
+
+                // Automatic low latency is an action, not a prerequisite for the control channel.
                 recoverAutoLowLatencyIfEnabled()
-                if (session !== targetSession || targetSession.isConnected != true) return@launch
+                if (!connectionManager.isCurrentSession(targetSession) || targetSession.isConnected != true) return@launch
 
-                delay(1_000)
-
+                // The low-latency write/read-back path has its own settle delay. A short handoff
+                // gap is enough before optional probes and avoids the old fixed one-second stall.
+                delay(HuaweiHandlerInitializationPolicy.BACKGROUND_HANDOFF_DELAY_MS)
                 pendingInitHandlers.addAll(
                     targetSession.handlerIds.filterNot { it in coreRetryOrder || it == "drop_logs" }
                 )
                 syncProps()
                 markConnectionPhase(attempt, ConnectionPhase.DeferredInitializing)
+                updateControlChannelStage(ControlChannelStage.InitializingDeferred, attempt)
                 targetSession.initializeDeferredHandlers()
-                if (session !== targetSession || targetSession.isConnected != true) return@launch
+                if (!connectionManager.isCurrentSession(targetSession) || targetSession.isConnected != true) return@launch
                 failedHandlers.clear()
                 failedHandlers.addAll(targetSession.failedHandlerIds)
 
-                // Optional probes are best-effort, but an ANC/battery/low-latency read that was
-                // lost during the warm-up window deserves further bounded recovery. This keeps
-                // initialization progressing after the first ten seconds instead of dropping
-                // the failed handlers permanently.
+                // Optional probes are best-effort. Failed core handlers receive the remaining
+                // bounded recovery rounds without blocking the first connection result.
                 recoverCoreHandlers(
                     targetSession = targetSession,
                     rounds = HuaweiHandlerInitializationPolicy.CORE_RECOVERY_ROUNDS - 1,
                 )
-                if (session !== targetSession || targetSession.isConnected != true) return@launch
+                if (!connectionManager.isCurrentSession(targetSession) || targetSession.isConnected != true) return@launch
 
                 pendingInitHandlers.clear()
                 syncProps()
                 logDegradedHandlersOnce()
                 if (failedHandlers.isEmpty()) {
                     markConnectionPhase(attempt, ConnectionPhase.Ready)
+                    updateControlChannelStage(ControlChannelStage.Ready, attempt)
                 } else {
                     markConnectionPhase(attempt, ConnectionPhase.Degraded)
+                    updateControlChannelStage(ControlChannelStage.Degraded, attempt)
                 }
             } catch (e: CancellationException) {
                 throw e
             } catch (e: Exception) {
-                if (session === targetSession) {
-                    LogBuffer.w("SPP", "Handler initialization stopped: ${e.message}")
-                    markConnectionPhase(attempt, ConnectionPhase.Failed, "initialization ${e.javaClass.simpleName}")
-                    failedHandlers.clear()
-                    failedHandlers.addAll(targetSession.failedHandlerIds)
+                if (connectionManager.isCurrentSession(targetSession)) {
+                    LogBuffer.w("SPP", "Background initialization stopped: ${e.message}")
                     pendingInitHandlers.clear()
                     syncProps()
+                    logDegradedHandlersOnce()
+                    markConnectionPhase(attempt, ConnectionPhase.Degraded, "background initialization")
+                    updateControlChannelStage(
+                        ControlChannelStage.Degraded,
+                        attempt,
+                        reason = "background initialization ${e.javaClass.simpleName}",
+                    )
                 }
             }
         }
@@ -758,6 +1125,7 @@ class DeviceRepository {
                 // 设备信息仅在首次连接时获取一次；核心状态/自动低延迟稳定前不抢 SPP 通道
                 if (!deviceInfoFetched &&
                     initJob?.isActive != true &&
+                    backgroundInitJob?.isActive != true &&
                     System.currentTimeMillis() >= sppQuietUntil &&
                     failedHandlers.none { it in coreRetryOrder }
                 ) {
@@ -794,19 +1162,19 @@ class DeviceRepository {
         // 让 UI、Tile、Notification 全部瞬间看到预期值，彻底解决跳变问题
         when {
             group == "anc" && prop == "mode" -> {
-                _props.value = _props.value.copy(ancMode = value)
+                stateStore.updateProps { it.copy(ancMode = value) }
             }
             group == "config" && prop == "low_latency" -> {
-                _props.value = _props.value.copy(lowLatency = value.toBooleanStrictOrNull())
+                stateStore.updateProps { it.copy(lowLatency = value.toBooleanStrictOrNull()) }
             }
             group == "sound" && prop == "quality_preference" -> {
-                _props.value = _props.value.copy(soundQuality = value)
+                stateStore.updateProps { it.copy(soundQuality = value) }
             }
             group == "sound" && prop == "equalizer_preset" -> {
-                _props.value = _props.value.copy(equalizerPreset = value)
+                stateStore.updateProps { it.copy(equalizerPreset = value) }
             }
             group == "dual_connect" && prop == "enabled" -> {
-                _props.value = _props.value.copy(dualConnectEnabled = value.toBooleanStrictOrNull())
+                stateStore.updateProps { it.copy(dualConnectEnabled = value.toBooleanStrictOrNull()) }
             }
         }
 
@@ -816,10 +1184,12 @@ class DeviceRepository {
     }
 
     private fun ensureDefaultAncOptions() {
-        if (_props.value.ancModeOptions.isEmpty()) {
-            _props.value = _props.value.copy(
+        if (stateStore.props.value.ancModeOptions.isEmpty()) {
+            stateStore.updateProps {
+                it.copy(
                 ancModeOptions = listOf("normal", "cancellation", "awareness")
-            )
+                )
+            }
         }
     }
 
@@ -986,13 +1356,55 @@ class DeviceRepository {
         }
     }
 
+    private fun systemLinkState(address: String?): SystemLinkState =
+        if (address != null && address in systemConnectedAddresses) {
+            SystemLinkState.Connected
+        } else {
+            SystemLinkState.Disconnected
+        }
+
+    private fun updateControlChannelState(transform: (ControlChannelState) -> ControlChannelState) {
+        stateStore.updateControlChannel(transform)
+    }
+
+    private fun updateControlChannelStage(
+        stage: ControlChannelStage,
+        attempt: ConnectionAttemptTimeline? = activeConnectionAttempt,
+        reason: String? = null,
+    ) {
+        val current = stateStore.controlChannelState.value
+        val address = attempt?.address ?: current.address ?: connectedAddress
+        stateStore.updateStage(
+            stage = stage,
+            attempt = attempt,
+            addressOverride = address,
+            systemLink = address?.let { systemLinkState(it) } ?: current.systemLink,
+            pendingHandlers = pendingInitHandlers.toSet(),
+            failedHandlers = failedHandlers.toSet(),
+            reason = reason,
+        )
+    }
+
     // ── 内部：从 session 状态映射同步到 StateFlow ─────────────────────────────
 
     private suspend fun syncProps() {
         val d = session ?: return
-        _props.value = d.mapState(
+        stateStore.replaceProps(d.mapState(
             failedHandlers = pendingInitHandlers.toSet(),
             connectedSince = connectedAt.takeIf { it > 0 },
+        ))
+        val current = stateStore.controlChannelState.value
+        val address = current.address ?: connectedAddress
+        val linked = if (address != null) {
+            current.copy(systemLink = systemLinkState(address))
+        } else {
+            current
+        }
+        stateStore.updateControlChannel { linked }
+        stateStore.updateHandlers(
+            activeAttemptId = activeConnectionAttempt?.attemptId,
+            pendingHandlers = pendingInitHandlers.toSet(),
+            failedHandlers = failedHandlers.toSet(),
         )
         ensureDefaultAncOptions()
     }

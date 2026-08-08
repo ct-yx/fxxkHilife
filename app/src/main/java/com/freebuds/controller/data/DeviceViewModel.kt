@@ -18,9 +18,11 @@ data class ScanState(
 class DeviceViewModel : ViewModel() {
 
     private val repo = HilifeApplication.instance.deviceRepository
+    private val connectionManager = repo.connectionManager
 
     // ── 透传 Repository 的 Flow ───────────────────────────────────────────────
     val connectionState: StateFlow<ConnectionState> = repo.connectionState
+    val controlChannelState: StateFlow<ControlChannelState> = repo.controlChannelState
     val props: StateFlow<DeviceProps> = repo.props
     val listeningStats: StateFlow<ListeningStats> = repo.listeningStats
     val savedDeviceConnections: StateFlow<List<SavedDeviceConnection>> = repo.savedDeviceConnections
@@ -34,8 +36,12 @@ class DeviceViewModel : ViewModel() {
     private var scanner: BluetoothScanner? = null
 
     // ── 连接操作 ──────────────────────────────────────────────────────────────
-    fun connect(device: BluetoothDevice) = repo.connect(device)
-    fun disconnect() = repo.disconnect()
+    fun connect(device: BluetoothDevice): String? =
+        (connectionManager.submit(ConnectionCommand.Connect(device)) as ConnectionCommandResult.Attempt).attemptId
+
+    fun disconnect() {
+        connectionManager.submit(ConnectionCommand.Disconnect)
+    }
 
     // ── 属性写入 ──────────────────────────────────────────────────────────────
     fun setProperty(group: String, prop: String, value: String) {
@@ -49,15 +55,19 @@ class DeviceViewModel : ViewModel() {
     fun getSavedAddresses(): List<String> = repo.getSavedAddresses()
     fun getSavedAddress(): String? = repo.getSavedAddress()
     fun removeSavedDevice(address: String) = repo.removeSavedDevice(address)
-    fun refreshSavedDeviceConnections() = repo.refreshSavedDeviceConnections()
+    fun refreshSavedDeviceConnections() {
+        connectionManager.submit(ConnectionCommand.RefreshSavedDeviceConnections)
+    }
 
     // ── 前后台感知 ────────────────────────────────────────────────────────────
     fun setAppInForeground(foreground: Boolean) = repo.setAppInForeground(foreground)
 
     // ── 自动连接已保存设备 ────────────────────────────────────────────────────
-    fun autoConnectSaved(address: String): Boolean = repo.autoConnectSaved(address)
+    fun autoConnectSaved(address: String): Boolean =
+        (connectionManager.submit(ConnectionCommand.AutoConnectSaved(address)) as ConnectionCommandResult.Accepted).value
 
-    fun autoConnectLast(context: Context): Boolean = repo.autoConnectLastSaved()
+    fun autoConnectLast(context: Context): Boolean =
+        (connectionManager.submit(ConnectionCommand.AutoConnectLastSaved()) as ConnectionCommandResult.Accepted).value
 
     // ── 扫描 ──────────────────────────────────────────────────────────────────
     fun startScan(context: Context) {
@@ -72,7 +82,9 @@ class DeviceViewModel : ViewModel() {
                 // 扫描完成后，尝试自动连接华为设备
                 val huawei = s.found.firstOrNull { it.isHuaweiOrHonor }
                 if (huawei != null && repo.connectionState.value !is ConnectionState.Connected) {
-                    repo.connect(huawei.device, ConnectionTrigger.ScanCompleted)
+                    connectionManager.submit(
+                        ConnectionCommand.Connect(huawei.device, ConnectionTrigger.ScanCompleted)
+                    )
                 }
             }
             // 立即同步已配对设备

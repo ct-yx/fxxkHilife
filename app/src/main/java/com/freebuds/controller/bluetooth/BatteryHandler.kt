@@ -1,7 +1,7 @@
 package com.freebuds.controller.bluetooth
 
 import com.freebuds.controller.protocol.HuaweiCapability
-import com.freebuds.controller.protocol.HuaweiSppCommand
+import com.freebuds.controller.adapter.huawei.protocol.HuaweiCommandCatalog
 import com.freebuds.controller.protocol.HuaweiSppPackage
 import com.freebuds.controller.util.LogBuffer
 
@@ -16,11 +16,10 @@ import com.freebuds.controller.util.LogBuffer
  */
 class BatteryHandler(private val wTws: Boolean = true) : HuaweiDeviceHandler {
 
+    private val command = HuaweiCommandCatalog.battery
+
     override val id = "battery"
-    override val commandIds = listOf(
-        HuaweiSppCommand.BATTERY_READ,
-        HuaweiSppCommand.BATTERY_NOTIFY
-    )
+    override val commandIds = command.incomingCommandIds
     override val capabilities = listOf(HuaweiCapability.BATTERY)
 
     private var batteryCallback: ((Map<String, Int?>) -> Unit)? = null
@@ -33,8 +32,7 @@ class BatteryHandler(private val wTws: Boolean = true) : HuaweiDeviceHandler {
     /** 初始化：发送电池读取请求 (param 1=global, 2=left/right/case, 3=charging) */
     override suspend fun onInit(driver: SppDriver) {
         LogBuffer.i("Battery", "Requesting battery levels...")
-        val pkg = HuaweiSppPackage.readRequest(HuaweiSppCommand.BATTERY_READ, 1, 2, 3)
-        val resp = driver.sendPackage(pkg)
+        val resp = driver.sendPackage(command.readRequest(), operation = "battery.read")
         if (resp != null) {
             onPackage(resp, driver)
         } else {

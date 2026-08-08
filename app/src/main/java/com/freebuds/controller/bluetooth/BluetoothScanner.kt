@@ -28,21 +28,23 @@ data class ScannedDevice(
 
 class BluetoothScanner(private val context: Context) {
     private var callback: ((Boolean) -> Unit)? = null
+    private var completionDelivered = false
     val found = mutableListOf<ScannedDevice>()
     private var receiver: BroadcastReceiver? = null
 
     fun startScan(complete: (Boolean) -> Unit) {
         this.callback = complete
+        completionDelivered = false
         found.clear()
 
         val adapter = BluetoothAdapter.getDefaultAdapter() ?: run {
             LogBuffer.w("Scan", "No Bluetooth adapter")
-            complete(false)
+            finish(false)
             return
         }
         if (!adapter.isEnabled) {
             LogBuffer.w("Scan", "Bluetooth is disabled")
-            complete(false)
+            finish(false)
             return
         }
 
@@ -95,7 +97,8 @@ class BluetoothScanner(private val context: Context) {
 
                     BluetoothAdapter.ACTION_DISCOVERY_FINISHED -> {
                         LogBuffer.i("Scan", "Scan finished, ${found.size} devices found")
-                        complete(true)
+                        stopScan()
+                        finish(true)
                     }
                 }
             }
@@ -109,17 +112,39 @@ class BluetoothScanner(private val context: Context) {
         try {
             context.registerReceiver(receiver, filter)
             if (!adapter.startDiscovery()) {
-                LogBuffer.w("Scan", "Bluetooth discovery did not start")
+                // Android can reject a second discovery request while the adapter is already
+                // discovering, and some devices expose the bonded list without permitting a
+                // fresh inquiry.  The saved/bonded entries above are still valid scan results;
+                // use them as a deterministic fallback instead of turning a usable device into
+                // a false scan failure (the D hardware scenario observed exactly this path).
+                val canUseBondedFallback = found.isNotEmpty()
+                LogBuffer.w(
+                    "Scan",
+                    if (canUseBondedFallback) {
+                        "Bluetooth discovery did not start; using bonded-device fallback count=${found.size}"
+                    } else {
+                        "Bluetooth discovery did not start and no bonded fallback is available"
+                    },
+                )
                 stopScan()
-                complete(false)
+                finish(canUseBondedFallback)
                 return
             }
             LogBuffer.i("Scan", "Scanning for devices...")
         } catch (e: SecurityException) {
             LogBuffer.e("Scan", "Bluetooth scan permission denied: ${e.message}")
             stopScan()
-            complete(false)
+            finish(false)
         }
+    }
+
+    /** Deliver one terminal result even if stopScan races ACTION_DISCOVERY_FINISHED. */
+    private fun finish(success: Boolean) {
+        if (completionDelivered) return
+        completionDelivered = true
+        val terminalCallback = callback
+        callback = null
+        terminalCallback?.invoke(success)
     }
 
     fun stopScan() {

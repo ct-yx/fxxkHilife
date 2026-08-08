@@ -50,7 +50,7 @@ class HuaweiPendingResponseManager {
         }
     }
 
-    suspend fun complete(commandId: String, pkg: HuaweiSppPackage): Boolean = synchronized(lock) {
+    fun complete(commandId: String, pkg: HuaweiSppPackage): Boolean = synchronized(lock) {
         val pending = pendingResponses[commandId]
         if (pending != null && !pending.deferred.isCompleted && pending.accepts(pkg)) {
             pending.deferred.complete(pkg)

@@ -8,6 +8,8 @@ import android.service.quicksettings.TileService
 import androidx.annotation.RequiresApi
 import com.freebuds.controller.HilifeApplication
 import com.freebuds.controller.R
+import com.freebuds.controller.data.ConnectionCommand
+import com.freebuds.controller.data.ConnectionCommandResult
 import com.freebuds.controller.data.ConnectionState
 import com.freebuds.controller.data.ConnectionTrigger
 import com.freebuds.controller.i18n.I18n
@@ -28,6 +30,8 @@ class QuickSettingsTileService : TileService() {
 
     private val scope = MainScope()
     private var propsJob: Job? = null
+    private val connectionManager
+        get() = HilifeApplication.instance.deviceRepository.connectionManager
 
     override fun onTileAdded() {
         super.onTileAdded()
@@ -95,7 +99,12 @@ class QuickSettingsTileService : TileService() {
 
     private fun connectLastSavedOrOpenApp() {
         val repo = HilifeApplication.instance.deviceRepository
-        if (repo.autoConnectLastSaved(ConnectionTrigger.TileAction)) {
+        val accepted = (
+            connectionManager.submit(
+                ConnectionCommand.AutoConnectLastSaved(ConnectionTrigger.TileAction)
+            ) as ConnectionCommandResult.Accepted
+            ).value
+        if (accepted) {
             qsTile?.apply {
                 label = I18n.t("tile.anc")
                 subtitle = I18n.t("tile.connecting")

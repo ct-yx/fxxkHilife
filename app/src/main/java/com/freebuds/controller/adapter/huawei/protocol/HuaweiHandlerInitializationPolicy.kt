@@ -1,5 +1,7 @@
 package com.freebuds.controller.adapter.huawei.protocol
 
+import com.freebuds.controller.core.transport.EndpointSource
+
 /**
  * Timing policy for the Huawei SPP initialization phases.
  *
@@ -10,13 +12,16 @@ package com.freebuds.controller.adapter.huawei.protocol
  */
 internal object HuaweiHandlerInitializationPolicy {
     const val INITIAL_SETTLE_DELAY_MS = 250L
-    // The first command is often ignored while the earbud command loop is waking up.  A one
-    // second outer timeout made ANC and low-latency initialization depend on connection timing.
+    // Known model endpoints use the fast first pass. Failed handlers get the longer recovery
+    // budget below, so slow/unknown devices retain a reliable fallback without delaying the
+    // normal verified-model connection path.
+    const val FAST_CORE_HANDLER_TIMEOUT_MS = 1_000L
     const val CORE_HANDLER_TIMEOUT_MS = 3_000L
     const val CORE_INTER_COMMAND_DELAY_MS = 80L
     const val CORE_RECOVERY_TIMEOUT_MS = 3_000L
     const val CORE_RECOVERY_ROUNDS = 3
     const val CORE_RECOVERY_ROUND_DELAY_MS = 1_000L
+    const val BACKGROUND_HANDOFF_DELAY_MS = 250L
 
     /** The control actions users notice first must not wait behind battery telemetry. */
     val CORE_HANDLER_IDS_IN_ORDER = listOf(
@@ -41,10 +46,23 @@ internal object HuaweiHandlerInitializationPolicy {
         else -> declaredTimeoutMs.coerceAtMost(DEFERRED_HANDLER_TIMEOUT_MS)
     }
 
+    fun initialCoreTimeoutMs(source: EndpointSource): Long = when (source) {
+        EndpointSource.VerifiedModelConfig -> FAST_CORE_HANDLER_TIMEOUT_MS
+        EndpointSource.ServiceRecord,
+        EndpointSource.RuntimeDiscovery,
+        EndpointSource.CompatibilityFallback -> CORE_HANDLER_TIMEOUT_MS
+    }
+
     /** One serialized initial wave covers the four request-based core handlers. */
     fun worstCaseCoreReadyMs(): Long {
         val commandGaps = (CORE_HANDLER_COUNT - 1) * CORE_INTER_COMMAND_DELAY_MS
         val oneWave = CORE_REQUEST_HANDLER_COUNT * CORE_HANDLER_TIMEOUT_MS + commandGaps
+        return INITIAL_SETTLE_DELAY_MS + oneWave
+    }
+
+    fun worstCaseFastCoreReadyMs(): Long {
+        val commandGaps = (CORE_HANDLER_COUNT - 1) * CORE_INTER_COMMAND_DELAY_MS
+        val oneWave = CORE_REQUEST_HANDLER_COUNT * FAST_CORE_HANDLER_TIMEOUT_MS + commandGaps
         return INITIAL_SETTLE_DELAY_MS + oneWave
     }
 }

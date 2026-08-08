@@ -17,6 +17,7 @@ import com.freebuds.controller.BuildConfig
 import com.freebuds.controller.HilifeApplication
 import com.freebuds.controller.R
 import com.freebuds.controller.data.BluetoothRegressionRunner
+import com.freebuds.controller.data.ConnectionCommand
 import com.freebuds.controller.i18n.I18n
 import com.freebuds.controller.util.LogBuffer
 import com.freebuds.controller.util.LogBuffer.OnLogUpdateListener
@@ -25,7 +26,7 @@ import kotlinx.coroutines.flow.collect
 
 /**
  * 调试终端 —— 只负责日志展示和 props/set 命令。
- * 连接/断开由 DeviceRepository 统一管理，Terminal 不持有 SppDriver。
+ * 连接/断开由 EarbudConnectionManager 统一管理，Terminal 不持有 SppDriver。
  */
 class TerminalActivity : AppCompatActivity(), OnLogUpdateListener {
 
@@ -76,7 +77,7 @@ class TerminalActivity : AppCompatActivity(), OnLogUpdateListener {
                     regressionRunner.state.collect { state ->
                         regressionButton.text = when {
                             state.running -> "${I18n.t("terminal.regression.running")} " +
-                                "${state.completed}/${state.totalIterations * 6}"
+                                "${state.completed}/${state.totalOperations}"
                             state.reportReady -> I18n.t("terminal.regression.share_title")
                             else -> I18n.t("terminal.regression")
                         }
@@ -130,7 +131,10 @@ class TerminalActivity : AppCompatActivity(), OnLogUpdateListener {
             trimmed.startsWith("filter ", true) -> setFilter(trimmed.substringAfter(' '))
             trimmed.equals("props", true)      -> printProps()
             trimmed.startsWith("set ", true)   -> setProp(trimmed.removePrefix("set").trim())
-            trimmed.equals("disconnect", true) -> { repo.disconnect(); finish() }
+            trimmed.equals("disconnect", true) -> {
+                repo.connectionManager.submit(ConnectionCommand.Disconnect)
+                finish()
+            }
             trimmed.equals("help", true)       -> {
                 LogBuffer.i("Terminal", I18n.t("terminal.help.clear"))
                 LogBuffer.i("Terminal", I18n.t("terminal.help.props"))
