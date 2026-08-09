@@ -1351,4 +1351,5 @@
 ### 自动化验证
 - 已通过定向 JVM 测试：`EarbudStateStoreTest`、`BluetoothRegressionPlanTest`、`RfcommTransportConfigTest`。
 - 完整本地 CI：`./scripts/run_ci_checks.sh ci-output-bt-state-retry-20` 通过，Debug APK SHA-256=`bd28b23cf6916bc141d66eef0f8b7fadff730161da0c07a62c5bcb0fd54b9b8f`，Release APK SHA-256=`13e498c7e55041b8778569c532a2aeb02c3dab773afcd9171e8cc8a6e90b3b9e`。
-- GitHub Actions 和实机报告返回前 BT-1/BT-2 保持“目标受阻”。
+- GitHub Actions [31313780654](https://github.com/ct-yx/fxxkHilife/actions/runs/31313780654) 已通过，产物为 `fxxkHilife-debug-v4.3.5-93`、`fxxkHilife-v4.3.5-93` 和 `automated-test-report-v4.3.5-93`。
+- 实机报告返回前 BT-1/BT-2 保持“目标受阻”。
