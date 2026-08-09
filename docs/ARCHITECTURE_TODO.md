@@ -1,244 +1,28 @@
-# 架构重构 TODO：可插拔耳机协议与能力层
+# 架构重构计划（已合并）
 
-专项重构规划见：[`REFACTOR_PLAN_UI_AND_BLUETOOTH.md`](./REFACTOR_PLAN_UI_AND_BLUETOOTH.md)。本文继续保留通用 Adapter / Protocol / Capability 架构 TODO；UI 与蓝牙指令/连接的阶段化执行、验收标准和迁移顺序以专项文档为准。
+本文件的独立 TODO 已合并到唯一主计划：
 
-> 目标：把当前偏 Huawei / OpenFreebuds 的实现，逐步整理成可接入更多逆向耳机项目的插件式架构。
+- [`REFACTOR_PLAN_UI_AND_BLUETOOTH.md`](./REFACTOR_PLAN_UI_AND_BLUETOOTH.md)
 
-## 背景
+从 2026-08-10 起，不再在本文件维护第二份阶段清单、版本号或测试门。本文件保留为旧路径跳转说明，避免历史链接失效。
 
-当前项目的协议、能力表、Handler 注册、UI 属性映射已经可以支撑 HUAWEI / HONOR Earbuds 的核心控制，但接口边界仍然偏“单厂商内聚”：
+## 合并后的子计划映射
 
-- `DeviceRepository` 同时承担连接编排、型号识别、Handler 注册、属性同步、统计状态等职责。
-- `SppDriver` / `HuaweiDeviceHandler` / `OpenFreebudsHandlers` 与华为协议强绑定。
-- UI 层直接消费 `DeviceProps`，其中字段也以当前华为能力为主。
-- 后续如果接入其他逆向项目的耳机，容易把更多厂商分支继续塞进现有仓库和 Handler 注册逻辑。
+| 原架构 TODO | 主计划位置 | 当前选择 |
+|---|---|---|
+| Transport | 主计划 §2.1、§4.3.3 | `EarbudTransport` 只作为 seam；生产唯一使用 `RfcommSppTransport`，暂不实现 BLE/Native |
+| Protocol | 主计划 §2.1、§4.3、§4.4 | `ProtocolSession + HuaweiSppFramer + CommandCatalog/Client/Scheduler`，先做单协议深模块 |
+| Capability / State | 主计划 §2.1、§3.3、§4.7 BT-4 | `EarbudCapability + EarbudState + ControlChannelState`，`DeviceProps` 保留兼容映射 |
+| Adapter | 主计划 §2.1、§4.5 | 静态 `EarbudAdapterRegistry`，先维护 `HuaweiOpenFreebudsAdapter`；第二个真实 Adapter 出现后再扩展优先级匹配 |
+| Repository 瘦身 | 主计划 §2.1、§4.7 BT-3 | `EarbudConnectionManager` 统一连接编排；`EarbudStateStore` 管状态；BT-3 实机门关闭后再抽 `ListeningStatsRepository` |
+| UI 通用化 | 主计划 §3、§5 | `Route → ViewModel → typed state/event`，统一 `AppScaffold`，继续保留 Haze 2.0 |
+| 新 Adapter 接入准备 | 主计划 §2.2、§7 | 延后到 BT-1/2/3 收口和 UI 状态契约冻结之后，按真实资料逐个接入 |
 
-## 分层目标
+## 当前执行点
 
-### 1. Transport 层
+当前唯一待测门是 `4.3.6 / 94` 的 `BT_MANAGER_RUNTIME_20`：
 
-抽象耳机通信通道，不关心具体协议语义。
+- F 场景 10 轮：手动断开抑制、RFCOMM 重连、ACL 清理/重连、Ready 终态、attempt 归属。
+- 应用入口初始化推进 10 轮：观察 10 秒后的 stage、pendingHandlers、failedHandlers 和最终终态。
 
-候选接口：
-
-```kotlin
-interface EarbudTransport {
-    val isConnected: Boolean
-    suspend fun connect(): Boolean
-    fun disconnect()
-    suspend fun send(bytes: ByteArray)
-    fun setPacketListener(listener: suspend (ByteArray) -> Unit)
-}
-```
-
-实现方向：
-
-- `RfcommSppTransport`：当前 Huawei / OpenFreebuds SPP 路线。
-- `BleGattTransport`：预留给 BLE GATT 控制通道。
-- `NativeBridgeTransport`：预留给未来 native daemon / vendor SDK / root bridge。
-
-### 2. Protocol 层
-
-负责包格式、命令 ID、参数解析、请求响应匹配。
-
-候选接口：
-
-```kotlin
-interface EarbudProtocol {
-    val id: String
-    fun decode(raw: ByteArray): ProtocolPacket?
-    fun encode(packet: ProtocolPacket): ByteArray
-    fun createSession(transport: EarbudTransport): ProtocolSession
-}
-```
-
-当前可拆出：
-
-- `HuaweiSppProtocol`
-- `HuaweiSppPackage`
-- pending response / ignore command 逻辑
-
-后续可新增：
-
-- `SamsungBudsProtocol`（如存在可用逆向资料）
-- `XiaomiBudsProtocol`
-- `GenericBleEarbudProtocol`
-
-### 3. Capability 层
-
-把功能能力从厂商 Handler 中抽象成稳定能力接口。
-
-候选能力：
-
-```kotlin
-enum class EarbudCapability {
-    Battery,
-    AncMode,
-    AncLevel,
-    AwarenessMode,
-    LowLatency,
-    SoundQuality,
-    WearingState,
-    AutoPause,
-    GestureDoubleTap,
-    GestureTripleTap,
-    GestureLongPress,
-    GestureSwipe,
-    VoiceLanguage,
-    Equalizer,
-    DualConnect,
-}
-```
-
-目标：
-
-- UI 只关心通用能力与通用属性。
-- 厂商插件负责把自己的协议字段映射成通用属性。
-- 未确认能力默认不展示，避免 UI 误报。
-
-### 4. Plugin / Adapter 层
-
-每个厂商或逆向项目作为一个插件式 Adapter。
-
-候选接口：
-
-```kotlin
-interface EarbudAdapter {
-    val id: String
-    val displayName: String
-    fun canHandle(device: DiscoveredEarbud): Boolean
-    fun createController(device: DiscoveredEarbud): EarbudController
-}
-```
-
-`EarbudController` 负责：
-
-- 连接设备
-- 暴露 `StateFlow<EarbudState>`
-- 暴露 `capabilities`
-- 执行 `setProperty()` / `invokeAction()`
-- 导出调试日志
-
-首个插件：
-
-- `HuaweiOpenFreebudsAdapter`
-
-后续插件：
-
-- 按逆向资料成熟度逐个接入，不污染核心仓库。
-
-### 5. State 层
-
-将 `DeviceProps` 演进为更通用的 `EarbudState`。
-
-短期做法：保留 `DeviceProps`，新增 Adapter 内部映射。
-
-长期目标：
-
-```kotlin
-data class EarbudState(
-    val deviceName: String?,
-    val modelName: String?,
-    val firmwareVersion: String?,
-    val battery: BatteryState?,
-    val anc: AncState?,
-    val audio: AudioState?,
-    val gestures: GestureState?,
-    val wearing: WearingState?,
-    val pendingTasks: List<PendingTask>,
-)
-```
-
-### 6. Repository 层瘦身
-
-当前 `DeviceRepository` 后续拆分方向：
-
-- `EarbudConnectionManager`：扫描、连接、断开、自动连接。
-- `EarbudAdapterRegistry`：管理可用插件与设备匹配。
-- `EarbudStateStore`：通用状态仓库。
-- `ListeningStatsRepository`：听音统计独立持久化。
-- `LogRepository`：日志导出与调试。
-
-## 迁移步骤
-
-### 阶段 1：不破坏现有功能的接口整理
-
-- [x] 新建 `core/transport` 包，定义 `EarbudTransport`。
-- [x] 将当前 SPP 连接能力包一层 `RfcommSppTransport`，先作为新架构 Transport 引入；生产路径暂不替换 `SppDriver`。
-- [x] 新建 `core/adapter` 包，定义 `EarbudAdapter` / `EarbudController` 草案。
-- [ ] 将 `HuaweiModel` / `HuaweiCapability` 移入 `protocol/huawei` 或 `adapter/huawei` 命名空间。
-- [x] `DeviceRepository.registerHandlers()` 改为委托给 `HuaweiOpenFreebudsAdapter`。
-- [x] 新建 `core/protocol` 包，定义 `EarbudProtocol` / `ProtocolFramer` / `ProtocolSession`。
-- [x] 新增 `HuaweiSppProtocol` / `HuaweiSppFramer`，把 5A 包编码与流式解帧抽到协议层；生产路径暂不替换 `SppDriver`。
-- [x] 新增 `HuaweiHandlerRegistry`，把 Handler 列表、命令路由、ignore command、属性路由和失败 Handler 集合从 `SppDriver` 中抽出。
-- [x] 新增 `HuaweiPropertyStore`，把 Huawei Handler 属性仓库从 `SppDriver` 中抽出，为后续通用 `EarbudState` 映射做准备。
-
-### 阶段 2：能力与状态通用化
-
-- [ ] 定义通用 `EarbudCapability`。
-- [ ] 定义通用 `EarbudState`，先与 `DeviceProps` 并存。
-- [ ] 给 Huawei Adapter 增加 `HuaweiStateMapper`，负责 Huawei 属性 → 通用状态。
-- [ ] UI 层逐步从 `DeviceProps` 迁移到通用状态。
-- [ ] 未迁移字段继续通过兼容层提供。
-
-### 阶段 3：统计与附加功能解耦
-
-- [ ] 将听音统计从 `DeviceRepository` 独立为 `ListeningStatsRepository`。
-- [ ] 支持统计来源策略：连接时长 / 佩戴时长 / 媒体播放状态。
-- [ ] 为不同 Adapter 暴露是否支持稳定佩戴检测。
-
-### 阶段 4：新耳机项目接入准备
-
-- [ ] 为 Adapter 增加独立测试入口和日志导出标识。
-- [ ] 支持一个设备被多个 Adapter 试探匹配，但只激活优先级最高者。
-- [ ] 新增“实验性适配”标记，UI 中提示风险。
-- [ ] 允许插件声明自己的调试面板字段。
-
-## 近期优先级
-
-1. 先让 v3.8.0 听音统计通过 CI。
-2. 下一版只做接口拆分，不新增大功能。
-3. 优先把 Huawei/OpenFreebuds 现有能力包成第一个 Adapter。
-4. 保持 UI 行为不变，避免在重构期引入用户可见退化。
-
-## 设计原则
-
-- 核心 UI 不直接依赖厂商协议字段。
-- 新厂商接入不修改主 Repository 的大段逻辑。
-- 未验证能力默认隐藏。
-- 所有实验性能力必须能导出日志。
-- 重构期间保持当前 Huawei / HONOR 功能稳定优先。
-
-## v4.1.0 第三方接入边界
-- 新增 `core/session/EarbudSession`，作为连接态耳机的通用运行时边界。
-- 新增 `LegacySppEarbudSession`，把现有 Huawei `SppDriver` 包装成 session，避免 `DeviceRepository` 继续直接依赖具体驱动。
-- 后续第三方耳机应优先实现自己的 `EarbudSession` / `EarbudAdapter.mapState()`，再按需接入 `EarbudTransport` 与 `EarbudProtocol`。
-
-
-## v4.1.1 底层连接效率
-- 新增 `core/transport/RfcommSocketBridge`，集中封装 Android 隐藏 RFCOMM socket API。
-- 缓存 `createRfcommSocket`、`connect`、`close`、`getInputStream`、`getOutputStream` 反射 Method，减少重复连接开销。
-- 建连前主动取消 Bluetooth discovery，避免扫描拖慢 RFCOMM 连接。
-- `SppDriver` 与 `RfcommSppTransport` 共用同一建连路径，为后续迁移到通用 transport 降低差异。
-
-
-## v4.1.2 稳定性审计
-- `RfcommSocketBridge` 的 discovery 取消操作改为权限安全兜底，避免 Android 12+ 权限异常阻断建连。
-- RFCOMM socket 在 `connect()` 失败时主动关闭，降低半开 socket 泄漏风险。
-- `BluetoothScanner` 不再把所有已配对设备误标为已连接，改为读取系统 HEADSET/A2DP 连接状态与隐藏 `isConnected()` 结果。
-- 扫描器对 `device.name/address/bondState` 增加安全读取，避免运行时蓝牙权限异常导致扫描页崩溃。
-- `DeviceScreen` 设备型号/固件展示移除 `!!` 强制解包。
-
-
-## v4.2.0 EQ 与双设备 MVP
-- UI 层继续沿用 `DeviceProps`，新增 EQ preset、custom EQ 只读状态、dual-connect 设备列表和保存设备连接快照字段，后续迁移到通用 `EarbudState` 时应拆成 `AudioState` 与 `ConnectionState` 子结构。
-- `EqualizerPresetHandler` 只写入 OpenFreebuds 已验证的 preset payload：内置 preset 使用 `2b49` 参数 1，已验证兼容预设使用 `mode_id/name/rows/action` 固定 payload。Custom EQ 行编辑需要用户自定义 `mode_id/name/rows/action` 组合 payload，目前只解析和展示耳机返回的 rows/saved/max-count，暂不开放写入。
-- `DualConnectHandler` 管理耳机侧双连能力：读取开关、枚举设备、首选设备、连接/断开、自动连接和解绑命令。Android 本地仍只维护一个 active `EarbudSession`，避免在未知 ROM/蓝牙栈上强行创建两条并发 SPP 控制通道。
-- 首页保存设备列表显示系统蓝牙连接与当前控制通道连接状态。若未来实现真正双 session，应先把 `DeviceRepository.session` 拆为按 address 管理的 session map，并明确通知/Tile/统计使用哪一个 active control target。
-- Liquid Glass UI 增加 `AdaptiveGlassBanner`，Home / Scan / Device 的状态反馈走同一 Haze 2.0 卡片体系；经典模式仍使用低成本 Material3 Surface/Card。
-
-## v4.2.1 OpenFreebuds 初始化对齐与后台控制连接
-- Handler 初始化回到 OpenFreebuds 语义：注册后的 handler 顺序初始化，默认 3s × 5 次；`dual_connect` 使用独立短窗口和 6 次尝试；失败后作为能力降级展示，不再后台无限重试抢占 SPP。
-- `HuaweiPendingResponseManager` 遇到相同 responseId 时等待前一个请求完成，不再取消旧 waiter；`sendPackage` 默认 timeout 恢复到秒级，只有已知异步/短窗口命令显式使用较短 timeout。
-- `DualConnectHandler` 的成功条件以有效 `2b31` 设备列表写入为准，避免只收到开关状态或已写入列表后仍继续重试枚举。
-- 后台保活服务监听系统 ACL/A2DP/HEADSET 连接事件，并周期检查已保存设备；系统蓝牙在线才尝试 App SPP 控制连接，失败按退避重试，手动断开后短期不自动抢回。
+收到实机报告后，继续按主计划顺序推进；测试失败只追加对应场景，不恢复完整 36/100 项矩阵。版本号保持 `4.3.6 / 94`，计划合并本身不提升版本。

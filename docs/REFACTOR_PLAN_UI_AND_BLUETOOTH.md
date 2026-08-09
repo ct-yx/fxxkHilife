@@ -10,6 +10,8 @@
 
 > 测试模式日志约定：Debug“自动实机测试”每次启动都会清空旧缓存，测试期间不设日志行数上限，改用约 160,000,000 字节的 UTF-8 缓存预算；导出的最终报告在写文件前再限制为 190,000,000 字节以内，确保小于 200 MB。正常日志策略在报告构建完成后恢复。
 
+> **唯一计划入口**：原 `docs/ARCHITECTURE_TODO.md` 的通用 Transport / Protocol / Capability / Adapter TODO 已合并到本文件；旧路径只保留跳转说明，不再维护第二份清单。
+
 ## 0. 执行状态、完成标记与版本基线
 
 ### 0.1 完成标记规则
@@ -209,6 +211,46 @@ flowchart TD
 ```
 
 现有骨架已经具备 `core/transport`、`core/protocol`、`core/session` 和 `core/adapter`。BT-1 迁移后，生产 Socket、输入流、输出流和关闭逻辑统一由 `RfcommSppTransport` 承载；`SppDriver` 只保留 Huawei 分帧会话、请求响应、Handler 和属性兼容层。后续不再增加第二套并行 Socket 实现。
+
+### 2.1 合并后的架构决策（唯一方案）
+
+本节吸收原 `ARCHITECTURE_TODO.md` 的通用架构内容，并在每个子计划中明确当前采用的方案。选择标准是：先满足当前主验证设备的稳定性，再保留真实可用的扩展 seam；不为尚不存在的第二种 Transport、Protocol 或 Adapter 提前堆叠抽象。
+
+| 子计划 | 候选方向 | 当前选择 | 选择理由与边界 | 验收证据 |
+|---|---|---|---|---|
+| Transport | RFCOMM、BLE GATT、Native bridge 并行抽象 | 保留小型 `EarbudTransport` seam；生产只使用 `RfcommSppTransport` | 当前设备只有 RFCOMM/SPP 实机证据；BLE/Native 先不实现，避免第二条 Socket/Reader 路径分叉 | `RfcommTransportConfigTest`、分帧/传输 JVM 测试、实机阶段耗时 |
+| Protocol | 大一统厂商无关协议，或 Huawei 单协议深模块 | 采用 `ProtocolSession + HuaweiSppFramer + HuaweiCommandCatalog/Client/Scheduler` | 先把分帧、请求响应和 command lane 做深；厂商差异留在 Adapter，不让 UI 或 Transport 感知 | Framer/Session/Command 测试、ACK/读回结果、超时和重连报告 |
+| Capability / State | 继续扩张 `DeviceProps`，或立即全量替换 | `EarbudCapability + EarbudState + ControlChannelState` 作为目标模型，`DeviceProps` 仅作兼容映射 | 页面只消费已映射且已确认的能力；迁移期间不破坏现有页面和通知 | StateStore/Mapper 测试、能力隐藏检查、逐页 UI 验证 |
+| Adapter | 动态插件系统，或静态内置注册表 | 采用静态 `EarbudAdapterRegistry`，先维护 `HuaweiOpenFreebudsAdapter` | 当前只有一个真实 Adapter；静态注册更容易构建、回退和审计。出现第二个真实 Adapter 后再增加优先级匹配 | Adapter 匹配测试、独立日志标识、型号能力表 |
+| Connection orchestration | Repository 继续全包，或 Manager/Repository 双重编排 | `EarbudConnectionManager` 作为唯一连接编排者；Repository 暂作兼容副作用门面 | Manager 持有 attempt/session/state/Job 生命周期，避免多个入口重复建连；下一阶段再收窄 host interface | `ConnectionLifecycleTest`、BT-3 `BT_MANAGER_RUNTIME_20` 实机报告 |
+| Statistics / logging | 立即把所有统计和日志拆成多个 Repository，或继续堆进 Manager | BT-3 实机门关闭后再抽 `ListeningStatsRepository`；日志继续由 `LogBuffer + regression report` 负责 | 统计拆分不改变连接时序；日志导出已有稳定格式，暂不增加一层无行为收益的 `LogRepository` | 统计单元测试、报告格式检查、连接回归无行为变化 |
+| UI state / rendering | 页面直接读 raw property，或先建立状态/事件再拆页面 | `Route -> ViewModel -> typed state/event -> Repository/UseCase`；统一 `AppScaffold`，保留 Haze 2.0 | 先稳定状态契约，再拆组件；玻璃渲染只属于 UI surface，不参与连接和持久化 | UI-0 基线、UI-1 状态/事件测试、classic/glass 双模式验证 |
+| Hardware validation | 每轮都跑完整矩阵，或只测本轮影响面 | 按改动定向测试；当前仅 F10 + 初始化10 | 连接/并发/耗时问题需要 10 轮 P50/P95，普通能力 5 轮，报告字段 3 轮；不重复无关场景 | Debug-only 自动测试报告；Release 不暴露测试按钮 |
+
+### 2.2 合并后的执行顺序
+
+```text
+BT_MANAGER_RUNTIME_20 实机报告
+  -> 收口 BT-1 / BT-2 / BT-3 的实机门
+  -> BT-4：冻结通用连接状态、EarbudCapability、EarbudState 映射契约
+  -> ListeningStatsRepository：从连接编排中移出统计
+  -> UI-0：截图、交互、DeviceProps 读写基线
+  -> UI-1：DeviceUiState / typed event / NavigationEvent
+  -> UI-2：页面与公共组件拆分
+  -> UI-3：AppUiState / SettingsRepository / DataStore
+  -> UI-4：删除 raw property 兼容层
+  -> 第二个真实 Adapter 接入评估
+```
+
+每一步都按“代码 → JVM/静态测试 → 定向实机或 UI 验证 → 文档回写 → 可回退提交”的顺序执行。当前停在第一步；收到日志后只追加失败对应的测试或修复，不扩大为完整矩阵。
+
+### 2.3 明确延后的方案
+
+- `BleGattTransport`、`NativeBridgeTransport`：当前没有目标设备和协议证据，保留接口位置，不实现伪适配。
+- 动态插件加载、多个 Adapter 试探匹配和多 SPP session：等第二个真实 Adapter 或多设备控制需求出现后再设计。
+- 未验证的 Custom EQ payload：继续只读或按已验证能力展示。
+- Haze 依赖升级：与 UI 状态迁移分开，当前继续使用 Haze 2.0。
+- 全量 `LogRepository`：现有 `LogBuffer` 和报告导出已经满足诊断需求，避免先做无收益的转发层。
 
 ## 3. 大项一：UI 规范与重构
 
