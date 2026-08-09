@@ -3,6 +3,8 @@ package com.freebuds.controller.data
 import android.bluetooth.BluetoothDevice
 import com.freebuds.controller.core.session.EarbudSession
 import com.freebuds.controller.util.LogBuffer
+import kotlinx.coroutines.Job
+import kotlinx.coroutines.flow.StateFlow
 
 /**
  * Typed commands accepted by every Android connection entry point.
@@ -77,15 +79,80 @@ class EarbudConnectionManager internal constructor(
     private val repository: DeviceRepository,
 ) {
     private val lifecycleLock = Any()
+    private val lifecycle = ConnectionLifecycle()
     private val autoConnectPolicy = ConnectionAutoConnectPolicy()
     /** Attempt identity is owned beside the session slot, not beside UI state in Repository. */
     private val attemptCoordinator = ConnectionAttemptCoordinator()
     /**
-     * The manager owns the single live protocol session slot.  Repository remains the
-     * compatibility implementation for connection state and initialization, but it no longer
-     * owns the identity gate that prevents a late RFCOMM callback from detaching a replacement.
+     * The manager owns the connection state, lifecycle jobs, identity gate and single live
+     * protocol session. Repository remains the compatibility implementation for transport and
+     * property side effects during this extraction step.
      */
     private val sessionRegistry = EarbudSessionRegistry()
+
+    val connectionState: StateFlow<ConnectionState> = lifecycle.connectionState
+
+    internal val connectedAddress: String?
+        get() = lifecycle.connectedAddress()
+
+    internal val connectedAt: Long
+        get() = lifecycle.connectedAt()
+
+    internal fun setConnectionState(state: ConnectionState) = lifecycle.setConnectionState(state)
+
+    internal fun setConnectedAddress(address: String?) = lifecycle.setConnectedAddress(address)
+
+    internal fun setConnectedAt(timestampMs: Long) = lifecycle.setConnectedAt(timestampMs)
+
+    internal fun isConnectionBusy(): Boolean = lifecycle.isBusy()
+
+    internal fun isInitializationActive(): Boolean = lifecycle.isInitializationActive()
+
+    internal fun installConnectionJob(job: Job) = lifecycle.installConnectionJob(job)
+
+    internal fun installInitializationJob(job: Job) = lifecycle.installInitializationJob(job)
+
+    internal fun installBackgroundInitializationJob(job: Job) =
+        lifecycle.installBackgroundInitializationJob(job)
+
+    internal fun installPollingJob(job: Job) = lifecycle.installPollingJob(job)
+
+    internal fun installFastPollingJob(job: Job) = lifecycle.installFastPollingJob(job)
+
+    internal fun cancelConnectionJob() = lifecycle.cancelConnectionJob()
+
+    internal fun cancelInitializationJobs() = lifecycle.cancelInitializationJobs()
+
+    internal fun cancelBackgroundInitializationJob() =
+        lifecycle.cancelBackgroundInitializationJob()
+
+    internal fun cancelPollingJobs() = lifecycle.cancelPollingJobs()
+
+    internal fun cancelPollingJob() = lifecycle.cancelPollingJob()
+
+    internal fun cancelFastPollingJob() = lifecycle.cancelFastPollingJob()
+
+    internal fun cancelConnectionWork() = lifecycle.cancelConnectionWork()
+
+    internal fun armReconnectGuard(untilElapsedMs: Long) =
+        lifecycle.armReconnectGuard(untilElapsedMs)
+
+    internal fun reconnectDelayMs(nowElapsedMs: Long): Long =
+        lifecycle.reconnectDelayMs(nowElapsedMs)
+
+    internal fun suppressManualDisconnect(untilWallClockMs: Long) =
+        lifecycle.suppressManualDisconnect(untilWallClockMs)
+
+    internal fun clearManualDisconnectSuppression() = lifecycle.clearManualDisconnectSuppression()
+
+    internal fun manualDisconnectSuppressionRemaining(nowWallClockMs: Long): Long =
+        lifecycle.manualDisconnectSuppressionRemaining(nowWallClockMs)
+
+    internal fun markSystemConnected(address: String) = lifecycle.markSystemConnected(address)
+
+    internal fun markSystemDisconnected(address: String) = lifecycle.markSystemDisconnected(address)
+
+    internal fun isSystemConnected(address: String): Boolean = lifecycle.isSystemConnected(address)
 
     internal val currentSession: EarbudSession?
         get() = sessionRegistry.currentSession()
@@ -172,9 +239,7 @@ class EarbudConnectionManager internal constructor(
 
     private fun triggerAutoConnect(command: ConnectionCommand.TriggerAutoConnect): ConnectionRequestResult {
         val now = System.currentTimeMillis()
-        if (repository.connectionState.value is ConnectionState.Connected ||
-            repository.connectionState.value is ConnectionState.Connecting
-        ) {
+        if (isConnectionBusy()) {
             val requestedAddress = command.knownDevice?.address
             val activeAttemptId = repository.getActiveConnectionAttemptId(requestedAddress)
             if (activeAttemptId == null) {

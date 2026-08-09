@@ -1353,3 +1353,22 @@
 - 完整本地 CI：`./scripts/run_ci_checks.sh ci-output-bt-state-retry-20` 通过，Debug APK SHA-256=`bd28b23cf6916bc141d66eef0f8b7fadff730161da0c07a62c5bcb0fd54b9b8f`，Release APK SHA-256=`13e498c7e55041b8778569c532a2aeb02c3dab773afcd9171e8cc8a6e90b3b9e`。
 - GitHub Actions [31313780654](https://github.com/ct-yx/fxxkHilife/actions/runs/31313780654) 已通过，产物为 `fxxkHilife-debug-v4.3.5-93`、`fxxkHilife-v4.3.5-93` 和 `automated-test-report-v4.3.5-93`。
 - 实机报告返回前 BT-1/BT-2 保持“目标受阻”。
+
+## v4.3.6 (2026-08-09)
+
+### 发布
+- BT-3 连接运行时状态与生命周期 Job 收敛到 EarbudConnectionManager，进入定向实机验证
+- versionCode: 94
+- versionName: 4.3.6
+- tag: v4.3.6
+
+### 本轮变更
+- 新增 `ConnectionLifecycle`，由 `EarbudConnectionManager` 持有兼容 `ConnectionState`、活动地址、连接时间、系统链路集合、手动断开抑制和 RFCOMM 重连排水窗口。
+- 连接、核心初始化、延迟初始化、后台轮询和前台轮询 Job 的注册/取消迁移到 Manager；Repository 不再持有这些 Job 字段，只通过 Manager 的窄接口安装、取消和检查。
+- 断开和 ACL 清理统一先取消 Manager 的连接工作，再摘除 session、清空 attempt、发布断开状态；初始化/轮询 Job 在安装时再次校验当前 session/attempt，避免旧回调覆盖新连接。
+- Debug 自动测试按钮改为 `BT_MANAGER_RUNTIME_20`，仅执行 F10 与应用入口初始化推进10轮；`BT_STATE_RETRY_20` 保留用于上一轮报告复现，Release 不显示测试按钮。
+
+### 自动化验证
+- `./gradlew :app:testDebugUnitTest --no-daemon` 通过，包含新增 `ConnectionLifecycleTest` 和 `BluetoothRegressionPlanTest` 的 profile 断言。
+- 完整本地 CI：`./scripts/run_ci_checks.sh ci-output-bt-manager-runtime-4.3.6-94` 通过（diff-check、Debug/Release 单元测试、Debug/Release 构建）；Debug APK SHA-256=`84bcca035c04eb5d3380ed343a20f5637a380e7b22ce6c7249307e85a2194efd`，Release APK SHA-256=`43f9bced10a1e24ef2600f7f7134bf04d2bea86b60eb030771f540275e5d396d`。
+- 尚未执行新的主验证设备报告；当前实机门保持目标受阻，等待 `BT_MANAGER_RUNTIME_20` 20 项报告后再判断 BT-1/BT-2/BT-3 是否收口。

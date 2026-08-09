@@ -31,14 +31,6 @@ import java.util.concurrent.ConcurrentHashMap
 
 private const val RFCOMM_RECONNECT_GUARD_MS = 250L
 
-/** 连接状态 */
-sealed class ConnectionState {
-    object Disconnected : ConnectionState()
-    data class Connecting(val deviceName: String, val attemptId: String = "") : ConnectionState()
-    data class Connected(val deviceName: String, val attemptId: String = "") : ConnectionState()
-    data class Failed(val reason: String, val attemptId: String? = null) : ConnectionState()
-}
-
 /**
  * Result of an automatic connection request.
  *
@@ -140,8 +132,7 @@ class DeviceRepository {
     /** Typed command boundary used by UI, Service, Tile and regression entry points. */
     val connectionManager: EarbudConnectionManager = EarbudConnectionManager(this)
 
-    private val _connectionState = MutableStateFlow<ConnectionState>(ConnectionState.Disconnected)
-    val connectionState: StateFlow<ConnectionState> = _connectionState.asStateFlow()
+    val connectionState: StateFlow<ConnectionState> = connectionManager.connectionState
 
     private val stateStore = EarbudStateStore()
     /** Typed SystemLink/Transport/Core/Deferred state for the upcoming UI migration. */
@@ -169,33 +160,18 @@ class DeviceRepository {
     // A failed optional probe is not equivalent to a probe that is still running.  Keeping these
     // states separate prevents the details screen from showing "background sync" forever.
     private val pendingInitHandlers = ConcurrentHashMap.newKeySet<String>()
-    private var pollJob: Job? = null
-    private var fastPollJob: Job? = null
-    private var initJob: Job? = null
-    private var backgroundInitJob: Job? = null
     private var listeningStatsJob: Job? = null
     private var lastListeningTick: Long = 0L
     private var sppQuietUntil: Long = 0L
     private var foregroundMode: Boolean = false
-    private var connectedAddress: String? = null
-    private var connectingJob: Job? = null
-    private var manualDisconnectSuppressUntil: Long = 0L
     /** Prevents service/profile probes from racing the debug hardware regression matrix. */
     @Volatile
     private var hardwareRegressionActive: Boolean = false
-    // A recently closed Android RFCOMM socket can reject an immediate replacement. The guard is
-    // only armed by teardown, so a cold connection keeps the fast path unchanged.
-    @Volatile
-    private var reconnectNotBeforeElapsedMs: Long = 0L
-    private val systemConnectedAddresses = ConcurrentHashMap.newKeySet<String>()
     private val activeConnectionAttempt: ConnectionAttemptTimeline?
         get() = connectionManager.currentAttempt
 
     // 设备信息是否已获取（本次进程生命周期内）
     private var deviceInfoFetched: Boolean = false
-
-    // 连接建立时刻（>0 表示已连接），用于计算佩戴时长
-    private var connectedAt: Long = 0
 
     // ── 前后台感知 ───────────────────────────────────────────────────────────
     fun setAppInForeground(foreground: Boolean) {
@@ -231,14 +207,14 @@ class DeviceRepository {
             val result = connectionManager.reserveAttempt(
                 address = device.address,
                 trigger = trigger,
-                busy = connectingJob?.isActive == true ||
-                _connectionState.value is ConnectionState.Connecting ||
-                _connectionState.value is ConnectionState.Connected,
+                busy = connectionManager.isConnectionBusy(),
             )
             if (result?.ownsAttempt == true) {
-                _connectionState.value = ConnectionState.Connecting(
-                    device.name ?: device.address,
-                    result.attempt.attemptId,
+                connectionManager.setConnectionState(
+                    ConnectionState.Connecting(
+                        device.name ?: device.address,
+                        result.attempt.attemptId,
+                    ),
                 )
                 stateStore.beginAttempt(
                     systemLink = systemLinkState(device.address),
@@ -271,7 +247,7 @@ class DeviceRepository {
                 "Connect requested attempt=${attempt.attemptId} trigger=${trigger.name} " +
                     "device=${device.name ?: "unknown"} address=${device.address} adapter=${adapter.id}"
             )
-            if (device.address in systemConnectedAddresses) {
+            if (connectionManager.isSystemConnected(device.address)) {
                 markConnectionPhase(attempt, ConnectionPhase.SystemLinkObserved)
             } else {
                 LogBuffer.d("ConnPhase", "attempt=${attempt.attemptId} phase=${ConnectionPhase.SystemLinkObserved} observed=false")
@@ -325,7 +301,7 @@ class DeviceRepository {
             markConnectionPhase(attempt, ConnectionPhase.TransportConnecting)
             updateControlChannelStage(ControlChannelStage.ConnectingTransport, attempt)
             val reconnectDelay = connectionManager.withLifecycleLock {
-                (reconnectNotBeforeElapsedMs - SystemClock.elapsedRealtime()).coerceAtLeast(0L)
+                connectionManager.reconnectDelayMs(SystemClock.elapsedRealtime())
             }
             if (reconnectDelay > 0L) {
                 LogBuffer.d("Transport", "Waiting ${reconnectDelay}ms for RFCOMM reconnect window")
@@ -342,11 +318,13 @@ class DeviceRepository {
                     } else {
                         markConnectionPhase(attempt, ConnectionPhase.TransportReady)
                         updateControlChannelStage(ControlChannelStage.TransportReady, attempt)
-                        _connectionState.value = ConnectionState.Connected(device.name ?: device.address, attempt.attemptId)
-                        connectedAt = System.currentTimeMillis()
-                        connectedAddress = device.address
-                        systemConnectedAddresses.add(device.address)
-                        manualDisconnectSuppressUntil = 0L
+                        connectionManager.setConnectionState(
+                            ConnectionState.Connected(device.name ?: device.address, attempt.attemptId),
+                        )
+                        connectionManager.setConnectedAt(System.currentTimeMillis())
+                        connectionManager.setConnectedAddress(device.address)
+                        connectionManager.markSystemConnected(device.address)
+                        connectionManager.clearManualDisconnectSuppression()
                         true
                     }
                 }
@@ -370,16 +348,18 @@ class DeviceRepository {
                         false
                     } else {
                         connectionManager.detachSessionIfCurrent(d)
-                        connectedAddress = null
+                        connectionManager.setConnectedAddress(null)
                         markConnectionPhase(attempt, ConnectionPhase.Failed, "transport connect returned false")
                         updateControlChannelStage(
                             ControlChannelStage.Failed,
                             attempt,
                             reason = "transport connect returned false",
                         )
-                        _connectionState.value = ConnectionState.Failed(
-                            I18n.t("scan.connection_failed_short"),
-                            attempt.attemptId,
+                        connectionManager.setConnectionState(
+                            ConnectionState.Failed(
+                                I18n.t("scan.connection_failed_short"),
+                                attempt.attemptId,
+                            ),
                         )
                         true
                     }
@@ -403,16 +383,18 @@ class DeviceRepository {
                         false
                     } else {
                         connectionManager.detachSessionIfCurrent(targetSession)
-                        connectedAddress = null
+                        connectionManager.setConnectedAddress(null)
                         markConnectionPhase(attempt, ConnectionPhase.Failed, "${e.javaClass.simpleName}:${e.message}")
                         updateControlChannelStage(
                             ControlChannelStage.Failed,
                             attempt,
                             reason = "${e.javaClass.simpleName}:${e.message}",
                         )
-                        _connectionState.value = ConnectionState.Failed(
-                            I18n.t("scan.connection_failed_short"),
-                            attempt.attemptId,
+                        connectionManager.setConnectionState(
+                            ConnectionState.Failed(
+                                I18n.t("scan.connection_failed_short"),
+                                attempt.attemptId,
+                            ),
                         )
                         true
                     }
@@ -425,7 +407,7 @@ class DeviceRepository {
         }
         val installedJob = connectionManager.withLifecycleLock {
             if (isCurrentConnectionAttempt(attempt)) {
-                connectingJob = newConnectionJob
+                connectionManager.installConnectionJob(newConnectionJob)
                 true
             } else {
                 false
@@ -438,28 +420,25 @@ class DeviceRepository {
     fun disconnect() {
         var oldSession: EarbudSession? = null
         connectionManager.withLifecycleLock {
-            connectingJob?.cancel()
-            connectingJob = null
-            manualDisconnectSuppressUntil = System.currentTimeMillis() + 10 * 60_000L
-            reconnectNotBeforeElapsedMs = SystemClock.elapsedRealtime() + RFCOMM_RECONNECT_GUARD_MS
+            connectionManager.cancelConnectionWork()
+            connectionManager.suppressManualDisconnect(System.currentTimeMillis() + 10 * 60_000L)
+            connectionManager.armReconnectGuard(
+                SystemClock.elapsedRealtime() + RFCOMM_RECONNECT_GUARD_MS,
+            )
             activeConnectionAttempt?.let {
                 markConnectionPhase(it, ConnectionPhase.Disconnecting)
                 updateControlChannelStage(ControlChannelStage.Disconnecting, it)
             }
             oldSession = connectionManager.detachSession()
-            val oldAddress = connectedAddress
-            connectedAddress = null
+            val oldAddress = connectionManager.connectedAddress
+            connectionManager.setConnectedAddress(null)
             activeConnectionAttempt?.let { markConnectionPhase(it, ConnectionPhase.Disconnected) }
             connectionManager.clearAttempt()
-            _connectionState.value = ConnectionState.Disconnected
+            connectionManager.setConnectionState(ConnectionState.Disconnected)
             stateStore.replaceProps(DeviceProps())
-            connectedAt = 0
+            connectionManager.setConnectedAt(0L)
             stateStore.resetControlChannel(systemLinkState(oldAddress))
         }
-        initJob?.cancel()
-        backgroundInitJob?.cancel()
-        pollJob?.cancel()
-        fastPollJob?.cancel()
         stopListeningStatsTicker()
         sppQuietUntil = 0L
         oldSession?.disconnect()
@@ -476,7 +455,7 @@ class DeviceRepository {
      */
     fun regressionSimulateAclDisconnect() {
         val source = session
-        val address = connectedAddress
+        val address = connectionManager.connectedAddress
         if (source == null && address == null) {
             LogBuffer.w("HwTest", "Synthetic ACL disconnect skipped: no active session")
             return
@@ -484,7 +463,7 @@ class DeviceRepository {
         LogBuffer.i("HwTest", "Synthetic ACL disconnect requested")
         handleRemoteDisconnected(source, "Bluetooth ACL disconnected (regression runner)")
         address?.let {
-            systemConnectedAddresses.remove(it)
+            connectionManager.markSystemDisconnected(it)
             if (stateStore.controlChannelState.value.address == it) {
                 updateControlChannelState { state -> state.copy(systemLink = SystemLinkState.Disconnected) }
             }
@@ -503,7 +482,7 @@ class DeviceRepository {
 
     /** Device selected by the one-click real-device regression runner. */
     fun getRegressionDevice(): BluetoothDevice? {
-        val address = connectedAddress ?: getSavedAddress() ?: return null
+        val address = connectionManager.connectedAddress ?: getSavedAddress() ?: return null
         return runCatching { BluetoothAdapter.getDefaultAdapter()?.getRemoteDevice(address) }.getOrNull()
     }
 
@@ -572,7 +551,7 @@ class DeviceRepository {
     }
 
     fun clearManualDisconnectSuppression() {
-        manualDisconnectSuppressUntil = 0L
+        connectionManager.clearManualDisconnectSuppression()
     }
 
     /**
@@ -582,11 +561,13 @@ class DeviceRepository {
      * failure mode seen in the F regression scenario.
      */
     internal fun handleSystemBluetoothDisconnected(address: String) {
-        systemConnectedAddresses.remove(address)
+        connectionManager.markSystemDisconnected(address)
         if (stateStore.controlChannelState.value.address == address) {
             updateControlChannelState { state -> state.copy(systemLink = SystemLinkState.Disconnected) }
         }
-        val sourceSession = session?.takeIf { connectedAddress.equals(address, ignoreCase = true) }
+        val sourceSession = session?.takeIf {
+            connectionManager.connectedAddress.equals(address, ignoreCase = true)
+        }
         val activeAttemptMatches = activeConnectionAttempt?.address?.equals(address, ignoreCase = true) == true
         if (sourceSession != null || activeAttemptMatches) {
             // Cleanup is deliberately synchronous at the command boundary. An ACL reconnect can
@@ -603,28 +584,25 @@ class DeviceRepository {
         var oldAddress: String? = null
         connectionManager.withLifecycleLock {
             if (sourceSession != null && !connectionManager.isCurrentSession(sourceSession)) return
-            if (_connectionState.value !is ConnectionState.Connected &&
+            if (connectionState.value !is ConnectionState.Connected &&
                 session == null &&
                 activeConnectionAttempt == null
             ) return
             LogBuffer.w("SPP", "Remote disconnected: $reason")
-            connectingJob?.cancel()
-            connectingJob = null
+            connectionManager.cancelConnectionWork()
             oldSession = connectionManager.detachSession()
-            oldAddress = connectedAddress
-            reconnectNotBeforeElapsedMs = SystemClock.elapsedRealtime() + RFCOMM_RECONNECT_GUARD_MS
-            connectedAddress = null
-            _connectionState.value = ConnectionState.Disconnected
+            oldAddress = connectionManager.connectedAddress
+            connectionManager.armReconnectGuard(
+                SystemClock.elapsedRealtime() + RFCOMM_RECONNECT_GUARD_MS,
+            )
+            connectionManager.setConnectedAddress(null)
+            connectionManager.setConnectionState(ConnectionState.Disconnected)
             stateStore.replaceProps(DeviceProps())
-            connectedAt = 0
+            connectionManager.setConnectedAt(0L)
             activeConnectionAttempt?.let { markConnectionPhase(it, ConnectionPhase.Disconnected, reason) }
             connectionManager.clearAttempt()
             stateStore.resetControlChannel(systemLinkState(oldAddress), reason)
         }
-        initJob?.cancel()
-        backgroundInitJob?.cancel()
-        pollJob?.cancel()
-        fastPollJob?.cancel()
         stopListeningStatsTicker()
         sppQuietUntil = 0L
         deviceInfoFetched = false
@@ -676,7 +654,8 @@ class DeviceRepository {
                 name = name,
                 isBonded = bonded,
                 isSystemConnected = getSystemConnectedDevice(address) != null,
-                isControlConnected = address == connectedAddress && session?.isConnected == true,
+                isControlConnected = address == connectionManager.connectedAddress &&
+                    session?.isConnected == true,
             )
         }
     }
@@ -686,7 +665,7 @@ class DeviceRepository {
             BluetoothAdapter.getDefaultAdapter()?.getRemoteDevice(address)
         }.getOrNull()
 
-        if (address in systemConnectedAddresses) return adapterDevice
+        if (connectionManager.isSystemConnected(address)) return adapterDevice
 
         val isConnectedByDevice = adapterDevice?.let { device ->
             runCatching {
@@ -720,17 +699,16 @@ class DeviceRepository {
             if (logMisses) LogBuffer.d("AutoConnect", "Skip $address: hardware regression owns connection slot")
             return ConnectionRequestResult(accepted = false)
         }
-        val suppressRemaining = manualDisconnectSuppressUntil - System.currentTimeMillis()
+        val suppressRemaining = connectionManager.manualDisconnectSuppressionRemaining(
+            System.currentTimeMillis(),
+        )
         if (suppressRemaining > 0) {
             if (logMisses) {
                 LogBuffer.i("AutoConnect", "Skip $address: manual disconnect suppression ${suppressRemaining / 1000}s left")
             }
             return ConnectionRequestResult(accepted = false)
         }
-        if (_connectionState.value is ConnectionState.Connecting ||
-            _connectionState.value is ConnectionState.Connected ||
-            connectingJob?.isActive == true
-        ) {
+        if (connectionManager.isConnectionBusy()) {
             val currentAttempt = activeConnectionAttempt
             val sameAddressAttempt = currentAttempt?.takeIf {
                 it.address.equals(address, ignoreCase = true)
@@ -772,17 +750,16 @@ class DeviceRepository {
             if (logMisses) LogBuffer.d("AutoConnect", "Ignore unsaved system-connected device $address")
             return ConnectionRequestResult(accepted = false)
         }
-        val suppressRemaining = manualDisconnectSuppressUntil - System.currentTimeMillis()
+        val suppressRemaining = connectionManager.manualDisconnectSuppressionRemaining(
+            System.currentTimeMillis(),
+        )
         if (suppressRemaining > 0) {
             if (logMisses) {
                 LogBuffer.i("AutoConnect", "Skip $address: manual disconnect suppression ${suppressRemaining / 1000}s left")
             }
             return ConnectionRequestResult(accepted = false)
         }
-        if (_connectionState.value is ConnectionState.Connecting ||
-            _connectionState.value is ConnectionState.Connected ||
-            connectingJob?.isActive == true
-        ) {
+        if (connectionManager.isConnectionBusy()) {
             val currentAttempt = activeConnectionAttempt
             val sameAddressAttempt = currentAttempt?.takeIf {
                 it.address.equals(address, ignoreCase = true)
@@ -800,7 +777,7 @@ class DeviceRepository {
             }
         }
 
-        systemConnectedAddresses.add(address)
+        connectionManager.markSystemConnected(address)
         LogBuffer.i("AutoConnect", "System Bluetooth connected for ${device.name ?: address}; opening app SPP control channel")
         val attemptId = connect(device, trigger)
         return ConnectionRequestResult(accepted = attemptId != null, attemptId = attemptId)
@@ -858,7 +835,7 @@ class DeviceRepository {
         val maxAttempts = 3
         LogBuffer.i("SPP", "Auto low latency recovery start current=${stateStore.props.value.lowLatency}")
         repeat(maxAttempts) { index ->
-            if (_connectionState.value !is ConnectionState.Connected) return
+            if (connectionState.value !is ConnectionState.Connected) return
             syncProps()
             if (stateStore.props.value.lowLatency == true) {
                 LogBuffer.i("SPP", "Auto low latency confirmed")
@@ -941,9 +918,8 @@ class DeviceRepository {
         targetSession: EarbudSession,
         attempt: ConnectionAttemptTimeline,
     ) {
-        initJob?.cancel()
-        backgroundInitJob?.cancel()
-        initJob = scope.launch {
+        connectionManager.cancelInitializationJobs()
+        val newInitializationJob = scope.launch {
             try {
                 // Android's RFCOMM socket can report connected before the earbud command loop is
                 // ready. Keep the verified-model first pass short; failed handlers are recovered
@@ -1008,14 +984,23 @@ class DeviceRepository {
                 }
             }
         }
+        connectionManager.withLifecycleLock {
+            if (connectionManager.isCurrentSession(targetSession) &&
+                connectionManager.isCurrentAttempt(attempt)
+            ) {
+                connectionManager.installInitializationJob(newInitializationJob)
+            } else {
+                newInitializationJob.cancel()
+            }
+        }
     }
 
     private fun startBackgroundInitialization(
         targetSession: EarbudSession,
         attempt: ConnectionAttemptTimeline,
     ) {
-        backgroundInitJob?.cancel()
-        backgroundInitJob = scope.launch {
+        connectionManager.cancelBackgroundInitializationJob()
+        val newBackgroundInitializationJob = scope.launch {
             try {
                 if (!connectionManager.isCurrentSession(targetSession) || targetSession.isConnected != true) return@launch
 
@@ -1080,6 +1065,15 @@ class DeviceRepository {
                 }
             }
         }
+        connectionManager.withLifecycleLock {
+            if (connectionManager.isCurrentSession(targetSession) &&
+                connectionManager.isCurrentAttempt(attempt)
+            ) {
+                connectionManager.installBackgroundInitializationJob(newBackgroundInitializationJob)
+            } else {
+                newBackgroundInitializationJob.cancel()
+            }
+        }
     }
 
     private suspend fun recoverCoreHandlers(
@@ -1112,8 +1106,8 @@ class DeviceRepository {
     // ── 定时轮询（后台 5s 基础属性，前台 fastPoll 800ms）─────────────────
 
     private fun startPolling() {
-        pollJob?.cancel()
-        pollJob = scope.launch {
+        connectionManager.cancelPollingJob()
+        val newPollingJob = scope.launch {
             while (isActive && session?.isConnected == true) {
                 delay(5_000) // 后台每 5s 轮询一次
                 if (!isActive || session?.isConnected != true) break
@@ -1122,19 +1116,25 @@ class DeviceRepository {
                 }
             }
         }
+        connectionManager.withLifecycleLock {
+            if (session?.isConnected == true) {
+                connectionManager.installPollingJob(newPollingJob)
+            } else {
+                newPollingJob.cancel()
+            }
+        }
     }
 
     private fun startFastPolling() {
-        fastPollJob?.cancel()
-        fastPollJob = scope.launch {
+        connectionManager.cancelFastPollingJob()
+        val newFastPollingJob = scope.launch {
             var tick = 0
             while (isActive && session?.isConnected == true && foregroundMode) {
                 delay(800) // 前台 800ms 高频刷新
                 if (!isActive || session?.isConnected != true || !foregroundMode) break
                 // 设备信息仅在首次连接时获取一次；核心状态/自动低延迟稳定前不抢 SPP 通道
                 if (!deviceInfoFetched &&
-                    initJob?.isActive != true &&
-                    backgroundInitJob?.isActive != true &&
+                    !connectionManager.isInitializationActive() &&
                     System.currentTimeMillis() >= sppQuietUntil &&
                     failedHandlers.none { it in coreRetryOrder }
                 ) {
@@ -1155,11 +1155,17 @@ class DeviceRepository {
                 tick++
             }
         }
+        connectionManager.withLifecycleLock {
+            if (session?.isConnected == true && foregroundMode) {
+                connectionManager.installFastPollingJob(newFastPollingJob)
+            } else {
+                newFastPollingJob.cancel()
+            }
+        }
     }
 
     private fun stopFastPolling() {
-        fastPollJob?.cancel()
-        fastPollJob = null
+        connectionManager.cancelFastPollingJob()
     }
 
     // ── 属性写入（UI → 设备）──等待响应后重新同步 ─────────────────
@@ -1263,7 +1269,7 @@ class DeviceRepository {
             while (isActive) {
                 delay(60_000)
                 val now = System.currentTimeMillis()
-                if (_connectionState.value is ConnectionState.Connected) {
+                if (connectionState.value is ConnectionState.Connected) {
                     val delta = (now - lastListeningTick).coerceIn(0L, 5 * 60_000L)
                     refreshListeningStats(delta)
                 }
@@ -1275,7 +1281,7 @@ class DeviceRepository {
     private fun stopListeningStatsTicker() {
         val now = System.currentTimeMillis()
         val delta = if (lastListeningTick > 0L) (now - lastListeningTick).coerceIn(0L, 5 * 60_000L) else 0L
-        if (delta > 0L && _connectionState.value is ConnectionState.Connected) {
+        if (delta > 0L && connectionState.value is ConnectionState.Connected) {
             refreshListeningStats(delta)
         }
         listeningStatsJob?.cancel()
@@ -1366,7 +1372,7 @@ class DeviceRepository {
     }
 
     private fun systemLinkState(address: String?): SystemLinkState =
-        if (address != null && address in systemConnectedAddresses) {
+        if (address != null && connectionManager.isSystemConnected(address)) {
             SystemLinkState.Connected
         } else {
             SystemLinkState.Disconnected
@@ -1382,7 +1388,7 @@ class DeviceRepository {
         reason: String? = null,
     ) {
         val current = stateStore.controlChannelState.value
-        val address = attempt?.address ?: current.address ?: connectedAddress
+        val address = attempt?.address ?: current.address ?: connectionManager.connectedAddress
         stateStore.updateStage(
             stage = stage,
             attempt = attempt,
@@ -1400,10 +1406,10 @@ class DeviceRepository {
         val d = session ?: return
         stateStore.replaceProps(d.mapState(
             failedHandlers = pendingInitHandlers.toSet(),
-            connectedSince = connectedAt.takeIf { it > 0 },
+            connectedSince = connectionManager.connectedAt.takeIf { it > 0 },
         ))
         val current = stateStore.controlChannelState.value
-        val address = current.address ?: connectedAddress
+        val address = current.address ?: connectionManager.connectedAddress
         val linked = if (address != null) {
             current.copy(systemLink = systemLinkState(address))
         } else {

@@ -3,17 +3,17 @@
 > 版本号统一修改入口，按清单逐一更新。
 
 ## 当前版本
-- **v4.3.5** (versionCode=93, 2026-08-09)
+- **v4.3.6** (versionCode=94, 2026-08-09)
 
 ## 版本号位置
 
 | 位置 | 当前值 |
 |------|--------|
-| `app/build.gradle.kts` | versionCode=93, versionName="4.3.5" |
-| `app/src/main/res/values/strings.xml` | version_name=4.3.5 |
-| `README.md` | v4.3.5 |
-| `README_EN.md` | v4.3.5 |
-| `DEVELOPMENT_LOG.md` | v4.3.5 (末尾) |
+| `app/build.gradle.kts` | versionCode=94, versionName="4.3.6" |
+| `app/src/main/res/values/strings.xml` | version_name=4.3.6 |
+| `README.md` | v4.3.6 |
+| `README_EN.md` | v4.3.6 |
+| `DEVELOPMENT_LOG.md` | v4.3.6 (末尾) |
 
 ## 一键版本更新脚本
 
@@ -37,6 +37,7 @@ python3 scripts/bump_version.py <versionName> <versionCode> "修复说明"
 
 | 版本 | Code | 日期 | 主要变更 |
 |------|------|------|---------|
+| v4.3.6 | 94 | 2026-08-09 | BT-3 连接运行时状态与生命周期 Job 收敛到 EarbudConnectionManager，进入定向实机验证 |
 | v4.3.5 | 93 | 2026-08-09 | 修复蓝牙状态并发回退与 RFCOMM 立即拒绝重试，进入 BT_STATE_RETRY_20 定向实机验证 |
 | v4.3.4 | 92 | 2026-08-09 | 切换 36 项定向蓝牙回归测试并记录 ANC 修复验证 |
 | v4.3.3 | 91 | 2026-08-09 | 修复 ANC 摘戴期间瞬时状态覆盖并加入定向实机测试 |

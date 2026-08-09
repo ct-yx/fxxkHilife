@@ -45,11 +45,13 @@ enum class RegressionResult {
 
 /**
  * A debug run follows the scope of the current change instead of always replaying the whole
- * connection matrix. BT_STATE_RETRY_20 is the current follow-up default; BT_TARGETED_36 and
- * FULL_MATRIX remain available for the previous gate and release-candidate acceptance.
+ * connection matrix. BT_MANAGER_RUNTIME_20 is the current BT-3 follow-up default;
+ * BT_STATE_RETRY_20 remains available for the previous gate, while BT_TARGETED_36 and
+ * FULL_MATRIX remain available for historical and release-candidate acceptance.
  */
 enum class RegressionProfile(val id: String) {
     ANC_WEAR_STATE("ANC_WEAR_STATE"),
+    BT_MANAGER_RUNTIME_20("BT_MANAGER_RUNTIME_20"),
     BT_STATE_RETRY_20("BT_STATE_RETRY_20"),
     BT_TARGETED_36("BT_TARGETED_36"),
     FULL_MATRIX("FULL_MATRIX"),
@@ -74,7 +76,7 @@ data class RegressionFeatureCheck(
 
 data class BluetoothRegressionState(
     val running: Boolean = false,
-    val profile: RegressionProfile = RegressionProfile.BT_STATE_RETRY_20,
+    val profile: RegressionProfile = RegressionProfile.BT_MANAGER_RUNTIME_20,
     val scenario: RegressionScenario? = null,
     val iteration: Int = 0,
     val totalIterations: Int = 10,
@@ -218,6 +220,7 @@ class BluetoothRegressionRunner(
                         iterations = iterations,
                         featureChecks = featureChecks,
                     )
+                    RegressionProfile.BT_MANAGER_RUNTIME_20,
                     RegressionProfile.BT_STATE_RETRY_20 -> runStateRetry20Profile(
                         device = device,
                         originalAutoLowLatency = originalAutoLowLatency,
@@ -1415,7 +1418,7 @@ class BluetoothRegressionRunner(
     companion object {
         const val DEFAULT_ITERATIONS = 10
         const val MAX_ITERATIONS = 10
-        private val DEFAULT_PROFILE = RegressionProfile.BT_STATE_RETRY_20
+        private val DEFAULT_PROFILE = RegressionProfile.BT_MANAGER_RUNTIME_20
         internal val STATE_RETRY_20_SCENARIO_ROUNDS = linkedMapOf(
             RegressionScenario.F to 10,
         )
@@ -1450,6 +1453,7 @@ class BluetoothRegressionRunner(
 
         internal fun operationCount(profile: RegressionProfile, iterations: Int): Int = when (profile) {
             RegressionProfile.ANC_WEAR_STATE -> iterations
+            RegressionProfile.BT_MANAGER_RUNTIME_20,
             RegressionProfile.BT_STATE_RETRY_20 ->
                 STATE_RETRY_20_SCENARIO_ROUNDS.values.sum() + STATE_RETRY_20_INITIALIZATION_ROUNDS
             RegressionProfile.BT_TARGETED_36 ->
