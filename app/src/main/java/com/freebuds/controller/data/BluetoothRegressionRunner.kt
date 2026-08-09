@@ -45,10 +45,12 @@ enum class RegressionResult {
 
 /**
  * A debug run follows the scope of the current change instead of always replaying the whole
- * connection matrix.  FULL_MATRIX remains available for release-candidate acceptance.
+ * connection matrix. BT_TARGETED_36 is the current default; FULL_MATRIX remains available for
+ * release-candidate acceptance.
  */
 enum class RegressionProfile(val id: String) {
     ANC_WEAR_STATE("ANC_WEAR_STATE"),
+    BT_TARGETED_36("BT_TARGETED_36"),
     FULL_MATRIX("FULL_MATRIX"),
 }
 
@@ -71,7 +73,7 @@ data class RegressionFeatureCheck(
 
 data class BluetoothRegressionState(
     val running: Boolean = false,
-    val profile: RegressionProfile = RegressionProfile.ANC_WEAR_STATE,
+    val profile: RegressionProfile = RegressionProfile.BT_TARGETED_36,
     val scenario: RegressionScenario? = null,
     val iteration: Int = 0,
     val totalIterations: Int = 10,
@@ -113,7 +115,7 @@ class BluetoothRegressionRunner(
             running = true,
             profile = profile,
             totalIterations = count,
-            totalOperations = count * operationCount(profile),
+            totalOperations = operationCount(profile, count),
             message = I18n.t("terminal.regression.starting"),
         )
         runJob = scope.launch(Dispatchers.IO) { run(count, profile) }
@@ -190,6 +192,7 @@ class BluetoothRegressionRunner(
             val device = repository.getRegressionDevice()
 
             LogBuffer.putMetadata("hardwareRegressionIterations", iterations.toString())
+            LogBuffer.putMetadata("hardwareRegressionTotalOperations", _state.value.totalOperations.toString())
             LogBuffer.putMetadata("hardwareRegressionStartedAt", startedAt.toString())
             LogBuffer.putMetadata("hardwareRegressionLogCaptureBytes", REGRESSION_CAPTURE_MAX_BYTES.toString())
             LogBuffer.putMetadata("hardwareRegressionReportMaxBytes", REGRESSION_REPORT_MAX_BYTES.toString())
@@ -212,6 +215,12 @@ class BluetoothRegressionRunner(
                     RegressionProfile.ANC_WEAR_STATE -> runAncWearStateProfile(
                         device = device,
                         iterations = iterations,
+                        featureChecks = featureChecks,
+                    )
+                    RegressionProfile.BT_TARGETED_36 -> runTargeted36Profile(
+                        device = device,
+                        originalAutoLowLatency = originalAutoLowLatency,
+                        attempts = attempts,
                         featureChecks = featureChecks,
                     )
                     RegressionProfile.FULL_MATRIX -> runFullMatrixProfile(
@@ -271,63 +280,145 @@ class BluetoothRegressionRunner(
         featureChecks: MutableList<RegressionFeatureCheck>,
     ) {
         for (scenario in RegressionScenario.entries) {
-            _state.value = _state.value.copy(scenario = scenario, iteration = 0, message = scenario.title)
-            for (iteration in 1..iterations) {
-                ensureDisconnected()
-                _state.value = _state.value.copy(scenario = scenario, iteration = iteration)
-                val attempt = when (scenario) {
-                    RegressionScenario.A -> runConnectionAttempt(
-                        device,
-                        scenario,
-                        iteration,
-                        ConnectionTrigger.HardwareRegression,
-                        autoLowLatency = false,
-                        requestConnection = {
-                            submitKnownAutoConnect(device, ConnectionTrigger.HardwareRegression)
-                        },
-                    )
-                    RegressionScenario.B -> runConnectionAttempt(
-                        device,
-                        scenario,
-                        iteration,
-                        ConnectionTrigger.HardwareRegression,
-                        autoLowLatency = true,
-                        requestConnection = {
-                            submitKnownAutoConnect(device, ConnectionTrigger.HardwareRegression)
-                        },
-                    )
-                    RegressionScenario.C -> runConnectionAttempt(
-                        device,
-                        scenario,
-                        iteration,
-                        ConnectionTrigger.AclConnected,
-                        autoLowLatency = originalAutoLowLatency,
-                        requestConnection = {
-                            submitKnownAutoConnect(device, ConnectionTrigger.AclConnected)
-                        },
-                    )
-                    RegressionScenario.D -> runDiscoveryAttempt(device, iteration)
-                    RegressionScenario.E -> runRetryAttempt(device, iteration, originalAutoLowLatency)
-                    RegressionScenario.F -> runManualDisconnectAttempt(device, iteration, originalAutoLowLatency)
-                }
-                attempts += attempt
-                val completed = attempts.size
-                _state.value = _state.value.copy(
-                    completed = completed,
-                    failed = attempts.count { it.result == RegressionResult.FAIL },
-                    message = "${scenario.id} $iteration/$iterations: ${attempt.result}",
-                )
-            }
+            runScenarioRounds(
+                device = device,
+                scenario = scenario,
+                iterations = iterations,
+                originalAutoLowLatency = originalAutoLowLatency,
+                attempts = attempts,
+            )
         }
 
         // The feature items are part of the full matrix.  Each one runs the requested number of
         // rounds instead of being a single smoke check after the A-F connection samples.
-        val featureRunners: List<suspend (BluetoothDevice, Int) -> RegressionFeatureCheck> = listOf(
-            ::runInitializationProgressCheck,
-            ::runAncCheck,
-            ::runLowLatencyCheck,
-            ::runTriggerDeduplicationCheck,
+        runFeatureRounds(
+            device = device,
+            iterations = iterations,
+            featureRunners = listOf(
+                ::runInitializationProgressCheck,
+                ::runAncCheck,
+                ::runLowLatencyCheck,
+                ::runTriggerDeduplicationCheck,
+            ),
+            featureChecks = featureChecks,
         )
+    }
+
+    /**
+     * Runs only the connection and initialization paths changed in the current BT refactor.
+     * The plan is intentionally 36 operations: B/F ten rounds each, initialization ten rounds,
+     * then D/E three rounds each. A/C and unrelated feature checks stay out of this gate.
+     */
+    private suspend fun runTargeted36Profile(
+        device: BluetoothDevice,
+        originalAutoLowLatency: Boolean,
+        attempts: MutableList<RegressionAttempt>,
+        featureChecks: MutableList<RegressionFeatureCheck>,
+    ) {
+        runScenarioRounds(
+            device = device,
+            scenario = RegressionScenario.B,
+            iterations = TARGETED_36_SCENARIO_ROUNDS.getValue(RegressionScenario.B),
+            originalAutoLowLatency = originalAutoLowLatency,
+            attempts = attempts,
+        )
+        runScenarioRounds(
+            device = device,
+            scenario = RegressionScenario.F,
+            iterations = TARGETED_36_SCENARIO_ROUNDS.getValue(RegressionScenario.F),
+            originalAutoLowLatency = originalAutoLowLatency,
+            attempts = attempts,
+        )
+        runFeatureRounds(
+            device = device,
+            iterations = TARGETED_36_INITIALIZATION_ROUNDS,
+            featureRunners = listOf(::runInitializationProgressCheck),
+            featureChecks = featureChecks,
+        )
+        runScenarioRounds(
+            device = device,
+            scenario = RegressionScenario.D,
+            iterations = TARGETED_36_SCENARIO_ROUNDS.getValue(RegressionScenario.D),
+            originalAutoLowLatency = originalAutoLowLatency,
+            attempts = attempts,
+        )
+        runScenarioRounds(
+            device = device,
+            scenario = RegressionScenario.E,
+            iterations = TARGETED_36_SCENARIO_ROUNDS.getValue(RegressionScenario.E),
+            originalAutoLowLatency = originalAutoLowLatency,
+            attempts = attempts,
+        )
+    }
+
+    private suspend fun runScenarioRounds(
+        device: BluetoothDevice,
+        scenario: RegressionScenario,
+        iterations: Int,
+        originalAutoLowLatency: Boolean,
+        attempts: MutableList<RegressionAttempt>,
+    ) {
+        _state.value = _state.value.copy(scenario = scenario, iteration = 0, message = scenario.title)
+        for (iteration in 1..iterations) {
+            ensureDisconnected()
+            _state.value = _state.value.copy(scenario = scenario, iteration = iteration)
+            val attempt = runScenarioAttempt(device, scenario, iteration, originalAutoLowLatency)
+            attempts += attempt
+            _state.value = _state.value.copy(
+                completed = _state.value.completed + 1,
+                failed = _state.value.failed + if (attempt.result == RegressionResult.FAIL) 1 else 0,
+                message = "${scenario.id} $iteration/$iterations: ${attempt.result}",
+            )
+        }
+    }
+
+    private suspend fun runScenarioAttempt(
+        device: BluetoothDevice,
+        scenario: RegressionScenario,
+        iteration: Int,
+        originalAutoLowLatency: Boolean,
+    ): RegressionAttempt = when (scenario) {
+        RegressionScenario.A -> runConnectionAttempt(
+            device,
+            scenario,
+            iteration,
+            ConnectionTrigger.HardwareRegression,
+            autoLowLatency = false,
+            requestConnection = {
+                submitKnownAutoConnect(device, ConnectionTrigger.HardwareRegression)
+            },
+        )
+        RegressionScenario.B -> runConnectionAttempt(
+            device,
+            scenario,
+            iteration,
+            ConnectionTrigger.HardwareRegression,
+            autoLowLatency = true,
+            requestConnection = {
+                submitKnownAutoConnect(device, ConnectionTrigger.HardwareRegression)
+            },
+        )
+        RegressionScenario.C -> runConnectionAttempt(
+            device,
+            scenario,
+            iteration,
+            ConnectionTrigger.AclConnected,
+            autoLowLatency = originalAutoLowLatency,
+            requestConnection = {
+                submitKnownAutoConnect(device, ConnectionTrigger.AclConnected)
+            },
+        )
+        RegressionScenario.D -> runDiscoveryAttempt(device, iteration)
+        RegressionScenario.E -> runRetryAttempt(device, iteration, originalAutoLowLatency)
+        RegressionScenario.F -> runManualDisconnectAttempt(device, iteration, originalAutoLowLatency)
+    }
+
+    private suspend fun runFeatureRounds(
+        device: BluetoothDevice,
+        iterations: Int,
+        featureRunners: List<suspend (BluetoothDevice, Int) -> RegressionFeatureCheck>,
+        featureChecks: MutableList<RegressionFeatureCheck>,
+    ) {
         featureRunners.forEach { runner ->
             for (iteration in 1..iterations) {
                 ensureDisconnected()
@@ -1155,6 +1246,7 @@ class BluetoothRegressionRunner(
         appendLine("firmware=${repository.props.value.firmwareVersion ?: "unknown"}")
         appendLine("endpoint=${repository.getRegressionEndpoint()}")
         appendLine("iterations=${_state.value.totalIterations}")
+        appendLine("totalOperations=${_state.value.totalOperations}")
         appendLine("scenarioSamples=${attempts.size}")
         appendLine("featureSamples=${features.size}")
         earlyFailure?.let { appendLine("earlyFailure=$it") }
@@ -1291,7 +1383,14 @@ class BluetoothRegressionRunner(
     companion object {
         const val DEFAULT_ITERATIONS = 10
         const val MAX_ITERATIONS = 10
-        private val DEFAULT_PROFILE = RegressionProfile.ANC_WEAR_STATE
+        private val DEFAULT_PROFILE = RegressionProfile.BT_TARGETED_36
+        internal val TARGETED_36_SCENARIO_ROUNDS = linkedMapOf(
+            RegressionScenario.B to 10,
+            RegressionScenario.F to 10,
+            RegressionScenario.D to 3,
+            RegressionScenario.E to 3,
+        )
+        internal const val TARGETED_36_INITIALIZATION_ROUNDS = 10
         private val FEATURE_CHECK_NAMES = listOf(
             "application entry / 10s initialization progression",
             "ANC read / switch / read-back",
@@ -1313,9 +1412,11 @@ class BluetoothRegressionRunner(
         private const val REGRESSION_REPORT_MAX_BYTES = 190_000_000L
         private val ANC_MODE_REGEX = Regex("\\bmode=(\\d+)")
 
-        private fun operationCount(profile: RegressionProfile): Int = when (profile) {
-            RegressionProfile.ANC_WEAR_STATE -> 1
-            RegressionProfile.FULL_MATRIX -> RegressionScenario.entries.size + FEATURE_CHECK_NAMES.size
+        internal fun operationCount(profile: RegressionProfile, iterations: Int): Int = when (profile) {
+            RegressionProfile.ANC_WEAR_STATE -> iterations
+            RegressionProfile.BT_TARGETED_36 ->
+                TARGETED_36_SCENARIO_ROUNDS.values.sum() + TARGETED_36_INITIALIZATION_ROUNDS
+            RegressionProfile.FULL_MATRIX -> iterations * (RegressionScenario.entries.size + FEATURE_CHECK_NAMES.size)
         }
     }
 }

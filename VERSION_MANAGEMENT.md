@@ -3,17 +3,17 @@
 > 版本号统一修改入口，按清单逐一更新。
 
 ## 当前版本
-- **v4.3.3** (versionCode=91, 2026-08-09)
+- **v4.3.4** (versionCode=92, 2026-08-09)
 
 ## 版本号位置
 
 | 位置 | 当前值 |
 |------|--------|
-| `app/build.gradle.kts` | versionCode=91, versionName="4.3.3" |
-| `app/src/main/res/values/strings.xml` | version_name=4.3.3 |
-| `README.md` | v4.3.3 |
-| `README_EN.md` | v4.3.3 |
-| `DEVELOPMENT_LOG.md` | v4.3.3 (末尾) |
+| `app/build.gradle.kts` | versionCode=92, versionName="4.3.4" |
+| `app/src/main/res/values/strings.xml` | version_name=4.3.4 |
+| `README.md` | v4.3.4 |
+| `README_EN.md` | v4.3.4 |
+| `DEVELOPMENT_LOG.md` | v4.3.4 (末尾) |
 
 ## 一键版本更新脚本
 
@@ -37,6 +37,7 @@ python3 scripts/bump_version.py <versionName> <versionCode> "修复说明"
 
 | 版本 | Code | 日期 | 主要变更 |
 |------|------|------|---------|
+| v4.3.4 | 92 | 2026-08-09 | 切换 36 项定向蓝牙回归测试并记录 ANC 修复验证 |
 | v4.3.3 | 91 | 2026-08-09 | 修复 ANC 摘戴期间瞬时状态覆盖并加入定向实机测试 |
 | v4.3.2 | 90 | 2026-08-08 | BT-1/BT-2 热重连恢复与初始化回归门槛 |
 | v4.3.1 | 89 | 2026-08-08 | 修复 RFCOMM 立即失败重试、回归等待归属和初始化阶段终态 |

@@ -70,7 +70,7 @@ class TerminalActivity : AppCompatActivity(), OnLogUpdateListener {
                         LogBuffer.i("HwTest", "Debug-only hardware regression button pressed")
                         regressionRunner.start(
                             scope = lifecycleScope,
-                            profile = RegressionProfile.ANC_WEAR_STATE,
+                            profile = RegressionProfile.BT_TARGETED_36,
                         )
                     }
                 }

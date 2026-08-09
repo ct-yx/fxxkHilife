@@ -1321,3 +1321,11 @@
 - versionCode: 91
 - versionName: 4.3.3
 - tag: v4.3.3
+
+## v4.3.4 (2026-08-09)
+
+### 发布
+- 切换 36 项定向蓝牙回归测试并记录 ANC 修复验证
+- versionCode: 92
+- versionName: 4.3.4
+- tag: v4.3.4
