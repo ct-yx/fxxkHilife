@@ -1372,3 +1372,15 @@
 - `./gradlew :app:testDebugUnitTest --no-daemon` 通过，包含新增 `ConnectionLifecycleTest` 和 `BluetoothRegressionPlanTest` 的 profile 断言。
 - 完整本地 CI：`./scripts/run_ci_checks.sh ci-output-bt-manager-runtime-4.3.6-94` 通过（diff-check、Debug/Release 单元测试、Debug/Release 构建）；Debug APK SHA-256=`84bcca035c04eb5d3380ed343a20f5637a380e7b22ce6c7249307e85a2194efd`，Release APK SHA-256=`43f9bced10a1e24ef2600f7f7134bf04d2bea86b60eb030771f540275e5d396d`。
 - 尚未执行新的主验证设备报告；当前实机门保持目标受阻，等待 `BT_MANAGER_RUNTIME_20` 20 项报告后再判断 BT-1/BT-2/BT-3 是否收口。
+
+## 2026-08-10 文档历史维护
+
+### 架构计划归档
+- 将合并前 `docs/ARCHITECTURE_TODO.md` 的完整通用 Transport / Protocol / Capability / Adapter / State / Repository 设计、接口示例、迁移步骤和 v4.1–v4.2.1 历史记录归档到 `docs/REFACTOR_PLAN_UI_AND_BLUETOOTH.md` 附录 A。
+- `docs/ARCHITECTURE_TODO.md` 保留为旧路径跳转说明，不再维护第二份阶段清单、版本号或测试门。
+- 当前执行状态、`BT_MANAGER_RUNTIME_20` 实机门和版本 `4.3.6 / 94` 保持不变；本次是文档维护，不生成新应用版本。
+- 文档职责、追加规则、证据引用和提交边界已写入主计划第 9 节。
+
+### 变更记录
+- 合并提交：`dba58b2`。
+- 历史内容恢复提交：`84e2f7a`。

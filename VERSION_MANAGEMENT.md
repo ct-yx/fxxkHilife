@@ -5,6 +5,13 @@
 ## 当前版本
 - **v4.3.6** (versionCode=94, 2026-08-09)
 
+## 文档同步记录
+
+应用版本不因文档合并、历史归档或格式修复而增加：
+
+- 2026-08-10：`ARCHITECTURE_TODO.md` 的原始架构正文归档至 `docs/REFACTOR_PLAN_UI_AND_BLUETOOTH.md` 附录 A；当前版本仍为 v4.3.6（versionCode=94）。
+- 当前阶段状态和实机测试门仍以 `docs/REFACTOR_PLAN_UI_AND_BLUETOOTH.md` 为准，详细变更证据记录在 `DEVELOPMENT_LOG.md`。
+
 ## 版本号位置
 
 | 位置 | 当前值 |
