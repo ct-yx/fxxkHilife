@@ -1329,3 +1329,26 @@
 - versionCode: 92
 - versionName: 4.3.4
 - tag: v4.3.4
+
+## v4.3.5 (2026-08-09)
+
+### 发布
+- 修复蓝牙状态并发回退与 RFCOMM 立即拒绝重试，进入 BT_STATE_RETRY_20 定向实机验证
+- versionCode: 93
+- versionName: 4.3.5
+- tag: v4.3.5
+
+### 本轮变更
+- `EarbudStateStore` 的 ControlChannel/DeviceProps 状态更新改为原子 `StateFlow.update`，避免并发 handler 快照将同一 attempt 的 `Ready` 覆盖回 `InitializingDeferred`。
+- RFCOMM immediate retry 从 2 次提升为 3 次，最多创建 4 个 Socket，退避间隔为 `250/500/750ms`；真实连接超时仍不重复延长原有 timeout。
+- Debug 自动测试按钮默认 profile 改为 `BT_STATE_RETRY_20`，仅执行 F10 和应用入口初始化推进10轮；`BT_TARGETED_36` 保留作历史门槛复现，Release 不暴露测试按钮。
+
+### 实机报告结论
+- `4.3.4 / 92` 报告 `/Users/chenhong/Downloads/fxxkHilife_hardware_regression_1786277130416.txt` 为 `BT_TARGETED_36`，结果 B=10/10、F=7/10、初始化=8/10、D=3/3、E=3/3，总计31/36。
+- endpoint 固定为 `rfcomm-channel=1`，source 固定为 `VerifiedModelConfig`；成功阶段 Transport→CoreReady P50/P95=`860/888ms`，CoreReady→Ready P50/P95=`1350/1429ms`。
+- F1/F3/F9 的阶段日志已达到 `CoreReady/Ready`，但 Runner 结果快照出现 `InitializingDeferred` 或等待超时；初始化第2、6轮在三次 RFCOMM immediate rejection 后失败。下一轮只针对 F 与初始化验证上述两个修复，不重复 B/D/E。
+
+### 自动化验证
+- 已通过定向 JVM 测试：`EarbudStateStoreTest`、`BluetoothRegressionPlanTest`、`RfcommTransportConfigTest`。
+- 完整本地 CI：`./scripts/run_ci_checks.sh ci-output-bt-state-retry-20` 通过，Debug APK SHA-256=`bd28b23cf6916bc141d66eef0f8b7fadff730161da0c07a62c5bcb0fd54b9b8f`，Release APK SHA-256=`13e498c7e55041b8778569c532a2aeb02c3dab773afcd9171e8cc8a6e90b3b9e`。
+- GitHub Actions 和实机报告返回前 BT-1/BT-2 保持“目标受阻”。

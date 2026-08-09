@@ -3,6 +3,7 @@ package com.freebuds.controller.data
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.update
 
 /**
  * Owns the typed state exposed by the Bluetooth layer.
@@ -27,18 +28,24 @@ class EarbudStateStore(
         trigger: ConnectionTrigger,
         systemLink: SystemLinkState,
     ) {
-        _controlChannelState.value = reducer.beginAttempt(
-            state = _controlChannelState.value,
-            deviceName = deviceName,
-            address = address,
-            attemptId = attemptId,
-            trigger = trigger,
-            systemLink = systemLink,
-        )
+        _controlChannelState.update { state ->
+            reducer.beginAttempt(
+                state = state,
+                deviceName = deviceName,
+                address = address,
+                attemptId = attemptId,
+                trigger = trigger,
+                systemLink = systemLink,
+            )
+        }
     }
 
     fun updateControlChannel(transform: (ControlChannelState) -> ControlChannelState) {
-        _controlChannelState.value = transform(_controlChannelState.value)
+        // Connection callbacks, deferred initialization and property notifications can run on
+        // different dispatcher threads. A read/transform/write assignment can therefore put an
+        // older InitializingDeferred snapshot back after a newer Ready update. StateFlow.update
+        // retries the transform against the latest state instead of losing the terminal stage.
+        _controlChannelState.update(transform)
     }
 
     fun updateEndpoint(address: String, endpoint: String) {
@@ -56,29 +63,30 @@ class EarbudStateStore(
         failedHandlers: Set<String>,
         reason: String? = null,
     ) {
-        val current = _controlChannelState.value
-        val address = attempt?.address ?: addressOverride ?: current.address
-        val prepared = current.copy(
-            systemLink = if (address != null) systemLink else current.systemLink,
-            address = address,
-            trigger = attempt?.trigger ?: current.trigger,
-        )
-        _controlChannelState.value = if (attempt == null) {
-            prepared.copy(
-                stage = stage,
-                pendingHandlers = pendingHandlers,
-                failedHandlers = failedHandlers,
-                reason = reason,
+        _controlChannelState.update { current ->
+            val address = attempt?.address ?: addressOverride ?: current.address
+            val prepared = current.copy(
+                systemLink = if (address != null) systemLink else current.systemLink,
+                address = address,
+                trigger = attempt?.trigger ?: current.trigger,
             )
-        } else {
-            reducer.stage(
-                state = prepared,
-                attemptId = attempt.attemptId,
-                stage = stage,
-                pendingHandlers = pendingHandlers,
-                failedHandlers = failedHandlers,
-                reason = reason,
-            )
+            if (attempt == null) {
+                prepared.copy(
+                    stage = stage,
+                    pendingHandlers = pendingHandlers,
+                    failedHandlers = failedHandlers,
+                    reason = reason,
+                )
+            } else {
+                reducer.stage(
+                    state = prepared,
+                    attemptId = attempt.attemptId,
+                    stage = stage,
+                    pendingHandlers = pendingHandlers,
+                    failedHandlers = failedHandlers,
+                    reason = reason,
+                )
+            }
         }
     }
 
@@ -87,24 +95,28 @@ class EarbudStateStore(
         pendingHandlers: Set<String>,
         failedHandlers: Set<String>,
     ) {
-        _controlChannelState.value = reducer.updateHandlers(
-            state = _controlChannelState.value,
-            attemptId = activeAttemptId,
-            pendingHandlers = pendingHandlers,
-            failedHandlers = failedHandlers,
-        )
+        _controlChannelState.update { state ->
+            reducer.updateHandlers(
+                state = state,
+                attemptId = activeAttemptId,
+                pendingHandlers = pendingHandlers,
+                failedHandlers = failedHandlers,
+            )
+        }
     }
 
     fun updateSystemLink(address: String, systemLink: SystemLinkState) {
-        _controlChannelState.value = reducer.updateSystemLink(
-            state = _controlChannelState.value,
-            address = address,
-            systemLink = systemLink,
-        )
+        _controlChannelState.update { state ->
+            reducer.updateSystemLink(
+                state = state,
+                address = address,
+                systemLink = systemLink,
+            )
+        }
     }
 
     fun resetControlChannel(systemLink: SystemLinkState, reason: String? = null) {
-        _controlChannelState.value = reducer.reset(systemLink).copy(reason = reason)
+        _controlChannelState.update { reducer.reset(systemLink).copy(reason = reason) }
     }
 
     fun replaceProps(props: DeviceProps) {
@@ -112,6 +124,6 @@ class EarbudStateStore(
     }
 
     fun updateProps(transform: (DeviceProps) -> DeviceProps) {
-        _props.value = transform(_props.value)
+        _props.update(transform)
     }
 }

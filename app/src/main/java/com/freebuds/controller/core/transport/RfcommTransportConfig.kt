@@ -51,7 +51,10 @@ data class RfcommTransportConfig(
     companion object {
         const val DEFAULT_CHANNEL = 1
         const val DEFAULT_CONNECT_TIMEOUT_MS = 10_000L
-        const val DEFAULT_IMMEDIATE_RETRY_COUNT = 2
+        // The 4.3.4 hardware run still saw two cold reconnects rejected three times in a row.
+        // A fourth socket creation is only reached after immediate rejection, so the normal
+        // successful path keeps the existing latency while covering the longer ACL drain tail.
+        const val DEFAULT_IMMEDIATE_RETRY_COUNT = 3
         const val DEFAULT_IMMEDIATE_RETRY_DELAY_MS = 250L
         private const val MIN_CHANNEL = 1
         private const val MAX_CHANNEL = 30

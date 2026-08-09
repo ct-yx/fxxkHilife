@@ -45,11 +45,12 @@ enum class RegressionResult {
 
 /**
  * A debug run follows the scope of the current change instead of always replaying the whole
- * connection matrix. BT_TARGETED_36 is the current default; FULL_MATRIX remains available for
- * release-candidate acceptance.
+ * connection matrix. BT_STATE_RETRY_20 is the current follow-up default; BT_TARGETED_36 and
+ * FULL_MATRIX remain available for the previous gate and release-candidate acceptance.
  */
 enum class RegressionProfile(val id: String) {
     ANC_WEAR_STATE("ANC_WEAR_STATE"),
+    BT_STATE_RETRY_20("BT_STATE_RETRY_20"),
     BT_TARGETED_36("BT_TARGETED_36"),
     FULL_MATRIX("FULL_MATRIX"),
 }
@@ -73,7 +74,7 @@ data class RegressionFeatureCheck(
 
 data class BluetoothRegressionState(
     val running: Boolean = false,
-    val profile: RegressionProfile = RegressionProfile.BT_TARGETED_36,
+    val profile: RegressionProfile = RegressionProfile.BT_STATE_RETRY_20,
     val scenario: RegressionScenario? = null,
     val iteration: Int = 0,
     val totalIterations: Int = 10,
@@ -217,6 +218,12 @@ class BluetoothRegressionRunner(
                         iterations = iterations,
                         featureChecks = featureChecks,
                     )
+                    RegressionProfile.BT_STATE_RETRY_20 -> runStateRetry20Profile(
+                        device = device,
+                        originalAutoLowLatency = originalAutoLowLatency,
+                        attempts = attempts,
+                        featureChecks = featureChecks,
+                    )
                     RegressionProfile.BT_TARGETED_36 -> runTargeted36Profile(
                         device = device,
                         originalAutoLowLatency = originalAutoLowLatency,
@@ -348,6 +355,31 @@ class BluetoothRegressionRunner(
             iterations = TARGETED_36_SCENARIO_ROUNDS.getValue(RegressionScenario.E),
             originalAutoLowLatency = originalAutoLowLatency,
             attempts = attempts,
+        )
+    }
+
+    /**
+     * Follow-up gate for the 4.3.4 report: only rerun the paths affected by the state-store race
+     * and by the immediate RFCOMM rejection tail. B/D/E already passed in the previous report.
+     */
+    private suspend fun runStateRetry20Profile(
+        device: BluetoothDevice,
+        originalAutoLowLatency: Boolean,
+        attempts: MutableList<RegressionAttempt>,
+        featureChecks: MutableList<RegressionFeatureCheck>,
+    ) {
+        runScenarioRounds(
+            device = device,
+            scenario = RegressionScenario.F,
+            iterations = STATE_RETRY_20_SCENARIO_ROUNDS.getValue(RegressionScenario.F),
+            originalAutoLowLatency = originalAutoLowLatency,
+            attempts = attempts,
+        )
+        runFeatureRounds(
+            device = device,
+            iterations = STATE_RETRY_20_INITIALIZATION_ROUNDS,
+            featureRunners = listOf(::runInitializationProgressCheck),
+            featureChecks = featureChecks,
         )
     }
 
@@ -1383,7 +1415,11 @@ class BluetoothRegressionRunner(
     companion object {
         const val DEFAULT_ITERATIONS = 10
         const val MAX_ITERATIONS = 10
-        private val DEFAULT_PROFILE = RegressionProfile.BT_TARGETED_36
+        private val DEFAULT_PROFILE = RegressionProfile.BT_STATE_RETRY_20
+        internal val STATE_RETRY_20_SCENARIO_ROUNDS = linkedMapOf(
+            RegressionScenario.F to 10,
+        )
+        internal const val STATE_RETRY_20_INITIALIZATION_ROUNDS = 10
         internal val TARGETED_36_SCENARIO_ROUNDS = linkedMapOf(
             RegressionScenario.B to 10,
             RegressionScenario.F to 10,
@@ -1414,6 +1450,8 @@ class BluetoothRegressionRunner(
 
         internal fun operationCount(profile: RegressionProfile, iterations: Int): Int = when (profile) {
             RegressionProfile.ANC_WEAR_STATE -> iterations
+            RegressionProfile.BT_STATE_RETRY_20 ->
+                STATE_RETRY_20_SCENARIO_ROUNDS.values.sum() + STATE_RETRY_20_INITIALIZATION_ROUNDS
             RegressionProfile.BT_TARGETED_36 ->
                 TARGETED_36_SCENARIO_ROUNDS.values.sum() + TARGETED_36_INITIALIZATION_ROUNDS
             RegressionProfile.FULL_MATRIX -> iterations * (RegressionScenario.entries.size + FEATURE_CHECK_NAMES.size)

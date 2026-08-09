@@ -1,10 +1,69 @@
 package com.freebuds.controller.data
 
+import java.util.concurrent.CountDownLatch
+import java.util.concurrent.TimeUnit
+import java.util.concurrent.atomic.AtomicInteger
+import kotlin.concurrent.thread
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertSame
+import org.junit.Assert.assertTrue
 import org.junit.Test
 
 class EarbudStateStoreTest {
+    @Test
+    fun concurrentHandlerSnapshotCannotRestoreAnOlderInitializationStage() {
+        val store = EarbudStateStore()
+        val attemptId = "attempt-1"
+        store.beginAttempt(
+            deviceName = "Buds",
+            address = "AA",
+            attemptId = attemptId,
+            trigger = ConnectionTrigger.AclConnected,
+            systemLink = SystemLinkState.Connected,
+        )
+        val attempt = ConnectionAttemptTimeline(
+            attemptId = attemptId,
+            address = "AA",
+            trigger = ConnectionTrigger.AclConnected,
+            nowMs = { 0L },
+        )
+        store.updateStage(
+            stage = ControlChannelStage.InitializingDeferred,
+            attempt = attempt,
+            systemLink = SystemLinkState.Connected,
+            pendingHandlers = setOf("gesture_double"),
+            failedHandlers = emptySet(),
+        )
+
+        val transformEntered = CountDownLatch(1)
+        val releaseTransform = CountDownLatch(1)
+        val invocations = AtomicInteger(0)
+        val worker = thread(start = true) {
+            store.updateControlChannel { state ->
+                if (invocations.incrementAndGet() == 1) {
+                    transformEntered.countDown()
+                    assertTrue(releaseTransform.await(2, TimeUnit.SECONDS))
+                }
+                state.copy(pendingHandlers = emptySet())
+            }
+        }
+
+        assertTrue(transformEntered.await(2, TimeUnit.SECONDS))
+        store.updateStage(
+            stage = ControlChannelStage.Ready,
+            attempt = attempt,
+            systemLink = SystemLinkState.Connected,
+            pendingHandlers = emptySet(),
+            failedHandlers = emptySet(),
+        )
+        releaseTransform.countDown()
+        worker.join(2_000)
+
+        assertTrue(!worker.isAlive)
+        assertEquals(ControlChannelStage.Ready, store.controlChannelState.value.stage)
+        assertEquals(emptySet<String>(), store.controlChannelState.value.pendingHandlers)
+    }
+
     @Test
     fun stageAndHandlerUpdatesRemainBoundToTheActiveAttempt() {
         val store = EarbudStateStore()

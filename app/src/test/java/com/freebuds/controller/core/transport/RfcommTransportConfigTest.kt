@@ -12,10 +12,11 @@ class RfcommTransportConfigTest {
 
         assertEquals(1, config.channel)
         assertEquals(EndpointSource.CompatibilityFallback, config.source)
-        assertEquals(2, config.immediateRetryCount)
+        assertEquals(3, config.immediateRetryCount)
         assertEquals(250L, config.immediateRetryDelayMs)
         assertEquals(250L, config.immediateRetryDelayFor(1))
         assertEquals(500L, config.immediateRetryDelayFor(2))
+        assertEquals(750L, config.immediateRetryDelayFor(3))
         assertTrue(config.endpointDescription().contains("rfcomm-channel=1"))
     }
 

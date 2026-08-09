@@ -5,6 +5,18 @@ import org.junit.Test
 
 class BluetoothRegressionPlanTest {
     @Test
+    fun stateRetryFollowUpTargetsOnlyTheAffectedTwentyOperations() {
+        assertEquals(
+            listOf(RegressionScenario.F to 10),
+            BluetoothRegressionRunner.STATE_RETRY_20_SCENARIO_ROUNDS.entries.map { it.key to it.value },
+        )
+        assertEquals(
+            20,
+            BluetoothRegressionRunner.operationCount(RegressionProfile.BT_STATE_RETRY_20, 10),
+        )
+    }
+
+    @Test
     fun targetedPlanKeepsTheRequested36Operations() {
         assertEquals(
             listOf(
