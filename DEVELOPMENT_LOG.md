@@ -1371,6 +1371,7 @@
 ### 自动化验证
 - `./gradlew :app:testDebugUnitTest --no-daemon` 通过，包含新增 `ConnectionLifecycleTest` 和 `BluetoothRegressionPlanTest` 的 profile 断言。
 - 完整本地 CI：`./scripts/run_ci_checks.sh ci-output-bt-manager-runtime-4.3.6-94` 通过（diff-check、Debug/Release 单元测试、Debug/Release 构建）；Debug APK SHA-256=`84bcca035c04eb5d3380ed343a20f5637a380e7b22ce6c7249307e85a2194efd`，Release APK SHA-256=`43f9bced10a1e24ef2600f7f7134bf04d2bea86b60eb030771f540275e5d396d`。
+- GitHub Actions [31333720428](https://github.com/ct-yx/fxxkHilife/actions/runs/31333720428) 已通过，已发布 `fxxkHilife-debug-v4.3.6-94`、`fxxkHilife-v4.3.6-94` 和 `automated-test-report-v4.3.6-94` 三个 CI 产物；Debug 包 SHA-256=`84bcca035c04eb5d3380ed343a20f5637a380e7b22ce6c7249307e85a2194efd`，用于 BT-3 实机定向回归。
 - 尚未执行新的主验证设备报告；当前实机门保持目标受阻，等待 `BT_MANAGER_RUNTIME_20` 20 项报告后再判断 BT-1/BT-2/BT-3 是否收口。
 
 ## 2026-08-10 文档历史维护
