@@ -11,6 +11,7 @@ import coil.compose.AsyncImage
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.TopAppBarDefaults
+import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.ArrowBack
 import com.freebuds.controller.ui.UiDisplayMode
 import com.freebuds.controller.ui.WallpaperScope
@@ -59,7 +60,7 @@ fun AppTopBar(
             onBack?.let {
                 androidx.compose.material3.IconButton(onClick = it) {
                     androidx.compose.material3.Icon(
-                        androidx.compose.material.icons.filled.ArrowBack,
+                        Icons.Default.ArrowBack,
                         contentDescription = i18n("common.back"),
                     )
                 }
