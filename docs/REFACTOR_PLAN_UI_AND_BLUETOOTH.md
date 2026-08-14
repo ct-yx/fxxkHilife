@@ -625,6 +625,54 @@ data class GlassRuntimePolicy(
 
 Haze 相关变更的回退点固定为 `SurfaceRenderMode.OPAQUE` 或 `UiDisplayMode.CLASSIC`。任何玻璃渲染问题先回退 surface，不回退 `EarbudState`、连接管理或设备功能代码。
 
+#### 3.5.1.2 官方仓库更新核对与本项目实际调用审计
+
+核对日期：2026-08-14。官方来源：
+
+- 仓库：[https://github.com/chrisbanes/haze](https://github.com/chrisbanes/haze)
+- 最新预发布：[`2.0.0-alpha05`](https://github.com/chrisbanes/haze/releases/tag/2.0.0-alpha05)，发布于 2026-08-12。
+- 上一预发布：[`2.0.0-alpha04`](https://github.com/chrisbanes/haze/releases/tag/2.0.0-alpha04)，发布于 2026-08-08。
+- 迁移指南：[https://chrisbanes.github.io/haze/migrating-2.0/](https://chrisbanes.github.io/haze/migrating-2.0/)
+- 性能指南：[https://chrisbanes.github.io/haze/performance/](https://chrisbanes.github.io/haze/performance/)
+- 许可证：Apache-2.0。`main` 在 alpha05 之后仍有未发布提交，因此本项目锁定发布版本，不跟随 `main` 快照。
+
+**官方更新对本项目的影响：**
+
+1. Alpha04 将旧的嵌套 effect DSL 改为 typed modifier：Blur 使用 `Modifier.hazeBlur`、`HazeInput`、不可变 `HazeBlurStyle` 和 `HazePerformanceMode`；Glass 使用 `Modifier.hazeGlass` 和 `GlassStyle`。当前项目的 `Modifier.hazeEffect { blurEffect { ... } }` 属于 alpha03 调用方式，直接升级到 alpha05 前必须完成 API 迁移。
+2. Alpha04 新增实验性的 `haze-glass`；它可以承担折射、深度模糊、tint、Fresnel、光照、渐进模糊和交互效果。当前项目没有声明该模块，`AdaptiveGlass.kt` 的 `liquidGlassOptics` 是项目自己的绘制代码，不应被描述成官方 Glass 实现。
+3. Alpha05 增加/明确 `HazePerformanceMode` 的 `Default/Adaptive/Quality/Balanced/Performance/Fixed` 语义，并修复透明背景合成、Glass Android 渲染和跨窗口/保留输出等问题。性能参数必须按目标设备重新测量，不能把官方 Pixel 6 参考值直接当作本项目预算。
+
+**当前依赖和实际调用证据：**
+
+| 项目 | 声明位置 | 直接源码调用 | 默认运行路径 | 结论 |
+|---|---|---|---|---|
+| `haze` | `app/build.gradle.kts:75` | `HazeState`、`rememberHazeState`、`hazeSource`、`hazeEffect` | `AppNavHost` 每次创建 source；effect 由玻璃模式决定 | 有实际调用 |
+| `haze-blur` | `app/build.gradle.kts:76` | `HazeColorEffect`、`blurEffect` | `AdaptiveGlass.kt` 的 Card/Panel 进入玻璃模式时执行 | 有实际调用 |
+| `haze-blur-materials` | `app/build.gradle.kts:77` | 当前 `rg` 未发现 `HazeMaterials` 或 `blur.materials` import | 没有直接调用 | 当前属于“只声明未使用”依赖 |
+| `haze-glass` | 未声明 | 无 | 无 | 当前没有使用官方 Glass 模块 |
+
+历史代码核对结果：
+
+- `v2.9.0` 已在 `AdaptiveGlass.kt` 使用 `HazeState`、`hazeSource`、`hazeEffect`；当时依赖为 Haze 1.6.7。
+- `v2.12.0` 将依赖切换到 Haze 2.0 alpha03，并把 `HazeTint` 迁移为 `HazeColorEffect` + `blurEffect`；这不是只有 Gradle 声明，代码中已有实际调用。
+- `v4.2.6` 仍保留上述 Haze 2.0 alpha03 调用链；当前重构分支沿用同一调用链。
+- 用户观察到“依赖写了但没有效果”有一个确定原因：`UiDisplayMode` 默认是 `CLASSIC`，而 `AdaptiveCard`、`LiquidGlassPanel`、`AdaptiveGlassBanner` 只有在 `displayMode == LIQUID_GLASS && hazeState != null` 时才挂载 effect。只运行默认经典路径时，Blur effect 不会执行；AppNavHost 的 `hazeSource` 仍会创建。
+
+**依赖处理决定：**
+
+1. UI-0 先保留 alpha03，记录现有调用与默认经典路径的基线；本轮不直接改 Gradle，避免把 API 升级和页面重构混在一起。
+2. UI-1 增加一个独立的 alpha05 迁移提交：先把当前 Blur 路径改成 `hazeBlur(input = HazeInput.Sources(...), style = HazeBlurStyle { ... }, performanceMode = HazePerformanceMode.Default)`，再跑 CI 和截图矩阵。
+3. `haze-blur-materials` 只有在页面实际使用 `HazeMaterials.*` preset 后保留；若继续使用自有 `GlassTokenResolver`，则在 alpha05 迁移提交中删除该无调用依赖，并记录构建结果。
+4. `haze-glass` 作为独立 A/B 试验，不与 UI-1 的基础 Blur 迁移合并：先保留现有 `liquidGlassOptics`，分别比较官方 Glass 与现有美术资源、可读性、性能和 fallback，再决定是否接入。
+5. UI-1 的构建标签区分 `UI_HAZE_ALPHA05_MIGRATION` 与 `UI_GLASS_EXPERIMENT`；版本号不是唯一识别方式。
+
+**实际调用证明规则：**
+
+- `CLASSIC` 测试记录 `renderer=Material3`、`sourceAttached=0` 或 `effectSurfaces=0` 的预期结果。
+- `LIQUID_GLASS` 测试必须先通过设置选择玻璃模式，再记录 `renderer=Haze`、`sourceAttached=1`、实际 effect surface 数量、profile 和 fallback reason；只看 Gradle 依赖或 import 不算运行证据。
+- Debug-only 的 `GlassRuntimeDiagnostics` 只记录 renderer/profile/effect 数量，不记录壁纸 URI、设备地址或协议 payload；Release 不暴露诊断入口。
+- `haze-blur-materials` 的验收必须包含一次实际 preset 使用，或在报告中明确“已移除未使用依赖”。
+
 ### 3.6 UI 迁移阶段
 
 所有 UI 阶段都按“实现一层 → JVM/静态检查 → GitHub Actions 构建 → 定向界面/实机验证 → 文档回写 → 可回退提交”执行。阶段标题只有在该阶段的代码、测试、证据和回退记录齐备后才改为 `[x] 已完成`。当前仅完成规划，以下阶段均保持 `[ ]`。
