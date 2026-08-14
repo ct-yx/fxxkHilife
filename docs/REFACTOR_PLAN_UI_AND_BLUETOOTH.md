@@ -148,12 +148,12 @@
 | BT-2 CommandClient / Scheduler / Feature | [x] 已完成 | 2026-08-14；命令目录、单一 command lane、ANC 权威读回和低延迟路径已有 JVM/人工/定向实机证据；未验证能力仍按型号表标记 |
 | BT-3 ConnectionManager 收敛入口 | [x] 已完成 | 2026-08-14；`ConnectionLifecycle`、session/attempt/Job 所有权收敛，并由 `BT_MANAGER_RUNTIME_20` F10+初始化10 实机确认；`4.3.10 / 98` 补齐统计 flush、失败 session 断开、command 串行边界和同 attempt 状态映射收尾 |
 | BT-4 通用蓝牙状态输出 | [x] 已完成 | `4.3.10 / 98` 完成原子快照投影、canonical channel、pending/failed 语义收敛、空值规范化、metadata-only core readiness 防误报、严格 PASS 报告校验和 5A 协议边界修复；94/94 Debug、94/94 Release 单元测试、`git diff --check`、Debug/Release 构建通过；同一主验证设备 `BT4_STATE_CONTRACT_5` 实机 5/5 通过。页面尚未迁移消费 |
-| UI-0 UI 基线与资源清点 | [~] 进行中 | 2026-08-14；静态路由/状态/设置 key/资源/Haze 调用基线已写入 `docs/UI_BASELINE.md`，新增更新 manifest 契约；等待新 UI 截图和运行诊断门 |
-| UI-1 设计令牌与渲染基础 | [~] 进行中 | 2026-08-14；`ref/sys/comp` 令牌、`AppScaffold`、公共 surface、Haze 2.0 alpha03 共享 blur adapter 和 `UiAssetCatalog` 已落地；等待 CI/截图/性能证据 |
-| UI-2 typed State / Event / Navigation | [~] 进行中 | 2026-08-14；`AppUiState`/`DeviceUiState`/`SettingsUiState`、typed `DeviceEvent`/`SettingsEvent` 已接入核心页面，保留兼容层；等待动作状态矩阵 |
-| UI-3 全局外壳与主路由 | [~] 进行中 | 2026-08-14；背景/source 归属和稳定状态导航已收敛，Home/Scan/Permission 仍需统一外壳截图与入口去重验证 |
-| UI-4 设备功能页面 | [~] 进行中 | 2026-08-14；Device/Gesture/ListeningStats 已使用统一 surface 和 typed event，电量/后台同步/EQ/双设备/选项开关/设备信息组件已拆至 `ui/DeviceFeatureComponents.kt`，能力矩阵验证待完成 |
-| UI-5 设置、持久化与兼容层收口 | [~] 进行中 | 2026-08-14；SettingsRepository、更新检查/下载/安装状态和 UpdateCard 已接入，仍需持久化、无障碍和更新流程验证 |
+| UI-0 UI 基线与资源清点 | [~] 目标受阻：等待实测报告 | 2026-08-15；静态路由/状态/设置 key/资源/Haze 调用基线已写入 `docs/UI_BASELINE.md`，新增更新 manifest 契约；等待新 UI 截图和运行诊断门 |
+| UI-1 设计令牌与渲染基础 | [~] 目标受阻：等待实测报告 | 2026-08-15；`ref/sys/comp` 令牌、`AppScaffold`、公共 surface、Haze 2.0 alpha03 共享 blur adapter 和 `UiAssetCatalog` 已落地；CI 已通过，等待截图/性能证据 |
+| UI-2 typed State / Event / Navigation | [~] 目标受阻：等待实测报告 | 2026-08-15；`AppUiState`/`DeviceUiState`/`SettingsUiState`、typed `DeviceEvent`/`SettingsEvent` 已接入核心页面，保留兼容层；等待动作状态矩阵 |
+| UI-3 全局外壳与主路由 | [~] 目标受阻：等待实测报告 | 2026-08-15；背景/source 归属和稳定状态导航已收敛，Home/Scan/Permission 仍需统一外壳截图与入口去重验证 |
+| UI-4 设备功能页面 | [~] 目标受阻：等待实测报告 | 2026-08-15；Device/Gesture/ListeningStats 已使用统一 surface 和 typed event，电量/后台同步/EQ/双设备/选项开关/设备信息组件已拆至 `ui/DeviceFeatureComponents.kt`，能力矩阵验证待完成 |
+| UI-5 设置、持久化与兼容层收口 | [~] 目标受阻：等待实测报告 | 2026-08-15；SettingsRepository、更新检查/下载/安装状态和 UpdateCard 已接入，仍需持久化、无障碍和更新流程验证 |
 
 ### 0.4 应用版本号方案
 
@@ -228,7 +228,25 @@
 
 - `5c6e2d6` 对应的 GitHub Actions `31821253213` 已越过 AAR metadata 门，但暴露了第一轮结构迁移的 Compose import 缺口：`DeviceFeatureComponents` 缺少 `remember`/`mutableStateOf`/delegate import，`AppScaffold` 的返回图标引用方式不兼容；已在 `e073cab`、`df7bfd2` 修正。
 - 随后的 CI 已进入 JVM 测试，98 个测试中只有 `UpdateManifestTest` 2 项失败，根因是本地单元测试使用 Android `org.json.JSONObject` stub，`getInt` 直接抛出 `Method ... not mocked`；这不是更新业务逻辑失败。已加入 test-only `org.json:json` 实现，生产 APK 不携带该依赖。
-- 当前仍不标记 UI-0 至 UI-5 完成，也不提升版本号；下一次 GitHub Actions 通过后，才进入 `UI_GLASS_RENDERING_TARGETED`、截图、无障碍和性能定向验收。
+- 当时仍不标记 UI-0 至 UI-5 完成，也不提升版本号；本次 GitHub Actions 已通过，下一步进入 `UI_GLASS_RENDERING_TARGETED`、截图、无障碍和性能定向验收。
+
+### 0.5.5 2026-08-15 UI_FOUNDATION_SMOKE 通过，进入定向实测门
+
+- GitHub Actions [31822271929](https://github.com/ct-yx/fxxkHilife/actions/runs/31822271929) 已通过：`diff-check`、UI contract、Debug/Release 单元测试和 Debug/Release 构建均通过；Debug/Release 各 `98 tests`，`0 failures / 0 errors / 0 skipped`。
+- Debug 包：`fxxkHilife-debug-UI_FOUNDATION_SMOKE-v4.3.10-98.apk`，SHA-256=`6a487c5d699f5fab65dcaa931a2aefd36ec8b8aac63917921b682b01d448169d`。
+- Release 包：`fxxkHilife-UI_FOUNDATION_SMOKE-v4.3.10-98.apk`，SHA-256=`c4e6f68b5d2575610a93b4e150e6dddaec0f45ae722abc0df622c1a2d50d02b2`。本轮实测优先安装 Debug 包，Release 只做构建对照。
+- 报告产物：`automated-test-report-UI_FOUNDATION_SMOKE-v4.3.10-98`。构建标签已用于区分本轮 UI 包，版本仍保持 `4.3.10 / 98`。
+- UI-0 至 UI-5 已完成第一轮代码结构迁移，但因为尚无真实截图、渲染诊断、无障碍、性能和更新流程报告，阶段状态统一改为“目标受阻：等待实测报告”，不提前标记 `[x]`。
+
+**本次只测 UI，不重复蓝牙 A-F/36/100 轮：**
+
+1. `UI_GLASS_RENDERING_TARGETED`：Debug 包中分别在 `CLASSIC` 和 `LIQUID_GLASS` 下打开 Home、Device、Settings；各截一张非纯色背景截图，并记录 `renderer`、`sourceAttached`、`effectSurfaceCount`、`fallbackReason`。切换 route、旋转/重建后确认 source/effect 数量不累积、页面不出现透明空洞。
+2. `UI_CONTROL_STATE_MATRIX`：针对 ANC、低延迟、音质各执行一次 Idle、Pending、ACK/读回、Failure/Retry；核对按钮文字、选中语义、不可用能力隐藏和返回后状态，不操作未改动的蓝牙全量矩阵。
+3. `UI_SHELL_ROUTES`：Home → Scan → Permission → Device → Settings 各走一遍；从应用、Service/Tile 和扫描结束入口分别进入一次，确认只创建一个外壳、返回栈正确且没有重复建连入口。
+4. `UI_SETTINGS_PERSISTENCE` + `UI_ACCESSIBILITY_MATRIX`：修改主题、显示模式、壁纸、语言/大字和 reduced motion，重启应用后各核对一次；检查 TalkBack、焦点顺序、44dp 触控目标和高对比度 opaque fallback。
+5. `UI_UPDATE_CHECK_TARGETED`：执行同版本 manifest 的“已是最新”、无网络、manifest 读取失败各一次；只验证检查时间、渠道、版本比较和错误状态，不下载安装未知 APK。
+
+实测报告返回前，UI-0 至 UI-5 保持“目标受阻”；报告只需包含上述对应标签、截图/诊断日志和失败步骤，不需要再次跑 BT 回归。
 - 本次只修正依赖、适配器、静态契约和计划记录，版本仍为 `4.3.10 / 98`；UI-0 至 UI-5 继续保持 `[~]`，等待 GitHub Actions、截图、无障碍和实际运行证据。
 
 ## 1. 范围与原则
