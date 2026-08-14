@@ -45,12 +45,12 @@ enum class RegressionResult {
 
 /**
  * A debug run follows the scope of the current change instead of always replaying the whole
- * connection matrix. BT_MANAGER_RUNTIME_20 is the current BT-3 follow-up default;
- * BT_STATE_RETRY_20 remains available for the previous gate, while BT_TARGETED_36 and
- * FULL_MATRIX remain available for historical and release-candidate acceptance.
+ * connection matrix. BT4_STATE_CONTRACT_5 is the current BT-4 default; the previous BT-3,
+ * historical targeted and release-candidate profiles remain available for their original gates.
  */
 enum class RegressionProfile(val id: String) {
     ANC_WEAR_STATE("ANC_WEAR_STATE"),
+    BT4_STATE_CONTRACT_5("BT4_STATE_CONTRACT_5"),
     BT_MANAGER_RUNTIME_20("BT_MANAGER_RUNTIME_20"),
     BT_STATE_RETRY_20("BT_STATE_RETRY_20"),
     BT_TARGETED_36("BT_TARGETED_36"),
@@ -76,10 +76,10 @@ data class RegressionFeatureCheck(
 
 data class BluetoothRegressionState(
     val running: Boolean = false,
-    val profile: RegressionProfile = RegressionProfile.BT_MANAGER_RUNTIME_20,
+    val profile: RegressionProfile = RegressionProfile.BT4_STATE_CONTRACT_5,
     val scenario: RegressionScenario? = null,
     val iteration: Int = 0,
-    val totalIterations: Int = 10,
+    val totalIterations: Int = 5,
     val totalOperations: Int = 0,
     val completed: Int = 0,
     val failed: Int = 0,
@@ -103,6 +103,7 @@ class BluetoothRegressionRunner(
     private val _state = MutableStateFlow(BluetoothRegressionState())
     private var runJob: Job? = null
     private var lastReport: String? = null
+    private var lastKnownFirmware: String? = null
 
     val state: StateFlow<BluetoothRegressionState> = _state.asStateFlow()
 
@@ -112,8 +113,15 @@ class BluetoothRegressionRunner(
         profile: RegressionProfile = DEFAULT_PROFILE,
     ): Boolean {
         if (runJob?.isActive == true) return false
-        val count = iterations.coerceIn(1, MAX_ITERATIONS)
+        // BT-4 is a fixed five-round contract gate. The older profiles retain their caller
+        // supplied 1..10 round semantics.
+        val count = if (profile == RegressionProfile.BT4_STATE_CONTRACT_5) {
+            BT4_STATE_CONTRACT_ROUNDS
+        } else {
+            iterations.coerceIn(1, MAX_ITERATIONS)
+        }
         lastReport = null
+        lastKnownFirmware = null
         _state.value = BluetoothRegressionState(
             running = true,
             profile = profile,
@@ -185,6 +193,7 @@ class BluetoothRegressionRunner(
         val attempts = mutableListOf<RegressionAttempt>()
         val featureChecks = mutableListOf<RegressionFeatureCheck>()
         val captureToken = LogBuffer.beginBoundedCapture(REGRESSION_CAPTURE_MAX_BYTES)
+        var earlyFailure: String? = null
         // A regression report must describe this run only; do not mix it with an older terminal
         // session. The byte budget, rather than a line count, is the active test-mode limit.
         LogBuffer.clear()
@@ -220,6 +229,10 @@ class BluetoothRegressionRunner(
                         iterations = iterations,
                         featureChecks = featureChecks,
                     )
+                    RegressionProfile.BT4_STATE_CONTRACT_5 -> runBt4StateContractProfile(
+                        device = device,
+                        featureChecks = featureChecks,
+                    )
                     RegressionProfile.BT_MANAGER_RUNTIME_20,
                     RegressionProfile.BT_STATE_RETRY_20 -> runStateRetry20Profile(
                         device = device,
@@ -246,7 +259,8 @@ class BluetoothRegressionRunner(
                 LogBuffer.w("HwTest", "CANCELLED")
                 throw e
             } catch (e: Exception) {
-                LogBuffer.e("HwTest", "Runner failed: ${e.javaClass.simpleName}: ${e.message}")
+                earlyFailure = "${e.javaClass.simpleName}: ${e.message}"
+                LogBuffer.e("HwTest", "Runner failed: $earlyFailure")
                 featureChecks += RegressionFeatureCheck(
                     name = "runner",
                     iteration = featureChecks.size + 1,
@@ -267,13 +281,21 @@ class BluetoothRegressionRunner(
                 connectionManager.setHardwareRegressionActive(false)
             }
 
-            val report = buildReport(startedAt, profile, device, attempts, featureChecks, null)
-            val failures = attempts.count { it.result == RegressionResult.FAIL } +
-                featureChecks.count { it.result == RegressionResult.FAIL }
+            val report = buildReport(startedAt, profile, device, attempts, featureChecks, earlyFailure)
+            val failures = attempts.count { it.result != RegressionResult.PASS } +
+                featureChecks.count { it.result != RegressionResult.PASS }
+            val reportIssues = reportValidationIssues(
+                profile = profile,
+                expectedOperations = _state.value.totalOperations,
+                attempts = attempts,
+                features = featureChecks,
+                earlyFailure = earlyFailure,
+            )
+            val reportFailures = failures + if (reportIssues.isEmpty()) 0 else 1
             finish(
                 report = report,
-                failed = failures,
-                message = I18n.t("terminal.regression.finished", attempts.size, featureChecks.size, failures),
+                failed = reportFailures,
+                message = I18n.t("terminal.regression.finished", attempts.size, featureChecks.size, reportFailures),
             )
         } finally {
             // Restore the normal line/byte policy on success, cancellation, no-device and error
@@ -401,7 +423,7 @@ class BluetoothRegressionRunner(
             attempts += attempt
             _state.value = _state.value.copy(
                 completed = _state.value.completed + 1,
-                failed = _state.value.failed + if (attempt.result == RegressionResult.FAIL) 1 else 0,
+                failed = _state.value.failed + if (attempt.result == RegressionResult.PASS) 0 else 1,
                 message = "${scenario.id} $iteration/$iterations: ${attempt.result}",
             )
         }
@@ -491,10 +513,107 @@ class BluetoothRegressionRunner(
         }
     }
 
+    /**
+     * BT-4 gate: verify one complete production connection exposes the typed state contract,
+     * model capability set and the legacy DeviceProps projection together.  This deliberately
+     * does not replay A-F or write feature settings; those paths already have their own gates.
+     * Five fresh reads are enough to catch a state-store/session mapping regression without
+     * turning a contract check into another full hardware matrix.
+     */
+    private suspend fun runBt4StateContractProfile(
+        device: BluetoothDevice,
+        featureChecks: MutableList<RegressionFeatureCheck>,
+    ) {
+        _state.value = _state.value.copy(
+            scenario = null,
+            iteration = 0,
+            message = "BT-4 通用状态/能力契约读取",
+        )
+        for (iteration in 1..BT4_STATE_CONTRACT_ROUNDS) {
+            ensureDisconnected()
+            _state.value = _state.value.copy(
+                scenario = null,
+                iteration = iteration,
+                message = "BT-4 状态契约：第 $iteration/$BT4_STATE_CONTRACT_ROUNDS 轮",
+            )
+            val check = runFeatureCheckSafely(
+                runner = ::runBt4StateContractCheck,
+                device = device,
+                iteration = iteration,
+                fallbackName = BT4_STATE_CONTRACT_NAME,
+            )
+            featureChecks += check
+            recordFeatureProgress(check)
+        }
+    }
+
+    private suspend fun runBt4StateContractCheck(
+        device: BluetoothDevice,
+        iteration: Int,
+    ): RegressionFeatureCheck {
+        val name = "BT-4 generic state / capability read-back"
+        val started = android.os.SystemClock.elapsedRealtime()
+        clearManualDisconnectSuppression()
+        val expectedAttemptId = submitConnect(device, ConnectionTrigger.HardwareRegression)
+        if (!waitForConnected(CONNECTION_TIMEOUT_MS, expectedAttemptId)) {
+            return featureCheck(
+                name,
+                iteration,
+                RegressionResult.FAIL,
+                started,
+                "control channel did not connect expectedAttempt=$expectedAttemptId",
+            )
+        }
+        if (!waitForContractReady(CONNECTION_READY_TIMEOUT_MS, expectedAttemptId)) {
+            return featureCheck(
+                name,
+                iteration,
+                RegressionResult.FAIL,
+                started,
+                "control channel did not reach terminal initialization stage " +
+                    "expectedAttempt=$expectedAttemptId stage=${repository.controlChannelState.value.stage}",
+            )
+        }
+
+        val snapshot = repository.earbudSnapshot.value
+        rememberFirmware(snapshot.props.firmwareVersion)
+        val channel = snapshot.controlChannel
+        val state = snapshot.state
+        val capabilities = snapshot.capabilities
+        val model = state.deviceInfo.model ?: snapshot.props.deviceModel
+        val expectedCapabilities = com.freebuds.controller.adapter.huawei.HuaweiOpenFreebudsAdapter
+            .capabilities(device.name.orEmpty())
+        val verdict = EarbudStateContractValidator.validate(
+            snapshot = snapshot,
+            expectedAttemptId = expectedAttemptId,
+            expectedCapabilities = expectedCapabilities,
+        )
+        val pendingEmpty = verdict.pendingConsistent && channel.pendingHandlers.isEmpty()
+        val detail = "expectedAttempt=$expectedAttemptId actualAttempt=${channel.attemptId} " +
+            "model=${model ?: "unknown"} stage=${channel.stage} " +
+            "capabilities=${capabilities.sortedBy { it.name }} " +
+            "expectedCapabilities=${expectedCapabilities.sortedBy { it.name }} " +
+            "coreReady=${verdict.coreReady} readyStage=${verdict.readyStage} " +
+            "pendingEmpty=$pendingEmpty pendingConsistent=${verdict.pendingConsistent} " +
+            "failedHandlersEmpty=${verdict.failedHandlersEmpty} " +
+            "projectionMatches=${verdict.projectionMatches} " +
+            "exactCapabilities=${verdict.exactCapabilities} stateDomains=${verdict.stateDomains} " +
+            "endpoint=${repository.getRegressionEndpoint()}"
+        LogBuffer.i("HwTest", "FEATURE=bt4_state_contract iteration=$iteration $detail")
+        return featureCheck(
+            name,
+            iteration,
+            if (verdict.passed) RegressionResult.PASS else RegressionResult.FAIL,
+            started,
+            detail,
+        )
+    }
+
     private suspend fun runFeatureCheckSafely(
         runner: suspend (BluetoothDevice, Int) -> RegressionFeatureCheck,
         device: BluetoothDevice,
         iteration: Int,
+        fallbackName: String = "feature-runner",
     ): RegressionFeatureCheck = try {
         runner(device, iteration)
     } catch (e: CancellationException) {
@@ -506,7 +625,7 @@ class BluetoothRegressionRunner(
                 "${e.javaClass.simpleName}:${e.message}",
         )
         RegressionFeatureCheck(
-            name = "feature-runner",
+            name = fallbackName,
             iteration = iteration,
             result = RegressionResult.FAIL,
             elapsedMs = 0L,
@@ -518,7 +637,7 @@ class BluetoothRegressionRunner(
         val current = _state.value
         _state.value = current.copy(
             completed = current.completed + 1,
-            failed = current.failed + if (check.result == RegressionResult.FAIL) 1 else 0,
+            failed = current.failed + if (check.result == RegressionResult.PASS) 0 else 1,
             message = "${check.name} ${check.iteration}/${current.totalIterations}: ${check.result}",
         )
     }
@@ -708,7 +827,7 @@ class BluetoothRegressionRunner(
         if (!waitForConnected(CONNECTION_TIMEOUT_MS, initialAttemptId)) {
             return attempt(RegressionScenario.F, iteration, RegressionResult.FAIL, started, "initial connect failed")
         }
-        if (!waitForReady(CONNECTION_READY_TIMEOUT_MS, initialAttemptId)) {
+        if (!waitForTerminal(CONNECTION_READY_TIMEOUT_MS, initialAttemptId)) {
             return attempt(
                 RegressionScenario.F,
                 iteration,
@@ -727,14 +846,14 @@ class BluetoothRegressionRunner(
         clearManualDisconnectSuppression()
         val reconnectAttemptId = submitConnect(device, ConnectionTrigger.HardwareRegression)
         val reconnected = waitForConnected(CONNECTION_TIMEOUT_MS, reconnectAttemptId)
-        val reconnectedReady = reconnected && waitForReady(CONNECTION_READY_TIMEOUT_MS, reconnectAttemptId)
+        val reconnectedReady = reconnected && waitForTerminal(CONNECTION_READY_TIMEOUT_MS, reconnectAttemptId)
         connectionManager.submit(ConnectionCommand.RegressionSimulateAclDisconnect)
         val aclDisconnected = waitForDisconnected(DISCONNECT_TIMEOUT_MS)
         clearManualDisconnectSuppression()
         val aclReconnectRequest = submitAutoConnectKnown(device, ConnectionTrigger.AclConnected)
         val aclReconnectAttemptId = aclReconnectRequest.attemptId
         val aclReconnected = waitForConnected(CONNECTION_TIMEOUT_MS, aclReconnectAttemptId)
-        val aclReconnectedReady = aclReconnected && waitForReady(CONNECTION_READY_TIMEOUT_MS, aclReconnectAttemptId)
+        val aclReconnectedReady = aclReconnected && waitForTerminal(CONNECTION_READY_TIMEOUT_MS, aclReconnectAttemptId)
         val timing = repository.getRegressionTiming(aclReconnectAttemptId)
         val detail = "disconnected=$disconnected suppression=$suppressed reconnected=$reconnected " +
             "reconnectedReady=$reconnectedReady " +
@@ -1131,6 +1250,7 @@ class BluetoothRegressionRunner(
     }
 
     private suspend fun ensureDisconnected() {
+        rememberFirmware(repository.earbudSnapshot.value.props.firmwareVersion)
         if (repository.connectionState.value !is ConnectionState.Disconnected) {
             disconnect()
             waitForDisconnected(DISCONNECT_TIMEOUT_MS)
@@ -1150,7 +1270,7 @@ class BluetoothRegressionRunner(
         } ?: false
     }
 
-    private suspend fun waitForReady(timeoutMs: Long, expectedAttemptId: String?): Boolean {
+    private suspend fun waitForTerminal(timeoutMs: Long, expectedAttemptId: String?): Boolean {
         return waitForControlStage(
             timeoutMs = timeoutMs,
             expectedAttemptId = expectedAttemptId,
@@ -1159,6 +1279,20 @@ class BluetoothRegressionRunner(
                 ControlChannelStage.Degraded,
             ),
         )
+    }
+
+    private suspend fun waitForContractReady(timeoutMs: Long, expectedAttemptId: String?): Boolean {
+        if (expectedAttemptId == null) return false
+        return withTimeoutOrNull(timeoutMs) {
+            repository.earbudSnapshot
+                .map { it.controlChannel }
+                .filter { state ->
+                    state.attemptId == expectedAttemptId &&
+                        state.stage == ControlChannelStage.Ready
+                }
+                .first()
+            true
+        } ?: false
     }
 
     private suspend fun waitForCoreReady(timeoutMs: Long, expectedAttemptId: String?): Boolean {
@@ -1239,6 +1373,10 @@ class BluetoothRegressionRunner(
         .getSharedPreferences(SETTINGS_PREFS, Context.MODE_PRIVATE)
         .getBoolean(AUTO_LOW_LATENCY_KEY, true)
 
+    private fun rememberFirmware(value: String?) {
+        value?.takeUnless { it.isBlank() }?.let { lastKnownFirmware = it }
+    }
+
     private fun attempt(
         scenario: RegressionScenario,
         iteration: Int,
@@ -1278,16 +1416,34 @@ class BluetoothRegressionRunner(
         appendLine("address=${device?.address ?: "unknown"}")
         appendLine("phoneModel=${android.os.Build.MODEL}")
         appendLine("androidVersion=${android.os.Build.VERSION.SDK_INT}")
-        appendLine("firmware=${repository.props.value.firmwareVersion ?: "unknown"}")
+        appendLine("firmware=${lastKnownFirmware ?: repository.props.value.firmwareVersion ?: "unknown"}")
         appendLine("endpoint=${repository.getRegressionEndpoint()}")
         appendLine("iterations=${_state.value.totalIterations}")
         appendLine("totalOperations=${_state.value.totalOperations}")
         appendLine("scenarioSamples=${attempts.size}")
         appendLine("featureSamples=${features.size}")
+        appendLine("expectedOperations=${_state.value.totalOperations}")
+        val completedOperations = attempts.size + features.size
+        appendLine("completedOperations=$completedOperations")
+        val reportIssues = reportValidationIssues(
+            profile = profile,
+            expectedOperations = _state.value.totalOperations,
+            attempts = attempts,
+            features = features,
+            earlyFailure = earlyFailure,
+        )
+        appendLine("reportValid=${reportIssues.isEmpty()}")
+        appendLine(
+            "overall=" + if (reportIssues.isEmpty() &&
+                attempts.all { it.result == RegressionResult.PASS } &&
+                features.all { it.result == RegressionResult.PASS }
+            ) "PASS" else "FAIL"
+        )
+        reportIssues.forEach { appendLine("reportIssue=$it") }
         earlyFailure?.let { appendLine("earlyFailure=$it") }
         appendLine()
         appendLine("## scenario statistics")
-        RegressionScenario.entries.forEach { scenario ->
+        if (attempts.isNotEmpty()) RegressionScenario.entries.forEach { scenario ->
             val values = attempts.filter { it.scenario == scenario }
             val durations = values.map { it.elapsedMs }
             val transportConnect = values.mapNotNull { it.timing?.transportConnectMs }
@@ -1415,10 +1571,11 @@ class BluetoothRegressionRunner(
         kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.Main) { block() }
     }
 
-    companion object {
+        companion object {
         const val DEFAULT_ITERATIONS = 10
         const val MAX_ITERATIONS = 10
-        private val DEFAULT_PROFILE = RegressionProfile.BT_MANAGER_RUNTIME_20
+        private val DEFAULT_PROFILE = RegressionProfile.BT4_STATE_CONTRACT_5
+        internal const val BT4_STATE_CONTRACT_ROUNDS = 5
         internal val STATE_RETRY_20_SCENARIO_ROUNDS = linkedMapOf(
             RegressionScenario.F to 10,
         )
@@ -1451,8 +1608,48 @@ class BluetoothRegressionRunner(
         private const val REGRESSION_REPORT_MAX_BYTES = 190_000_000L
         private val ANC_MODE_REGEX = Regex("\\bmode=(\\d+)")
 
+        internal const val BT4_STATE_CONTRACT_NAME = "BT-4 generic state / capability read-back"
+
+        internal fun reportValidationIssues(
+            profile: RegressionProfile,
+            expectedOperations: Int,
+            attempts: List<RegressionAttempt>,
+            features: List<RegressionFeatureCheck>,
+            earlyFailure: String?,
+        ): List<String> = buildList {
+            val completedOperations = attempts.size + features.size
+            if (completedOperations != expectedOperations) {
+                add("completedOperations=$completedOperations expectedOperations=$expectedOperations")
+            }
+            if (earlyFailure != null) add("earlyFailure=$earlyFailure")
+            val nonPassAttempts = attempts.filter { it.result != RegressionResult.PASS }
+            if (nonPassAttempts.isNotEmpty()) {
+                add(
+                    "scenario samples are not PASS: " +
+                        nonPassAttempts.joinToString { "${it.scenario.id}-${it.iteration}:${it.result}" },
+                )
+            }
+            val nonPassFeatures = features.filter { it.result != RegressionResult.PASS }
+            if (nonPassFeatures.isNotEmpty()) {
+                add(
+                    "feature samples are not PASS: " +
+                        nonPassFeatures.joinToString { "${it.name}-${it.iteration}:${it.result}" },
+                )
+            }
+            if (profile == RegressionProfile.BT4_STATE_CONTRACT_5) {
+                if (attempts.isNotEmpty()) add("BT4 profile produced scenario samples")
+                val expected = (1..BT4_STATE_CONTRACT_ROUNDS)
+                    .map { BT4_STATE_CONTRACT_NAME to it }
+                val actual = features.map { it.name to it.iteration }
+                if (actual != expected) {
+                    add("BT4 feature samples do not match expected rounds: actual=$actual")
+                }
+            }
+        }
+
         internal fun operationCount(profile: RegressionProfile, iterations: Int): Int = when (profile) {
             RegressionProfile.ANC_WEAR_STATE -> iterations
+            RegressionProfile.BT4_STATE_CONTRACT_5 -> BT4_STATE_CONTRACT_ROUNDS
             RegressionProfile.BT_MANAGER_RUNTIME_20,
             RegressionProfile.BT_STATE_RETRY_20 ->
                 STATE_RETRY_20_SCENARIO_ROUNDS.values.sum() + STATE_RETRY_20_INITIALIZATION_ROUNDS

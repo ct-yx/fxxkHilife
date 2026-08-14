@@ -42,14 +42,21 @@ class HuaweiSppFramer : ProtocolFramer<HuaweiSppPackage> {
             if (start > 0) repeat(start) { buffer.removeAt(0) }
             if (buffer.size < 4) return out
 
-            val length = buffer[2].toInt() and 0xFF
-            if (length < 4) {
-                val drop = minOf(4 + length, buffer.size)
-                repeat(drop) { buffer.removeAt(0) }
+            if (buffer[3] != 0x00.toByte()) {
+                buffer.removeAt(0)
                 continue
             }
 
-            val frameSize = 4 + length
+            val length = ((buffer[1].toInt() and 0xFF) shl 8) or
+                (buffer[2].toInt() and 0xFF)
+            if (length < 3) {
+                buffer.removeAt(0)
+                continue
+            }
+
+            // The length field includes the upstream offset byte but not both checksum bytes.
+            // A complete frame is therefore length + 5 bytes, not length + 4.
+            val frameSize = length + 5
             if (buffer.size < frameSize) return out
 
             val frame = ByteArray(frameSize) { buffer[it] }
@@ -64,8 +71,8 @@ class HuaweiSppFramer : ProtocolFramer<HuaweiSppPackage> {
     }
 
     private fun findMagic(): Int {
-        for (i in 0 until buffer.size - 1) {
-            if (buffer[i] == 0x5A.toByte() && buffer[i + 1] == 0x00.toByte()) return i
+        for (i in buffer.indices) {
+            if (buffer[i] == 0x5A.toByte()) return i
         }
         return -1
     }
@@ -74,10 +81,11 @@ class HuaweiSppFramer : ProtocolFramer<HuaweiSppPackage> {
         val out = mutableListOf<HuaweiSppPackage>()
         var pos = 4
         while (pos + 4 <= frame.size) {
-            if (frame[pos] == 0x5A.toByte() && frame[pos + 1] == 0x00.toByte()) {
-                val len = frame[pos + 2].toInt() and 0xFF
-                val end = pos + 4 + len
-                if (len >= 4 && end <= frame.size) {
+            if (frame[pos] == 0x5A.toByte() && frame[pos + 3] == 0x00.toByte()) {
+                val len = ((frame[pos + 1].toInt() and 0xFF) shl 8) or
+                    (frame[pos + 2].toInt() and 0xFF)
+                val end = pos + len + 5
+                if (len >= 3 && end <= frame.size) {
                     HuaweiSppPackage.fromBytes(frame.copyOfRange(pos, end))?.let { out.add(it) }
                     pos = end
                     continue

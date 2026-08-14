@@ -1,0 +1,58 @@
+id: pw.mmk.OpenFreebuds
+command: openfreebuds_qt
+
+sdk: org.kde.Sdk
+runtime: org.kde.Platform
+base: com.riverbankcomputing.PyQt.BaseApp
+runtime-version: '6.11'
+base-version: '6.11'
+
+finish-args:
+  # Connect to Bluetooth devices through RFCOMM / SPP protocol
+  - --allow=bluetooth
+  - --share=network
+  # Display user interface
+  - --socket=wayland
+  - --socket=fallback-x11
+  - --share=ipc
+  - --device=dri
+  # List paired Bluetooth devices, toggle their connection status
+  - --system-talk-name=org.bluez
+  # Display tray icon
+  - --talk-name=org.kde.StatusNotifierWatcher
+
+cleanup-commands:
+  - /app/cleanup-BaseApp.sh
+
+modules:
+  - name: python3_extras
+    buildsystem: simple
+    build-commands:
+      - tar --no-same-owner -moxzf just.tar.gz just && install just /app/bin
+    sources:
+      - type: file
+        url: https://github.com/casey/just/releases/download/1.57.0/just-1.57.0-aarch64-unknown-linux-musl.tar.gz
+        sha256: f225044a81adea6e0b3a8b9370aaf374e6af76c8735ae263ac993df55fd137ec
+        dest-filename: just.tar.gz
+        only-arches:
+          - aarch64
+      - type: file
+        url: https://github.com/casey/just/releases/download/1.57.0/just-1.57.0-x86_64-unknown-linux-musl.tar.gz
+        sha256: 45b548094283cb9739af8f13273b8cddeee869f5b4ef2bb631b1f311cb566155
+        dest-filename: just.tar.gz
+        only-arches:
+          - x86_64
+
+  - python3-requirements.json
+
+  - name: OpenFreebuds
+    buildsystem: simple
+    build-commands:
+      - just internal_flatpakinstall
+      - rm -rf /app/bin/just justfile dist
+    sources:
+      - type: file
+        path: ../../justfile
+      - type: dir
+        dest: dist/
+        path: ../../dist

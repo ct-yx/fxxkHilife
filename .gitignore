@@ -1,8 +1,18 @@
-OpenFreebuds/
+/OpenFreebuds/
 .backup/
 .gradle/
 third_party/
-reference/
+
+# The upstream OpenFreebuds source snapshot is intentionally versioned under reference/.
+# Keep only local generated/cache content out of that snapshot.
+reference/openfreebuds/**/__pycache__/
+reference/openfreebuds/**/*.pyc
+reference/openfreebuds/build/
+reference/openfreebuds/dist/
+reference/openfreebuds/.pdm-python/
+reference/openfreebuds/data/
+reference/openfreebuds/.flatpak/
+reference/openfreebuds/.flatpak-pip-generator
 
 # Generated local build and one-click test reports.
 /app/build/

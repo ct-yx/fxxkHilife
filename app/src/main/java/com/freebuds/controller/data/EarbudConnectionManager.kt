@@ -76,8 +76,10 @@ sealed interface ConnectionCommandResult {
  * cross-cutting call-site rewrite.
  */
 class EarbudConnectionManager internal constructor(
-    private val repository: DeviceRepository,
+    private val host: ConnectionManagerHost,
 ) {
+    /** Serializes command-boundary decisions such as busy checks and auto-connect backoff. */
+    private val commandLock = Any()
     private val lifecycleLock = Any()
     private val lifecycle = ConnectionLifecycle()
     private val autoConnectPolicy = ConnectionAutoConnectPolicy()
@@ -188,52 +190,54 @@ class EarbudConnectionManager internal constructor(
     }
 
     internal fun setHardwareRegressionActive(active: Boolean) {
-        repository.setHardwareRegressionActive(active)
+        host.setHardwareRegressionActive(active)
     }
 
     /** Serializes attempt, session and repository state hand-offs during a lifecycle transition. */
     internal inline fun <T> withLifecycleLock(block: () -> T): T =
         synchronized(lifecycleLock, block)
 
-    fun submit(command: ConnectionCommand): ConnectionCommandResult = when (command) {
+    fun submit(command: ConnectionCommand): ConnectionCommandResult = synchronized(commandLock) {
+        when (command) {
         is ConnectionCommand.Connect ->
-            ConnectionCommandResult.Attempt(repository.connect(command.device, command.trigger))
+            ConnectionCommandResult.Attempt(host.connect(command.device, command.trigger))
         is ConnectionCommand.AutoConnectSaved ->
-            repository.autoConnectSavedRequest(command.address, command.logMisses, command.trigger)
+            host.autoConnectSavedRequest(command.address, command.logMisses, command.trigger)
                 .asCommandResult()
         is ConnectionCommand.AutoConnectKnownSystemConnected ->
-            repository.autoConnectKnownSystemConnectedRequest(
+            host.autoConnectKnownSystemConnectedRequest(
                     command.device,
                     command.logMisses,
                     command.trigger,
                 )
                 .asCommandResult()
         is ConnectionCommand.AutoConnectLastSaved ->
-            repository.autoConnectLastSavedRequest(command.trigger).asCommandResult()
+            host.autoConnectLastSavedRequest(command.trigger).asCommandResult()
         is ConnectionCommand.AutoConnectSystemConnectedSaved ->
-            repository.autoConnectSystemConnectedSavedRequest(command.logMisses, command.trigger)
+            host.autoConnectSystemConnectedSavedRequest(command.logMisses, command.trigger)
                 .asCommandResult()
         is ConnectionCommand.TriggerAutoConnect ->
             triggerAutoConnect(command).asCommandResult()
         ConnectionCommand.ClearManualDisconnectSuppression -> {
-            repository.clearManualDisconnectSuppression()
+            host.clearManualDisconnectSuppression()
             ConnectionCommandResult.Completed
         }
         is ConnectionCommand.SystemAclDisconnected -> {
-            repository.handleSystemBluetoothDisconnected(command.address)
+            host.handleSystemBluetoothDisconnected(command.address)
             ConnectionCommandResult.Completed
         }
         ConnectionCommand.Disconnect -> {
-            repository.disconnect()
+            host.disconnect()
             ConnectionCommandResult.Completed
         }
         ConnectionCommand.RefreshSavedDeviceConnections -> {
-            repository.refreshSavedDeviceConnections()
+            host.refreshSavedDeviceConnections()
             ConnectionCommandResult.Completed
         }
         ConnectionCommand.RegressionSimulateAclDisconnect -> {
-            repository.regressionSimulateAclDisconnect()
+            host.regressionSimulateAclDisconnect()
             ConnectionCommandResult.Completed
+        }
         }
     }
 
@@ -241,7 +245,7 @@ class EarbudConnectionManager internal constructor(
         val now = System.currentTimeMillis()
         if (isConnectionBusy()) {
             val requestedAddress = command.knownDevice?.address
-            val activeAttemptId = repository.getActiveConnectionAttemptId(requestedAddress)
+            val activeAttemptId = host.getActiveConnectionAttemptId(requestedAddress)
             if (activeAttemptId == null) {
                 if (command.logMisses) {
                     LogBuffer.d(
@@ -251,7 +255,7 @@ class EarbudConnectionManager internal constructor(
                 }
                 return ConnectionRequestResult(accepted = false)
             }
-            repository.refreshSavedDeviceConnections()
+            host.refreshSavedDeviceConnections()
             return ConnectionRequestResult(true, activeAttemptId)
         }
         if (!autoConnectPolicy.canAttempt(command.force)) {
@@ -266,13 +270,13 @@ class EarbudConnectionManager internal constructor(
         }
 
         val started = if (command.knownDevice != null) {
-            repository.autoConnectKnownSystemConnectedRequest(
+            host.autoConnectKnownSystemConnectedRequest(
                 command.knownDevice,
                 command.logMisses,
                 command.trigger,
             )
         } else {
-            repository.autoConnectSystemConnectedSavedRequest(command.logMisses, command.trigger)
+            host.autoConnectSystemConnectedSavedRequest(command.logMisses, command.trigger)
         }
         if (started.accepted) {
             LogBuffer.i("AutoConnect", "Auto control connect triggered by ${command.reason}")
@@ -287,7 +291,7 @@ class EarbudConnectionManager internal constructor(
             }
             autoConnectPolicy.recordRejected()
         }
-        repository.refreshSavedDeviceConnections()
+        host.refreshSavedDeviceConnections()
         return started
     }
 

@@ -1,0 +1,17 @@
+**/__pycache__
+*.bak
+*~
+*.swp
+*#
+
+/.idea
+/.flatpak
+/.flatpak-pip-generator
+/.vagrant
+/.pdm-python
+/build
+/dist
+
+# Portable mode data
+/data
+/is_portable

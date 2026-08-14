@@ -4,6 +4,8 @@ import android.bluetooth.BluetoothDevice
 import com.freebuds.controller.bluetooth.*
 import com.freebuds.controller.core.adapter.EarbudAdapter
 import com.freebuds.controller.core.adapter.EarbudAdapterCallbacks
+import com.freebuds.controller.core.capability.EarbudCapability
+import com.freebuds.controller.core.state.EarbudState
 import com.freebuds.controller.core.transport.EndpointSource
 import com.freebuds.controller.core.transport.RfcommTransportConfig
 import com.freebuds.controller.core.transport.RfcommTransportConfigProvider
@@ -30,7 +32,7 @@ object HuaweiOpenFreebudsAdapter : EarbudAdapter, RfcommTransportConfigProvider 
 
     private val callbackScope = CoroutineScope(Dispatchers.IO + SupervisorJob())
 
-    override fun canHandle(device: BluetoothDevice): Boolean = isHuaweiOrHonorName(device.name)
+    override fun canHandle(device: BluetoothDevice): Boolean = isKnownModelName(device.name)
 
     override fun rfcommTransportConfig(deviceName: String?): RfcommTransportConfig {
         val model = detectModel(deviceName.orEmpty())
@@ -41,12 +43,19 @@ object HuaweiOpenFreebudsAdapter : EarbudAdapter, RfcommTransportConfigProvider 
         )
     }
 
+    override fun capabilities(deviceName: String): Set<EarbudCapability> =
+        detectModel(deviceName)?.let { model ->
+            modelCapabilities[model].orEmpty().mapNotNull { it.toGenericCapability() }.toSet()
+        }.orEmpty()
+
     override fun registerHandlers(driver: SppDriver, deviceName: String, callbacks: EarbudAdapterCallbacks) {
         val model = detectModel(deviceName)
-        val caps = modelCapabilities[model]?.toSet() ?: emptySet()
-        fun has(c: HuaweiCapability) = caps.isEmpty() || c in caps
+        val caps = modelCapabilities[model]?.toSet().orEmpty()
+        // Unknown models use a conservative profile. An empty table is not evidence that every
+        // command is supported; registering all handlers made the UI advertise unverified writes.
+        fun has(c: HuaweiCapability) = c in caps
 
-        driver.registerHandler(LogsHandler())
+        if (has(HuaweiCapability.LOGS)) driver.registerHandler(LogsHandler())
         if (has(HuaweiCapability.INFO)) driver.registerHandler(InfoHandler())
         if (has(HuaweiCapability.WEAR_DETECT)) driver.registerHandler(InEarHandler())
         if (has(HuaweiCapability.BATTERY)) {
@@ -58,7 +67,9 @@ object HuaweiOpenFreebudsAdapter : EarbudAdapter, RfcommTransportConfigProvider 
         if (has(HuaweiCapability.ANC)) driver.registerHandler(AncHandler())
         if (has(HuaweiCapability.ACTION_DOUBLE_TAP)) driver.registerHandler(DoubleTapHandler())
         if (has(HuaweiCapability.ACTION_TRIPLE_TAP)) driver.registerHandler(TripleTapHandler())
-        if (has(HuaweiCapability.ACTION_LONG_TAP_SPLIT)) driver.registerHandler(LongTapHandler())
+        if (has(HuaweiCapability.ACTION_LONG_TAP) || has(HuaweiCapability.ACTION_LONG_TAP_SPLIT)) {
+            driver.registerHandler(LongTapHandler())
+        }
         if (has(HuaweiCapability.ACTION_SWIPE)) driver.registerHandler(SwipeGestureHandler())
         if (has(HuaweiCapability.ACTION_POWER_BUTTON)) driver.registerHandler(PowerButtonHandler())
         if (has(HuaweiCapability.AUTO_PAUSE)) driver.registerHandler(AutoPauseHandler())
@@ -80,15 +91,28 @@ object HuaweiOpenFreebudsAdapter : EarbudAdapter, RfcommTransportConfigProvider 
 
     override suspend fun mapState(
         driver: SppDriver,
-        failedHandlers: Collection<String>,
+        pendingHandlers: Collection<String>,
         connectedSince: Long?,
-    ): DeviceProps = EarbudStateMapper.fromHuaweiDriver(driver, failedHandlers, connectedSince)
+    ): DeviceProps = EarbudStateMapper.fromHuaweiDriver(driver, pendingHandlers, connectedSince)
+
+    override suspend fun mapEarbudState(
+        driver: SppDriver,
+        deviceName: String,
+        pendingHandlers: Collection<String>,
+        connectedSince: Long?,
+    ): EarbudState = EarbudStateMapper.fromDeviceProps(
+        props = mapState(driver, pendingHandlers, connectedSince),
+        connectedSince = connectedSince,
+    )
 
     fun isHuaweiOrHonorName(name: String?): Boolean {
         if (name.isNullOrBlank()) return false
         val upper = name.uppercase()
         return HUAWEI_PREFIXES.any { upper.contains(it.uppercase()) }
     }
+
+    /** A vendor-looking name is not enough to select a protocol/capability profile. */
+    fun isKnownModelName(name: String?): Boolean = detectModel(name.orEmpty()) != null
 
     fun detectModel(name: String): HuaweiModel? = when {
         name.contains("FreeBuds 7i", true)    -> HuaweiModel.BUDS_7I
@@ -106,11 +130,47 @@ object HuaweiOpenFreebudsAdapter : EarbudAdapter, RfcommTransportConfigProvider 
         name.contains("FreeBuds 4i", true)     -> HuaweiModel.BUDS_4I
         name.contains("FreeLace Pro 2", true)  -> HuaweiModel.LACE_PRO_2
         name.contains("FreeLace Pro", true)    -> HuaweiModel.LACE_PRO
-        name.contains("Earbuds", true)         -> HuaweiModel.BUDS_4I
+        name.contains("HONOR Earbuds 2 SE", true) ||
+        name.contains("HONOR Earbuds 2 Lite", true) ||
+        name.contains("HONOR Earbuds 2", true)    -> HuaweiModel.BUDS_4I
         else -> null
     }
 
     private val HUAWEI_PREFIXES = listOf(
         "HUAWEI", "HONOR", "FreeBuds", "Freebuds", "freebuds", "华为", "荣耀", "Honor"
     )
+
+    private fun HuaweiCapability.toGenericCapability(): EarbudCapability? = when (this) {
+        HuaweiCapability.INFO -> EarbudCapability.DEVICE_INFO
+        HuaweiCapability.BATTERY,
+        HuaweiCapability.BATTERY_TWS -> EarbudCapability.BATTERY
+        HuaweiCapability.ANC,
+        HuaweiCapability.ANC_LEGACY -> EarbudCapability.ANC
+        HuaweiCapability.ANC_LEVEL -> EarbudCapability.ANC_LEVEL
+        HuaweiCapability.ANC_DYNAMIC -> EarbudCapability.ANC_DYNAMIC
+        HuaweiCapability.AUTO_PAUSE -> EarbudCapability.AUTO_PAUSE
+        HuaweiCapability.LOW_LATENCY -> EarbudCapability.LOW_LATENCY
+        HuaweiCapability.SOUND_QUALITY -> EarbudCapability.SOUND_QUALITY
+        HuaweiCapability.EQ_PRESET,
+        HuaweiCapability.EQ_FAKE_BUILTIN -> EarbudCapability.EQUALIZER
+        HuaweiCapability.EQ_CUSTOM -> EarbudCapability.CUSTOM_EQUALIZER
+        HuaweiCapability.DUAL_CONNECT,
+        HuaweiCapability.DUAL_CONNECT_AUTO -> EarbudCapability.DUAL_CONNECT
+        HuaweiCapability.WEAR_DETECT,
+        HuaweiCapability.IN_EAR -> EarbudCapability.WEAR_DETECTION
+        HuaweiCapability.ACTION_DOUBLE_TAP,
+        HuaweiCapability.ACTION_DOUBLE_TAP_IN_CALL,
+        HuaweiCapability.ACTION_TRIPLE_TAP,
+        HuaweiCapability.ACTION_LONG_TAP,
+        HuaweiCapability.ACTION_LONG_TAP_SPLIT,
+        HuaweiCapability.ACTION_LONG_TAP_SPLIT_ANC,
+        HuaweiCapability.ACTION_LONG_TAP_RIGHT,
+        HuaweiCapability.ACTION_LONG_TAP_EXTRA,
+        HuaweiCapability.ACTION_LONG_TAP_IN_CALL,
+        HuaweiCapability.ACTION_SWIPE,
+        HuaweiCapability.ACTION_POWER_BUTTON -> EarbudCapability.GESTURES
+        HuaweiCapability.VOICE_LANGUAGE -> EarbudCapability.VOICE_LANGUAGE
+        HuaweiCapability.LOGS -> EarbudCapability.LOGS
+        HuaweiCapability.VOICE_BOOST -> EarbudCapability.VOICE_BOOST
+    }
 }

@@ -53,7 +53,7 @@ class EarbudSessionRegistryTest {
         override suspend fun initializeDeferredHandlers() = Unit
         override suspend fun setProperty(group: String, prop: String, value: String) = Unit
         override suspend fun mapState(
-            failedHandlers: Collection<String>,
+            pendingHandlers: Collection<String>,
             connectedSince: Long?,
         ) = DeviceProps()
         override fun legacyDriverOrNull() = null

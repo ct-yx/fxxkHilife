@@ -1385,3 +1385,120 @@
 ### 变更记录
 - 合并提交：`dba58b2`。
 - 历史内容恢复提交：`84e2f7a`。
+
+## 2026-08-14 BT-3 实机门回灌与 BT-4 状态契约前置
+
+### BT-3 实机回归收口
+- 回灌报告：`/Users/chenhong/Downloads/fxxkHilife_hardware_regression_1786655973008.txt`。
+- `BT_MANAGER_RUNTIME_20` 在 HUAWEI FreeBuds 6i / Xiaomi 24069RA21C / Android API 36 上 F=10/10、应用入口初始化=10/10；固件字段为 `unknown`，endpoint=`rfcomm-channel=1`，source=`VerifiedModelConfig`。
+- F 总耗时 P50/P95=`7562/8984ms`，Transport Connect=`289/300ms`，Transport→CoreReady=`833/978ms`，CoreReady→Ready=`1363/1443ms`；20 项均为同一 attempt，最终 Ready，pending/failed 为空。
+- BT-1、BT-2、BT-3 的本轮实机门已关闭；结论范围仅限本设备、Android 36、固件 unknown 和该 profile，不扩展到所有型号。
+
+### BT-3 收尾代码
+- 新增 `ListeningStatsRepository` 与 `ListeningStatsStorage`，将听音统计的持久化、日期聚合和连接 ticker 从 `DeviceRepository` 移出。
+- 新增 `ConnectionManagerHost`，`EarbudConnectionManager` 不再直接依赖完整 `DeviceRepository`，为后续进一步抽离 Transport/Session 留出窄接口。
+- 新增听音统计、通用状态映射和能力未知型号策略的 JVM 测试。
+
+### BT-4 通用契约
+- 新增通用 `EarbudCapability` 和 `EarbudState`，包含电量、ANC、音频、手势、佩戴、双连和设备信息模型。
+- `HuaweiOpenFreebudsAdapter` 输出通用能力与状态；未知型号不再默认注册全部 Handler，避免未验证能力被误展示。
+- `EarbudStateStore` 与 `DeviceViewModel` 暴露通用状态/能力 Flow，`DeviceProps` 暂作兼容投影；本轮不改页面。
+- 本轮不提升应用版本号，仍以 `4.3.6 / 94` 作为已发布实机包基线；BT-4 独立包达到构建、测试和回退条件后再使用 `4.3.7 / 95`。
+
+### 自动化验证
+- `git diff --check` 通过。
+- `JAVA_HOME=/Library/Java/JavaVirtualMachines/zulu-17.jdk/Contents/Home ./gradlew :app:testDebugUnitTest --no-daemon --console=plain` 通过，67 tests completed。
+
+## 2026-08-14 BT-4 契约收紧与定向实机门
+
+### 代码变更
+- 修复 `EarbudStateMapper.fromDeviceProps()` 重复 `audio` 参数造成的 Kotlin 编译错误，并补齐语音语言字段映射。
+- `DeviceRepository` 暴露原子 `EarbudSnapshot`；断开、SPP EOF 和 ACL 清理统一调用 `EarbudStateStore.resetContract()`，避免通用状态、兼容投影和能力集合分步清空。
+- 新增 `EarbudStateContractValidator`：BT-4 必须满足同一 attempt、`Ready`、无 failed handler、pending 三方一致、精确能力集合、完整已声明状态域和 `EarbudState -> DeviceProps` 投影一致；`Degraded` 不再作为通过结果。
+- Huawei Adapter 删除宽泛 `Earbuds` 型号回退；未知型号拒绝连接 attempt、能力集合为空且不注册全部 Handler；Logs 按 `LOGS` 能力注册，LongTap 同时兼容 basic/split 能力。
+- BT-4 报告增加 `expectedOperations`/`completedOperations`，通用状态 profile 不再输出 A-F 零样本统计。
+
+### 自动化验证
+- `git diff --check` 通过。
+- `JAVA_HOME=/Library/Java/JavaVirtualMachines/zulu-17.jdk/Contents/Home ./gradlew :app:testDebugUnitTest --no-daemon --console=plain` 通过；新增状态契约、未知型号和降级态单元断言。
+
+### 实机门
+- 当前默认 Debug profile 为 `BT4_STATE_CONTRACT_5`，固定 5 轮；每轮检查通用状态/能力快照，不重复 BT-3 的 F10 + 初始化10，也不重复 ANC/低延迟读写矩阵。
+- 目标受阻：等待该 profile 的独立 Debug 包实机报告；报告返回前 BT-4 保持 `[~]`，不进入 UI-0/UI-1。
+
+## v4.3.7 (2026-08-14)
+
+### 发布
+- BT-4 通用状态、能力契约与定向实机测试包
+- versionCode: 95
+- versionName: 4.3.7
+- tag: v4.3.7
+
+### 本轮变更
+- BT-4 默认 Debug 自动实机测试为 `BT4_STATE_CONTRACT_5`，固定执行 5 轮：连接到 Ready 后校验同一 attempt、精确能力集合、通用状态域读回、`DeviceProps` 兼容投影和 pending/failed 终态；Release 不显示测试入口。
+- 收紧型号边界：只有能映射到明确型号能力表的 HUAWEI / HONOR 名称才进入 Huawei Adapter；未知型号不创建连接 attempt，不注册未经验证的全部 Handler。
+- 收紧契约报告：输出 `expectedOperations`、`completedOperations`、`reportValid`、`overall` 和 `reportIssue`；异常中断、轮次不完整或样本名错误不会被当作有效 BT-4 报告。
+- 收紧状态发布：异步属性读取完成后再次校验当前 session/attempt，并以同一 pending/failed 快照发布通用状态、兼容投影和控制通道元数据，避免旧 session 回写新连接。
+
+### 自动化验证与实机门
+- `git diff --check` 通过。
+- `JAVA_HOME=/Library/Java/JavaVirtualMachines/zulu-17.jdk/Contents/Home ./gradlew :app:testDebugUnitTest --no-daemon --console=plain` 通过；包含 BT-4 契约、未知型号、pending 终态和报告完整性断言。
+- `./scripts/run_ci_checks.sh ci-output-bt4-state-contract-4.3.7-95` 通过（diff-check、Debug/Release 单元测试、Debug/Release 构建）；Debug APK SHA-256=`7e53270afc1d43e106a1bb34681b1330b4131dd8481e8972c4d0fab5100d9446`，Release APK SHA-256=`805914638d1501b6684409eaf41c87f959ea798bc9907e4badb7803804e4fead`。
+- `BT4_STATE_CONTRACT_5` 仍为目标受阻实机门；只需在同一主验证设备运行 5 轮并返回 `fxxkHilife_hardware_regression_*.txt`，不重复 BT-3 的 F10 + 初始化10 或历史 36 项矩阵。
+
+## v4.3.8 (2026-08-14)
+
+### 发布
+- BT-4 状态契约并发、能力语义与定向测试校验收紧
+- versionCode: 96
+- versionName: 4.3.8
+- tag: v4.3.8
+
+### 自动化验证与下一道实机门
+- 本轮 JVM 单元测试共 `82 tests`，Debug/Release 均为 `0 failures`、`0 errors`、`0 skipped`。
+- `./scripts/run_ci_checks.sh ci-output-bt4-state-contract-4.3.8-96` 已通过：`diff-check` 和 Debug/Release 全量 Gradle 测试、构建均通过；结果目录为 `ci-output-bt4-state-contract-4.3.8-96`。
+- Debug APK：`/Users/chenhong/Documents/fxxkhilife/fxxkHilife/app/build/outputs/apk/debug/app-debug.apk`，SHA-256=`c1441879f2c0a678f78d1dea33af5751e9ba6a610c6ae4fc90cde51857754927`。
+- Release APK：`/Users/chenhong/Documents/fxxkhilife/fxxkHilife/app/build/outputs/apk/release/app-release.apk`，SHA-256=`0c3008501d51c0bbab1efe68a30284695051d7dad8c71dc870d7af2e3c2ad6d4`。
+- `BT4_STATE_CONTRACT_5` 仍是唯一受阻门：只需在同一主验证设备执行 5 轮通用状态/能力契约检查并返回 `fxxkHilife_hardware_regression_*.txt`；不重复 BT-3 的 F10 + 初始化10、历史 36 项或完整矩阵。
+
+## v4.3.9 (2026-08-14)
+
+### 发布
+- 修正 5A 协议帧长度、CRC 与固定样本边界
+- versionCode: 97
+- versionName: 4.3.9
+- tag: v4.3.9
+
+### BT-0 协议样本与分帧边界收口
+- 修正 `HuaweiSppPackage.fromBytes()`：按双字节长度解析，完整帧长度统一为 `length + 5`，参数解析严格限制在 payload 结束位置；新增可选 `validateChecksum` 校验，不改变生产路径默认的兼容解析模式。
+- 修正 `HuaweiSppFramer`：不再只读取长度低字节、不再按 `length + 4` 截断末尾校验字节；补齐高字节长度、完整校验帧、非法短帧和嵌套帧覆盖。
+- 将固定上游样本纳入 `app/src/test/resources/fixtures/huawei_spp/`，来源和许可证边界记录在 `docs/UPSTREAM_OPENFREEBUDS.md`；样本来自固定 commit 的电量与自动暂停测试，不代表对应型号能力已经完成实机验证。
+
+### 自动化验证与下一道实机门
+- 本轮 Debug/Release 单元测试各 `89 tests`，均为 `0 failures`、`0 errors`、`0 skipped`。
+- `./scripts/run_ci_checks.sh ci-output-bt0-protocol-samples-4.3.9-97` 已通过：`diff-check`、89 个 Debug 单元测试、89 个 Release 单元测试、Debug/Release 构建均通过；结果目录为 `ci-output-bt0-protocol-samples-4.3.9-97`。
+- Debug APK：`/Users/chenhong/Documents/fxxkhilife/fxxkHilife/app/build/outputs/apk/debug/app-debug.apk`，SHA-256=`b220ac95b239099ad65aa85fb9ab3eec61752ceb5a4c1ad87cb36b0740062652`。
+- Release APK：`/Users/chenhong/Documents/fxxkhilife/fxxkHilife/app/build/outputs/apk/release/app-release.apk`，SHA-256=`0bad718067ded5e0066f7ca06d7b05096970ca36fe5fc94e55c22deb5d66f3aa`。
+- `BT4_STATE_CONTRACT_5` 继续作为唯一实机门：在 `4.3.9 / 97` Debug 包上运行 5 轮通用状态/能力契约检查，报告必须为 `expectedOperations=5`、`completedOperations=5`、`reportValid=true`、`overall=PASS`。
+- 不重复 BT-3 的 F10 + 初始化10、历史 36 项或完整 A-F 矩阵；实机报告返回前 BT-4 保持 `[~]`，不进入 UI-0/UI-1。
+
+## v4.3.10 (2026-08-14)
+
+### 发布
+- BT 连接收尾、状态契约竞态与定向测试修复
+- versionCode: 98
+- versionName: 4.3.10
+- tag: v4.3.10
+
+### BT 收尾变更
+- `DeviceRepository.syncProps()` 按 attempt 串行化，避免同一连接中较早的异步属性快照晚到后覆盖新状态。
+- `EarbudStateContractValidator` 只从原子 `EarbudSnapshot.controlChannel` 读取控制通道；兼容 `DeviceProps` 写入口会同步 pending handler 到控制通道。
+- 只有电量、ANC 或低延迟等核心能力存在且已读回时才报告 `coreReady`；仅设备信息/日志能力不会误报初始化完成。
+- 失败的 RFCOMM 连接现在显式断开 session；手动断开和 ACL/SPP 断开在发布 `Disconnected` 前保留连接态并 flush 最后一段听音统计。
+- Manager command boundary 增加串行锁；共享 `EarbudAdapterRegistry` 注册内置 Huawei Adapter；Handler Registry 按 `handler.id` 去重，失败集合使用并发安全快照集合。
+
+### 自动化验证与实机门
+- 本轮新增 4 个 JVM 断言：元数据-only core readiness、兼容 pending 投影、Handler ID 去重和共享 Adapter Registry；Debug/Release 各 `94 tests`，均为 `0 failures`、`0 errors`、`0 skipped`。
+- `./scripts/run_ci_checks.sh ci-output-bt-connection-followup-4.3.10-98` 已通过：`diff-check`、Debug/Release 单元测试和 Debug/Release 构建均通过；Debug/Release 各 `94 tests`，均为 `0 failures / 0 errors / 0 skipped`。结果目录为 `ci-output-bt-connection-followup-4.3.10-98`；Debug APK SHA-256=`d36085bc37a271d99aa5d0575d9af36be63e93b8eec69af134d562740c72bfec`，Release APK SHA-256=`501df2aa286c19141407c83e926ade357f1b1f55ff5706b6851b19d54de78e54`。
+- 统计 flush 单测改用可递减的日期键，避免测试夹具用固定日期键让连续天数遍历无法结束；生产连接断开前 flush 逻辑保持不变。
+- `BT4_STATE_CONTRACT_5` 仍为唯一实机门：在 `4.3.10 / 98` Debug 包上执行 5 轮通用状态/能力契约读取，报告必须为 `expectedOperations=5`、`completedOperations=5`、`reportValid=true`、`overall=PASS`；不重复 BT-3 F10 + 初始化10、历史36项或完整 A-F 矩阵。

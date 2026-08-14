@@ -3,7 +3,7 @@
 > 版本号统一修改入口，按清单逐一更新。
 
 ## 当前版本
-- **v4.3.6** (versionCode=94, 2026-08-09)
+- **v4.3.10** (versionCode=98, 2026-08-14；BT 连接收尾、状态契约竞态与定向测试修复，BT-4 定向实机门待回灌)
 
 ## 文档同步记录
 
@@ -11,16 +11,22 @@
 
 - 2026-08-10：`ARCHITECTURE_TODO.md` 的原始架构正文归档至 `docs/REFACTOR_PLAN_UI_AND_BLUETOOTH.md` 附录 A；当前版本仍为 v4.3.6（versionCode=94）。
 - 当前阶段状态和实机测试门仍以 `docs/REFACTOR_PLAN_UI_AND_BLUETOOTH.md` 为准，详细变更证据记录在 `DEVELOPMENT_LOG.md`。
+- 2026-08-14：BT-3 实机报告已回灌并收口；BT-4 通用状态/能力契约完成代码收紧和 JVM 验证，等待 `BT4_STATE_CONTRACT_5` 实机门，应用版本仍为 v4.3.6（versionCode=94）。
+- 2026-08-14：发布 v4.3.7（versionCode=95）BT-4 定向测试包；默认 Debug profile 为 `BT4_STATE_CONTRACT_5`，实机报告返回前不关闭 BT-4 阶段。
+- 2026-08-14：发布 v4.3.8（versionCode=96）BT-4 状态契约 follow-up 包；收紧并发投影、能力域和报告 PASS 校验，实机报告返回前不关闭 BT-4 阶段。
+- 2026-08-14：发布 v4.3.9（versionCode=97）BT-0 协议固定样本 follow-up 包；修正 5A 双字节长度、完整帧边界、参数边界和可选 CRC 校验，BT-4 仍等待同一 Debug 包的 5 轮实机报告。
+- 2026-08-14：发布 v4.3.10（versionCode=98）BT 连接收尾与状态契约竞态 follow-up 包；修复状态映射串行化、断开前统计 flush、失败 session 清理、Manager command 串行边界、Handler 去重和共享 Adapter Registry，BT-4 重新等待该 Debug 包的 5 轮实机报告。
+- 2026-08-14：v4.3.10 / 98 最终本地 CI 通过；Debug/Release 各 94 个 JVM 单元测试、`diff-check`、Debug/Release 构建均通过。Debug APK SHA-256=`d36085bc37a271d99aa5d0575d9af36be63e93b8eec69af134d562740c72bfec`，Release APK SHA-256=`501df2aa286c19141407c83e926ade357f1b1f55ff5706b6851b19d54de78e54`；当前仍等待 `BT4_STATE_CONTRACT_5` 5 轮实机报告。
 
 ## 版本号位置
 
 | 位置 | 当前值 |
 |------|--------|
-| `app/build.gradle.kts` | versionCode=94, versionName="4.3.6" |
-| `app/src/main/res/values/strings.xml` | version_name=4.3.6 |
-| `README.md` | v4.3.6 |
-| `README_EN.md` | v4.3.6 |
-| `DEVELOPMENT_LOG.md` | v4.3.6 (末尾) |
+| `app/build.gradle.kts` | versionCode=98, versionName="4.3.10" |
+| `app/src/main/res/values/strings.xml` | version_name=4.3.10 |
+| `README.md` | v4.3.10 |
+| `README_EN.md` | v4.3.10 |
+| `DEVELOPMENT_LOG.md` | v4.3.10 (末尾) |
 
 ## 一键版本更新脚本
 
@@ -44,7 +50,11 @@ python3 scripts/bump_version.py <versionName> <versionCode> "修复说明"
 
 | 版本 | Code | 日期 | 主要变更 |
 |------|------|------|---------|
-| v4.3.6 | 94 | 2026-08-09 | BT-3 连接运行时状态与生命周期 Job 收敛到 EarbudConnectionManager，进入定向实机验证 |
+| v4.3.10 | 98 | 2026-08-14 | BT 连接收尾、状态契约竞态与定向测试修复 |
+| v4.3.9 | 97 | 2026-08-14 | 修正 5A 协议帧长度、CRC 与固定样本边界 |
+| v4.3.8 | 96 | 2026-08-14 | BT-4 状态契约并发、能力语义与定向测试校验收紧 |
+| v4.3.7 | 95 | 2026-08-14 | BT-4 通用状态、能力契约与定向实机测试包 |
+| v4.3.6 | 94 | 2026-08-09 | BT-3 连接运行时状态与生命周期 Job 收敛到 EarbudConnectionManager；2026-08-14 实机门回灌并收口 |
 | v4.3.5 | 93 | 2026-08-09 | 修复蓝牙状态并发回退与 RFCOMM 立即拒绝重试，进入 BT_STATE_RETRY_20 定向实机验证 |
 | v4.3.4 | 92 | 2026-08-09 | 切换 36 项定向蓝牙回归测试并记录 ANC 修复验证 |
 | v4.3.3 | 91 | 2026-08-09 | 修复 ANC 摘戴期间瞬时状态覆盖并加入定向实机测试 |

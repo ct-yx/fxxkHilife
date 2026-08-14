@@ -4,7 +4,7 @@
 >
 > 基线：v4.2.6，2026-08-01
 >
-> 当前测试包：v4.3.6 / versionCode 94，2026-08-09（BT-3 连接运行时所有权收敛后的定向回归门槛）
+> 当前开发基线：v4.3.10 / versionCode 98，2026-08-14（BT-3 实机门已通过；BT-3 收尾竞态与资源清理已补齐；BT-0 协议固定样本已收口；BT-4 Debug 测试包等待定向实机门）
 >
 > 目标：把当前“能工作但边界偏大”的 UI、蓝牙连接和 SPP 指令实现整理成可持续迭代的结构。先稳定现有 HUAWEI / HONOR + RFCOMM SPP 路线，再为后续型号和协议扩展留出边界。
 
@@ -32,7 +32,7 @@
 - 关键日志或耗时结论。
 - 回退方式。
 
-当前已完成的是 **BT-0.1 的本地协议/能力代码审计与资料存在性核对**；这不代表所有型号和所有指令都已经实机验证。BT-0.2 已取得主设备基线但等待重构后复测，BT-0.3 已完成路线决策。
+当前已完成的是 **BT-0.1 的本地协议/能力代码审计、上游快照核对和协议固定样本收口**；这不代表所有型号和所有指令都已经实机验证。BT-0.2 的 FreeBuds 6i 定向连接速度复测已完成，BT-0.3 已完成路线决策；能力证据表和跨型号实机验证仍需分别闭环。
 
 ### 0.1.1 定向实机测试规则
 
@@ -45,7 +45,7 @@
 | 重连、ACL、并发入口和连接耗时 | 每个相关场景 10 轮 | 需要观察竞态并计算 P50/P95 |
 | 跨模块发布验收 | 100 项 | BT 阶段合并、Release 候选或多个模块同时改动 |
 
-上一轮 `4.3.2 / 90` 的定向清单为 **36 项**；`4.3.3 / 91` 先针对 ANC 摘戴竞态进行修复和人工确认，`4.3.4 / 92` 已完成这组复测。报告显示 B、D、E 已通过，F 和应用入口初始化仍有状态判定/热重连尾部问题；`4.3.5 / 93` 已针对这两个问题完成代码和静态验证，但当前没有新的 20 项实机报告，因此不把它记为实机通过：
+上一轮 `4.3.2 / 90` 的定向清单为 **36 项**；`4.3.3 / 91` 先针对 ANC 摘戴竞态进行修复和人工确认，`4.3.4 / 92` 已完成这组复测。报告曾显示 B、D、E 已通过，F 和应用入口初始化存在状态判定/热重连尾部问题；`4.3.5 / 93` 与 `4.3.6 / 94` 已针对这两个问题完成代码和实机复测，历史结果保留如下：
 
 | 组别 | 轮次 | 覆盖内容 |
 |---|---:|---|
@@ -59,7 +59,7 @@
 
 `4.3.4 / 92` 报告 `/Users/chenhong/Downloads/fxxkHilife_hardware_regression_1786277130416.txt` 的结果为 **31/36**：B=10/10、F=7/10、初始化推进=8/10、D=3/3、E=3/3；endpoint 始终为 `rfcomm-channel=1`，source 始终为 `VerifiedModelConfig`。F1/F3/F9 的日志在同一 attempt 已出现 `CoreReady/Ready`，但结果快照仍出现 `InitializingDeferred` 或等待超时；初始化第 2、6 轮则在 RFCOMM 三次立即拒绝后失败。该报告因此同时暴露了状态流并发覆盖和第四次 Socket 创建不足两个独立问题。
 
-`4.3.5 / 93` 的 `BT_STATE_RETRY_20` 与本轮 `4.3.6 / 94` 的 Manager 运行时改动覆盖同一组 F/初始化风险；本轮使用更明确的 `BT_MANAGER_RUNTIME_20` 名称，避免只看版本号无法区分测试目的：
+`4.3.5 / 93` 的 `BT_STATE_RETRY_20` 与 `4.3.6 / 94` 的 Manager 运行时改动覆盖同一组 F/初始化风险；本轮使用更明确的 `BT_MANAGER_RUNTIME_20` 名称，避免只看版本号无法区分测试目的。该 profile 已完成，结果见下方回灌记录：
 
 | 组别 | 轮次 | 覆盖内容 |
 |---|---:|---|
@@ -68,15 +68,18 @@
 
 合计 **20 项**。B、D、E 已在 `4.3.4 / 92` 通过，本轮不重复；若 F/初始化仍失败，只追加对应失败项，不恢复整套 36 项。
 
-> **当前目标受阻**：`4.3.6 / 94` 的代码和 JVM 定向测试已完成，等待主验证设备运行 `BT_MANAGER_RUNTIME_20` 20 项并回传报告；在报告返回前不关闭 BT-1/BT-2/BT-3 的实机回归门。
+> **当前目标受阻**：BT-3 已由主验证设备完成；BT-0 协议固定样本和 `v4.3.10 / 98` 的 JVM/静态检查已完成，BT-4 测试包已完成本地 CI，当前等待 `BT4_STATE_CONTRACT_5` 5 轮实机报告。实机门只检查通用状态/能力契约，不重复 A-F 或 ANC/低延迟功能矩阵。
 
 ### 0.2 本轮执行记录（先蓝牙，后实机测试）
 
 本轮继续完成蓝牙组件重构、定向实机测试矩阵和本地验证；代码/CI 完成后，只安排与本轮改动对应的测试项。
 
-- 当前测试包已切换为 `4.3.6 / 94`，对应 BT-3 连接运行时所有权收敛后的 `BT_MANAGER_RUNTIME_20` 定向回归门槛；`4.3.5 / 93` 为上一轮状态/重试修复包，`4.3.4 / 92` 为 36 项报告包，`4.3.3 / 91` 为 ANC 摘戴状态修复包，`4.3.2 / 90` 为上一轮热重连/初始化回归包，`4.3.1 / 89` 为更早的完整实机报告包，`4.3.0 / 88` 仅作为 BT-1 首轮实机报告包，`4.2.6 / 87` 仅保留为重构前基线。
+- 当前测试包为 `4.3.10 / 98`，对应 BT-4 通用状态/能力契约的 `BT4_STATE_CONTRACT_5` 定向门槛；`4.3.9 / 97` 为 BT-0 协议固定样本 follow-up 包，`4.3.8 / 96` 为上一版 BT-4 状态契约 follow-up 包，`4.3.7 / 95` 为首轮 BT-4 契约测试包，`4.3.6 / 94` 为已通过实机门的 BT-3 连接运行时包，`4.3.5 / 93` 为上一轮状态/重试修复包，`4.3.4 / 92` 为 36 项报告包，`4.3.3 / 91` 为 ANC 摘戴状态修复包，`4.3.2 / 90` 为上一轮热重连/初始化回归包，`4.3.1 / 89` 为更早的完整实机报告包，`4.3.0 / 88` 仅作为 BT-1 首轮实机报告包，`4.2.6 / 87` 仅保留为重构前基线。
+- `4.3.10 / 98` 本轮补齐 BT 收尾：同一 attempt 内的状态映射串行化、兼容 pending 投影同步、失败连接资源断开、统计 ticker 断开前 flush、Manager command 边界串行化、Handler ID 去重和共享 Adapter Registry；代码验证后重新进入同一 `BT4_STATE_CONTRACT_5` 5 轮实机门。
+- `4.3.10 / 98` 最终本地 CI 已通过：`diff-check`、Debug/Release 单元测试和 Debug/Release 构建均通过；Debug/Release 各 `94 tests`，均为 `0 failures / 0 errors / 0 skipped`。结果目录为 `ci-output-bt-connection-followup-4.3.10-98`；Debug APK SHA-256=`d36085bc37a271d99aa5d0575d9af36be63e93b8eec69af134d562740c72bfec`，Release APK SHA-256=`501df2aa286c19141407c83e926ade357f1b1f55ff5706b6851b19d54de78e54`。
+- `4.3.8 / 96` 本地完整 CI 已通过：82 个 Debug 单元测试和 82 个 Release 单元测试均为 `0 failures / 0 errors / 0 skipped`；`diff-check`、Debug/Release 测试与构建均通过。Debug APK SHA-256=`c1441879f2c0a678f78d1dea33af5751e9ba6a610c6ae4fc90cde51857754927`，Release APK SHA-256=`0c3008501d51c0bbab1efe68a30284695051d7dad8c71dc870d7af2e3c2ad6d4`；结果目录为 `ci-output-bt4-state-contract-4.3.8-96`。
 - 保留未跟踪的 `.DS_Store` 和 `对话历史记录.md`，不纳入代码提交。
-- 本轮重点：连接状态、活动地址、系统链路集合、连接/初始化/轮询 Job 句柄统一由 `EarbudConnectionManager` 持有；Repository 保留兼容副作用和状态映射，不新增第二套 Transport/Session。`4.3.5 / 93` 的 F/初始化实机门仍未被新的报告替代，本轮 APK 只针对 Manager 生命周期收敛后的同一风险复测。
+- 本轮重点：在 BT-4 状态契约实机门之前，先收口 Huawei 5A 协议边界；`HuaweiSppPackage` 现在按双字节长度、完整 checksum 帧和 payload 参数边界解析，`HuaweiSppFramer` 不再截断高字节长度或末尾校验字节。连接状态、活动地址、系统链路集合、连接/初始化/轮询 Job 句柄仍由 `EarbudConnectionManager` 持有；不新增第二套 Transport/Session。
 - 2026-08-09 ANC 诊断回灌：`/Users/chenhong/Downloads/fxxkHilife_diagnostic_1786212455286.txt` 的 `2b2c` 在摘戴期间以短 burst 连续出现，旧 Handler 直接把它当成模式快照写入属性；日志只记录参数键，尚未形成可验证的 mode 值证据。
 - 2026-08-09 ANC 状态修复：`2b2a` 保持唯一权威状态来源；`2b2c` 只作为变化提示，不直接更新 ANC 属性，并在 250ms 安静窗口后通过同一 command lane 发起一次无等待 `2b2a` 读取；收到权威 `2b2a` 后取消未执行的刷新任务。
 - 2026-08-09 ANC 定向测试报告回灌：`/Users/chenhong/Downloads/fxxkHilife_hardware_regression_1786263762016.txt` 为 `format=2`、`profile=ANC_WEAR_STATE`、`4.3.3 / 91`，设备为 HUAWEI FreeBuds 6i；10 轮均已执行，但验收结果为 `pass=0 fail=10`。每轮均为 `notifications2b2c=0`、`accepted2b2c=0`、`refreshes=0`、`authoritative2b2a=0`、`exercised=false`、`refreshed=false`；因此没有形成一次有效的摘下/放置/双耳重新佩戴事件证据，尚不足以证明修复通过，也不足以判断模式稳定性回归。连接端点仍为 `rfcomm-channel=1 source=VerifiedModelConfig`，报告未显示连接路线本身失败。
@@ -90,6 +93,11 @@
 - 2026-08-09 `4.3.6 / 94` BT-3 运行时所有权收敛：新增 `ConnectionLifecycle`，`EarbudConnectionManager` 现在持有兼容 `ConnectionState`、活动地址/连接时间、手动断开抑制、RFCOMM 排水窗口、系统链路集合以及连接/初始化/轮询 Job 句柄；Repository 通过 Manager 接口完成安装、取消和状态发布，断开时统一取消连接工作后再摘除 session。
 - 2026-08-09 `4.3.6 / 94` Debug 自动测试按钮改为 `BT_MANAGER_RUNTIME_20`；执行范围仍为 F10 + 应用入口初始化10，不重复 B/D/E，也不把未收到的 `4.3.5 / 93` 实机结果默认为通过。
 - 2026-08-09 `4.3.6 / 94` 本地 CI：`./scripts/run_ci_checks.sh ci-output-bt-manager-runtime-4.3.6-94` 通过；Debug APK SHA-256=`84bcca035c04eb5d3380ed343a20f5637a380e7b22ce6c7249307e85a2194efd`，Release APK SHA-256=`43f9bced10a1e24ef2600f7f7134bf04d2bea86b60eb030771f540275e5d396d`。这是静态/本地证据，仍需主验证设备的 20 项报告。
+- 2026-08-14 `4.3.6 / 94` 实机报告回灌：`/Users/chenhong/Downloads/fxxkHilife_hardware_regression_1786655973008.txt`，`profile=BT_MANAGER_RUNTIME_20`，HUAWEI FreeBuds 6i / Xiaomi 24069RA21C / Android API 36 / firmware=`unknown`，endpoint=`rfcomm-channel=1`，source=`VerifiedModelConfig`。F=10/10、应用入口初始化=10/10；F 总耗时 P50/P95=`7562/8984ms`，Transport Connect=`289/300ms`，Transport→CoreReady=`833/978ms`，CoreReady→Ready=`1363/1443ms`；20 项均为同一 attempt，最终 Ready，pending/failed 为空，并验证手动断开抑制、RFCOMM 重连、ACL 清理/重连。A-E 未执行是定向 profile 设计，不计为失败。
+
+- 2026-08-14 BT-4 契约校验收紧：`EarbudSnapshot` 作为通用状态、兼容 `DeviceProps` 和能力集合的原子读取面；`EarbudStateContractValidator` 要求同一 attempt、`Ready`、无 failed handler、pending 三方一致、能力集合精确匹配，以及已声明状态域均有读回。`Degraded` 只作为运行状态，不再作为 BT-4 通过条件。
+- 2026-08-14 BT-4 适配器边界收紧：删除宽泛 `Earbuds -> BUDS_4I` 匹配，仅保留上游明确列出的 Honor Earbuds 2 系列；未知型号拒绝创建连接 attempt，未知型号能力为空且不注册全部 Handler；Logs 按 `LOGS` 能力注册，LongTap 同时支持 basic/split 能力。断开和 ACL 清理统一使用 `resetContract()`。
+- 2026-08-14 BT-4 定向测试调整：默认 Debug profile 为 `BT4_STATE_CONTRACT_5`，固定 5 轮；报告新增 `expectedOperations`/`completedOperations`、`reportValid`、`overall` 和 `reportIssue`，异常中断或样本名/轮次不完整时报告标为无效。BT-4 报告不再输出 A-F 的零样本统计，每轮只验证状态契约，普通连接速度与功能读写不重复测试。
 
 本轮新增的代码边界：
 
@@ -132,13 +140,13 @@
 
 | 阶段 | 状态 | 当前记录/完成条件 |
 |---|---|---|
-| BT-0.1 协议/能力本地审计 | [x] 已完成 | 2026-08-01；完成现有 Kotlin 协议、能力表、上游资料快照存在性核对；未提升未经实机验证的能力状态 |
-| BT-0.2 连接速度实机基线 | [~] 进行中 | 调整前主设备 A-F 各 10 轮已归档；报告中的 30 秒样本已判定为旧 Runner 误归属，D/F 失败已分别落到绑定设备回退和 ACL session 清理；需新 APK 在同设备比较 Transport→CoreReady、CoreReady→Ready 和最终可用时间 |
-| BT-0.3 连接路线决策门 | [x] 已完成 | 2026-08-01；endpoint/channel 已被实机确认，优先改连接编排、attempt 归属、session 生命周期和命令调度；当前测试包为 4.3.6 / 94 |
-| BT-1 唯一生产 Transport | [~] 进行中（目标受阻） | 已切换到唯一 `RfcommSppTransport` Socket 路径；`4.3.4 / 92` 的 B/D/E 已通过，`4.3.6 / 94` 只需 F10 和初始化10，确认排水、状态终态和阶段 P50/P95 |
-| BT-2 CommandClient / Scheduler / Feature | [~] 进行中（目标受阻） | 命令目录、单一优先级 command lane、quiet window、ACK/读回结果模型已落地；ANC 摘戴人工验证通过；等待 `4.3.6 / 94` 完成 `BT_MANAGER_RUNTIME_20` 20 项定向回归 |
-| BT-3 ConnectionManager 收敛入口 | [~] 进行中（目标受阻） | Manager 已新增 `ConnectionLifecycle` 并接管兼容连接状态、活动地址、系统链路集合、连接/初始化/轮询 Job 句柄和统一取消；Repository 仍保留连接副作用门面，等待 F10/初始化10 实机确认生命周期没有回归 |
-| BT-4 通用蓝牙状态输出 | [~] 进行中 | 已新增 `ControlChannelState`、`ControlChannelStateReducer` 和 `DeviceViewModel.controlChannelState`，页面尚未迁移消费 |
+| BT-0.1 协议/能力本地审计 | [x] 已完成 | 2026-08-14；完成 Kotlin 协议、能力表、上游快照和固定十六进制样本核对；协议样本已由 `HuaweiSppPackageFixtureTest`/`HuaweiSppFramerTest` 覆盖，未提升未经实机验证的能力状态 |
+| BT-0.2 连接速度实机基线 | [x] 已完成 | 2026-08-14；FreeBuds 6i 定向复测 F/初始化20项通过；Transport Connect P50/P95=`289/300ms`，Transport→CoreReady=`833/978ms`，CoreReady→Ready=`1363/1443ms`；范围仅限该设备、Android 36、固件 unknown 和 `BT_MANAGER_RUNTIME_20` |
+| BT-0.3 连接路线决策门 | [x] 已完成 | 2026-08-01；endpoint/channel 已被实机确认，优先改连接编排、attempt 归属、session 生命周期和命令调度；当前测试包为 4.3.10 / 98 |
+| BT-1 唯一生产 Transport | [x] 已完成 | 2026-08-14；唯一 `RfcommSppTransport` 路径及 endpoint/source 在同设备定向回归中稳定；保留跨型号/固件未覆盖边界 |
+| BT-2 CommandClient / Scheduler / Feature | [x] 已完成 | 2026-08-14；命令目录、单一 command lane、ANC 权威读回和低延迟路径已有 JVM/人工/定向实机证据；未验证能力仍按型号表标记 |
+| BT-3 ConnectionManager 收敛入口 | [x] 已完成 | 2026-08-14；`ConnectionLifecycle`、session/attempt/Job 所有权收敛，并由 `BT_MANAGER_RUNTIME_20` F10+初始化10 实机确认；`4.3.10 / 98` 补齐统计 flush、失败 session 断开、command 串行边界和同 attempt 状态映射收尾 |
+| BT-4 通用蓝牙状态输出 | [~] 进行中 | `4.3.10 / 98` 已完成原子快照投影、canonical channel、pending/failed 语义收敛、空值规范化、metadata-only core readiness 防误报、严格 PASS 报告校验和 5A 协议边界修复；94/94 Debug、94/94 Release 单元测试、`git diff --check`、Debug/Release 构建均已通过，等待 `BT4_STATE_CONTRACT_5` 实机报告；页面尚未迁移消费 |
 | UI-0 UI 行为基线 | [ ] 未开始 | 截图、交互路径、字段读写清单和测试基线齐备 |
 | UI-1 UI State / Event | [ ] 未开始 | 页面通过 typed state/event 工作，保留兼容层 |
 | UI-2 页面与公共组件拆分 | [ ] 未开始 | Device/Settings 和公共外壳拆分完成 |
@@ -147,7 +155,7 @@
 
 ### 0.4 应用版本号方案
 
-当前应用测试包为 **versionName `4.3.6` / versionCode `94`**；`4.3.5 / 93` 是状态/重试修复包，`4.3.4 / 92` 是 36 项定向回归包，`4.3.3 / 91` 是 ANC 摘戴状态修复包，`4.3.2 / 90` 是上一轮热重连/初始化回归包，`4.3.1 / 89` 是更早的完整实机报告包，`4.3.0 / 88` 是上一版 BT-1 实机报告包，`4.2.6 / 87` 仅作为本次重构的历史基线。BT-0 的审计、研究、日志和测试准备不单独发版。
+当前应用测试包为 **versionName `4.3.10` / versionCode `98`**；`4.3.9 / 97` 是 BT-0 协议固定样本 follow-up 包，`4.3.8 / 96` 是上一版 BT-4 状态契约 follow-up 包，`4.3.7 / 95` 是首轮 BT-4 契约测试包，`4.3.6 / 94` 是已通过实机门的 BT-3 连接运行时包，`4.3.5 / 93` 是状态/重试修复包，`4.3.4 / 92` 是 36 项定向回归包，`4.3.3 / 91` 是 ANC 摘戴状态修复包，`4.3.2 / 90` 是上一轮热重连/初始化回归包，`4.3.1 / 89` 是更早的完整实机报告包，`4.3.0 / 88` 是上一版 BT-1 实机报告包，`4.2.6 / 87` 仅作为本次重构的历史基线。BT-0 的审计、研究、日志和测试准备不单独发版。
 
 | 里程碑 | 计划 versionName | 计划 versionCode | 说明 |
 |---|---:|---:|---|
@@ -160,14 +168,17 @@
 | BT-2 状态/重试 follow-up 定向包 | 4.3.5 | 93 | `BT_STATE_RETRY_20`：F10、初始化10；状态并发与第四次 Socket 创建 |
 | BT-3 连接管理收敛 | 4.3.6 | 94 | Manager 持有连接运行时状态、session 与生命周期 Job 的兼容收敛 |
 | BT-4 通用蓝牙状态输出 | 4.3.7 | 95 | 分层连接状态和通用状态输出 |
-| UI-1 + UI-2 | 4.4.0 | 96 | UI State/Event 与页面组件拆分 |
-| UI-3 全局状态与持久化 | 4.4.1 | 97 | 全局状态、设置仓库和导航收敛 |
-| UI-4 移除兼容层 | 4.5.0 | 98 | 完成 UI 重构；若产生不兼容变更，再单独评估大版本 |
+| BT-4 状态契约 follow-up | 4.3.8 | 96 | 并发投影、能力域、空值语义和定向报告严格校验 |
+| BT-0 协议样本 follow-up / BT-4 测试包 | 4.3.9 | 97 | 5A 双字节长度、完整帧/参数/CRC 边界与固定上游样本；继续等待 BT-4 5 轮实机门 |
+| BT-3 收尾 / BT-4 follow-up 测试包 | 4.3.10 | 98 | 状态映射串行化、断开前统计 flush、失败 session 清理、command/handler 边界；继续等待 BT-4 5 轮实机门 |
+| UI-1 + UI-2 | 4.4.0 | 99 | UI State/Event 与页面组件拆分 |
+| UI-3 全局状态与持久化 | 4.4.1 | 100 | 全局状态、设置仓库和导航收敛 |
+| UI-4 移除兼容层 | 4.5.0 | 101 | 完成 UI 重构；若产生不兼容变更，再单独评估大版本 |
 
 版本规则：
 
 - 只有能独立编译、测试、回归和回退的代码里程碑才提升版本号；只改本文件或只做诊断不提升版本。
-- `versionCode` 每次发布递增 1；BT-1 测试包使用 `88`，BT-1/BT-2 首轮修复包使用 `89`，热重连回归包使用 `90`，ANC 摘戴状态稳定性包使用 `91`，36 项定向回归包使用 `92`，状态/重试 follow-up 使用 `93`，BT-3 连接运行时收敛使用 `94`，后续以 `94` 为当前基准顺延。
+- `versionCode` 每次发布递增 1；BT-1 测试包使用 `88`，BT-1/BT-2 首轮修复包使用 `89`，热重连回归包使用 `90`，ANC 摘戴状态稳定性包使用 `91`，36 项定向回归包使用 `92`，状态/重试 follow-up 使用 `93`，BT-3 连接运行时收敛使用 `94`，BT-4 首轮契约包使用 `95`，状态契约 follow-up 使用 `96`，协议样本 follow-up 使用 `97`，BT-3 收尾/BT-4 follow-up 使用 `98`，后续以 `98` 为当前基准顺延。
 - 统一使用 `python3 scripts/bump_version.py <versionName> <versionCode> "变更说明"` 更新应用版本、资源、README、`VERSION_MANAGEMENT.md` 和 `DEVELOPMENT_LOG.md`。
 - 阶段完成时，同时更新本文件的 `[x]`、`VERSION_MANAGEMENT.md` 的历史记录和 `DEVELOPMENT_LOG.md`；版本号不因提前勾选计划项而变更。
 
@@ -192,15 +203,15 @@
 
 ```mermaid
 flowchart TD
-    UI[Compose Screens\nHome / Scan / Device / Settings / Gesture]
-    VM[DeviceViewModel\n薄透传层]
-    Repo[DeviceRepository\n连接 + 轮询 + 属性 + 统计 + 自动连接]
+    UI[Compose Screens<br/>Home / Scan / Device / Settings / Gesture]
+    VM[DeviceViewModel<br/>薄透传层]
+    Repo[DeviceRepository<br/>连接 + 轮询 + 属性 + 统计 + 自动连接]
     Session[LegacySppEarbudSession]
-    Driver[SppDriver\nSocket + 收包 + 请求 + Handler + 属性]
-    Handler[OpenFreebudsHandlers.kt\n多功能 Handler 集合]
+    Driver[SppDriver<br/>Socket + 收包 + 请求 + Handler + 属性]
+    Handler[Huawei capability handlers<br/>Battery / ANC / Audio / Gesture / EQ / DualConnect / Info]
     Protocol[HuaweiSppPackage / HuaweiSppProtocol / Framer]
     Transport[RfcommSppTransport / RfcommSocketBridge]
-    Service[BluetoothService / QuickSettingsTile / ACL Receiver]
+    Service[BluetoothService / QuickSettingsTile / SystemBluetoothMonitor]
 
     UI --> VM --> Repo --> Session --> Driver
     Driver --> Handler
@@ -223,9 +234,9 @@ flowchart TD
 | Capability / State | 继续扩张 `DeviceProps`，或立即全量替换 | `EarbudCapability + EarbudState + ControlChannelState` 作为目标模型，`DeviceProps` 仅作兼容映射 | 页面只消费已映射且已确认的能力；迁移期间不破坏现有页面和通知 | StateStore/Mapper 测试、能力隐藏检查、逐页 UI 验证 |
 | Adapter | 动态插件系统，或静态内置注册表 | 采用静态 `EarbudAdapterRegistry`，先维护 `HuaweiOpenFreebudsAdapter` | 当前只有一个真实 Adapter；静态注册更容易构建、回退和审计。出现第二个真实 Adapter 后再增加优先级匹配 | Adapter 匹配测试、独立日志标识、型号能力表 |
 | Connection orchestration | Repository 继续全包，或 Manager/Repository 双重编排 | `EarbudConnectionManager` 作为唯一连接编排者；Repository 暂作兼容副作用门面 | Manager 持有 attempt/session/state/Job 生命周期，避免多个入口重复建连；下一阶段再收窄 host interface | `ConnectionLifecycleTest`、BT-3 `BT_MANAGER_RUNTIME_20` 实机报告 |
-| Statistics / logging | 立即把所有统计和日志拆成多个 Repository，或继续堆进 Manager | BT-3 实机门关闭后再抽 `ListeningStatsRepository`；日志继续由 `LogBuffer + regression report` 负责 | 统计拆分不改变连接时序；日志导出已有稳定格式，暂不增加一层无行为收益的 `LogRepository` | 统计单元测试、报告格式检查、连接回归无行为变化 |
+| Statistics / logging | 立即把所有统计和日志拆成多个 Repository，或继续堆进 Manager | 已抽出 `ListeningStatsRepository`；日志继续由 `LogBuffer + regression report` 负责 | 统计拆分不改变连接时序；断开前由 Repository flush 最后一段连接时长，暂不增加一层无行为收益的 `LogRepository` | 统计单元测试、报告格式检查、连接回归无行为变化 |
 | UI state / rendering | 页面直接读 raw property，或先建立状态/事件再拆页面 | `Route -> ViewModel -> typed state/event -> Repository/UseCase`；统一 `AppScaffold`，保留 Haze 2.0 | 先稳定状态契约，再拆组件；玻璃渲染只属于 UI surface，不参与连接和持久化 | UI-0 基线、UI-1 状态/事件测试、classic/glass 双模式验证 |
-| Hardware validation | 每轮都跑完整矩阵，或只测本轮影响面 | 按改动定向测试；当前仅 F10 + 初始化10 | 连接/并发/耗时问题需要 10 轮 P50/P95，普通能力 5 轮，报告字段 3 轮；不重复无关场景 | Debug-only 自动测试报告；Release 不暴露测试按钮 |
+| Hardware validation | 每轮都跑完整矩阵，或只测本轮影响面 | 按改动定向测试；当前仅 `BT4_STATE_CONTRACT_5` 5 轮 | 状态契约改动只验证同一 attempt、Ready、能力集合、读回投影和 pending/failed 终态；不重复无关场景 | Debug-only 自动测试报告；Release 不暴露测试按钮 |
 
 ### 2.2 合并后的执行顺序
 
@@ -838,22 +849,22 @@ ControlChannelState
 #### BT-0：协议与连接基线 `[~] 进行中`
 
 - 保存当前实机日志样本：连接、初始化、ANC 切换、低延迟切换、断开、重连、双连枚举。
-- 为 `HuaweiSppPackage` / `HuaweiSppFramer` 添加分片、粘包、嵌套包、非法 magic、非法长度测试。
-- 明确 5A 帧长度、CRC、参数边界的唯一解释，删除注释与实现不一致的地方。
+- `[x]` 为 `HuaweiSppPackage` / `HuaweiSppFramer` 添加分片、粘包、跨读取 magic、嵌套包和非法长度测试；固定样本位于 `app/src/test/resources/fixtures/huawei_spp/`。
+- `[x]` 明确 5A 双字节长度、完整帧（`length + 5`）、CRC 和参数边界的唯一解释，删除帧长计算与实现不一致的问题。
 - 先不改变现有命令行为。
 
 ##### BT-0.1：当前本地协议/能力基线审计 `[x] 已完成`
 
-> 完成记录：2026-08-01；已完成本地 Kotlin 协议/能力实现、型号表和上游逆向资料快照存在性核对。实机证据表仍按型号和能力逐项补齐，未验证项继续保持 `PARTIAL`/`UNKNOWN`。
+> 完成记录：2026-08-14；已完成本地 Kotlin 协议/能力实现、型号表、上游逆向资料和固定十六进制样本核对。2026-08-10 固定了 OpenFreebuds commit `035bf2a87cdda9e9c8e8e90c662b7fa61270c6ee` 的 292 文件参考快照；该快照只用于研究，不进入 Android 构建。协议样本已由 `HuaweiSppPackageFixtureTest`/`HuaweiSppFramerTest` 闭环；实机能力证据表、跨型号实机门仍按各自验收条件补齐，未验证项继续保持 `PARTIAL`/`UNKNOWN`。
 
-本地检查结果：从上游逆向资料整理出的**派生代码仍然存在**，但原始 `OpenFreebuds/` 快照目录当前不在工作区。因此后续重构不能只依赖现有 Kotlin 文件推断来源，应该重新固定上游提交或保存一份可追溯的协议资料快照。
+本地检查结果：原始上游资料已保存为 `reference/openfreebuds/`，来源、许可证、路径映射和更新流程固定在 [`docs/UPSTREAM_OPENFREEBUDS.md`](./UPSTREAM_OPENFREEBUDS.md) 与 [`THIRD_PARTY_NOTICES.md`](../THIRD_PARTY_NOTICES.md)。当前 Kotlin 是独立的 Android 派生实现；后续结论必须同时标记“上游来源”“当前代码实现”和“本项目实机证据”，不能把其中任一项单独写成已验证行为。
 
 | 审计对象 | 当前状态 | 结论 |
 |---|---|---|
-| SPP 5A 封包、解析、分帧 | `HuaweiSppPackage`、`HuaweiSppProtocol`、`HuaweiSppFramer` 仍在 | 主协议实现仍保留，需补齐固定测试样本 |
-| 主要控制指令 | 常量和 Handler 仍在使用 | 主验证设备的核心指令链路延续有效，全部型号尚未完成复核 |
-| 型号能力表 | `HuaweiModel` + `modelCapabilities` 仍在 | 属于兼容性基线，不是全型号最终真值 |
-| 原始逆向资料 | `OpenFreebuds/` 当前缺失且被 gitignore | 需要固定来源版本或保存引用快照 |
+| SPP 5A 封包、解析、分帧 | `HuaweiSppPackage`、`HuaweiSppProtocol`、`HuaweiSppFramer` 仍在 | 双字节长度、`length + 5` 完整帧、参数边界、可选 CRC 校验和固定上游样本已由 `HuaweiSppPackageFixtureTest`/`HuaweiSppFramerTest` 覆盖 |
+| 主要控制指令 | `HuaweiCommandCatalog`、Handler 和 Scheduler 仍在使用 | 主验证设备的核心指令链路已有代码和部分实机证据，全部型号尚未完成复核 |
+| 型号能力表 | `HuaweiModel` + `modelCapabilities` 仍在 | 属于兼容性基线；必须按型号、能力、命令方向和证据来源维护，不是全型号最终真值 |
+| 原始逆向资料 | 已固定 `reference/openfreebuds/` 快照 | 以固定 commit 和 `docs/UPSTREAM_OPENFREEBUDS.md` 为唯一研究来源入口，不把分支 HEAD 或未记录网页内容当作可复核基线 |
 
 已确认的结构性问题：
 
@@ -862,7 +873,14 @@ ControlChannelState
 - `HuaweiCapability` 中部分长按扩展能力只有枚举/表项，没有独立 Handler 或完整 UI 链路，需逐项标记为 `implemented`、`parsed-only` 或 `unverified`。
 - 多个型号共用一个能力档案，部分型号在代码中明确属于临时保守适配，不能直接视作实机验证结论。
 - 指令常量不完整，仍有裸 `byteArrayOf(...)` 分散在 Handler 中；迁移时需要建立唯一指令目录。
-- 当前测试重点集中在初始化策略、pending response 和 i18n，协议分片、粘包、CRC、命令读回和型号能力表尚需补充测试。
+- 当前测试重点集中在初始化策略、pending response 和 i18n；协议固定样本/分片/粘包/CRC 边界已补齐，命令读回和型号能力表仍需逐型号测试证据。
+
+BT-0.1 的资料和证据边界固定如下：
+
+1. `docs/UPSTREAM_OPENFREEBUDS.md` 记录上游 commit、许可证、路径映射和快照更新流程；它证明来源可追溯，不证明 Android 行为已经验证。
+2. `[x]` 协议固定样本已进入 Android 测试可读取的版本化 fixture，并覆盖分片、粘包、跨读取 magic、非法长度、CRC/参数边界、嵌套包、EOF 和重连清理；测试通过后协议样本闭环。`EOF`/重连清理仍由 `ProtocolSessionTest` 覆盖。
+3. 能力证据表的 `VERIFIED` 只允许引用同一型号/固件的实机报告或可复核的本地测试证据；只有上游源码或 Kotlin 表项时最多标记 `PARTIAL`，没有可追溯证据时标记 `UNKNOWN`。
+4. `BT_MANAGER_RUNTIME_20`、BT-0.2 和其他硬件 profile 的报告单独作为实机门证据；CI、JVM 测试、静态审计和上游快照都不能替代同一设备的 F10 + 初始化10 报告。
 
 BT-0 必须产出一份能力证据表：
 
@@ -870,11 +888,11 @@ BT-0 必须产出一份能力证据表：
 |---|---:|---|---|---|---|---|---|
 | MODEL | PORT | CAPABILITY | COMMAND | COMMAND | COMMAND | LOG / SOURCE / DEVICE | VERIFIED / PARTIAL / UNKNOWN |
 
-在证据表完成前，新增型号能力默认使用保守策略；已有表项若没有实机日志或可追溯来源，标记为 `PARTIAL`，不直接提升为已验证能力。
+证据字段必须能回到具体的上游路径、代码符号、测试 fixture/测试名或实机报告路径，并注明型号、固件、App 版本和 profile。能力证据表和协议固定样本完成前，新增型号能力默认使用保守策略；已有表项若没有实机日志或可追溯来源，标记为 `PARTIAL`，不直接提升为已验证能力。
 
-##### BT-0.2：连接速度专项基线 `[~] 进行中`
+##### BT-0.2：连接速度专项基线 `[x] 已完成`
 
-> 当前记录：2026-08-09；`4.3.4 / 92` 已完成 36 项定向实机报告，但结果为 31/36，F 与应用入口初始化仍需修复后定向复测；`4.3.5 / 93` 的新实机报告尚未回传，`4.3.6 / 94` 已进入 `BT_MANAGER_RUNTIME_20` 目标受阻状态。
+> 完成记录：2026-08-14；`4.3.6 / 94` 的 `BT_MANAGER_RUNTIME_20` 已完成 F10 + 应用入口初始化10，主设备定向实机门通过。跨型号/固件仍不在本阶段结论内。
 
 已收到主验证设备的 `a.txt`、`b.txt` 两份诊断报告，作为问题定位证据，不作为阶段完成证据：
 
@@ -907,7 +925,7 @@ BT-0 必须产出一份能力证据表：
 - 自动连接请求现在返回 `accepted + attemptId`，回归 runner 对空 id、超时和后续周期连接严格隔离；F 的 ACL 重连通过 `AutoConnectKnownSystemConnected` typed command 进入同一入口。
 - 手动/ACL/EOF 清理后仅对热重连增加 `250ms` RFCOMM 排水窗口，冷连接不增加等待；测试报告的场景明细与统计同步记录三个阶段耗时。
 
-上一轮 `4.3.2 / 90` 的实机验收重点是第三次 RFCOMM Socket 创建、B/F 热断开排水窗口、D 回退和初始化终态；`4.3.3 / 91` 已完成 ANC 摘戴状态来源修复和人工验证；`4.3.4 / 92` 的 36 项报告为 31/36，B/D/E 已通过；`4.3.5 / 93` 的 F10/初始化10报告尚未回传；当前 `4.3.6 / 94` 只复测 F10 和初始化10，验证 Manager 接管状态与 Job 后的断开/初始化生命周期。
+上一轮 `4.3.2 / 90` 的实机验收重点是第三次 RFCOMM Socket 创建、B/F 热断开排水窗口、D 回退和初始化终态；`4.3.3 / 91` 已完成 ANC 摘戴状态来源修复和人工验证；`4.3.4 / 92` 的 36 项报告为 31/36，B/D/E 已通过；`4.3.5 / 93` 的 F10/初始化10作为历史 follow-up 保留；`4.3.6 / 94` 已完成 F10/初始化10，验证 Manager 接管状态与 Job 后的断开/初始化生命周期。
 
 该小阶段只增加观测和测试，不调整生产时序。每个测试场景至少执行 10 次，记录成功次数、P50、P95、最大值和失败原因：
 
@@ -956,9 +974,9 @@ python3 scripts/analyze_connection_timing.py /path/to/fxxkHilife_diagnostic.txt
 4. **再收敛命令调度**：ANC/低延迟/Deferred 共享单一 command lane，读回、ACK 和通知不能相互误认。
 5. **D 走扫描回退**：`startDiscovery=false` 且系统已返回绑定设备时，使用绑定设备结果继续进入扫描完成连接路径，并在日志中保留回退原因。
 
-#### BT-1：唯一生产传输路径 `[~] 进行中`
+#### BT-1：唯一生产传输路径 `[x] 已完成`
 
-> 进度记录：2026-08-01；代码已将生产 RFCOMM Socket、输入输出流、读循环和关闭逻辑收敛到 `RfcommSppTransport`，`SppDriver` 通过 `ProtocolSession` 使用 `HuaweiSppFramer`。本地和 GitHub Actions 自动流程均已通过：Debug/Release 各 23 个单元测试、0 failure、Debug/Release 构建成功；验证运行是 [run 30693967119](https://github.com/ct-yx/fxxkHilife/actions/runs/30693967119)，生成 `automated-test-report-v4.2.6-87`、`fxxkHilife-debug-v4.2.6-87` 与 `fxxkHilife-v4.2.6-87`。由于当前没有新的主设备实机回归日志，暂不标记为 `[x]`，版本仍冻结为 `4.2.6 (87)`。
+> 完成记录：2026-08-14；代码已将生产 RFCOMM Socket、输入输出流、读循环和关闭逻辑收敛到 `RfcommSppTransport`，并由 `BT_MANAGER_RUNTIME_20` 在主验证设备确认 endpoint=`rfcomm-channel=1`、source=`VerifiedModelConfig` 和阶段耗时稳定。跨型号/固件仍需另行验证。
 
 已完成：
 
@@ -970,30 +988,30 @@ python3 scripts/analyze_connection_timing.py /path/to/fxxkHilife_diagnostic.txt
 仍待完成：
 
 - `[x]` 将 UUID、channel、连接超时、取消和重试收敛为 `RfcommTransportConfig`，移除生产路径中的固定 port 常量；已知型号使用型号端点，未知型号保留 channel 1 compatibility fallback，并将 endpoint/source 写入连接元数据和日志。
-- `[ ]` 在主验证设备上回归 ANC、自动低延迟、初始化持续推进、断开/重连，并记录回退结果。
-- `[~]` 已发布 `4.3.2 (90)` 作为热重连恢复和严格初始化判定的实机回归测试包；BT-1 仍等待同一设备的连接阶段汇总。
+- `[x]` 在主验证设备上完成 ANC 人工验证、自动低延迟既有验证、初始化持续推进、断开/重连，并记录回退结果；BT-4 新增状态/能力映射仍需单独回归。
+- `[x]` 已发布 `4.3.2 (90)` 作为热重连恢复和严格初始化判定的历史回归测试包；最终连接阶段证据由 `4.3.6 (94)` 主设备报告收口。
 - `[x]` `4.3.3 (91)` 的 ANC 摘戴状态修复已通过人工诊断验证；报告确认 `2b2c` 未被当作最终状态，滞后状态被守卫过滤。
 - `[x]` 已发布 `4.3.4 (92)` 并取得同一设备 36 项定向报告：31/36；B=10/10、D=3/3、E=3/3，F=7/10、初始化=8/10。阶段未因报告层假失败而提前完成。
-- `[~]` 已发布 `4.3.5 (93)` 作为状态/重试 follow-up 测试包；尚未收到新的 20 项实机报告，不将其静态证据记为实机通过。
-- `[~]` 已发布 `4.3.6 (94)` 作为 BT-3 连接运行时收敛测试包，等待同一设备执行 `BT_MANAGER_RUNTIME_20`：F10、初始化10。
+- `[x]` 已发布 `4.3.5 (93)` 作为状态/重试 follow-up 测试包；其针对的 F/初始化风险由 `4.3.6 (94)` 的 Manager 运行时报告最终覆盖。
+- `[x]` 已发布 `4.3.6 (94)` 作为 BT-3 连接运行时收敛测试包；同一设备已完成 `BT_MANAGER_RUNTIME_20`：F10、初始化10。
 
 #### 实机回归待测队列（按当前改动定向收集）
 
 以下项目只覆盖当前版本实际改动；每完成一个子阶段就在本文件回写 `[x]`、版本、测试轮次和报告路径：
 
 1. `[x]` **B 场景**：`4.3.4 / 92`，10 轮通过；系统已连接、discovery 关闭、自动低延迟开启。
-2. `[ ]` **F 场景**：`4.3.6 / 94`，10 轮；手动断开抑制、RFCOMM 重连和 ACL 清理/重连，重点验证 Manager 统一取消 Job 后的 Ready 终态快照、attempt 归属和热重连排水。
-3. `[ ]` **应用入口初始化推进**：`4.3.6 / 94`，10 轮；连续观察 10 秒后的 stage、pendingHandlers 和最终终态，确认初始化 Job 只服务当前 session。
+2. `[x]` **F 场景**：`4.3.6 / 94`，10 轮；报告 `/Users/chenhong/Downloads/fxxkHilife_hardware_regression_1786655973008.txt`，手动断开抑制、RFCOMM 重连和 ACL 清理/重连均通过，最终 Ready；总耗时 P50/P95=`7562/8984ms`。
+3. `[x]` **应用入口初始化推进**：`4.3.6 / 94`，10 轮；同一报告通过。10 秒观察后仍继续推进，20 项均为同一 attempt，最终 Ready，pending/failed 为空。
 4. `[x]` **D 场景**：`4.3.4 / 92`，3 轮通过；discovery 完成、saved-fallback、endpoint/channel/source。
 5. `[x]` **E 场景**：`4.3.4 / 92`，3 轮通过；首轮失败后的外层重试语义仍需区分 Transport 内部重试。
 
-当前待测合计 20 项（F10 + 初始化10）。36 项历史门槛的 B/D/E 已完成，ANC 摘戴专项由 `ANC_WEAR_STATE` 保留并已通过人工诊断验证；`4.3.6 / 94` 默认使用 `BT_MANAGER_RUNTIME_20`，按钮自动完成连接、计时、阶段、attempt、endpoint/source 和报告导出；`BT_STATE_RETRY_20` 仅用于上一轮语义复现，`BT_TARGETED_36` 仅用于历史门槛复现，`FULL_MATRIX` 保留给发布验收。测试报告沿用小于 200 MB 的字节预算。出现新问题时，只在本表追加对应场景或功能项，保持定向范围。
+当前 `BT_MANAGER_RUNTIME_20` 实机门已完成。36 项历史门槛的 B/D/E 已完成，ANC 摘戴专项由 `ANC_WEAR_STATE` 保留并已通过人工诊断验证；后续 BT-4 只增加通用状态/能力映射相关项目，不恢复完整矩阵。测试报告沿用小于 200 MB 的字节预算；出现新问题时，只在本表追加对应场景或功能项，保持定向范围。
 
 定向运行输出与全量运行使用同一报告格式：每项输出 PASS/FAIL、P50/P95、最大耗时和失败详情；B/F 额外输出 Socket 尝试、排水间隔和 attemptId，初始化项额外输出观察前后 stage、pendingHandlers、failedHandlers 和最终 core 状态。完整 100 项矩阵只在跨模块验收、Release 候选或多个 BT 阶段同时变更时启用。激活测试模式后仍使用约 160,000,000 字节的 UTF-8 缓存预算，报告写入分享文件前限制为 190,000,000 字节以内，最终文件保持小于 200 MB；测试结束、取消、无设备和异常路径都会恢复正常日志策略。ACL 广播本身由系统触发，按钮中的 ACL 断开使用同一清理路径的 synthetic regression hook；报告会区分真实入口和 synthetic cleanup。
 
-#### BT-2：CommandClient 与 Feature 拆分 `[~] 进行中（目标受阻）`
+#### BT-2：CommandClient 与 Feature 拆分 `[x] 已完成`
 
-> 本轮进度：2026-08-09；代码已新增 `HuaweiCommandCatalog`、`HuaweiCommandClient`、`HuaweiCommandScheduler`，并将核心 Handler 的读写迁移到目录。针对诊断日志暴露的 ANC 摘戴竞态，`2b2a` 被固定为权威快照，`2b2c` 只触发 250ms 安静窗口后的同 lane 刷新；`AncStatePolicyTest` 和人工诊断已确认该路径。`4.3.4 / 92` 的 36 项报告已回灌，`4.3.5 / 93` 未收到新的实机报告，当前等待 `4.3.6 / 94` 的 `BT_MANAGER_RUNTIME_20` 20 项定向回归。
+> 完成记录：2026-08-14；代码已新增 `HuaweiCommandCatalog`、`HuaweiCommandClient`、`HuaweiCommandScheduler`，并将核心 Handler 的读写迁移到目录。`2b2a` 权威 ANC 快照、同 lane 刷新、低延迟 ACK/读回和连接初始化路径已有 JVM、人工诊断与主设备定向回归证据；未覆盖型号/固件仍按 `PARTIAL`/`UNKNOWN` 管理。
 
 - `[x]` 建立 Huawei 命令目录和 `HuaweiCommandSpec`，消除主要 Handler 中散落的命令字节。
 - `[~]` Battery、ANC、LowLatency、SoundQuality、Gesture、EQ、DualConnect 已经通过兼容 Handler 使用目录；ANC 的 `2b2c`/`2b2a` 状态来源修复已落地，按能力拆文件的 Feature 迁移留在后续小阶段。
@@ -1003,9 +1021,9 @@ python3 scripts/analyze_connection_timing.py /path/to/fxxkHilife_diagnostic.txt
 - `[x]` 将“已发送”“ACK”“读回确认”“读回不匹配”“超时/失败”建模为 `HuaweiCommandPhase`，并把同 response key 的排队时间计入单一 timeout 预算；优先级队列已按 USER_ACTION、CORE、DEFERRED、BACKGROUND 生效。
 - 保留旧 Handler 适配器，逐个 Feature 替换，不一次改完。
 
-#### BT-3：连接编排拆分 `[~] 进行中（目标受阻）`
+#### BT-3：连接编排拆分 `[x] 已完成`
 
-> 本轮进度：2026-08-09；UI、Service、Tile、Terminal 和回归 Runner 已改为向 `EarbudConnectionManager` 发送 typed `ConnectionCommand`，由 Repository 提供兼容实现；BluetoothService 的触发 backoff 已迁移到 `ConnectionAutoConnectPolicy`/Manager；ACL/A2DP/HEADSET 广播、Profile Proxy 和周期检查已抽到 `SystemBluetoothMonitor`，Service 只保留生命周期与通知。此前 Manager 已接管 `ConnectionAttemptCoordinator`、`EarbudSessionRegistry`、ACL 清理和 identity check；本轮新增 `ConnectionLifecycle`，继续接管兼容连接状态、活动地址、系统链路集合、连接/初始化/轮询 Job 句柄以及手动断开/重连时间窗口。Repository 仍负责创建 Legacy session、注册 Handler、发布 `EarbudStateStore` 和调用兼容 Transport，但不再保留这些连接运行时字段；所有 Job 安装/取消都经过 Manager，断开先统一取消连接工作再摘除 session。下一轮实机只验证 F10 和应用入口初始化10，确认旧 session/Job 不会覆盖新 attempt。
+> 完成记录：2026-08-14；UI、Service、Tile、Terminal 和回归 Runner 已改为 typed `ConnectionCommand`，Manager 接管 attempt、session、ACL 清理、连接状态和生命周期 Job；`BT_MANAGER_RUNTIME_20` 在 HUAWEI FreeBuds 6i 主设备完成 F10 + 初始化10，20/20 通过。BT-3 的后续统计仓库和 host 依赖收窄属于已验证门关闭后的结构性收尾，不改变生产连接时序。
 
 - `SystemBluetoothMonitor`：系统蓝牙连接观察。
 - `EarbudConnectionManager`：连接、断开、自动连接、backoff、手动抑制。
@@ -1015,15 +1033,16 @@ python3 scripts/analyze_connection_timing.py /path/to/fxxkHilife_diagnostic.txt
 - 统一 ACL、A2DP、HEADSET、Service 命令和周期检查的触发去重，所有触发都携带 `ConnectionTrigger`。
 - 连接状态按 SystemLink、Transport、Core、Deferred 四层发布，禁止用单一 `Connected` 覆盖全部阶段。
 - `BluetoothService` / Tile / UI / Terminal 改为消费 manager 的命令和状态；本轮已把 Repository 内的兼容连接状态、活动地址、系统链路集合和连接相关 Job 句柄迁移到 Manager 的 `ConnectionLifecycle`。
-- `[x]` 入口去重的地址边界、扫描终态回调闸门、`SystemBluetoothMonitor`、ACL typed cleanup、session registry、attempt coordinator 以及连接运行时 Job/state 所有权已补齐；Repository 仍保留连接副作用门面，完整的 Manager host 接口和 ListeningStatsRepository 拆分留在后续小阶段。
+- `[x]` 入口去重的地址边界、扫描终态回调闸门、`SystemBluetoothMonitor`、ACL typed cleanup、session registry、attempt coordinator 以及连接运行时 Job/state 所有权已补齐；本轮继续将 Manager 依赖收窄为 `ConnectionManagerHost`，并将听音统计抽为 `ListeningStatsRepository`，不改变连接路径。
+- `[x]` `4.3.10 / 98` 收尾了同一 attempt 的 `syncProps()` 串行化、失败 Transport 的 session 断开、断开前听音统计 flush 和 Manager command 边界串行化；这些改动只收紧生命周期，不改变已验证的 RFCOMM endpoint/channel。
 
 #### BT-4：通用蓝牙状态输出（UI 接入前置） `[~] 进行中`
 
-> 本轮进度：已新增 `ControlChannelStage`、`SystemLinkState`、`ControlChannelState`、`ControlChannelStateReducer` 和 `EarbudStateStore`；Store 现在拥有 `ControlChannelState`/`DeviceProps` 状态流，Repository 在 Transport/Core/Deferred/Ready/Degraded/断开阶段通过 attempt-aware reducer 发布 typed state，旧 `ConnectionState` 与 `DeviceProps` 保留兼容。下一阶段将以该状态契约驱动 UI，不在本轮改页面。
+> 本轮进度：`4.3.10 / 98` 在 `4.3.9 / 97` 基础上补齐同一 attempt 状态映射串行化、原子 snapshot 的 canonical channel、兼容 pending 投影、metadata-only core readiness 防误报，并加入 BT 收尾回归测试；Debug/Release 各 94 个单元测试、`git diff --check` 和 Debug/Release 构建均已通过。仍等待 `BT4_STATE_CONTRACT_5` 5 轮实机报告。下一阶段以该状态契约驱动 UI，不在本轮改页面。
 
 - `[x]` `DeviceProps` 只作为兼容映射；可变状态流已移入 `EarbudStateStore`，不再让 Repository/UI 直接持有状态写入器。
-- Huawei Adapter 输出通用 `EarbudState` 和能力集合。
-- 先稳定通用 `EarbudState`、能力集合和分层连接状态的输出契约，不在 BT-4 直接改页面。
+- `[x]` Huawei Adapter 输出通用 `EarbudState` 和能力集合；未知型号采用保守空能力集合，不再把未知型号解释为“全部能力”。
+- 先稳定通用 `EarbudState`、能力集合和分层连接状态的输出契约；当前契约代码已完成，下一小阶段才改页面。
 - UI-1 再通过 typed state/action 消费该契约；UI-4 完成后删除 raw property 依赖。
 
 ## 5. 两项工作的依赖与执行顺序
@@ -1031,12 +1050,12 @@ python3 scripts/analyze_connection_timing.py /path/to/fxxkHilife_diagnostic.txt
 执行顺序固定为**先完成蓝牙，再开始 UI**，不交叉推进会改变连接时序的 UI 代码：
 
 1. **BT-0.1 `[x]`**：完成协议/能力本地审计，冻结 `v4.2.6 / versionCode 87` 基线。
-2. **BT-0.2 `[~]`**：已在主验证设备上完成 A-F 各 10 轮基线并记录 P50/P95；下一大轮代码完成后复测修复结果。
+2. **BT-0.2 `[x]`**：已在主验证设备完成连接速度与生命周期定向复测，并记录 P50/P95；结论范围限定为 FreeBuds 6i / Android 36 / firmware unknown。
 3. **BT-0.3 `[x]`**：依据数据决定不先换端点，优先处理连接入口、attempt/session 生命周期和命令调度。
-4. **BT-1 `[~]`**：让 `RfcommSppTransport` 成为唯一生产 Socket 路径，发布 `TransportReady`；`4.3.2 / 90` 已加入第三次 Socket 创建和线性排水，`4.3.6 / 94` 验证 Manager 统一取消后的重连排水和最终阶段统计。
-5. **BT-2 `[~]`**：已落地 `CommandClient`、`CommandScheduler` 和命令目录兼容层；`4.3.3 / 91` 修复 ANC 摘戴期间的状态来源竞态并通过人工验证，`4.3.4 / 92` 的 36 项报告已回灌，当前等待 `4.3.6 / 94` 的 F10/初始化10 定向回归后收口。
-6. **BT-3 `[~]`**：已完成 attempt/session 竞态和连接运行时状态/Job 句柄的第一轮收敛；`4.3.6 / 94` 等待 F10/初始化10，之后再拆 Manager host 接口和统计职责。
-7. **BT-4 `[~]`**：已输出 `ControlChannelState` 和 SystemLink/Transport/Core/Deferred 分层状态，下一步冻结 UI 消费契约。
+4. **BT-1 `[x]`**：`RfcommSppTransport` 已成为唯一生产 Socket 路径，并由 `4.3.6 / 94` 主设备报告验证阶段统计。
+5. **BT-2 `[x]`**：`CommandClient`、`CommandScheduler`、命令目录和 ANC/低延迟读回路径已完成当前主设备门；未验证型号仍保守处理。
+6. **BT-3 `[x]`**：attempt/session 竞态、连接运行时状态/Job 句柄、Manager host 接口和统计职责已完成当前收尾，`4.3.6 / 94` F10/初始化10 已通过。
+7. **BT-4 `[~]`**：`4.3.10 / 98` 已完成状态契约代码、5A 协议边界、JVM/静态检查和严格报告校验；当前目标受阻于同一主验证设备的 `BT4_STATE_CONTRACT_5` 5 轮实机报告。
 8. **UI-0 `[ ]`**：蓝牙链路稳定后，再记录页面截图、交互和字段读写基线。
 9. **UI-1 `[ ]`**：建立 `DeviceUiState`、typed event 和导航事件，先保留旧属性兼容层。
 10. **UI-2 `[ ]`**：拆分页面和公共组件，继续保持 Haze 2.0 与 Material 3 双展示模式。
@@ -1073,8 +1092,10 @@ python3 scripts/analyze_connection_timing.py /path/to/fxxkHilife_diagnostic.txt
 - 手动断开、ACL 断开、Socket 断开、初始化降级和自动重连都能得到明确状态与日志原因。
 - FreeBuds 6i 作为主验证设备，至少回归电量、ANC、低延迟、音质、断连重连；其他型号按能力表逐项记录。
 - 原有命令和 UI 行为没有因架构迁移产生未记录的变化。
-
-## 7. 暂不处理的内容
+- BT-0.1 的协议固定样本已纳入版本控制并覆盖分片、粘包、跨读取 magic、非法长度、CRC/参数边界、EOF 和重连清理；测试名称或 fixture 路径可从报告回溯。
+- 型号能力证据表逐项记录型号、固件、端口、读/写/通知命令、证据路径和 `VERIFIED`/`PARTIAL`/`UNKNOWN`；只有同型号可复核实机或自动化证据才能标记 `VERIFIED`。
+- OpenFreebuds 研究结论可回溯到固定 commit、快照路径和许可证说明；上游资料、CI/JVM 测试和静态审计均不替代硬件实机门。
+- `BT_MANAGER_RUNTIME_20` 只有在同一主验证设备、同一 `4.3.6 / 94` APK 和同一 profile 完成 F10 + 初始化10，并记录报告路径、设备/固件、attemptId、阶段耗时和失败原因后，才能关闭 BT-1/BT-2/BT-3 的实机回归门。
 
 - 暂不新增新的厂商协议或 BLE 控制通道。
 - 暂不实现 Android 侧多条并发 SPP 控制 session。
@@ -1124,7 +1145,9 @@ GitHub 上点击 **Actions → Build & Release → Run workflow → Run workflow
 2. 文档合并、格式修复和历史归档属于文档变更，不提升 `versionName`/`versionCode`，也不把实机门提前标记为通过。
 3. 当前状态只看本文件前文；附录 A 中的 `[x]`/`[ ]` 和旧版本描述仅用于还原当时上下文。
 4. 原始硬件报告、CI 输出和对话历史不复制进计划正文；正文只保留可检索的文件名、版本、profile、结论和证据路径。
-5. 每次文档维护完成后执行 `git diff --check`，只提交明确的文档文件，不提交 `.DS_Store`、`ci-output-*` 或本地对话记录。
+5. 能力证据表、协议 fixture 和上游快照必须保持可回溯：每条结论至少关联代码符号/测试名、固定来源路径或实机报告路径；来源缺失时不得提升状态。
+6. `BT_MANAGER_RUNTIME_20` 在同一主验证设备的 F10 + 初始化10 报告返回前，始终标记为待测；不得用 CI、JVM 测试、静态审计或旧版本报告替代。
+7. 每次文档维护完成后执行 `git diff --check`，只提交明确的文档文件，不提交 `.DS_Store`、`ci-output-*` 或本地对话记录。
 
 ### 9.1 本次历史文档维护记录
 

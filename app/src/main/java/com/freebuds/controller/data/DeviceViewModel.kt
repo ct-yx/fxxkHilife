@@ -7,6 +7,8 @@ import androidx.lifecycle.viewModelScope
 import com.freebuds.controller.HilifeApplication
 import com.freebuds.controller.bluetooth.BluetoothScanner
 import com.freebuds.controller.bluetooth.ScannedDevice
+import com.freebuds.controller.core.capability.EarbudCapability
+import com.freebuds.controller.core.state.EarbudState
 import kotlinx.coroutines.flow.*
 import kotlinx.coroutines.launch
 
@@ -23,6 +25,8 @@ class DeviceViewModel : ViewModel() {
     // ── 透传 Repository 的 Flow ───────────────────────────────────────────────
     val connectionState: StateFlow<ConnectionState> = repo.connectionState
     val controlChannelState: StateFlow<ControlChannelState> = repo.controlChannelState
+    val earbudState: StateFlow<EarbudState> = repo.earbudState
+    val capabilities: StateFlow<Set<EarbudCapability>> = repo.capabilities
     val props: StateFlow<DeviceProps> = repo.props
     val listeningStats: StateFlow<ListeningStats> = repo.listeningStats
     val savedDeviceConnections: StateFlow<List<SavedDeviceConnection>> = repo.savedDeviceConnections

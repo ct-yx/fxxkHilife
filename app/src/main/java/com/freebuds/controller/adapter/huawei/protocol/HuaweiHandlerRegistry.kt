@@ -1,6 +1,7 @@
 package com.freebuds.controller.adapter.huawei.protocol
 
 import com.freebuds.controller.bluetooth.HuaweiDeviceHandler
+import java.util.concurrent.CopyOnWriteArraySet
 
 /**
  * Registry for Huawei/OpenFreebuds handlers.
@@ -14,9 +15,12 @@ class HuaweiHandlerRegistry {
     private val commandHandlers = mutableMapOf<String, MutableList<HuaweiDeviceHandler>>()
     private val ignoredCommands = mutableSetOf<String>()
     private val propertyHandlers = mutableMapOf<String, HuaweiDeviceHandler>()
-    val failedHandlerIds: MutableSet<String> = mutableSetOf()
+    val failedHandlerIds: MutableSet<String> = CopyOnWriteArraySet()
 
     fun register(handler: HuaweiDeviceHandler) {
+        // Handler ids are the initialization and property-routing identity. Registering a new
+        // instance with the same id would otherwise duplicate reads, notifications and writes.
+        if (handlers.any { it.id == handler.id }) return
         handlers.add(handler)
         for (cmd in handler.commandIds) {
             val key = cmd.toHexKey()

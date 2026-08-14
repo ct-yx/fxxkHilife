@@ -3,6 +3,8 @@ package com.freebuds.controller.core.session
 import android.bluetooth.BluetoothDevice
 import com.freebuds.controller.bluetooth.HuaweiDeviceHandler
 import com.freebuds.controller.bluetooth.SppDriver
+import com.freebuds.controller.core.capability.EarbudCapability
+import com.freebuds.controller.core.state.EarbudState
 import com.freebuds.controller.core.adapter.EarbudAdapter
 import com.freebuds.controller.core.transport.RfcommTransportConfig
 import com.freebuds.controller.core.transport.RfcommTransportConfigProvider
@@ -31,6 +33,7 @@ class LegacySppEarbudSession(
     override val isConnected: Boolean get() = driver.isConnected
     override val failedHandlerIds: Set<String> get() = driver.failedHandlerIds
     override val handlerIds: List<String> get() = driver.handlerIds
+    override val capabilities: Set<EarbudCapability> = adapter.capabilities(device.name.orEmpty())
 
     override fun setPropertyChangedListener(listener: (() -> Unit)?) {
         driver.onPropertyChanged = listener
@@ -60,9 +63,19 @@ class LegacySppEarbudSession(
     }
 
     override suspend fun mapState(
-        failedHandlers: Collection<String>,
+        pendingHandlers: Collection<String>,
         connectedSince: Long?,
-    ): DeviceProps = adapter.mapState(driver, failedHandlers, connectedSince)
+    ): DeviceProps = adapter.mapState(driver, pendingHandlers, connectedSince)
+
+    override suspend fun mapEarbudState(
+        pendingHandlers: Collection<String>,
+        connectedSince: Long?,
+    ): EarbudState = adapter.mapEarbudState(
+        driver = driver,
+        deviceName = device.name.orEmpty(),
+        pendingHandlers = pendingHandlers,
+        connectedSince = connectedSince,
+    )
 
     override fun legacyDriverOrNull(): SppDriver = driver
 }

@@ -14,8 +14,11 @@ import com.freebuds.controller.adapter.huawei.protocol.HuaweiCommandExchange
 import com.freebuds.controller.adapter.huawei.protocol.HuaweiHandlerInitializationPolicy
 import com.freebuds.controller.core.adapter.EarbudAdapter
 import com.freebuds.controller.core.adapter.EarbudAdapterCallbacks
+import com.freebuds.controller.core.adapter.EarbudAdapterRegistry
+import com.freebuds.controller.core.capability.EarbudCapability
 import com.freebuds.controller.core.session.EarbudSession
 import com.freebuds.controller.core.session.LegacySppEarbudSession
+import com.freebuds.controller.core.state.EarbudState
 import com.freebuds.controller.core.transport.EndpointSource
 import com.freebuds.controller.core.transport.RfcommTransportConfigProvider
 import com.freebuds.controller.i18n.I18n
@@ -24,9 +27,9 @@ import kotlinx.coroutines.*
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.sync.Mutex
+import kotlinx.coroutines.sync.withLock
 import java.io.File
-import java.util.Calendar
-import java.util.Locale
 import java.util.concurrent.ConcurrentHashMap
 
 private const val RFCOMM_RECONNECT_GUARD_MS = 250L
@@ -51,14 +54,6 @@ data class ConnectionTimingSnapshot(
     val coreToReadyMs: Long? = null,
     val coreToDegradedMs: Long? = null,
     val finalStage: ControlChannelStage? = null,
-)
-
-data class ListeningStats(
-    val totalMs: Long = 0L,
-    val todayMs: Long = 0L,
-    val activeDays: Int = 0,
-    val streakDays: Int = 0,
-    val dailyMs: Map<String, Long> = emptyMap(),
 )
 
 data class DualConnectDevice(
@@ -105,16 +100,24 @@ data class DeviceProps(
     val doubleTapLeft: String? = null,
     val doubleTapRight: String? = null,
     val doubleTapOptions: List<String> = emptyList(),
+    val doubleTapInCall: String? = null,
+    val doubleTapInCallOptions: List<String> = emptyList(),
     val tripleTapLeft: String? = null,
     val tripleTapRight: String? = null,
     val tripleTapOptions: List<String> = emptyList(),
+    val tripleTapInCall: String? = null,
+    val tripleTapInCallOptions: List<String> = emptyList(),
     val longTap: String? = null,
     val longTapOptions: List<String> = emptyList(),
+    val powerButton: String? = null,
+    val powerButtonOptions: List<String> = emptyList(),
     val swipeGesture: String? = null,
     val swipeGestureOptions: List<String> = emptyList(),
     val inEar: Boolean? = null,
     val deviceModel: String? = null,
     val firmwareVersion: String? = null,
+    val voiceLanguage: String? = null,
+    val voiceLanguageOptions: List<String> = emptyList(),
     val pendingInitHandlers: List<String> = emptyList(),
     // 连接时刻 ( = 未连接)，用于计算佩戴时长
     val connectedSince: Long? = null,
@@ -124,10 +127,12 @@ data class DeviceProps(
  * 连接与属性的单一数据源。
  * 由 HilifeApplication 持有单例，ViewModel 注入使用。
  */
-class DeviceRepository {
+class DeviceRepository : ConnectionManagerHost {
 
     private val scope = CoroutineScope(Dispatchers.IO + SupervisorJob())
-    private val adapters: List<EarbudAdapter> = listOf(HuaweiOpenFreebudsAdapter)
+    /** Adapter selection is shared through the static registry, not a repository-local list. */
+    private val adapters: List<EarbudAdapter>
+        get() = EarbudAdapterRegistry.all()
 
     /** Typed command boundary used by UI, Service, Tile and regression entry points. */
     val connectionManager: EarbudConnectionManager = EarbudConnectionManager(this)
@@ -138,32 +143,36 @@ class DeviceRepository {
     /** Typed SystemLink/Transport/Core/Deferred state for the upcoming UI migration. */
     val controlChannelState: StateFlow<ControlChannelState> = stateStore.controlChannelState
 
+    /** Generic vendor-neutral state; DeviceProps remains the compatibility UI projection. */
+    val earbudState: StateFlow<EarbudState> = stateStore.earbudState
+    val capabilities: StateFlow<Set<EarbudCapability>> = stateStore.capabilities
+    /** Atomic generic-state/legacy-projection/capability snapshot for contract consumers. */
+    val earbudSnapshot: StateFlow<EarbudSnapshot> = stateStore.snapshot
+
     val props: StateFlow<DeviceProps> = stateStore.props
 
-    private val _listeningStats = MutableStateFlow(ListeningStats())
-    val listeningStats: StateFlow<ListeningStats> = _listeningStats.asStateFlow()
+    private val listeningStatsRepository = ListeningStatsRepository()
+    val listeningStats: StateFlow<ListeningStats> = listeningStatsRepository.stats
 
     private val _savedDeviceConnections = MutableStateFlow<List<SavedDeviceConnection>>(emptyList())
     val savedDeviceConnections: StateFlow<List<SavedDeviceConnection>> = _savedDeviceConnections.asStateFlow()
 
     fun isCoreStateReady(): Boolean {
-        val p = stateStore.props.value
-        val hasBattery = p.batteryGlobal != null || p.batteryLeft != null || p.batteryRight != null || p.batteryCase != null
-        return p.ancMode != null && p.lowLatency != null && hasBattery
+        return EarbudStateMapper.isCoreStateReady(stateStore.snapshot.value)
     }
 
     private val session: EarbudSession?
         get() = connectionManager.currentSession
     private var prefs: SharedPreferences? = null
     private var appContext: Context? = null
-    private val failedHandlers = mutableSetOf<String>()
+    private val failedHandlers = ConcurrentHashMap.newKeySet<String>()
     // A failed optional probe is not equivalent to a probe that is still running.  Keeping these
     // states separate prevents the details screen from showing "background sync" forever.
     private val pendingInitHandlers = ConcurrentHashMap.newKeySet<String>()
-    private var listeningStatsJob: Job? = null
-    private var lastListeningTick: Long = 0L
     private var sppQuietUntil: Long = 0L
     private var foregroundMode: Boolean = false
+    /** Prevents a late property snapshot from overwriting a newer snapshot in the same attempt. */
+    private val stateSyncMutex = Mutex()
     /** Prevents service/profile probes from racing the debug hardware regression matrix. */
     @Volatile
     private var hardwareRegressionActive: Boolean = false
@@ -172,6 +181,10 @@ class DeviceRepository {
 
     // 设备信息是否已获取（本次进程生命周期内）
     private var deviceInfoFetched: Boolean = false
+
+    init {
+        EarbudAdapterRegistry.register(HuaweiOpenFreebudsAdapter)
+    }
 
     // ── 前后台感知 ───────────────────────────────────────────────────────────
     fun setAppInForeground(foreground: Boolean) {
@@ -190,7 +203,7 @@ class DeviceRepository {
     fun init(context: Context) {
         appContext = context.applicationContext
         prefs = context.getSharedPreferences("fxxk_device", Context.MODE_PRIVATE)
-        refreshListeningStats()
+        listeningStatsRepository.initialize(SharedPreferencesListeningStatsStorage(prefs!!))
         deviceInfoFetched = false // 每次进程启动重置
         refreshSavedDeviceConnections()
     }
@@ -202,7 +215,16 @@ class DeviceRepository {
      * Returning the existing id for a deduplicated request lets Service/Tile/regression callers
      * wait for the same attempt instead of accidentally attributing a later background attempt.
      */
-    fun connect(device: BluetoothDevice, trigger: ConnectionTrigger = ConnectionTrigger.UserAction): String? {
+    override fun connect(device: BluetoothDevice, trigger: ConnectionTrigger): String? {
+        val adapter = findAdapter(device)
+        if (adapter == null) {
+            LogBuffer.w(
+                "Session",
+                "No adapter for device=${runCatching { device.name }.getOrNull() ?: device.address}; " +
+                    "connection request ignored",
+            )
+            return null
+        }
         val reservation = connectionManager.withLifecycleLock {
             val result = connectionManager.reserveAttempt(
                 address = device.address,
@@ -236,7 +258,6 @@ class DeviceRepository {
             var targetSession: EarbudSession? = null
             try {
             if (!isCurrentConnectionAttempt(attempt)) return@launch
-            val adapter = adapters.firstOrNull { it.canHandle(device) } ?: HuaweiOpenFreebudsAdapter
             LogBuffer.putMetadata("earbudName", device.name ?: "unknown")
             LogBuffer.putMetadata("earbudAddress", device.address)
             LogBuffer.putMetadata("adapter", adapter.id)
@@ -365,6 +386,7 @@ class DeviceRepository {
                     }
                 }
                 if (ownsFailure) {
+                    d.disconnect()
                     LogBuffer.w("Session", "Connection attempt returned false attempt=${attempt.attemptId}")
                 } else {
                     d.disconnect()
@@ -417,9 +439,11 @@ class DeviceRepository {
         return attempt.attemptId
     }
 
-    fun disconnect() {
+    override fun disconnect() {
         var oldSession: EarbudSession? = null
+        var wasConnected = false
         connectionManager.withLifecycleLock {
+            wasConnected = connectionState.value is ConnectionState.Connected
             connectionManager.cancelConnectionWork()
             connectionManager.suppressManualDisconnect(System.currentTimeMillis() + 10 * 60_000L)
             connectionManager.armReconnectGuard(
@@ -435,11 +459,10 @@ class DeviceRepository {
             activeConnectionAttempt?.let { markConnectionPhase(it, ConnectionPhase.Disconnected) }
             connectionManager.clearAttempt()
             connectionManager.setConnectionState(ConnectionState.Disconnected)
-            stateStore.replaceProps(DeviceProps())
             connectionManager.setConnectedAt(0L)
-            stateStore.resetControlChannel(systemLinkState(oldAddress))
+            stateStore.resetContract(systemLink = systemLinkState(oldAddress))
         }
-        stopListeningStatsTicker()
+        stopListeningStatsTicker(wasConnected)
         sppQuietUntil = 0L
         oldSession?.disconnect()
         deviceInfoFetched = false
@@ -453,7 +476,7 @@ class DeviceRepository {
      * It executes the same cleanup path as ACTION_ACL_DISCONNECTED while leaving the real
      * broadcast receiver intact for normal operation. The report labels this as synthetic.
      */
-    fun regressionSimulateAclDisconnect() {
+    override fun regressionSimulateAclDisconnect() {
         val source = session
         val address = connectionManager.connectedAddress
         if (source == null && address == null) {
@@ -475,7 +498,7 @@ class DeviceRepository {
      * The debug runner owns the connection slot for the duration of its matrix. Only background
      * periodic/profile probes are paused; explicit test commands still traverse production code.
      */
-    internal fun setHardwareRegressionActive(active: Boolean) {
+    override fun setHardwareRegressionActive(active: Boolean) {
         hardwareRegressionActive = active
         LogBuffer.i("HwTest", "background_auto_connect_paused=$active")
     }
@@ -493,7 +516,7 @@ class DeviceRepository {
      * use a global "current attempt" as proof that a request for another saved device was
      * accepted; the single-session invariant is address-scoped.
      */
-    fun getActiveConnectionAttemptId(address: String? = null): String? {
+    override fun getActiveConnectionAttemptId(address: String?): String? {
         val attempt = activeConnectionAttempt ?: return null
         if (address != null && !attempt.address.equals(address, ignoreCase = true)) return null
         return attempt.attemptId
@@ -543,14 +566,14 @@ class DeviceRepository {
         // observable then as well; otherwise the report would misleadingly say "unavailable"
         // even though every attempt used the model adapter's endpoint.
         val device = getRegressionDevice() ?: return "unavailable"
-        val adapter = adapters.firstOrNull { it.canHandle(device) } ?: HuaweiOpenFreebudsAdapter
+        val adapter = findAdapter(device) ?: return "unavailable"
         return (adapter as? RfcommTransportConfigProvider)
             ?.rfcommTransportConfig(runCatching { device.name }.getOrNull())
             ?.endpointDescription()
             ?: "unavailable"
     }
 
-    fun clearManualDisconnectSuppression() {
+    override fun clearManualDisconnectSuppression() {
         connectionManager.clearManualDisconnectSuppression()
     }
 
@@ -560,7 +583,7 @@ class DeviceRepository {
      * flag leaves the RFCOMM reader and an in-flight initialization job alive, which was the
      * failure mode seen in the F regression scenario.
      */
-    internal fun handleSystemBluetoothDisconnected(address: String) {
+    override fun handleSystemBluetoothDisconnected(address: String) {
         connectionManager.markSystemDisconnected(address)
         if (stateStore.controlChannelState.value.address == address) {
             updateControlChannelState { state -> state.copy(systemLink = SystemLinkState.Disconnected) }
@@ -582,6 +605,7 @@ class DeviceRepository {
     private fun handleRemoteDisconnected(sourceSession: EarbudSession?, reason: String) {
         var oldSession: EarbudSession? = null
         var oldAddress: String? = null
+        var wasConnected = false
         connectionManager.withLifecycleLock {
             if (sourceSession != null && !connectionManager.isCurrentSession(sourceSession)) return
             if (connectionState.value !is ConnectionState.Connected &&
@@ -589,6 +613,7 @@ class DeviceRepository {
                 activeConnectionAttempt == null
             ) return
             LogBuffer.w("SPP", "Remote disconnected: $reason")
+            wasConnected = connectionState.value is ConnectionState.Connected
             connectionManager.cancelConnectionWork()
             oldSession = connectionManager.detachSession()
             oldAddress = connectionManager.connectedAddress
@@ -597,13 +622,12 @@ class DeviceRepository {
             )
             connectionManager.setConnectedAddress(null)
             connectionManager.setConnectionState(ConnectionState.Disconnected)
-            stateStore.replaceProps(DeviceProps())
             connectionManager.setConnectedAt(0L)
             activeConnectionAttempt?.let { markConnectionPhase(it, ConnectionPhase.Disconnected, reason) }
             connectionManager.clearAttempt()
-            stateStore.resetControlChannel(systemLinkState(oldAddress), reason)
+            stateStore.resetContract(systemLink = systemLinkState(oldAddress), reason = reason)
         }
-        stopListeningStatsTicker()
+        stopListeningStatsTicker(wasConnected)
         sppQuietUntil = 0L
         deviceInfoFetched = false
         failedHandlers.clear()
@@ -642,7 +666,7 @@ class DeviceRepository {
 
     fun getSavedAddress(): String? = getSavedAddresses().lastOrNull()
 
-    fun refreshSavedDeviceConnections() {
+    override fun refreshSavedDeviceConnections() {
         val addresses = getSavedAddresses()
         val adapter = BluetoothAdapter.getDefaultAdapter()
         _savedDeviceConnections.value = addresses.map { address ->
@@ -690,10 +714,10 @@ class DeviceRepository {
         trigger: ConnectionTrigger = ConnectionTrigger.UserAction,
     ): Boolean = autoConnectSavedRequest(address, logMisses, trigger).accepted
 
-    internal fun autoConnectSavedRequest(
+    override fun autoConnectSavedRequest(
         address: String,
-        logMisses: Boolean = true,
-        trigger: ConnectionTrigger = ConnectionTrigger.UserAction,
+        logMisses: Boolean,
+        trigger: ConnectionTrigger,
     ): ConnectionRequestResult {
         if (isBackgroundAutoConnectSuppressed(trigger, hardwareRegressionActive)) {
             if (logMisses) LogBuffer.d("AutoConnect", "Skip $address: hardware regression owns connection slot")
@@ -736,10 +760,10 @@ class DeviceRepository {
         trigger: ConnectionTrigger = ConnectionTrigger.ServiceCommand,
     ): Boolean = autoConnectKnownSystemConnectedRequest(device, logMisses, trigger).accepted
 
-    internal fun autoConnectKnownSystemConnectedRequest(
+    override fun autoConnectKnownSystemConnectedRequest(
         device: BluetoothDevice,
-        logMisses: Boolean = true,
-        trigger: ConnectionTrigger = ConnectionTrigger.ServiceCommand,
+        logMisses: Boolean,
+        trigger: ConnectionTrigger,
     ): ConnectionRequestResult {
         val address = device.address
         if (isBackgroundAutoConnectSuppressed(trigger, hardwareRegressionActive)) {
@@ -787,11 +811,11 @@ class DeviceRepository {
         return autoConnectLastSavedRequest(trigger).accepted
     }
 
-    internal fun autoConnectLastSavedRequest(
-        trigger: ConnectionTrigger = ConnectionTrigger.ServiceCommand,
+    override fun autoConnectLastSavedRequest(
+        trigger: ConnectionTrigger,
     ): ConnectionRequestResult {
         val address = getSavedAddress() ?: return ConnectionRequestResult(accepted = false)
-        return autoConnectSavedRequest(address, trigger = trigger)
+        return autoConnectSavedRequest(address, logMisses = true, trigger = trigger)
     }
 
     fun autoConnectSystemConnectedSaved(
@@ -799,9 +823,9 @@ class DeviceRepository {
         trigger: ConnectionTrigger = ConnectionTrigger.PeriodicCheck,
     ): Boolean = autoConnectSystemConnectedSavedRequest(logMisses, trigger).accepted
 
-    internal fun autoConnectSystemConnectedSavedRequest(
-        logMisses: Boolean = true,
-        trigger: ConnectionTrigger = ConnectionTrigger.PeriodicCheck,
+    override fun autoConnectSystemConnectedSavedRequest(
+        logMisses: Boolean,
+        trigger: ConnectionTrigger,
     ): ConnectionRequestResult {
         val addresses = getSavedAddresses().asReversed()
         if (addresses.isEmpty()) {
@@ -1199,94 +1223,28 @@ class DeviceRepository {
     }
 
     private fun ensureDefaultAncOptions() {
-        if (stateStore.props.value.ancModeOptions.isEmpty()) {
+        if (EarbudCapability.ANC in stateStore.capabilities.value &&
+            stateStore.props.value.ancModeOptions.isEmpty()
+        ) {
             stateStore.updateProps {
                 it.copy(
-                ancModeOptions = listOf("normal", "cancellation", "awareness")
+                    ancModeOptions = listOf("normal", "cancellation", "awareness")
                 )
             }
         }
     }
 
-    // ── 听音统计 ─────────────────────────────────────────────────────────
-
-    private fun todayKey(time: Long = System.currentTimeMillis()): String {
-        val cal = Calendar.getInstance().apply { timeInMillis = time }
-        return String.format(Locale.US, "%04d-%02d-%02d", cal.get(Calendar.YEAR), cal.get(Calendar.MONTH) + 1, cal.get(Calendar.DAY_OF_MONTH))
-    }
-
-    private fun readDailyListening(): MutableMap<String, Long> {
-        val p = prefs ?: return mutableMapOf()
-        val raw = p.getString("listening_daily_ms", "") ?: ""
-        return raw.split(";")
-            .mapNotNull { item ->
-                val parts = item.split("=")
-                if (parts.size == 2) parts[0] to (parts[1].toLongOrNull() ?: 0L) else null
-            }
-            .filter { it.first.isNotBlank() && it.second > 0L }
-            .toMap()
-            .toMutableMap()
-    }
-
-    private fun writeDailyListening(map: Map<String, Long>) {
-        val p = prefs ?: return
-        val compact = map.entries
-            .sortedBy { it.key }
-            .takeLast(180)
-            .joinToString(";") { "${it.key}=${it.value}" }
-        p.edit().putString("listening_daily_ms", compact).apply()
-    }
-
-    private fun refreshListeningStats(extraTodayMs: Long = 0L) {
-        val daily = readDailyListening().toMutableMap()
-        if (extraTodayMs > 0L) {
-            val key = todayKey()
-            daily[key] = (daily[key] ?: 0L) + extraTodayMs
-            writeDailyListening(daily)
-        }
-        val today = todayKey()
-        var streak = 0
-        val cal = Calendar.getInstance()
-        while (true) {
-            val key = todayKey(cal.timeInMillis)
-            if ((daily[key] ?: 0L) <= 0L) break
-            streak++
-            cal.add(Calendar.DAY_OF_YEAR, -1)
-        }
-        _listeningStats.value = ListeningStats(
-            totalMs = daily.values.sum(),
-            todayMs = daily[today] ?: 0L,
-            activeDays = daily.count { it.value > 0L },
-            streakDays = streak,
-            dailyMs = daily.toMap(),
+    private fun startListeningStatsTicker() {
+        listeningStatsRepository.startTicker(
+            scope = scope,
+            isConnected = { connectionState.value is ConnectionState.Connected },
         )
     }
 
-    private fun startListeningStatsTicker() {
-        listeningStatsJob?.cancel()
-        lastListeningTick = System.currentTimeMillis()
-        listeningStatsJob = scope.launch {
-            while (isActive) {
-                delay(60_000)
-                val now = System.currentTimeMillis()
-                if (connectionState.value is ConnectionState.Connected) {
-                    val delta = (now - lastListeningTick).coerceIn(0L, 5 * 60_000L)
-                    refreshListeningStats(delta)
-                }
-                lastListeningTick = now
-            }
-        }
-    }
-
-    private fun stopListeningStatsTicker() {
-        val now = System.currentTimeMillis()
-        val delta = if (lastListeningTick > 0L) (now - lastListeningTick).coerceIn(0L, 5 * 60_000L) else 0L
-        if (delta > 0L && connectionState.value is ConnectionState.Connected) {
-            refreshListeningStats(delta)
-        }
-        listeningStatsJob?.cancel()
-        listeningStatsJob = null
-        lastListeningTick = 0L
+    private fun stopListeningStatsTicker(
+        wasConnected: Boolean = connectionState.value is ConnectionState.Connected,
+    ) {
+        listeningStatsRepository.stopTicker(isConnected = { wasConnected })
     }
 
     // ── 分享日志 ─────────────────────────────────────────────────────────
@@ -1402,26 +1360,39 @@ class DeviceRepository {
 
     // ── 内部：从 session 状态映射同步到 StateFlow ─────────────────────────────
 
-    private suspend fun syncProps() {
-        val d = session ?: return
-        stateStore.replaceProps(d.mapState(
-            failedHandlers = pendingInitHandlers.toSet(),
-            connectedSince = connectionManager.connectedAt.takeIf { it > 0 },
-        ))
-        val current = stateStore.controlChannelState.value
-        val address = current.address ?: connectionManager.connectedAddress
-        val linked = if (address != null) {
-            current.copy(systemLink = systemLinkState(address))
-        } else {
-            current
-        }
-        stateStore.updateControlChannel { linked }
-        stateStore.updateHandlers(
-            activeAttemptId = activeConnectionAttempt?.attemptId,
-            pendingHandlers = pendingInitHandlers.toSet(),
-            failedHandlers = failedHandlers.toSet(),
+    private suspend fun syncProps() = stateSyncMutex.withLock {
+        val d = session ?: return@withLock
+        val connectedSince = connectionManager.connectedAt.takeIf { it > 0 }
+        val expectedAttemptId = activeConnectionAttempt?.attemptId
+        val pendingHandlers = pendingInitHandlers.toSet()
+        val failedHandlerSnapshot = failedHandlers.toSet()
+        val genericState = d.mapEarbudState(
+            pendingHandlers = pendingHandlers,
+            connectedSince = connectedSince,
         )
-        ensureDefaultAncOptions()
+        // Mapping performs several suspending reads. A disconnect/reconnect can replace the
+        // session while those reads are in flight, so publish only if the same session and
+        // attempt still own the lifecycle slot. Use one captured pending/failed snapshot for all
+        // three contract surfaces; otherwise the generic state and control-channel metadata can
+        // describe different moments of the same initialization.
+        val published = connectionManager.withLifecycleLock {
+            val sameAttempt = expectedAttemptId != null &&
+                activeConnectionAttempt?.attemptId == expectedAttemptId
+            if (!connectionManager.isCurrentSession(d) || !sameAttempt) {
+                false
+            } else {
+                stateStore.replaceContract(
+                    state = genericState,
+                    capabilities = d.capabilities,
+                    pendingHandlers = pendingHandlers,
+                    failedHandlers = failedHandlerSnapshot,
+                    activeAttemptId = expectedAttemptId,
+                    systemLink = connectionManager.connectedAddress?.let(::systemLinkState),
+                )
+                true
+            }
+        }
+        if (published) ensureDefaultAncOptions()
     }
 
     // ── 内部：注册 Handler ─────────────────────────────────────────────────────
@@ -1436,6 +1407,9 @@ class DeviceRepository {
             )
         )
     }
+
+    private fun findAdapter(device: BluetoothDevice): EarbudAdapter? =
+        adapters.firstOrNull { adapter -> runCatching { adapter.canHandle(device) }.getOrDefault(false) }
 
 
     fun getDriver() = session?.legacyDriverOrNull()

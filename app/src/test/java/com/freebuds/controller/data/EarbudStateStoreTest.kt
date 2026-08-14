@@ -107,4 +107,37 @@ class EarbudStateStoreTest {
         assertSame(initial, store.props)
         assertEquals(true, store.props.value.lowLatency)
     }
+
+    @Test
+    fun compatibilityFlowsConvergeToTheLatestCanonicalSnapshotAfterConcurrentUpdates() {
+        val store = EarbudStateStore()
+        val workers = List(4) { index ->
+            thread(start = true) {
+                repeat(50) { round ->
+                    store.updateProps { it.copy(lowLatency = (index + round) % 2 == 0) }
+                    store.updateControlChannel { it.copy(reason = "$index-$round") }
+                }
+            }
+        }
+        workers.forEach { it.join(2_000) }
+
+        val snapshot = store.snapshot.value
+        assertEquals(snapshot.state, store.earbudState.value)
+        assertEquals(snapshot.props, store.props.value)
+        assertEquals(snapshot.controlChannel, store.controlChannelState.value)
+        assertEquals(snapshot.capabilities, store.capabilities.value)
+    }
+
+    @Test
+    fun compatibilityPropertyWritesKeepPendingHandlersAlignedWithChannel() {
+        val store = EarbudStateStore()
+
+        store.updateProps { it.copy(pendingInitHandlers = listOf("optional_probe")) }
+
+        assertEquals(
+            setOf("optional_probe"),
+            store.snapshot.value.controlChannel.pendingHandlers,
+        )
+        assertEquals(store.snapshot.value.controlChannel, store.controlChannelState.value)
+    }
 }
