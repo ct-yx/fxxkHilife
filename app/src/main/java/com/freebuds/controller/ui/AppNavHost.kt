@@ -1,6 +1,7 @@
 package com.freebuds.controller.ui
 
 import android.Manifest
+import android.bluetooth.BluetoothDevice
 import android.content.Intent
 import android.content.pm.PackageManager
 import android.net.Uri
@@ -14,6 +15,7 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.platform.LocalContext
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.currentBackStackEntryAsState
@@ -24,6 +26,9 @@ import com.freebuds.controller.i18n.LocalI18n
 import com.freebuds.controller.ui.foundation.components.AppScaffold
 import com.freebuds.controller.ui.glass.LocalLiquidGlassConfig
 import com.freebuds.controller.ui.state.SettingsEvent
+import com.freebuds.controller.ui.state.ConnectionSummary
+import com.freebuds.controller.ui.state.DeviceConnectionSession
+import com.freebuds.controller.ui.state.DeviceNavigationState
 import com.freebuds.controller.ui.theme.ThemeMode
 
 private object Route {
@@ -43,18 +48,19 @@ fun AppNavHost(
     onThemeChange: (ThemeMode) -> Unit,
 ) {
     val context = LocalContext.current
-    var userLeftDevice by remember { mutableStateOf(false) }
+    var navigationState by remember { mutableStateOf(DeviceNavigationState()) }
     val navController = rememberNavController()
     val backStackEntry by navController.currentBackStackEntryAsState()
     val currentRoute = backStackEntry?.destination?.route
 
-    val settingsState by viewModel.settingsState.collectAsState()
+    val settingsState by viewModel.settingsState.collectAsStateWithLifecycle()
     val currentLocale = settingsState.locale
     val wallpaperUri = settingsState.wallpaperUri
     val wallpaperScope = settingsState.wallpaperScope
     val displayMode = settingsState.displayMode
     val glassConfig = settingsState.glassConfig
-    val deviceUiState by viewModel.deviceUiState.collectAsState()
+    val controlChannelState by viewModel.controlChannelState.collectAsStateWithLifecycle()
+    val connection = remember(controlChannelState) { ConnectionSummary.from(controlChannelState) }
 
     val hasPermissions = remember {
         val bluetoothGranted = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
@@ -69,12 +75,47 @@ fun AppNavHost(
     }
     val startDestination = remember { if (!hasPermissions) Route.PermissionGuide else Route.Home }
 
-    LaunchedEffect(deviceUiState.connection, currentRoute, userLeftDevice) {
-        if (deviceUiState.connection.isReady && currentRoute == Route.Home && !userLeftDevice) {
+    val connectionSession = remember(connection.address, connection.attemptId) {
+        val address = connection.address
+        val attemptId = connection.attemptId
+        if (!address.isNullOrBlank() && !attemptId.isNullOrBlank()) {
+            DeviceConnectionSession(
+                address = address,
+                attemptId = attemptId,
+            )
+        } else {
+            null
+        }
+    }
+
+    // Navigation is an intent boundary, not a side effect of calling autoConnectSaved().
+    // Automatic entry is consumed once per system-triggered connection session.
+    LaunchedEffect(connectionSession, connection.isReady, connection.trigger, currentRoute) {
+        val observed = navigationState.observeSession(connectionSession)
+        navigationState = observed
+        if (currentRoute == Route.Home && observed.shouldAutoOpen(connection.isReady, connection.trigger)) {
+            navigationState = observed.markAutoOpened()
             navController.navigate(Route.Device) { launchSingleTop = true }
         }
-        if (!deviceUiState.connection.isReady) {
-            userLeftDevice = false
+    }
+
+    fun openSavedDevice(address: String) {
+        navigationState = navigationState.markUserOpened()
+        viewModel.autoConnectSaved(address)
+        navController.navigate(Route.Device) { launchSingleTop = true }
+    }
+
+    fun openScannedDevice(device: BluetoothDevice) {
+        navigationState = navigationState.markUserOpened()
+        viewModel.connect(device)
+        navController.navigate(Route.Device) { launchSingleTop = true }
+    }
+
+    fun returnHomeFromDevice() {
+        navigationState = navigationState.markUserLeft()
+        navController.navigate(Route.Home) {
+            popUpTo(Route.Home) { inclusive = false }
+            launchSingleTop = true
         }
     }
 
@@ -107,10 +148,10 @@ fun AppNavHost(
                     HomeScreen(
                         viewModel = viewModel,
                         displayMode = displayMode,
-                        onDeviceClick = { address -> viewModel.autoConnectSaved(address) },
+                        onDeviceClick = ::openSavedDevice,
                         onRemoveDevice = { address ->
                             viewModel.removeSavedDevice(address)
-                            if (deviceUiState.connection.address == address) {
+                            if (connection.address == address) {
                                 viewModel.disconnect()
                             }
                         },
@@ -124,10 +165,7 @@ fun AppNavHost(
                         viewModel = viewModel,
                         displayMode = displayMode,
                         onBack = { navController.popBackStack() },
-                        onDeviceSelected = { address ->
-                            viewModel.autoConnectSaved(address)
-                            navController.popBackStack(Route.Home, inclusive = false)
-                        },
+                        onDeviceSelected = ::openScannedDevice,
                     )
                 }
 
@@ -135,10 +173,7 @@ fun AppNavHost(
                     DeviceScreen(
                         viewModel = viewModel,
                         displayMode = displayMode,
-                        onBack = {
-                            userLeftDevice = true
-                            navController.popBackStack(Route.Home, inclusive = false)
-                        },
+                        onBack = ::returnHomeFromDevice,
                         onGesture = { navController.navigate(Route.Gesture) { launchSingleTop = true } },
                         onListeningStats = { navController.navigate(Route.ListeningStats) { launchSingleTop = true } },
                         onSettings = { navController.navigate(Route.Settings) { launchSingleTop = true } },
@@ -155,8 +190,9 @@ fun AppNavHost(
                 }
 
                 composable(Route.Gesture) {
+                    val props by viewModel.props.collectAsStateWithLifecycle()
                     GestureScreen(
-                        props = viewModel.props.collectAsState().value,
+                        props = props,
                         viewModel = viewModel,
                         displayMode = displayMode,
                         onBack = { navController.popBackStack() },

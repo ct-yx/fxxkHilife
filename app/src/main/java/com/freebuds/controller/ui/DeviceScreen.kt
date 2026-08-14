@@ -6,6 +6,7 @@ import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.items
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.*
 import androidx.compose.material3.*
@@ -18,6 +19,7 @@ import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.freebuds.controller.data.DeviceViewModel
 import com.freebuds.controller.i18n.I18n
 import com.freebuds.controller.i18n.i18n
@@ -25,6 +27,7 @@ import com.freebuds.controller.ui.glass.AdaptiveCard
 import com.freebuds.controller.ui.glass.LiquidGlassPanel
 import com.freebuds.controller.ui.state.DeviceEvent
 import com.freebuds.controller.ui.state.DualDeviceProperty
+import com.freebuds.controller.ui.state.ConnectionSummary
 import com.freebuds.controller.ui.foundation.components.AppTopBar
 import com.freebuds.controller.ui.foundation.assets.UiAssetCatalog
 
@@ -104,9 +107,10 @@ fun DeviceScreen(
     onGesture: () -> Unit,
     onListeningStats: () -> Unit,
 ) {
-    val deviceUiState by viewModel.deviceUiState.collectAsState()
-    val props by viewModel.props.collectAsState()
-    val deviceName = deviceUiState.connection.deviceName
+    val controlChannelState by viewModel.controlChannelState.collectAsStateWithLifecycle()
+    val connection = remember(controlChannelState) { ConnectionSummary.from(controlChannelState) }
+    val props by viewModel.props.collectAsStateWithLifecycle()
+    val deviceName = connection.deviceName
         ?: props.deviceModel
         ?: I18n.t("device.battery.earbuds")
     var optimisticAncMode by remember { mutableStateOf<String?>(null) }
@@ -268,21 +272,22 @@ fun DeviceScreen(
                         )
                     }
                 }
-                props.dualConnectDevices.forEach { device ->
-                    item {
-                        DualConnectDeviceCard(
-                            device = device,
-                            preferredAddress = props.dualConnectPreferredDevice,
-                            displayMode = displayMode,
-                                                onPreferred = { viewModel.onEvent(DeviceEvent.SetPreferredDevice(device.address)) },
-                            onConnectionToggle = { target ->
-                                viewModel.onEvent(DeviceEvent.SetDualDeviceOption(device.address, DualDeviceProperty.Connected, target))
-                            },
-                            onAutoToggle = { target ->
-                                viewModel.onEvent(DeviceEvent.SetDualDeviceOption(device.address, DualDeviceProperty.AutoConnect, target))
-                            },
-                        )
-                    }
+                items(
+                    items = props.dualConnectDevices,
+                    key = { it.address },
+                ) { device ->
+                    DualConnectDeviceCard(
+                        device = device,
+                        preferredAddress = props.dualConnectPreferredDevice,
+                        displayMode = displayMode,
+                        onPreferred = { viewModel.onEvent(DeviceEvent.SetPreferredDevice(device.address)) },
+                        onConnectionToggle = { target ->
+                            viewModel.onEvent(DeviceEvent.SetDualDeviceOption(device.address, DualDeviceProperty.Connected, target))
+                        },
+                        onAutoToggle = { target ->
+                            viewModel.onEvent(DeviceEvent.SetDualDeviceOption(device.address, DualDeviceProperty.AutoConnect, target))
+                        },
+                    )
                 }
             }
 

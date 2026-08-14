@@ -1,7 +1,6 @@
 package com.freebuds.controller.ui
 
 import android.content.Context
-import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
@@ -14,14 +13,15 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.geometry.Offset
-import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.freebuds.controller.bluetooth.ScannedDevice
 import com.freebuds.controller.data.DeviceViewModel
 import com.freebuds.controller.data.SavedDeviceConnection
 import com.freebuds.controller.i18n.i18n
+import com.freebuds.controller.ui.state.ConnectionSummary
 import com.freebuds.controller.ui.glass.AdaptiveCard
 import com.freebuds.controller.ui.glass.AdaptiveGlassBanner
 import com.freebuds.controller.ui.glass.GlassBannerTone
@@ -39,10 +39,10 @@ fun HomeScreen(
     onSettings: () -> Unit,
     onScan: () -> Unit,
 ) {
-    val context = LocalContext.current
-    val deviceUiState by viewModel.deviceUiState.collectAsState()
-    val savedConnections by viewModel.savedDeviceConnections.collectAsState()
-    LaunchedEffect(deviceUiState.connection.systemConnected, deviceUiState.connection.stage) {
+    val controlChannelState by viewModel.controlChannelState.collectAsStateWithLifecycle()
+    val connection = remember(controlChannelState) { ConnectionSummary.from(controlChannelState) }
+    val savedConnections by viewModel.savedDeviceConnections.collectAsStateWithLifecycle()
+    LaunchedEffect(connection.address) {
         viewModel.refreshSavedDeviceConnections()
     }
 
@@ -67,7 +67,7 @@ fun HomeScreen(
         ) {
             // 连接摘要只消费稳定 typed state，不再从连接命令返回值猜测页面状态。
             item {
-                val summary = deviceUiState.connection
+                val summary = connection
                 if (summary.systemConnected || summary.stage != com.freebuds.controller.data.ControlChannelStage.Idle) {
                     ConnectionBanner(summary = summary, displayMode = displayMode)
                 }
@@ -104,11 +104,14 @@ fun HomeScreen(
                     }
                 }
             } else {
-                items(savedConnections) { connection ->
+                items(
+                    items = savedConnections,
+                    key = { it.address },
+                ) { connection ->
                     SavedDeviceItem(
                         connection = connection,
                         displayMode = displayMode,
-                                        onClick = { onDeviceClick(connection.address) },
+                        onClick = { onDeviceClick(connection.address) },
                         onRemove = { onRemoveDevice(connection.address) }
                     )
                 }
@@ -227,7 +230,7 @@ private fun ScanSection(
     context: Context,
     onConnectClick: (android.bluetooth.BluetoothDevice) -> Unit,
 ) {
-    val scanState by viewModel.scanState.collectAsState()
+    val scanState by viewModel.scanState.collectAsStateWithLifecycle()
 
     Column(modifier = Modifier.padding(bottom = 8.dp)) {
         // 扫描按钮行
@@ -280,7 +283,9 @@ private fun ScanSection(
                     color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.6f)
                 )
                 huawei.forEach { device ->
-                    ScanDeviceItem(device) { onConnectClick(device.device) }
+                    key(device.device.address) {
+                        ScanDeviceItem(device) { onConnectClick(device.device) }
+                    }
                 }
             }
             if (others.isNotEmpty()) {
@@ -291,7 +296,9 @@ private fun ScanSection(
                     color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.6f)
                 )
                 others.forEach { device ->
-                    ScanDeviceItem(device) { onConnectClick(device.device) }
+                    key(device.device.address) {
+                        ScanDeviceItem(device) { onConnectClick(device.device) }
+                    }
                 }
             }
         }

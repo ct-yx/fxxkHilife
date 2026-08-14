@@ -24,6 +24,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.animation.AnimatedVisibility
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import coil.compose.AsyncImage
 import com.freebuds.controller.BuildConfig
 import com.freebuds.controller.data.UpdateSettings
@@ -37,6 +38,7 @@ import com.freebuds.controller.ui.glass.LiquidGlassConfig
 import com.freebuds.controller.ui.theme.ThemeMode
 import com.freebuds.controller.ui.foundation.components.AppTopBar
 import com.freebuds.controller.ui.foundation.assets.UiAssetCatalog
+import com.freebuds.controller.ui.state.ConnectionSummary
 import com.freebuds.controller.ui.state.SettingsEvent
 import java.text.DateFormat
 import java.util.Date
@@ -52,9 +54,9 @@ fun SettingsScreen(
     onEvent: (SettingsEvent) -> Unit,
 ) {
     val context = LocalContext.current
-    val settingsState by viewModel.settingsState.collectAsState()
-    val deviceUiState by viewModel.deviceUiState.collectAsState()
-    val updateState by viewModel.updateState.collectAsState()
+    val settingsState by viewModel.settingsState.collectAsStateWithLifecycle()
+    val controlChannelState by viewModel.controlChannelState.collectAsStateWithLifecycle()
+    val updateState by viewModel.updateState.collectAsStateWithLifecycle()
     val themeMode = settingsState.themeMode
     val wallpaperUri = settingsState.wallpaperUri
     val wallpaperScope = settingsState.wallpaperScope
@@ -62,7 +64,9 @@ fun SettingsScreen(
     val glassConfig = settingsState.glassConfig
     val locale = settingsState.locale
     val updateSettings = settingsState.updateSettings
-    val isConnected = deviceUiState.connection.isReady
+    val isConnected = remember(controlChannelState) {
+        ConnectionSummary.from(controlChannelState).isReady
+    }
 
     LaunchedEffect(Unit) { onEvent(SettingsEvent.CheckForUpdate()) }
 

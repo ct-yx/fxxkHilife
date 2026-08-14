@@ -13,6 +13,10 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.ArrowBack
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.setValue
 import com.freebuds.controller.ui.UiDisplayMode
 import com.freebuds.controller.ui.WallpaperScope
 import com.freebuds.controller.i18n.i18n
@@ -28,22 +32,33 @@ fun AppScaffold(
     modifier: Modifier = Modifier,
     content: @Composable BoxScope.() -> Unit,
 ) {
-    val showWallpaper = wallpaperUri != null && when (wallpaperScope) {
+    val hasWallpaperUri = !wallpaperUri.isNullOrBlank()
+    val showWallpaper = hasWallpaperUri && when (wallpaperScope) {
         WallpaperScope.ALL -> true
         WallpaperScope.HOME -> route == "home"
         WallpaperScope.SETTINGS -> route == "settings"
     }
-    GlassHost(displayMode = displayMode, modifier = modifier.fillMaxSize(), background = {
-        if (showWallpaper) {
-            AsyncImage(
-                model = Uri.parse(wallpaperUri),
-                contentDescription = null,
-                modifier = Modifier.fillMaxSize(),
-                contentScale = ContentScale.Crop,
-                alpha = if (displayMode == UiDisplayMode.LIQUID_GLASS) 0.5f else 0.35f,
-            )
-        }
-    }, content = content)
+    var backgroundReady by remember(wallpaperUri, showWallpaper) { mutableStateOf(false) }
+
+    GlassHost(
+        displayMode = displayMode,
+        backgroundAvailable = showWallpaper && backgroundReady,
+        modifier = modifier.fillMaxSize(),
+        background = {
+            if (showWallpaper) {
+                AsyncImage(
+                    model = Uri.parse(wallpaperUri),
+                    contentDescription = null,
+                    modifier = Modifier.fillMaxSize(),
+                    contentScale = ContentScale.Crop,
+                    alpha = if (displayMode == UiDisplayMode.LIQUID_GLASS) 0.5f else 0.35f,
+                    onSuccess = { backgroundReady = true },
+                    onError = { backgroundReady = false },
+                )
+            }
+        },
+        content = content,
+    )
 }
 
 @OptIn(ExperimentalMaterial3Api::class)

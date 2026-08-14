@@ -16,8 +16,8 @@
   <a href="https://github.com/ct-yx/fxxkHilife/issues">Report / Join testing</a>
 </p>
 
-> **Current version: v4.3.10 (versionCode 98)**
-> **The first major release after the BT refactor**: connection lifecycle, SPP command scheduling, capability mapping, and the common state contract are now closed; the full UI refactor is a separate next phase.
+> **Current development build: v4.4.0 (versionCode 99)**
+> **Current public release: v4.3.10 (versionCode 98)**; the BT refactor is closed, while v4.4.0 is the UI error-fix test build awaiting GitHub Actions and targeted runtime evidence.
 
 ---
 
@@ -26,6 +26,19 @@
 Full introduction, download links, demos, and development logs are available on GitHub Pages:
 
 <https://ct-yx.github.io/fxxkHilife/>
+
+---
+
+## v4.4.0: UI error-fix test build
+
+This build does not change BT-0 through BT-4. It targets the three confirmed UI issues under the `UI_ERROR_FIX_ALPHA05` build label:
+
+- Real typed `hazeGlass`/`hazeBlur` with `GlassStyle`/`GlassOptics`; missing, invalid, or still-loading wallpaper resolves to Material 3 instead of an empty transparent surface.
+- Stable address keys for saved, scanned, and dual-connect device lists; long lists do not create one effect per row, and expandable content keeps one size animation.
+- Detail navigation is bound to device address and connection `attemptId`; returning during the same session does not reopen it automatically, while Home/Scan clicks explicitly open the detail route.
+- UI flows use lifecycle-aware collection; Home refreshes only for the control target address, and scanned-device selection uses an explicit user connection path.
+
+Only source and static-contract work is complete so far. GitHub Actions, screenshots/runtime diagnostics, and targeted interaction reports are still required; testing covers glass rendering, no-background fallback, list scrolling, and session navigation only—not the BT A-F/36/100-round matrices.
 
 ---
 
@@ -65,7 +78,7 @@ The project is still evolving quickly. Testers with more earbud models are very 
 
 ## Key features
 
-- **Current UI baseline**: both the Material3 and Haze 2.0 rendering paths remain available; visual hierarchy, state presentation, and interactions will be rebuilt through UI-0 to UI-5 after the BT release, with real rendering used as the acceptance criterion.
+- **UI refactor test line**: v4.4.0 continues the UI-ERR-001/002/003 fixes under `UI_ERROR_FIX_ALPHA05`; existing art assets are retained, and screenshots, runtime diagnostics, accessibility, and interaction reports remain the acceptance evidence.
 
 - **Connection and auto-connect**: scan HUAWEI / HONOR earbuds and save known devices; the foreground service detects saved earbuds already connected by Android Bluetooth and opens the app SPP control channel with backoff.
 - **ANC / Awareness / Off**: switch ANC modes from the in-app pill slider, Quick Settings Tile, or persistent notification actions; on third-party Android phones, you can cycle ANC directly from the system quick settings panel without opening the app.

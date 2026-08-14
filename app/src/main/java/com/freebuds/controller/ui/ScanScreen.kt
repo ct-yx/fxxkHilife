@@ -1,5 +1,6 @@
 package com.freebuds.controller.ui
 
+import android.bluetooth.BluetoothDevice
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
@@ -15,6 +16,7 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.freebuds.controller.bluetooth.ScannedDevice
 import com.freebuds.controller.data.ControlChannelStage
 import com.freebuds.controller.data.DeviceViewModel
@@ -24,6 +26,7 @@ import com.freebuds.controller.ui.glass.AdaptiveGlassBanner
 import com.freebuds.controller.ui.glass.GlassBannerTone
 import com.freebuds.controller.ui.foundation.components.AppTopBar
 import com.freebuds.controller.ui.foundation.assets.UiAssetCatalog
+import com.freebuds.controller.ui.state.ConnectionSummary
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -31,11 +34,12 @@ fun ScanScreen(
     viewModel: DeviceViewModel,
     displayMode: UiDisplayMode,
     onBack: () -> Unit,
-    onDeviceSelected: (String) -> Unit,
+    onDeviceSelected: (BluetoothDevice) -> Unit,
 ) {
     val context = LocalContext.current
-    val scanState by viewModel.scanState.collectAsState()
-    val connection = viewModel.deviceUiState.collectAsState().value.connection
+    val scanState by viewModel.scanState.collectAsStateWithLifecycle()
+    val controlChannelState by viewModel.controlChannelState.collectAsStateWithLifecycle()
+    val connection = remember(controlChannelState) { ConnectionSummary.from(controlChannelState) }
 
     Scaffold(
         containerColor = androidx.compose.ui.graphics.Color.Transparent,
@@ -116,11 +120,21 @@ fun ScanScreen(
                         item {
                             SectionHeader(i18n("scan.huawei_honor_devices"))
                         }
-                        items(huawei) { DeviceItem(it, displayMode) { onDeviceSelected(it.device.address) } }
+                        items(
+                            items = huawei,
+                            key = { it.device.address },
+                        ) { device ->
+                            DeviceItem(device, displayMode) { onDeviceSelected(device.device) }
+                        }
                     }
                     if (others.isNotEmpty()) {
                         item { SectionHeader(i18n("scan.other_devices")) }
-                        items(others) { DeviceItem(it, displayMode) { onDeviceSelected(it.device.address) } }
+                        items(
+                            items = others,
+                            key = { it.device.address },
+                        ) { device ->
+                            DeviceItem(device, displayMode) { onDeviceSelected(device.device) }
+                        }
                     }
                 }
             }

@@ -3,14 +3,15 @@
 > 版本号统一修改入口，按清单逐一更新。
 
 ## 当前版本
-- **v4.3.10** (versionCode=98, 2026-08-14；BT 重构后的首个大版本，BT-0 至 BT-4 已完成，BT-4 定向实机门已通过，UI-0 尚未开始)
+- **当前开发包：v4.4.0** (versionCode=99, 2026-08-15；UI 错误报告修复测试包，等待 GitHub Actions 与定向实测)
+- **当前公开发布：v4.3.10** (versionCode=98, 2026-08-14；BT 重构后的首个大版本，BT-0 至 BT-4 已完成，BT-4 定向实机门已通过)
 
 ## v4.3.10 发布基线
 
 - 发布定位：BT 重构后的首个公开大版本；UI 全量重构不包含在本版本内。
 - 发布触发：推送与应用版本一致的 `v4.3.10` 标签，由 CI 负责重新执行自动化检查、构建 APK 和更新 Release 资产。
 - 实机门：`BT4_STATE_CONTRACT_5`，5/5 PASS；只覆盖 HUAWEI FreeBuds 6i / Android API 36 / 固件 `HarmonyOS 6.0.0.292(F001H003C00)` 及该 profile。
-- 下一版本方向：UI-0 → UI-1，先做基线与设计令牌，再进入页面迁移；计划中的 UI-1 版本为 `4.4.0 / 99`。
+- 当前开发方向：UI-ERR-001/002/003 修复后进入 `UI_ERROR_FIX_ALPHA05` 定向实测；报告返回前不标记 UI 阶段完成，也不重复 BT 全量矩阵。
 
 ## 文档同步记录
 
@@ -31,11 +32,11 @@
 
 | 位置 | 当前值 |
 |------|--------|
-| `app/build.gradle.kts` | versionCode=98, versionName="4.3.10" |
-| `app/src/main/res/values/strings.xml` | version_name=4.3.10 |
-| `README.md` | v4.3.10 |
-| `README_EN.md` | v4.3.10 |
-| `DEVELOPMENT_LOG.md` | v4.3.10 (末尾) |
+| `app/build.gradle.kts` | versionCode=99, versionName="4.4.0" |
+| `app/src/main/res/values/strings.xml` | version_name=4.4.0 |
+| `README.md` | v4.4.0 |
+| `README_EN.md` | v4.4.0 |
+| `DEVELOPMENT_LOG.md` | v4.4.0 (末尾) |
 
 ## 一键版本更新脚本
 
@@ -59,6 +60,7 @@ python3 scripts/bump_version.py <versionName> <versionCode> "修复说明"
 
 | 版本 | Code | 日期 | 主要变更 |
 |------|------|------|---------|
+| v4.4.0 | 99 | 2026-08-15 | UI错误报告修复测试包：真实typed glass/blur、无背景Material 3 fallback、列表性能和连接会话导航；待CI与实测 |
 | v4.3.10 | 98 | 2026-08-14 | BT 重构首个公开大版本：连接生命周期、指令调度、能力映射与状态契约收口 |
 | v4.3.9 | 97 | 2026-08-14 | 修正 5A 协议帧长度、CRC 与固定样本边界 |
 | v4.3.8 | 96 | 2026-08-14 | BT-4 状态契约并发、能力语义与定向测试校验收紧 |

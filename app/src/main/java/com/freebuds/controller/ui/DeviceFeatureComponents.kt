@@ -1,7 +1,6 @@
 package com.freebuds.controller.ui
 
 import androidx.compose.animation.AnimatedVisibility
-import androidx.compose.animation.animateContentSize
 import androidx.compose.animation.core.tween
 import androidx.compose.animation.expandVertically
 import androidx.compose.animation.fadeIn
@@ -279,7 +278,6 @@ internal fun DeviceOptionItem(
         modifier = Modifier
             .fillMaxWidth()
             .padding(horizontal = 16.dp, vertical = 5.dp)
-            .animateContentSize(animationSpec = tween(durationMillis = 260))
             .clickable(enabled = options.isNotEmpty()) { expanded = !expanded },
     ) {
         Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(14.dp)) {

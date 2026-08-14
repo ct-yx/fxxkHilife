@@ -12,7 +12,7 @@ on:
       build_label:
         description: "用于区分本次测试包的阶段标签"
         required: false
-        default: "UI_FOUNDATION_SMOKE"
+        default: "UI_ERROR_FIX_ALPHA05"
         type: string
 
 permissions:
@@ -27,7 +27,7 @@ jobs:
     name: Build release APK
     runs-on: ubuntu-latest
     env:
-      BUILD_LABEL: ${{ github.event.inputs.build_label || 'UI_FOUNDATION_SMOKE' }}
+      BUILD_LABEL: ${{ github.event.inputs.build_label || 'UI_ERROR_FIX_ALPHA05' }}
     permissions:
       contents: write
 
@@ -47,7 +47,7 @@ jobs:
         uses: android-actions/setup-android@v3
 
       - name: Install Android SDK packages
-        run: sdkmanager "platforms;android-36" "build-tools;36.0.0"
+        run: sdkmanager "platforms;android-37" "build-tools;37.0.0"
 
       - name: Cache Gradle
         uses: actions/cache@v4

@@ -1508,3 +1508,25 @@
 - 该报告只关闭 BT-4 通用状态/能力契约实机门，不代表重新执行 A-F、ANC 或低延迟功能矩阵；BT-0 至 BT-4 蓝牙重构现已收口，UI-0 按当前安排暂不启动。
 - 发布验收边界：推送 `v4.3.10` 标签后由 GitHub Actions 在干净环境重新执行 `diff-check`、Debug/Release JVM 测试和 APK 构建；CI 生成的 Release APK 作为公开下载资产，Debug APK 与自动化报告作为开发验证资产。
 - 下一阶段固定从 UI-0 开始：先盘点页面、状态、交互、设置 key、Haze 2.0 surface 调用和需保留的美术资源，再创建 UI 专用构建标签；BT-4 的实机报告不作为 UI 验收证据。
+
+## v4.4.0 (2026-08-15)
+
+### 开发测试包
+- UI-ERR-001/002/003 修复：真实 typed glass/blur、无背景 Material 3 fallback、列表滚动和连接会话导航。
+- versionCode: 99
+- versionName: 4.4.0
+- build label: `UI_ERROR_FIX_ALPHA05`
+- 这是等待 GitHub Actions 与定向实测的开发包，不提前标记 UI 阶段完成，也不代表已发布 Release。
+
+### 代码收口
+- `SurfaceRenderer.kt` 迁移到 alpha05 的 `hazeGlass`/`hazeBlur`、`GlassStyle`、`GlassOptics.Fixed` 和 `HazeBlurStyle`；Liquid 与 Blur 不再共用旧 `hazeEffect + blurEffect` 实现。
+- `AppScaffold` 只有在壁纸 URI 有效且图片成功加载后才绑定唯一 Haze source；无壁纸、加载中或加载失败时，实际 renderer 为 Material 3，诊断记录 requested/actual renderer、source 和 fallback reason。
+- Home、Scan、Device 的保存设备、扫描设备和双连接列表使用地址稳定 key；StandardCard/CompactRow 长列表不创建独立 effect，移除展开内容重复尺寸动画。
+- `AppNavHost` 使用 `DeviceNavigationState` 绑定设备地址与连接 `attemptId`：系统触发只自动打开一次，同一会话返回后不重开，Home/Scan 用户点击显式导航到详情。
+- 所有 UI Flow 改用 `collectAsStateWithLifecycle`；Home 保存设备刷新只绑定控制目标地址，扫描设备点击直接走 `BluetoothDevice` 用户连接入口，不再把未保存设备误当作已保存地址自动连接。
+- Surface 解析保留 requested/actual 分离；无 source、非硬件加速或平台能力不足时使用可见的 Material 3/Opaque fallback，并由静态契约阻断旧 alpha03 `hazeEffect`/`blurEffect` 回流。
+
+### 验证与下一道门
+- 静态验证：`git diff --check`、`python3 scripts/validate_ui_contract.py`、`python3 scripts/validate_update_manifest.py docs/update.json`；未执行本地 Gradle，构建交由 GitHub Actions。
+- GitHub Actions 手动构建默认标签为 `UI_ERROR_FIX_ALPHA05`；包返回后只执行 `UI_GLASS_RENDERING_TARGETED`、`UI_GLASS_PERFORMANCE`、`UI_NAVIGATION_SESSION` 和无背景 fallback 诊断，不重复 BT A-F/36/100 项矩阵。
+- UI-0 至 UI-5 继续为 `[~] 目标受阻`，等待 CI 产物、截图/运行诊断、滚动性能和导航交互报告。

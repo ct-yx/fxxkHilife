@@ -21,6 +21,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.freebuds.controller.data.DeviceViewModel
 import com.freebuds.controller.data.ListeningStats
 import com.freebuds.controller.i18n.I18n
@@ -38,7 +39,7 @@ fun ListeningStatsScreen(
     displayMode: UiDisplayMode,
     onBack: () -> Unit,
 ) {
-    val stats by viewModel.listeningStats.collectAsState()
+    val stats by viewModel.listeningStats.collectAsStateWithLifecycle()
     Scaffold(
         containerColor = Color.Transparent,
         topBar = {
