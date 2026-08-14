@@ -14,6 +14,7 @@
 - **UI-ERR-002**：保存设备、扫描设备和双连接列表加入地址稳定 key；长列表默认 Tint/Material 3；展开选项移除与 `AnimatedVisibility` 重复的 `animateContentSize`。
 - **UI-ERR-002/003 收口**：页面状态改用生命周期感知的 `collectAsStateWithLifecycle`；Home 只在控制目标地址变化时刷新保存设备连接，避免每个 `systemConnected` 阶段重复刷新；扫描设备点击使用明确的 `BluetoothDevice` 用户连接入口，保存设备点击继续使用已保存地址入口。
 - **UI-ERR-003**：详情页自动导航绑定 `address + attemptId`，同一会话只消费一次；用户返回后不再自动重开，Home/Scan 点击设备直接产生详情导航意图。
+- **CI 配置跟进**：GitHub Actions 首次进入 AGP 9.1 后发现模块级 `org.jetbrains.kotlin.android` 插件已被内置 Kotlin 接管；已移除模块/根项目的多余声明，保留 Compose Compiler 插件，等待 CI 重新验证源码和 alpha05 typed API。
 
 **未关闭条件**：GitHub Actions 构建通过；`UI_GLASS_RENDERING_TARGETED`、`UI_GLASS_PERFORMANCE`、`UI_NAVIGATION_SESSION` 和无背景 Material 3 fallback 的截图/运行诊断通过。未完成这些条件前，不把本报告标记为完全解决。
 

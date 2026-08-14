@@ -260,6 +260,12 @@
 - 本轮版本为开发测试包 `4.4.0 / 99`，不修改 BT-0 至 BT-4 和既有蓝牙实机矩阵；GitHub Actions 构建标签改为 `UI_ERROR_FIX_ALPHA05`。
 - 当前目标受阻点：等待 GitHub Actions 构建、`UI_GLASS_RENDERING_TARGETED`、`UI_GLASS_PERFORMANCE`、`UI_NAVIGATION_SESSION` 和无背景 fallback 截图/运行诊断；未执行本地 Gradle，不将静态门当作 UI 完成证据。
 
+### 0.5.7 2026-08-15 AGP 9.1 Kotlin 配置修复
+
+- GitHub Actions `31832633710` 的失败根因为 AGP 9.1 拒绝模块级 `org.jetbrains.kotlin.android` 插件；错误发生在构建脚本应用阶段，尚未验证 alpha05 typed API 的源码编译。
+- 已从 `app/build.gradle.kts` 和根 `build.gradle.kts` 移除多余 Kotlin Android 插件声明，保留 `org.jetbrains.kotlin.plugin.compose`，由 AGP 9.1 内置 Kotlin 提供 Android Kotlin 支持。
+- 版本保持 `4.4.0 / 99`，构建标签保持 `UI_ERROR_FIX_ALPHA05`；静态 contract、manifest 和 XML 校验通过，下一步以 GitHub Actions 编译结果为准。
+
 ## 1. 范围与原则
 
 本次只规划两个大项：
