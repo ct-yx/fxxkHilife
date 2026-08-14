@@ -16,8 +16,8 @@
   <a href="https://github.com/ct-yx/fxxkHilife/issues">反馈问题 / 参与测试</a>
 </p>
 
-> **当前版本：v4.3.10**
-> 以简体中文为默认语言，新增可选 English / 繁體中文，并统一设置、通知、快捷开关与核心页面文案。
+> **当前版本：v4.3.10（versionCode 98）**
+> **BT 重构后的首个大版本**：连接生命周期、SPP 指令调度、能力映射和通用状态契约已收口；UI 全量重构作为下一阶段单独推进。
 
 ---
 
@@ -26,6 +26,30 @@
 完整介绍、下载入口、演示素材和开发日志见 GitHub Pages：
 
 <https://ct-yx.github.io/fxxkHilife/>
+
+---
+
+## v4.3.10：BT 重构首个大版本
+
+这次发布先收口蓝牙，不把尚未开始的 UI-0/UI-1 混入版本承诺。BT-0 至 BT-4 已完成，应用继续使用经典蓝牙 SPP / RFCOMM，页面只消费稳定的状态与能力边界。
+
+### 本版本完成
+
+- 统一 `RfcommSppTransport`、`ProtocolSession`、`CommandClient/Scheduler` 与 `EarbudConnectionManager` 的生产路径，避免多个入口重复建连。
+- 按同一 `attempt` 管理连接、初始化、轮询和状态投影；失败连接主动清理 session，手动断开、ACL 断开会先取消工作并 flush 听音统计。
+- 固定 endpoint/channel/source 的来源记录，收紧型号能力表和 Handler 注册；未知型号不再强行注册全部 Handler。
+- ANC 以权威读回为状态来源，低延迟使用写入、ACK/读回和最终状态同步；通用 `EarbudSnapshot` 同时提供能力、控制通道、pending/failed 和兼容 `DeviceProps` 投影。
+- 修复 Huawei 5A 双字节长度、完整帧边界、payload 参数边界和可选 CRC 校验，避免大帧或粘包被错误截断。
+
+### 验证证据
+
+- Debug/Release 各 94 个 JVM 测试通过，均为 `0 failures / 0 errors / 0 skipped`；Debug/Release 构建和 `diff-check` 通过。
+- `BT4_STATE_CONTRACT_5` 在 HUAWEI FreeBuds 6i、Android API 36、固件 `HarmonyOS 6.0.0.292(F001H003C00)` 上 5/5 通过：`reportValid=true`、`overall=PASS`，endpoint=`rfcomm-channel=1`，source=`VerifiedModelConfig`，契约检查 P50/P95=`2549/3573ms`。
+- 上述实机证据只覆盖该设备、系统、固件和测试 profile；其他型号仍需各自的定向日志，不能把 5 轮状态契约结果扩展为所有指令已验证。
+
+### 下一阶段
+
+UI-0 将先建立页面、状态、交互、设置 key 和美术资源基线，再按 UI-1 至 UI-5 重构。现有美术资源保留；Haze 2.0 只作为待验证的 surface 渲染层，下一阶段会以实际渲染效果、降级路径和截图验收为准，不把“声明依赖”当作 UI 完成证据。
 
 ---
 
@@ -41,7 +65,7 @@ fxxkHilife 是一个第三方、开源、离线的耳机控制面板，目标是
 
 ## 主要能力
 
-- **双展示模式**：传统 Material3 展示保持稳定可用；液态玻璃模式基于 Haze 2.0，Home / Scan / Device 统一使用玻璃卡片、状态横幅、背景模糊、虹彩边缘与高光质感。
+- **现有 UI 基线**：当前保留 Material3 与 Haze 2.0 渲染路径；页面视觉、状态展示和交互将在 BT 发布后按 UI-0 至 UI-5 全量重构，并以真实渲染效果验收。
 
 - **设备连接与自动连接**：扫描 HUAWEI / HONOR 耳机，自动保存设备；常驻服务检测到已保存耳机与手机系统蓝牙连接后，会按退避策略自动建立 App SPP 控制连接。
 - **ANC / 透传 / 关闭**：应用内长条胶囊滑块、Quick Settings Tile、常驻通知三按钮均可切换 ANC 模式；在第三方 Android 手机上也可以不打开应用，通过系统快捷开关直接循环切换 ANC。
@@ -75,7 +99,7 @@ fxxkHilife 是一个第三方、开源、离线的耳机控制面板，目标是
 | 设备 | 当前状态 | 说明 |
 |------|----------|------|
 | HUAWEI FreeBuds 6i | 已实测 | 主要开发与验证设备，ANC/手势/电量/低延迟/音质偏好等功能持续调优中 |
-| HUAWEI FreeBuds 7i | 临时保守适配，待完整适配 | v4.2.0 起保留保守能力表以降低初始化压力，并暂时隐藏未确认可用的自动暂停选项；完整适配会在下一轮大版本“更多型号/更多厂商耳机适配”中与测试者继续推进 |
+| HUAWEI FreeBuds 7i | 临时保守适配，待完整适配 | 保留保守能力表以降低初始化压力，并隐藏未确认可用的自动暂停选项；完整适配需要更多实机日志 |
 | HUAWEI FreeBuds 5i | 已适配能力表，待更多实测 | 支持 ANC、ANC 强度、手势、音质偏好、低延迟等能力 |
 | HUAWEI FreeBuds 4i / HONOR Earbuds 2 / 2 Lite / SE | 已适配能力表，待更多实测 | 偏基础能力：ANC、电量、佩戴检测、双击/长按、自动暂停等 |
 | HUAWEI FreeBuds Pro | 已适配能力表，待更多实测 | ANC、语音增强、滑动/长按、双设备等能力存在型号差异 |
@@ -84,7 +108,7 @@ fxxkHilife 是一个第三方、开源、离线的耳机控制面板，目标是
 | HUAWEI FreeBuds SE / SE 2 / SE 4 | 已适配能力表，待更多实测 | 不同 SE 型号能力差异较大 |
 | HUAWEI FreeBuds Studio | 已适配能力表，待更多实测 | 头戴式设备，电量与佩戴能力和 TWS 不同 |
 | HUAWEI FreeLace Pro / Pro 2 | 已适配能力表，待更多实测 | 颈挂式设备，部分 TWS 能力不适用 |
-| 其他 HUAWEI / HONOR Earbuds | 可尝试扫描连接 | 未命中型号时会注册通用 Handler，欢迎提交日志 |
+| 其他 HUAWEI / HONOR Earbuds | 可尝试扫描 | 未知型号不会强行注册全部 Handler；欢迎提交型号识别、能力和连接日志 |
 
 ---
 
@@ -111,7 +135,7 @@ fxxkHilife 是一个第三方、开源、离线的耳机控制面板，目标是
 ## 已知限制
 
 - 目前底层控制依赖经典蓝牙 SPP；部分手机 ROM 可能限制后台蓝牙行为。
-- 不同耳机固件对同一命令的响应可能不同，未实测型号可能出现部分 Handler 初始化失败。
+- 不同耳机固件对同一命令的响应可能不同；未实测型号会按保守能力表处理，部分功能需要单独验证。
 - 电池、ANC、手势等能力会按型号过滤，但能力表仍需要更多真实设备校准。
 - EQ Preset 已支持状态读取、选项展示、内置/已验证兼容预设写入和回读同步；Custom EQ 目前只展示耳机回报的自定义频段和保存状态，不写入未知自定义 payload。
 - 双设备连接为 MVP：耳机侧双连状态可读写，但 Android 控制通道仍以单 active SPP session 为稳定路径；如手机蓝牙栈不允许同时稳定维护多个 SPP，应用会降级为系统连接状态展示 + 当前设备控制。

@@ -1484,7 +1484,8 @@
 
 ## v4.3.10 (2026-08-14)
 
-### 发布
+### 发布定位
+- BT 重构后的首个公开大版本；本 Release 只收口 BT-0 至 BT-4，不把 UI-0/UI-1 作为已完成内容。
 - BT 连接收尾、状态契约竞态与定向测试修复
 - versionCode: 98
 - versionName: 4.3.10
@@ -1505,3 +1506,5 @@
 - 2026-08-14 实机报告回灌：`/Users/chenhong/Downloads/fxxkHilife_hardware_regression_1786696542049.txt` 使用 `4.3.10 / 98`、`BT4_STATE_CONTRACT_5`，设备为 HUAWEI FreeBuds 6i / Android API 36 / 固件 `HarmonyOS 6.0.0.292(F001H003C00)`；5/5 通过，`expectedOperations=5`、`completedOperations=5`、`reportValid=true`、`overall=PASS`。
 - 五轮均为同一轮内 `expectedAttempt=actualAttempt`、`stage=Ready`、`coreReady=true`，能力集合精确匹配，pending 三方一致且为空，failed 为空，`projectionMatches=true`；endpoint=`rfcomm-channel=1`、source=`VerifiedModelConfig`。契约读取耗时 P50/P95=`2549/3573ms`，最大 `3573ms`。
 - 该报告只关闭 BT-4 通用状态/能力契约实机门，不代表重新执行 A-F、ANC 或低延迟功能矩阵；BT-0 至 BT-4 蓝牙重构现已收口，UI-0 按当前安排暂不启动。
+- 发布验收边界：推送 `v4.3.10` 标签后由 GitHub Actions 在干净环境重新执行 `diff-check`、Debug/Release JVM 测试和 APK 构建；CI 生成的 Release APK 作为公开下载资产，Debug APK 与自动化报告作为开发验证资产。
+- 下一阶段固定从 UI-0 开始：先盘点页面、状态、交互、设置 key、Haze 2.0 surface 调用和需保留的美术资源，再创建 UI 专用构建标签；BT-4 的实机报告不作为 UI 验收证据。

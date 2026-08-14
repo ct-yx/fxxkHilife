@@ -3,7 +3,14 @@
 > 版本号统一修改入口，按清单逐一更新。
 
 ## 当前版本
-- **v4.3.10** (versionCode=98, 2026-08-14；BT 连接收尾、状态契约竞态与定向测试修复，BT-4 定向实机门已通过，UI-0 尚未开始)
+- **v4.3.10** (versionCode=98, 2026-08-14；BT 重构后的首个大版本，BT-0 至 BT-4 已完成，BT-4 定向实机门已通过，UI-0 尚未开始)
+
+## v4.3.10 发布基线
+
+- 发布定位：BT 重构后的首个公开大版本；UI 全量重构不包含在本版本内。
+- 发布触发：推送与应用版本一致的 `v4.3.10` 标签，由 CI 负责重新执行自动化检查、构建 APK 和更新 Release 资产。
+- 实机门：`BT4_STATE_CONTRACT_5`，5/5 PASS；只覆盖 HUAWEI FreeBuds 6i / Android API 36 / 固件 `HarmonyOS 6.0.0.292(F001H003C00)` 及该 profile。
+- 下一版本方向：UI-0 → UI-1，先做基线与设计令牌，再进入页面迁移；计划中的 UI-1 版本为 `4.4.0 / 99`。
 
 ## 文档同步记录
 
@@ -18,6 +25,7 @@
 - 2026-08-14：发布 v4.3.10（versionCode=98）BT 连接收尾与状态契约竞态 follow-up 包；修复状态映射串行化、断开前统计 flush、失败 session 清理、Manager command 串行边界、Handler 去重和共享 Adapter Registry，BT-4 重新等待该 Debug 包的 5 轮实机报告。
 - 2026-08-14：v4.3.10 / 98 最终本地 CI 通过；Debug/Release 各 94 个 JVM 单元测试、`diff-check`、Debug/Release 构建均通过。Debug APK SHA-256=`d36085bc37a271d99aa5d0575d9af36be63e93b8eec69af134d562740c72bfec`，Release APK SHA-256=`501df2aa286c19141407c83e926ade357f1b1f55ff5706b6851b19d54de78e54`；随后由 `BT4_STATE_CONTRACT_5` 5 轮实机报告完成回灌。
 - 2026-08-14：`/Users/chenhong/Downloads/fxxkHilife_hardware_regression_1786696542049.txt` 回灌并通过 `BT4_STATE_CONTRACT_5`：5/5、`expectedOperations=5`、`completedOperations=5`、`reportValid=true`、`overall=PASS`；BT-0 至 BT-4 蓝牙重构收口，应用版本仍为 v4.3.10 / versionCode 98，UI-0 暂不启动。
+- 2026-08-14：将 `v4.3.10 / 98` 标记为 BT 重构首个公开 Release 基线；后续 UI 文档与页面改动不回写为 BT 功能完成，也不复用 BT-4 实机报告作为 UI 验收证据。
 
 ## 版本号位置
 
@@ -51,7 +59,7 @@ python3 scripts/bump_version.py <versionName> <versionCode> "修复说明"
 
 | 版本 | Code | 日期 | 主要变更 |
 |------|------|------|---------|
-| v4.3.10 | 98 | 2026-08-14 | BT 连接收尾、状态契约竞态与定向测试修复 |
+| v4.3.10 | 98 | 2026-08-14 | BT 重构首个公开大版本：连接生命周期、指令调度、能力映射与状态契约收口 |
 | v4.3.9 | 97 | 2026-08-14 | 修正 5A 协议帧长度、CRC 与固定样本边界 |
 | v4.3.8 | 96 | 2026-08-14 | BT-4 状态契约并发、能力语义与定向测试校验收紧 |
 | v4.3.7 | 95 | 2026-08-14 | BT-4 通用状态、能力契约与定向实机测试包 |

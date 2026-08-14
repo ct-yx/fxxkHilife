@@ -16,8 +16,8 @@
   <a href="https://github.com/ct-yx/fxxkHilife/issues">Report / Join testing</a>
 </p>
 
-> **Current version: v4.3.10**
-> Keeps Simplified Chinese as the default language and adds selectable English / Traditional Chinese across settings, notifications, Quick Settings, and core screens.
+> **Current version: v4.3.10 (versionCode 98)**
+> **The first major release after the BT refactor**: connection lifecycle, SPP command scheduling, capability mapping, and the common state contract are now closed; the full UI refactor is a separate next phase.
 
 ---
 
@@ -26,6 +26,30 @@
 Full introduction, download links, demos, and development logs are available on GitHub Pages:
 
 <https://ct-yx.github.io/fxxkHilife/>
+
+---
+
+## v4.3.10: first major BT-refactor release
+
+This release closes the Bluetooth work first. It does not include the not-yet-started UI-0/UI-1 implementation. BT-0 through BT-4 are complete; the app continues to use classic Bluetooth SPP / RFCOMM while screens consume the stabilized state and capability boundaries.
+
+### Included in this release
+
+- One production path for `RfcommSppTransport`, `ProtocolSession`, `CommandClient/Scheduler`, and `EarbudConnectionManager`, avoiding duplicate connection attempts from different entry points.
+- One `attempt` owns connection, initialization, polling, and state projection; failed sessions are cleaned up, while manual, ACL, and SPP disconnects cancel work and flush listening statistics before publishing the final state.
+- Explicit endpoint/channel/source evidence, stricter model capability tables, and bounded Handler registration; unknown models are no longer forced through every Handler.
+- ANC uses authoritative read-back as its state source. Low latency uses write, ACK/read-back, and final-state synchronization. `EarbudSnapshot` exposes capabilities, control-channel state, pending/failed state, and the compatible `DeviceProps` projection atomically.
+- Correct Huawei 5A double-byte length, complete-frame, payload-parameter, and optional CRC boundaries so large or concatenated frames are not truncated incorrectly.
+
+### Verification evidence
+
+- 94 JVM tests passed in both Debug and Release, with `0 failures / 0 errors / 0 skipped`; `diff-check` and both APK builds passed.
+- `BT4_STATE_CONTRACT_5` passed 5/5 on HUAWEI FreeBuds 6i, Android API 36, firmware `HarmonyOS 6.0.0.292(F001H003C00)`: `reportValid=true`, `overall=PASS`, endpoint=`rfcomm-channel=1`, source=`VerifiedModelConfig`, contract-check P50/P95=`2549/3573ms`.
+- This hardware evidence is limited to that device, system, firmware, and profile. Other models still need their own targeted logs; five state-contract rounds do not prove every command on every model.
+
+### Next phase
+
+UI-0 will first establish page, state, interaction, settings-key, and art-asset baselines, followed by the UI-1 through UI-5 migration. Existing art assets are retained. Haze 2.0 remains a candidate surface-rendering layer and will be accepted only after real rendering, fallback, and screenshot checks; declaring the dependency alone is not UI completion evidence.
 
 ---
 
@@ -41,7 +65,7 @@ The project is still evolving quickly. Testers with more earbud models are very 
 
 ## Key features
 
-- **Dual display modes**: the stable Material3 classic mode remains available; the Haze 2.0 Liquid Glass mode is now unified across Home / Scan / Device with glass cards, status banners, background blur, iridescent edges, and subtle highlights.
+- **Current UI baseline**: both the Material3 and Haze 2.0 rendering paths remain available; visual hierarchy, state presentation, and interactions will be rebuilt through UI-0 to UI-5 after the BT release, with real rendering used as the acceptance criterion.
 
 - **Connection and auto-connect**: scan HUAWEI / HONOR earbuds and save known devices; the foreground service detects saved earbuds already connected by Android Bluetooth and opens the app SPP control channel with backoff.
 - **ANC / Awareness / Off**: switch ANC modes from the in-app pill slider, Quick Settings Tile, or persistent notification actions; on third-party Android phones, you can cycle ANC directly from the system quick settings panel without opening the app.
@@ -75,7 +99,7 @@ The project is still evolving quickly. Testers with more earbud models are very 
 | Device | Status | Notes |
 |--------|--------|-------|
 | HUAWEI FreeBuds 6i | Tested | Main development device; ANC, gestures, battery, low-latency, and sound preference are being continuously tuned |
-| HUAWEI FreeBuds 7i | Temporary conservative profile, full adaptation pending | v4.2.0 keeps a reduced capability table to lower initialization pressure and temporarily hides the unverified auto-pause option; full 7i support will continue with testers in the next major compatibility round for more models and vendors |
+| HUAWEI FreeBuds 7i | Temporary conservative profile, full adaptation pending | A reduced capability table lowers initialization pressure and hides the unverified auto-pause option; full adaptation needs more hardware logs |
 | HUAWEI FreeBuds 5i | Capability table ready, needs testing | ANC, ANC level, gestures, sound preference, low-latency |
 | HUAWEI FreeBuds 4i / HONOR Earbuds 2 / 2 Lite / SE | Capability table ready, needs testing | Basic ANC, battery, wear detection, double/long tap, auto-pause |
 | HUAWEI FreeBuds Pro | Capability table ready, needs testing | ANC, voice boost, swipe/long press, dual-connect capabilities may vary |
@@ -84,7 +108,7 @@ The project is still evolving quickly. Testers with more earbud models are very 
 | HUAWEI FreeBuds SE / SE 2 / SE 4 | Capability table ready, needs testing | SE models differ significantly in available capabilities |
 | HUAWEI FreeBuds Studio | Capability table ready, needs testing | Headphones; battery and wearing behavior differ from TWS earbuds |
 | HUAWEI FreeLace Pro / Pro 2 | Capability table ready, needs testing | Neckband devices; some TWS features do not apply |
-| Other HUAWEI / HONOR Earbuds | Can try generic connection | Unknown models use generic handlers; logs are welcome |
+| Other HUAWEI / HONOR Earbuds | Can try scanning | Unknown models are not forced through every Handler; model, capability, and connection logs are welcome |
 
 ---
 
@@ -111,7 +135,7 @@ Feedback:
 ## Known limitations
 
 - The control channel currently depends on classic Bluetooth SPP; some Android ROMs may restrict background Bluetooth behavior.
-- Different firmware versions may respond differently to the same commands; untested models may have partial handler initialization failures.
+- Different firmware versions may respond differently to the same commands; untested models use conservative capabilities and need targeted verification for additional features.
 - Battery, ANC, and gesture capabilities are filtered by model, but the capability table still needs calibration from real devices.
 - EQ Preset now supports state reads, option display, built-in and verified compatibility preset writes, and read-back sync. Custom EQ currently only displays the custom rows and saved state reported by the earbuds; unknown custom payload writes are intentionally not sent.
 - Dual Connect is an MVP: earbud-side dual-connect state is readable/writable, but Android control remains on one stable active SPP session. If a phone Bluetooth stack cannot maintain multiple SPP links reliably, the app degrades to system connection display plus current-device control.
