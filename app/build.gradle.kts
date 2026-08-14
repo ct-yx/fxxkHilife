@@ -72,9 +72,9 @@ dependencies {
     implementation("androidx.navigation:navigation-compose:2.8.5")
     debugImplementation("androidx.compose.ui:ui-tooling")
 
-    implementation("dev.chrisbanes.haze:haze:2.0.0-alpha03")
-    implementation("dev.chrisbanes.haze:haze-blur:2.0.0-alpha03")
-    implementation("dev.chrisbanes.haze:haze-blur-materials:2.0.0-alpha03")
+    implementation("dev.chrisbanes.haze:haze:2.0.0-alpha05")
+    implementation("dev.chrisbanes.haze:haze-blur:2.0.0-alpha05")
+    implementation("dev.chrisbanes.haze:haze-glass:2.0.0-alpha05")
     implementation("io.coil-kt:coil-compose:2.7.0")
 
     implementation("androidx.core:core-ktx:1.15.0")

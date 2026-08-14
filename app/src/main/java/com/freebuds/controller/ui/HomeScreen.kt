@@ -19,51 +19,44 @@ import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import com.freebuds.controller.bluetooth.ScannedDevice
-import com.freebuds.controller.data.ConnectionState
 import com.freebuds.controller.data.DeviceViewModel
 import com.freebuds.controller.data.SavedDeviceConnection
 import com.freebuds.controller.i18n.i18n
 import com.freebuds.controller.ui.glass.AdaptiveCard
 import com.freebuds.controller.ui.glass.AdaptiveGlassBanner
 import com.freebuds.controller.ui.glass.GlassBannerTone
-import dev.chrisbanes.haze.HazeState
+import com.freebuds.controller.ui.foundation.components.ConnectionBanner
+import com.freebuds.controller.ui.foundation.components.AppTopBar
+import com.freebuds.controller.ui.foundation.assets.UiAssetCatalog
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun HomeScreen(
     viewModel: DeviceViewModel,
     displayMode: UiDisplayMode,
-    hazeState: HazeState?,
     onDeviceClick: (address: String) -> Unit,
     onRemoveDevice: (address: String) -> Unit,
     onSettings: () -> Unit,
     onScan: () -> Unit,
 ) {
     val context = LocalContext.current
-    val connState by viewModel.connectionState.collectAsState()
-    val props by viewModel.props.collectAsState()
+    val deviceUiState by viewModel.deviceUiState.collectAsState()
     val savedConnections by viewModel.savedDeviceConnections.collectAsState()
-    val coreStateReady = remember(props) {
-        val hasBattery = props.batteryGlobal != null || props.batteryLeft != null || props.batteryRight != null || props.batteryCase != null
-        props.ancMode != null && props.lowLatency != null && hasBattery
-    }
-    LaunchedEffect(connState) {
+    LaunchedEffect(deviceUiState.connection.systemConnected, deviceUiState.connection.stage) {
         viewModel.refreshSavedDeviceConnections()
     }
 
     Scaffold(
         containerColor = androidx.compose.ui.graphics.Color.Transparent,
         topBar = {
-            TopAppBar(
-                title = { Text(i18n("app.name")) },
+            AppTopBar(
+                title = i18n("app.name"),
+                displayMode = displayMode,
                 actions = {
                     IconButton(onClick = onSettings) {
                         Icon(Icons.Default.Settings, contentDescription = i18n("common.settings"))
                     }
                 },
-                colors = TopAppBarDefaults.topAppBarColors(
-                    containerColor = if (displayMode == UiDisplayMode.LIQUID_GLASS) androidx.compose.ui.graphics.Color.Transparent else MaterialTheme.colorScheme.surface
-                )
             )
         }
     ) { padding ->
@@ -72,23 +65,11 @@ fun HomeScreen(
                 .fillMaxSize()
                 .padding(padding)
         ) {
-            // 连接状态横幅
+            // 连接摘要只消费稳定 typed state，不再从连接命令返回值猜测页面状态。
             item {
-                when (val s = connState) {
-                    is ConnectionState.Connected -> {
-                        if (coreStateReady) {
-                            StatusBanner(i18n("scan.connected_to", s.deviceName), displayMode, hazeState, isConnected = true)
-                        } else {
-                            StatusBanner(i18n("device.core_syncing", s.deviceName), displayMode, hazeState)
-                        }
-                    }
-                    is ConnectionState.Connecting -> {
-                        StatusBanner(i18n("scan.connecting_to", s.deviceName), displayMode, hazeState)
-                    }
-                    is ConnectionState.Failed -> {
-                        StatusBanner(i18n("scan.connection_failed", s.reason), displayMode, hazeState, isError = true)
-                    }
-                    else -> {}
+                val summary = deviceUiState.connection
+                if (summary.systemConnected || summary.stage != com.freebuds.controller.data.ControlChannelStage.Idle) {
+                    ConnectionBanner(summary = summary, displayMode = displayMode)
                 }
             }
 
@@ -127,8 +108,7 @@ fun HomeScreen(
                     SavedDeviceItem(
                         connection = connection,
                         displayMode = displayMode,
-                        hazeState = hazeState,
-                        onClick = { onDeviceClick(connection.address) },
+                                        onClick = { onDeviceClick(connection.address) },
                         onRemove = { onRemoveDevice(connection.address) }
                     )
                 }
@@ -139,8 +119,7 @@ fun HomeScreen(
                 Spacer(Modifier.height(8.dp))
                 AdaptiveCard(
                     displayMode = displayMode,
-                    hazeState = hazeState,
-                    modifier = Modifier
+                                modifier = Modifier
                         .fillMaxWidth()
                         .padding(horizontal = 16.dp)
                         .clickable(onClick = onScan),
@@ -173,7 +152,6 @@ fun HomeScreen(
 private fun SavedDeviceItem(
     connection: SavedDeviceConnection,
     displayMode: UiDisplayMode,
-    hazeState: HazeState?,
     onClick: () -> Unit,
     onRemove: () -> Unit,
 ) {
@@ -181,7 +159,6 @@ private fun SavedDeviceItem(
 
     AdaptiveCard(
         displayMode = displayMode,
-        hazeState = hazeState,
         modifier = Modifier
             .fillMaxWidth()
             .padding(horizontal = 16.dp, vertical = 6.dp)
@@ -223,7 +200,7 @@ private fun EarbudsListIcon(connected: Boolean) {
     val color = if (connected) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant
     Box(modifier = Modifier.size(32.dp), contentAlignment = Alignment.Center) {
         Icon(
-            painter = painterResource(com.freebuds.controller.R.drawable.ic_earbuds_case),
+            painter = painterResource(UiAssetCatalog.device(UiAssetCatalog.DeviceVisual.EarbudCase)),
             contentDescription = null,
             modifier = Modifier.size(28.dp),
             tint = color,
@@ -327,7 +304,7 @@ private fun ScanDeviceItem(device: ScannedDevice, onClick: () -> Unit) {
     ListItem(
         leadingContent = {
             Icon(
-                painter = painterResource(com.freebuds.controller.R.drawable.ic_earbuds_case),
+                painter = painterResource(UiAssetCatalog.device(UiAssetCatalog.DeviceVisual.EarbudCase)),
                 contentDescription = null,
                 modifier = Modifier.size(28.dp),
                 tint = MaterialTheme.colorScheme.primary,
@@ -357,13 +334,11 @@ private fun ScanDeviceItem(device: ScannedDevice, onClick: () -> Unit) {
 private fun StatusBanner(
     text: String,
     displayMode: UiDisplayMode,
-    hazeState: HazeState?,
     isError: Boolean = false,
     isConnected: Boolean = false,
 ) {
     AdaptiveGlassBanner(
         displayMode = displayMode,
-        hazeState = hazeState,
         tone = when {
             isError -> GlassBannerTone.Error
             isConnected -> GlassBannerTone.Success

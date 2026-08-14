@@ -24,7 +24,9 @@ import com.freebuds.controller.data.DeviceViewModel
 import com.freebuds.controller.i18n.I18n
 import com.freebuds.controller.i18n.i18n
 import com.freebuds.controller.ui.glass.AdaptiveCard
-import dev.chrisbanes.haze.HazeState
+import com.freebuds.controller.ui.state.DeviceEvent
+import com.freebuds.controller.ui.state.GestureTarget
+import com.freebuds.controller.ui.foundation.components.AppTopBar
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -32,23 +34,15 @@ fun GestureScreen(
     props: DeviceProps,
     viewModel: DeviceViewModel,
     displayMode: UiDisplayMode,
-    hazeState: HazeState?,
     onBack: () -> Unit,
 ) {
     Scaffold(
         containerColor = androidx.compose.ui.graphics.Color.Transparent,
         topBar = {
-            TopAppBar(
-                title = { Text(i18n("gesture.title")) },
-                navigationIcon = {
-                    IconButton(onClick = onBack) {
-                        Icon(Icons.Default.ArrowBack, contentDescription = i18n("common.back"))
-                    }
-                },
-                colors = TopAppBarDefaults.topAppBarColors(
-                    containerColor = if (displayMode == UiDisplayMode.LIQUID_GLASS) androidx.compose.ui.graphics.Color.Transparent else MaterialTheme.colorScheme.surface,
-                    scrolledContainerColor = if (displayMode == UiDisplayMode.LIQUID_GLASS) androidx.compose.ui.graphics.Color.Transparent else MaterialTheme.colorScheme.surface,
-                ),
+            AppTopBar(
+                title = i18n("gesture.title"),
+                displayMode = displayMode,
+                onBack = onBack,
             )
         }
     ) { padding ->
@@ -62,13 +56,12 @@ fun GestureScreen(
                 item {
                     OptionSettingItem(
                         displayMode = displayMode,
-                        hazeState = hazeState,
-                        icon = Icons.Default.TouchApp,
+                                        icon = Icons.Default.TouchApp,
                         title = i18n("gesture.double_left"),
                         current = chineseTap(props.doubleTapLeft),
                         options = props.doubleTapOptions.map(::chineseTap),
                         rawOptions = props.doubleTapOptions,
-                        onSelect = { viewModel.setProperty("action", "double_tap_left", it) }
+                        onSelect = { viewModel.onEvent(DeviceEvent.SetGesture(GestureTarget.DoubleTapLeft, it)) }
                     )
                 }
             }
@@ -76,13 +69,12 @@ fun GestureScreen(
                 item {
                     OptionSettingItem(
                         displayMode = displayMode,
-                        hazeState = hazeState,
-                        icon = Icons.Default.TouchApp,
+                                        icon = Icons.Default.TouchApp,
                         title = i18n("gesture.double_right"),
                         current = chineseTap(props.doubleTapRight),
                         options = props.doubleTapOptions.map(::chineseTap),
                         rawOptions = props.doubleTapOptions,
-                        onSelect = { viewModel.setProperty("action", "double_tap_right", it) }
+                        onSelect = { viewModel.onEvent(DeviceEvent.SetGesture(GestureTarget.DoubleTapRight, it)) }
                     )
                 }
             }
@@ -90,13 +82,12 @@ fun GestureScreen(
                 item {
                     OptionSettingItem(
                         displayMode = displayMode,
-                        hazeState = hazeState,
-                        icon = Icons.Default.TouchApp,
+                                        icon = Icons.Default.TouchApp,
                         title = i18n("gesture.triple_left"),
                         current = chineseTap(props.tripleTapLeft),
                         options = props.tripleTapOptions.map(::chineseTap),
                         rawOptions = props.tripleTapOptions,
-                        onSelect = { viewModel.setProperty("action", "triple_tap_left", it) }
+                        onSelect = { viewModel.onEvent(DeviceEvent.SetGesture(GestureTarget.TripleTapLeft, it)) }
                     )
                 }
             }
@@ -104,13 +95,12 @@ fun GestureScreen(
                 item {
                     OptionSettingItem(
                         displayMode = displayMode,
-                        hazeState = hazeState,
-                        icon = Icons.Default.TouchApp,
+                                        icon = Icons.Default.TouchApp,
                         title = i18n("gesture.triple_right"),
                         current = chineseTap(props.tripleTapRight),
                         options = props.tripleTapOptions.map(::chineseTap),
                         rawOptions = props.tripleTapOptions,
-                        onSelect = { viewModel.setProperty("action", "triple_tap_right", it) }
+                        onSelect = { viewModel.onEvent(DeviceEvent.SetGesture(GestureTarget.TripleTapRight, it)) }
                     )
                 }
             }
@@ -118,13 +108,12 @@ fun GestureScreen(
                 item {
                     OptionSettingItem(
                         displayMode = displayMode,
-                        hazeState = hazeState,
-                        icon = Icons.Default.Swipe,
+                                        icon = Icons.Default.Swipe,
                         title = i18n("gesture.swipe"),
                         current = chineseSwipe(props.swipeGesture),
                         options = props.swipeGestureOptions.map(::chineseSwipe),
                         rawOptions = props.swipeGestureOptions,
-                        onSelect = { viewModel.setProperty("action", "swipe_gesture", it) }
+                        onSelect = { viewModel.onEvent(DeviceEvent.SetGesture(GestureTarget.Swipe, it)) }
                     )
                 }
             }
@@ -132,13 +121,12 @@ fun GestureScreen(
                 item {
                     OptionSettingItem(
                         displayMode = displayMode,
-                        hazeState = hazeState,
-                        icon = Icons.Default.PanTool,
+                                        icon = Icons.Default.PanTool,
                         title = i18n("gesture.long_tap"),
                         current = chineseLongTap(props.longTap),
                         options = props.longTapOptions.map(::chineseLongTap),
                         rawOptions = props.longTapOptions,
-                        onSelect = { viewModel.setProperty("action", "long_tap", it) }
+                        onSelect = { viewModel.onEvent(DeviceEvent.SetGesture(GestureTarget.LongTap, it)) }
                     )
                 }
             }
@@ -178,7 +166,6 @@ internal fun chineseLongTap(raw: String?): String = when (raw) {
 @Composable
 internal fun OptionSettingItem(
     displayMode: UiDisplayMode,
-    hazeState: HazeState?,
     icon: ImageVector,
     title: String,
     current: String?,
@@ -189,7 +176,6 @@ internal fun OptionSettingItem(
     var expanded by remember(title) { mutableStateOf(false) }
     AdaptiveCard(
         displayMode = displayMode,
-        hazeState = hazeState,
         modifier = Modifier
             .fillMaxWidth()
             .padding(horizontal = 16.dp, vertical = 6.dp)

@@ -1,13 +1,13 @@
 package com.freebuds.controller.ui.theme
 
 import android.app.Activity
-import android.content.Context
 import androidx.appcompat.app.AppCompatDelegate
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.darkColorScheme
 import androidx.compose.material3.lightColorScheme
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.SideEffect
+import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalView
 import androidx.core.view.WindowCompat
@@ -36,29 +36,15 @@ private val LightColors = lightColorScheme(
 
 enum class ThemeMode { SYSTEM, DARK, LIGHT }
 
-private const val PREFS_NAME = "fxxk_theme"
-private const val KEY_THEME = "theme_mode"
-
-fun saveThemeMode(context: Context, mode: ThemeMode) {
-    context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
-        .edit().putString(KEY_THEME, mode.name).apply()
-}
-
-fun loadThemeMode(context: Context): ThemeMode {
-    val name = context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
-        .getString(KEY_THEME, ThemeMode.SYSTEM.name) ?: ThemeMode.SYSTEM.name
-    return try { ThemeMode.valueOf(name) } catch (_: Exception) { ThemeMode.SYSTEM }
-}
-
 @Composable
-fun FxxkHilifeTheme(
+fun AppTheme(
     mode: ThemeMode = ThemeMode.SYSTEM,
     content: @Composable () -> Unit,
 ) {
     val isDark = when (mode) {
         ThemeMode.DARK -> true
         ThemeMode.LIGHT -> false
-        ThemeMode.SYSTEM -> true // 默认深色，后续可改为系统感知
+        ThemeMode.SYSTEM -> isSystemInDarkTheme()
     }
     val colorScheme = if (isDark) DarkColors else LightColors
 
@@ -83,3 +69,10 @@ fun FxxkHilifeTheme(
 
     MaterialTheme(colorScheme = colorScheme, content = content)
 }
+
+/** Compatibility entry point kept while callers migrate to the shared AppTheme name. */
+@Composable
+fun FxxkHilifeTheme(
+    mode: ThemeMode = ThemeMode.SYSTEM,
+    content: @Composable () -> Unit,
+) = AppTheme(mode = mode, content = content)

@@ -26,64 +26,60 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.animation.AnimatedVisibility
 import coil.compose.AsyncImage
 import com.freebuds.controller.BuildConfig
+import com.freebuds.controller.data.UpdateSettings
+import com.freebuds.controller.data.UpdateUiState
 import com.freebuds.controller.data.DeviceViewModel
 import com.freebuds.controller.i18n.i18n
 import com.freebuds.controller.i18n.I18nLocale
-import com.freebuds.controller.util.LogBuffer
 import com.freebuds.controller.ui.glass.AdaptiveCard
 import com.freebuds.controller.ui.glass.GlassSurfaceProfile
 import com.freebuds.controller.ui.glass.LiquidGlassConfig
 import com.freebuds.controller.ui.theme.ThemeMode
-import dev.chrisbanes.haze.HazeState
-import com.freebuds.controller.ui.theme.saveThemeMode
+import com.freebuds.controller.ui.foundation.components.AppTopBar
+import com.freebuds.controller.ui.foundation.assets.UiAssetCatalog
+import com.freebuds.controller.ui.state.SettingsEvent
+import java.text.DateFormat
+import java.util.Date
+import java.util.Locale
 
 enum class WallpaperScope { ALL, HOME, SETTINGS }
-
-fun loadWallpaperScope(context: android.content.Context): WallpaperScope {
-    val name = context.getSharedPreferences("fxxk_theme", android.content.Context.MODE_PRIVATE)
-        .getString("wallpaper_scope", WallpaperScope.ALL.name) ?: WallpaperScope.ALL.name
-    return try { WallpaperScope.valueOf(name) } catch (_: Exception) { WallpaperScope.ALL }
-}
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun SettingsScreen(
     viewModel: DeviceViewModel,
     onBack: () -> Unit,
-    themeMode: ThemeMode,
-    onThemeChange: (ThemeMode) -> Unit,
-    wallpaperUri: String?,
-    onWallpaperChange: (String?) -> Unit,
-    wallpaperScope: WallpaperScope,
-    onWallpaperScopeChange: (WallpaperScope) -> Unit,
-    displayMode: UiDisplayMode,
-    hazeState: HazeState?,
-    glassConfig: LiquidGlassConfig,
-    onGlassConfigChange: (LiquidGlassConfig) -> Unit,
-    onDisplayModeChange: (UiDisplayMode) -> Unit,
-    locale: I18nLocale,
-    onLocaleChange: (I18nLocale) -> Unit,
+    onEvent: (SettingsEvent) -> Unit,
 ) {
     val context = LocalContext.current
-    val connState by viewModel.connectionState.collectAsState()
-    val isConnected = connState is com.freebuds.controller.data.ConnectionState.Connected
+    val settingsState by viewModel.settingsState.collectAsState()
+    val deviceUiState by viewModel.deviceUiState.collectAsState()
+    val updateState by viewModel.updateState.collectAsState()
+    val themeMode = settingsState.themeMode
+    val wallpaperUri = settingsState.wallpaperUri
+    val wallpaperScope = settingsState.wallpaperScope
+    val displayMode = settingsState.displayMode
+    val glassConfig = settingsState.glassConfig
+    val locale = settingsState.locale
+    val updateSettings = settingsState.updateSettings
+    val isConnected = deviceUiState.connection.isReady
+
+    LaunchedEffect(Unit) { onEvent(SettingsEvent.CheckForUpdate()) }
 
     var showGlassWallpaperGuide by remember { mutableStateOf(false) }
     var enableGlassAfterWallpaperPick by remember { mutableStateOf(false) }
 
     val imagePicker = rememberLauncherForActivityResult(
-        contract = ActivityResultContracts.GetContent()
+        contract = ActivityResultContracts.OpenDocument()
     ) { uri ->
         uri?.let {
             val flags = Intent.FLAG_GRANT_READ_URI_PERMISSION
-            context.contentResolver.takePersistableUriPermission(it, flags)
+            runCatching { context.contentResolver.takePersistableUriPermission(it, flags) }
             val uriStr = it.toString()
-            onWallpaperChange(uriStr)
-            context.getSharedPreferences("fxxk_theme", android.content.Context.MODE_PRIVATE)
-                .edit().putString("wallpaper_uri", uriStr).apply()
+            onEvent(SettingsEvent.SetWallpaperUri(uriStr))
             if (enableGlassAfterWallpaperPick) {
                 enableGlassAfterWallpaperPick = false
-                onDisplayModeChange(UiDisplayMode.LIQUID_GLASS)
+                onEvent(SettingsEvent.SetDisplayMode(UiDisplayMode.LIQUID_GLASS))
             }
         }
     }
@@ -97,14 +93,14 @@ fun SettingsScreen(
                 TextButton(onClick = {
                     showGlassWallpaperGuide = false
                     enableGlassAfterWallpaperPick = true
-                    imagePicker.launch("image/*")
+                    imagePicker.launch(arrayOf("image/*"))
                 }) { Text(i18n("settings.wallpaper_guide.pick")) }
             },
             dismissButton = {
                 Row {
                     TextButton(onClick = {
                         showGlassWallpaperGuide = false
-                        onDisplayModeChange(UiDisplayMode.LIQUID_GLASS)
+                        onEvent(SettingsEvent.SetDisplayMode(UiDisplayMode.LIQUID_GLASS))
                     }) { Text(i18n("settings.wallpaper_guide.continue")) }
                     TextButton(onClick = { showGlassWallpaperGuide = false }) { Text(i18n("common.cancel")) }
                 }
@@ -115,17 +111,10 @@ fun SettingsScreen(
     Scaffold(
         containerColor = androidx.compose.ui.graphics.Color.Transparent,
         topBar = {
-            TopAppBar(
-                title = { Text(i18n("settings.title")) },
-                navigationIcon = {
-                    IconButton(onClick = onBack) {
-                        Icon(Icons.Default.ArrowBack, contentDescription = i18n("common.back"))
-                    }
-                },
-                colors = TopAppBarDefaults.topAppBarColors(
-                    containerColor = if (displayMode == UiDisplayMode.LIQUID_GLASS) androidx.compose.ui.graphics.Color.Transparent else MaterialTheme.colorScheme.surface,
-                    scrolledContainerColor = if (displayMode == UiDisplayMode.LIQUID_GLASS) androidx.compose.ui.graphics.Color.Transparent else MaterialTheme.colorScheme.surface,
-                ),
+            AppTopBar(
+                title = i18n("settings.title"),
+                displayMode = displayMode,
+                onBack = onBack,
             )
         }
     ) { padding ->
@@ -140,24 +129,21 @@ fun SettingsScreen(
             item {
                 ThemeSelector(
                     displayMode = displayMode,
-                    hazeState = hazeState,
-                    current = themeMode,
+                                current = themeMode,
                     onSelect = { mode ->
-                        onThemeChange(mode)
-                        saveThemeMode(context, mode)
+                        onEvent(SettingsEvent.SetThemeMode(mode))
                     }
                 )
             }
             item {
                 DisplayModeSelector(
                     displayMode = displayMode,
-                    hazeState = hazeState,
-                    current = displayMode,
+                                current = displayMode,
                     onSelect = { mode ->
                         if (mode == UiDisplayMode.LIQUID_GLASS && wallpaperUri == null) {
                             showGlassWallpaperGuide = true
                         } else {
-                            onDisplayModeChange(mode)
+                            onEvent(SettingsEvent.SetDisplayMode(mode))
                         }
                     },
                 )
@@ -167,9 +153,8 @@ fun SettingsScreen(
             item {
                 LanguageSelector(
                     displayMode = displayMode,
-                    hazeState = hazeState,
-                    current = locale,
-                    onSelect = onLocaleChange,
+                                current = locale,
+                    onSelect = { onEvent(SettingsEvent.SetLocale(it)) },
                 )
             }
 
@@ -178,9 +163,8 @@ fun SettingsScreen(
             item {
                 LiquidGlassPersonalizationCard(
                     displayMode = displayMode,
-                    hazeState = hazeState,
-                    config = glassConfig,
-                    onConfigChange = onGlassConfigChange,
+                                config = glassConfig,
+                    onConfigChange = { onEvent(SettingsEvent.SetGlassConfig(it)) },
                 )
             }
 
@@ -189,27 +173,19 @@ fun SettingsScreen(
             item {
                 WallpaperPicker(
                     displayMode = displayMode,
-                    hazeState = hazeState,
-                    uri = wallpaperUri,
-                    onPick = { imagePicker.launch("image/*") },
+                                uri = wallpaperUri,
+                    onPick = { imagePicker.launch(arrayOf("image/*")) },
                     onClear = {
-                        onWallpaperChange(null)
-                        context.getSharedPreferences("fxxk_theme", android.content.Context.MODE_PRIVATE)
-                            .edit().remove("wallpaper_uri").apply()
+                        onEvent(SettingsEvent.SetWallpaperUri(null))
                     }
                 )
             }
             if (wallpaperUri != null) {
                 item {
-                    WallpaperScopeSelector(
+                        WallpaperScopeSelector(
                         displayMode = displayMode,
-                        hazeState = hazeState,
-                        current = wallpaperScope,
-                        onSelect = {
-                            onWallpaperScopeChange(it)
-                            context.getSharedPreferences("fxxk_theme", android.content.Context.MODE_PRIVATE)
-                                .edit().putString("wallpaper_scope", it.name).apply()
-                        }
+                                        current = wallpaperScope,
+                        onSelect = { onEvent(SettingsEvent.SetWallpaperScope(it)) }
                     )
                 }
             }
@@ -219,18 +195,24 @@ fun SettingsScreen(
             item {
                 SettingsCard(
                     displayMode = displayMode,
-                    hazeState = hazeState,
-                    headlineContent = { Text(i18n("settings.version")) },
+                                headlineContent = { Text(i18n("settings.version")) },
                     supportingContent = { Text(BuildConfig.VERSION_NAME) },
                     leadingContent = { Icon(Icons.Default.Info, contentDescription = null) },
+                )
+            }
+            item {
+                UpdateCard(
+                    displayMode = displayMode,
+                    state = updateState,
+                    settings = updateSettings,
+                    onEvent = onEvent,
                 )
             }
             item {
                 val savedAddresses = viewModel.getSavedAddresses()
                 SettingsCard(
                     displayMode = displayMode,
-                    hazeState = hazeState,
-                    headlineContent = { Text(i18n("settings.saved_devices", savedAddresses.size)) },
+                                headlineContent = { Text(i18n("settings.saved_devices", savedAddresses.size)) },
                     supportingContent = {
                         Text(if (savedAddresses.isEmpty()) i18n("common.none") else savedAddresses.joinToString("\n"))
                     },
@@ -241,22 +223,16 @@ fun SettingsScreen(
             // ── 连接偏好 ──
             item { SettingsHeader(i18n("settings.connection_preferences")) }
             item {
-                val prefs = context.getSharedPreferences("settings", android.content.Context.MODE_PRIVATE)
-                var autoLowLatency by remember {
-                    mutableStateOf(prefs.getBoolean("auto_low_latency", true))
-                }
                 SettingsCard(
                     displayMode = displayMode,
-                    hazeState = hazeState,
-                    headlineContent = { Text(i18n("settings.auto_low_latency")) },
+                                headlineContent = { Text(i18n("settings.auto_low_latency")) },
                     supportingContent = { Text(i18n("settings.auto_low_latency_desc")) },
                     leadingContent = { Icon(Icons.Default.Speed, contentDescription = null) },
                     trailingContent = {
                         Switch(
-                            checked = autoLowLatency,
+                            checked = settingsState.autoLowLatency,
                             onCheckedChange = {
-                                autoLowLatency = it
-                                prefs.edit().putBoolean("auto_low_latency", it).apply()
+                                onEvent(SettingsEvent.SetAutoLowLatency(it))
                             }
                         )
                     },
@@ -268,25 +244,31 @@ fun SettingsScreen(
             item {
                 SettingsCard(
                     displayMode = displayMode,
-                    hazeState = hazeState,
-                    headlineContent = { Text(i18n("settings.share_log")) },
+                                headlineContent = { Text(i18n("settings.share_log")) },
                     supportingContent = { Text(i18n("settings.share_log_desc")) },
                     leadingContent = { Icon(Icons.Default.Share, contentDescription = null) },
                     onClick = { viewModel.shareLog(context) },
                 )
             }
             item {
-                LogRetentionSelector(displayMode = displayMode, hazeState = hazeState)
+                LogRetentionSelector(
+                    displayMode = displayMode,
+                    maxLines = settingsState.logMaxLines,
+                    onMaxLinesChange = { onEvent(SettingsEvent.SetLogMaxLines(it)) },
+                )
             }
             item {
-                ProtocolFrameLogToggle(displayMode = displayMode, hazeState = hazeState)
+                ProtocolFrameLogToggle(
+                    displayMode = displayMode,
+                    enabled = settingsState.protocolFrameLogging,
+                    onEnabledChange = { onEvent(SettingsEvent.SetProtocolFrameLogging(it)) },
+                )
             }
             if (isConnected) {
                 item {
                     SettingsCard(
                         displayMode = displayMode,
-                        hazeState = hazeState,
-                        headlineContent = { Text(i18n("settings.debug_terminal")) },
+                                        headlineContent = { Text(i18n("settings.debug_terminal")) },
                         supportingContent = { Text(i18n("settings.debug_terminal_desc")) },
                         leadingContent = { Icon(Icons.Default.Terminal, contentDescription = null) },
                         trailingContent = { Icon(Icons.Default.ChevronRight, contentDescription = null) },
@@ -297,8 +279,7 @@ fun SettingsScreen(
                 item {
                     SettingsCard(
                         displayMode = displayMode,
-                        hazeState = hazeState,
-                        headlineContent = { Text(i18n("settings.debug_requires_connected")) },
+                                        headlineContent = { Text(i18n("settings.debug_requires_connected")) },
                         leadingContent = { Icon(Icons.Default.Lock, contentDescription = null) },
                     )
                 }
@@ -309,8 +290,7 @@ fun SettingsScreen(
             item {
                 AppDetailsCard(
                     displayMode = displayMode,
-                    hazeState = hazeState,
-                    onOpenProject = {
+                                onOpenProject = {
                         context.startActivity(Intent(Intent.ACTION_VIEW, Uri.parse("https://github.com/ct-yx/fxxkHilife")))
                     },
                     onOpenReleases = {
@@ -325,8 +305,7 @@ fun SettingsScreen(
                 var expanded by remember { mutableStateOf(false) }
                 AdaptiveCard(
                     displayMode = displayMode,
-                    hazeState = hazeState,
-                    modifier = Modifier
+                                modifier = Modifier
                         .fillMaxWidth()
                         .padding(horizontal = 16.dp, vertical = 6.dp),
                 ) {
@@ -335,7 +314,7 @@ fun SettingsScreen(
                         verticalAlignment = Alignment.CenterVertically,
                     ) {
                         Icon(
-                            painter = painterResource(com.freebuds.controller.R.drawable.ic_anc_awareness),
+                            painter = painterResource(UiAssetCatalog.anc(UiAssetCatalog.AncVisual.Awareness)),
                             contentDescription = null,
                             modifier = Modifier.size(40.dp),
                         )
@@ -349,7 +328,7 @@ fun SettingsScreen(
                     }
                     AnimatedVisibility(visible = expanded) {
                         Column(modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp)) {
-                            Icon(painter = painterResource(com.freebuds.controller.R.drawable.ic_anc_cancellation),
+                            Icon(painter = painterResource(UiAssetCatalog.anc(UiAssetCatalog.AncVisual.Cancellation)),
                                 contentDescription = null,
                                 modifier = Modifier.size(20.dp))
                             Spacer(Modifier.height(4.dp))
@@ -359,7 +338,7 @@ fun SettingsScreen(
                             )
                             Spacer(Modifier.height(12.dp))
 
-                            Icon(painter = painterResource(com.freebuds.controller.R.drawable.ic_anc_awareness),
+                            Icon(painter = painterResource(UiAssetCatalog.anc(UiAssetCatalog.AncVisual.Awareness)),
                                 contentDescription = null,
                                 modifier = Modifier.size(20.dp))
                             Spacer(Modifier.height(4.dp))
@@ -369,7 +348,7 @@ fun SettingsScreen(
                             )
                             Spacer(Modifier.height(12.dp))
 
-                            Icon(painter = painterResource(com.freebuds.controller.R.drawable.ic_anc_normal),
+                            Icon(painter = painterResource(UiAssetCatalog.anc(UiAssetCatalog.AncVisual.Off)),
                                 contentDescription = null,
                                 modifier = Modifier.size(20.dp))
                             Spacer(Modifier.height(4.dp))
@@ -403,7 +382,6 @@ private fun SettingsHeader(text: String) {
 @Composable
 private fun SettingsCard(
     displayMode: UiDisplayMode,
-    hazeState: HazeState?,
     modifier: Modifier = Modifier,
     onClick: (() -> Unit)? = null,
     leadingContent: @Composable (() -> Unit)? = null,
@@ -413,7 +391,6 @@ private fun SettingsCard(
 ) {
     AdaptiveCard(
         displayMode = displayMode,
-        hazeState = hazeState,
         modifier = modifier
             .fillMaxWidth()
             .padding(horizontal = 16.dp, vertical = 6.dp)
@@ -440,9 +417,120 @@ private fun SettingsCard(
 }
 
 @Composable
+private fun UpdateCard(
+    displayMode: UiDisplayMode,
+    state: UpdateUiState,
+    settings: UpdateSettings,
+    onEvent: (SettingsEvent) -> Unit,
+) {
+    val title = when (state) {
+        UpdateUiState.Idle -> i18n("update.idle")
+        is UpdateUiState.Checking -> i18n("update.checking")
+        is UpdateUiState.UpToDate -> i18n("update.up_to_date")
+        is UpdateUiState.Available -> i18n("update.available", state.manifest.versionName)
+        is UpdateUiState.Downloading -> i18n("update.downloading")
+        is UpdateUiState.ReadyToInstall -> i18n("update.ready_to_install")
+        is UpdateUiState.Installing -> i18n("update.installing")
+        is UpdateUiState.Error -> i18n("update.failed")
+    }
+    val supporting = when (state) {
+        is UpdateUiState.Error -> state.message
+        is UpdateUiState.Available -> state.manifest.notes.ifBlank { i18n("update.available_desc") }
+        is UpdateUiState.Downloading -> state.totalBytes?.let {
+            "${state.downloadedBytes / 1024} / ${it / 1024} KB"
+        } ?: "${state.downloadedBytes / 1024} KB"
+        is UpdateUiState.ReadyToInstall -> i18n("update.ready_to_install_desc")
+        else -> i18n("update.current_version", BuildConfig.VERSION_NAME, BuildConfig.VERSION_CODE)
+    }
+    val manifest = when (state) {
+        is UpdateUiState.Available -> state.manifest
+        is UpdateUiState.Downloading -> state.manifest
+        is UpdateUiState.ReadyToInstall -> state.manifest
+        is UpdateUiState.Installing -> state.manifest
+        else -> null
+    }
+    val checkedAtMs = when (state) {
+        is UpdateUiState.Checking -> state.startedAtMs
+        is UpdateUiState.UpToDate -> state.checkedAtMs
+        is UpdateUiState.Available -> state.checkedAtMs
+        else -> settings.lastCheckAtMs
+    }
+    AdaptiveCard(
+        displayMode = displayMode,
+        modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 6.dp),
+    ) {
+        Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Icon(Icons.Default.SystemUpdate, contentDescription = null, tint = MaterialTheme.colorScheme.primary)
+                Spacer(Modifier.width(12.dp))
+                Column(Modifier.weight(1f)) {
+                    Text(i18n("update.title"), style = MaterialTheme.typography.titleSmall, fontWeight = FontWeight.SemiBold)
+                    Text(title, style = MaterialTheme.typography.bodyMedium)
+                }
+            }
+            Text(supporting, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+            Text(
+                i18n("update.last_checked", formatUpdateTimestamp(checkedAtMs)),
+                style = MaterialTheme.typography.labelSmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+            )
+            manifest?.let {
+                Text(
+                    i18n(
+                        "update.release_metadata",
+                        it.channel.name.lowercase(Locale.US),
+                        it.publishedAt.ifBlank { "—" },
+                    ),
+                    style = MaterialTheme.typography.labelSmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                )
+            }
+            if (state is UpdateUiState.Downloading) {
+                val progress = state.totalBytes?.takeIf { it > 0 }?.let { state.downloadedBytes.toFloat() / it }
+                if (progress == null) LinearProgressIndicator(modifier = Modifier.fillMaxWidth())
+                else LinearProgressIndicator(progress = { progress.coerceIn(0f, 1f) }, modifier = Modifier.fillMaxWidth())
+            }
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Text(i18n("update.auto_check"), modifier = Modifier.weight(1f), style = MaterialTheme.typography.bodySmall)
+                Switch(
+                    checked = settings.autoCheckEnabled,
+                    onCheckedChange = { onEvent(SettingsEvent.SetUpdateSettings(settings.copy(autoCheckEnabled = it))) },
+                )
+            }
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Text(i18n("update.auto_download"), modifier = Modifier.weight(1f), style = MaterialTheme.typography.bodySmall)
+                Switch(
+                    checked = settings.autoDownloadEnabled,
+                    onCheckedChange = { onEvent(SettingsEvent.SetUpdateSettings(settings.copy(autoDownloadEnabled = it))) },
+                )
+            }
+            Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                when (state) {
+                    is UpdateUiState.Available -> Button(onClick = { onEvent(SettingsEvent.DownloadUpdate) }) { Text(i18n("update.download")) }
+                    is UpdateUiState.Downloading -> OutlinedButton(onClick = { onEvent(SettingsEvent.CancelUpdateDownload) }) { Text(i18n("update.cancel")) }
+                    is UpdateUiState.ReadyToInstall -> Button(onClick = { onEvent(SettingsEvent.InstallUpdate) }) { Text(i18n("update.install")) }
+                    is UpdateUiState.Error -> OutlinedButton(onClick = { onEvent(SettingsEvent.CheckForUpdate(force = true)) }) { Text(i18n("common.retry")) }
+                    else -> OutlinedButton(onClick = { onEvent(SettingsEvent.CheckForUpdate(force = true)) }) { Text(i18n("update.check_now")) }
+                }
+                TextButton(onClick = { onEvent(SettingsEvent.OpenRelease(manifest?.releaseUrl)) }) {
+                    Text(i18n("update.open_release"))
+                }
+            }
+        }
+    }
+}
+
+@Composable
+private fun formatUpdateTimestamp(timestampMs: Long): String =
+    if (timestampMs <= 0L) {
+        i18n("update.never_checked")
+    } else {
+        DateFormat.getDateTimeInstance(DateFormat.SHORT, DateFormat.SHORT).format(Date(timestampMs))
+    }
+
+@Composable
 private fun LiquidGlassPersonalizationCard(
     displayMode: UiDisplayMode,
-    hazeState: HazeState?,
     config: LiquidGlassConfig,
     onConfigChange: (LiquidGlassConfig) -> Unit,
 ) {
@@ -450,7 +538,6 @@ private fun LiquidGlassPersonalizationCard(
     var advancedExpanded by remember { mutableStateOf(false) }
     AdaptiveCard(
         displayMode = displayMode,
-        hazeState = hazeState,
         modifier = Modifier
             .fillMaxWidth()
             .padding(horizontal = 16.dp, vertical = 6.dp),
@@ -623,13 +710,11 @@ private fun GlassSliderRow(
 @Composable
 private fun AppDetailsCard(
     displayMode: UiDisplayMode,
-    hazeState: HazeState?,
     onOpenProject: () -> Unit,
     onOpenReleases: () -> Unit,
 ) {
     AdaptiveCard(
         displayMode = displayMode,
-        hazeState = hazeState,
         modifier = Modifier
             .fillMaxWidth()
             .padding(horizontal = 16.dp, vertical = 6.dp),
@@ -644,7 +729,7 @@ private fun AppDetailsCard(
                 ) {
                     Box(contentAlignment = Alignment.Center) {
                         Icon(
-                            painter = painterResource(com.freebuds.controller.R.drawable.ic_earbuds_case),
+                            painter = painterResource(UiAssetCatalog.device(UiAssetCatalog.DeviceVisual.EarbudCase)),
                             contentDescription = null,
                             modifier = Modifier.size(30.dp),
                         )
@@ -696,7 +781,6 @@ private fun AppDetailsCard(
 @Composable
 private fun ThemeSelector(
     displayMode: UiDisplayMode,
-    hazeState: HazeState?,
     current: ThemeMode,
     onSelect: (ThemeMode) -> Unit,
 ) {
@@ -708,7 +792,6 @@ private fun ThemeSelector(
 
     AdaptiveCard(
         displayMode = displayMode,
-        hazeState = hazeState,
         modifier = Modifier
             .fillMaxWidth()
             .padding(horizontal = 16.dp, vertical = 8.dp),
@@ -765,13 +848,11 @@ private fun ThemeSelector(
 @Composable
 private fun LanguageSelector(
     displayMode: UiDisplayMode,
-    hazeState: HazeState?,
     current: I18nLocale,
     onSelect: (I18nLocale) -> Unit,
 ) {
     AdaptiveCard(
         displayMode = displayMode,
-        hazeState = hazeState,
         modifier = Modifier
             .fillMaxWidth()
             .padding(horizontal = 16.dp, vertical = 5.dp),
@@ -797,13 +878,11 @@ private fun LanguageSelector(
 @Composable
 private fun DisplayModeSelector(
     displayMode: UiDisplayMode,
-    hazeState: HazeState?,
     current: UiDisplayMode,
     onSelect: (UiDisplayMode) -> Unit,
 ) {
     AdaptiveCard(
         displayMode = displayMode,
-        hazeState = hazeState,
         modifier = Modifier
             .fillMaxWidth()
             .padding(horizontal = 16.dp, vertical = 8.dp),
@@ -855,14 +934,12 @@ private fun DisplayModeSelector(
 @Composable
 private fun WallpaperPicker(
     displayMode: UiDisplayMode,
-    hazeState: HazeState?,
     uri: String?,
     onPick: () -> Unit,
     onClear: () -> Unit,
 ) {
     AdaptiveCard(
         displayMode = displayMode,
-        hazeState = hazeState,
         modifier = Modifier
             .fillMaxWidth()
             .padding(horizontal = 16.dp, vertical = 8.dp),
@@ -901,7 +978,6 @@ private fun WallpaperPicker(
 @Composable
 private fun WallpaperScopeSelector(
     displayMode: UiDisplayMode,
-    hazeState: HazeState?,
     current: WallpaperScope,
     onSelect: (WallpaperScope) -> Unit,
 ) {
@@ -912,7 +988,6 @@ private fun WallpaperScopeSelector(
     )
     AdaptiveCard(
         displayMode = displayMode,
-        hazeState = hazeState,
         modifier = Modifier
             .fillMaxWidth()
             .padding(horizontal = 16.dp, vertical = 6.dp),
@@ -934,18 +1009,16 @@ private fun WallpaperScopeSelector(
 }
 
 @Composable
-private fun LogRetentionSelector(displayMode: UiDisplayMode, hazeState: HazeState?) {
-    val context = LocalContext.current
-    val prefs = context.getSharedPreferences("fxxk_theme", android.content.Context.MODE_PRIVATE)
-    var maxLines by remember {
-        mutableIntStateOf(prefs.getInt("log_max_lines", LogBuffer.getMaxLines()))
-    }
+private fun LogRetentionSelector(
+    displayMode: UiDisplayMode,
+    maxLines: Int,
+    onMaxLinesChange: (Int) -> Unit,
+) {
 
     val options = listOf(500, 1000, 2000, 5000, 10000).map { it to i18n("settings.log_lines", it) }
 
     AdaptiveCard(
         displayMode = displayMode,
-        hazeState = hazeState,
         modifier = Modifier
             .fillMaxWidth()
             .padding(horizontal = 16.dp, vertical = 6.dp),
@@ -963,9 +1036,7 @@ private fun LogRetentionSelector(displayMode: UiDisplayMode, hazeState: HazeStat
                 FilterChip(
                     selected = maxLines == value,
                     onClick = {
-                        maxLines = value
-                        LogBuffer.setMaxLines(value)
-                        prefs.edit().putInt("log_max_lines", value).apply()
+                        onMaxLinesChange(value)
                     },
                     label = { Text(label, style = MaterialTheme.typography.labelSmall) }
                 )
@@ -975,16 +1046,13 @@ private fun LogRetentionSelector(displayMode: UiDisplayMode, hazeState: HazeStat
 }
 
 @Composable
-private fun ProtocolFrameLogToggle(displayMode: UiDisplayMode, hazeState: HazeState?) {
-    val context = LocalContext.current
-    val prefs = context.getSharedPreferences("fxxk_theme", android.content.Context.MODE_PRIVATE)
-    var enabled by remember {
-        mutableStateOf(prefs.getBoolean("log_protocol_frames", LogBuffer.isProtocolFrameLoggingEnabled()))
-    }
-
+private fun ProtocolFrameLogToggle(
+    displayMode: UiDisplayMode,
+    enabled: Boolean,
+    onEnabledChange: (Boolean) -> Unit,
+) {
     SettingsCard(
         displayMode = displayMode,
-        hazeState = hazeState,
         headlineContent = { Text(i18n("settings.log_protocol_frames")) },
         supportingContent = { Text(i18n("settings.log_protocol_frames_desc")) },
         leadingContent = { Icon(Icons.Default.DataObject, contentDescription = null) },
@@ -992,9 +1060,7 @@ private fun ProtocolFrameLogToggle(displayMode: UiDisplayMode, hazeState: HazeSt
             Switch(
                 checked = enabled,
                 onCheckedChange = { checked ->
-                    enabled = checked
-                    LogBuffer.setProtocolFrameLogging(checked)
-                    prefs.edit().putBoolean("log_protocol_frames", checked).apply()
+                    onEnabledChange(checked)
                 }
             )
         },

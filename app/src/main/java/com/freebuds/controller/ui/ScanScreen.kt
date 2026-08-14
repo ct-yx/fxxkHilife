@@ -5,7 +5,6 @@ import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.Bluetooth
 import androidx.compose.material.icons.filled.BluetoothConnected
 import androidx.compose.material3.*
@@ -17,40 +16,34 @@ import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import com.freebuds.controller.bluetooth.ScannedDevice
-import com.freebuds.controller.data.ConnectionState
+import com.freebuds.controller.data.ControlChannelStage
 import com.freebuds.controller.data.DeviceViewModel
 import com.freebuds.controller.i18n.i18n
 import com.freebuds.controller.ui.glass.AdaptiveCard
 import com.freebuds.controller.ui.glass.AdaptiveGlassBanner
 import com.freebuds.controller.ui.glass.GlassBannerTone
-import dev.chrisbanes.haze.HazeState
+import com.freebuds.controller.ui.foundation.components.AppTopBar
+import com.freebuds.controller.ui.foundation.assets.UiAssetCatalog
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun ScanScreen(
     viewModel: DeviceViewModel,
     displayMode: UiDisplayMode,
-    hazeState: HazeState?,
     onBack: () -> Unit,
     onDeviceSelected: (String) -> Unit,
 ) {
     val context = LocalContext.current
     val scanState by viewModel.scanState.collectAsState()
-    val connState by viewModel.connectionState.collectAsState()
+    val connection = viewModel.deviceUiState.collectAsState().value.connection
 
     Scaffold(
         containerColor = androidx.compose.ui.graphics.Color.Transparent,
         topBar = {
-            TopAppBar(
-                title = { Text(i18n("scan.title")) },
-                navigationIcon = {
-                    IconButton(onClick = onBack) {
-                        Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = i18n("common.back"))
-                    }
-                },
-                colors = TopAppBarDefaults.topAppBarColors(
-                    containerColor = if (displayMode == UiDisplayMode.LIQUID_GLASS) androidx.compose.ui.graphics.Color.Transparent else MaterialTheme.colorScheme.surface
-                )
+            AppTopBar(
+                title = i18n("scan.title"),
+                displayMode = displayMode,
+                onBack = onBack,
             )
         }
     ) { padding ->
@@ -60,17 +53,29 @@ fun ScanScreen(
                 .padding(padding)
         ) {
             // 已连接提示（返回扫描页时不断连）
-            if (connState is ConnectionState.Connected) {
-                StatusBanner(i18n("scan.connected_to", (connState as ConnectionState.Connected).deviceName),
-                    displayMode = displayMode,
-                    hazeState = hazeState,
-                    isConnected = true)
-            }
-            if (connState is ConnectionState.Connecting) {
-                StatusBanner(i18n("scan.connecting_to", (connState as ConnectionState.Connecting).deviceName), displayMode, hazeState)
-            }
-            if (connState is ConnectionState.Failed) {
-                StatusBanner(i18n("scan.connection_failed", (connState as ConnectionState.Failed).reason), displayMode, hazeState, isError = true)
+            when (connection.stage) {
+                ControlChannelStage.Ready, ControlChannelStage.Degraded -> {
+                    connection.deviceName?.let { name ->
+                        StatusBanner(
+                            i18n("scan.connected_to", name),
+                            displayMode = displayMode,
+                            isConnected = true,
+                        )
+                    }
+                }
+                ControlChannelStage.Failed -> {
+                    StatusBanner(
+                        i18n("scan.connection_failed", connection.reason ?: connection.stageLabel),
+                        displayMode,
+                        isError = true,
+                    )
+                }
+                ControlChannelStage.Idle -> Unit
+                else -> {
+                    connection.deviceName?.let { name ->
+                        StatusBanner(i18n("scan.connecting_to", name), displayMode)
+                    }
+                }
             }
 
             // 扫描按钮
@@ -111,11 +116,11 @@ fun ScanScreen(
                         item {
                             SectionHeader(i18n("scan.huawei_honor_devices"))
                         }
-                        items(huawei) { DeviceItem(it, displayMode, hazeState) { onDeviceSelected(it.device.address) } }
+                        items(huawei) { DeviceItem(it, displayMode) { onDeviceSelected(it.device.address) } }
                     }
                     if (others.isNotEmpty()) {
                         item { SectionHeader(i18n("scan.other_devices")) }
-                        items(others) { DeviceItem(it, displayMode, hazeState) { onDeviceSelected(it.device.address) } }
+                        items(others) { DeviceItem(it, displayMode) { onDeviceSelected(it.device.address) } }
                     }
                 }
             }
@@ -134,11 +139,10 @@ private fun SectionHeader(text: String) {
 }
 
 @Composable
-private fun DeviceItem(device: ScannedDevice, displayMode: UiDisplayMode, hazeState: HazeState?, onClick: () -> Unit) {
+private fun DeviceItem(device: ScannedDevice, displayMode: UiDisplayMode, onClick: () -> Unit) {
     val bondedLabel = i18n("home.bonded")
     AdaptiveCard(
         displayMode = displayMode,
-        hazeState = hazeState,
         modifier = Modifier
             .fillMaxWidth()
             .padding(horizontal = 16.dp, vertical = 6.dp)
@@ -146,7 +150,7 @@ private fun DeviceItem(device: ScannedDevice, displayMode: UiDisplayMode, hazeSt
     ) {
         Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(14.dp)) {
             Icon(
-                painter = painterResource(com.freebuds.controller.R.drawable.ic_earbuds_case),
+                painter = painterResource(UiAssetCatalog.device(UiAssetCatalog.DeviceVisual.EarbudCase)),
                 contentDescription = null,
                 modifier = Modifier.size(30.dp),
                 tint = if (device.isConnected) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant,
@@ -176,13 +180,11 @@ private fun DeviceItem(device: ScannedDevice, displayMode: UiDisplayMode, hazeSt
 private fun StatusBanner(
     text: String,
     displayMode: UiDisplayMode,
-    hazeState: HazeState?,
     isError: Boolean = false,
     isConnected: Boolean = false,
 ) {
     AdaptiveGlassBanner(
         displayMode = displayMode,
-        hazeState = hazeState,
         tone = when {
             isError -> GlassBannerTone.Error
             isConnected -> GlassBannerTone.Success

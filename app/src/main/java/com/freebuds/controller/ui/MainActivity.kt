@@ -14,11 +14,10 @@ import androidx.core.content.ContextCompat
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.LifecycleEventObserver
 import com.freebuds.controller.data.DeviceViewModel
+import com.freebuds.controller.i18n.I18n
 import com.freebuds.controller.service.BluetoothService
-import com.freebuds.controller.ui.theme.FxxkHilifeTheme
+import com.freebuds.controller.ui.theme.AppTheme
 import com.freebuds.controller.ui.theme.ThemeMode
-import com.freebuds.controller.ui.theme.loadThemeMode
-import com.freebuds.controller.ui.theme.saveThemeMode
 
 class MainActivity : ComponentActivity() {
 
@@ -32,8 +31,9 @@ class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
 
-        // 加载主题偏好
-        themeMode = loadThemeMode(this)
+        // 所有设置从 ViewModel 持有的统一仓库读取；旧 key 由仓库一次性迁移。
+        themeMode = viewModel.settingsRepository.themeMode()
+        I18n.setLocale(viewModel.settingsRepository.locale())
 
         // 请求通知权限（Android 13+）
         if (Build.VERSION.SDK_INT >= 33) {
@@ -52,6 +52,7 @@ class MainActivity : ComponentActivity() {
             when (event) {
                 Lifecycle.Event.ON_RESUME -> {
                     viewModel.setAppInForeground(true)
+                    viewModel.maybeCheckForUpdate()
                     startBluetoothForegroundServiceIfAllowed(autoConnect = true)
                 }
                 Lifecycle.Event.ON_PAUSE -> viewModel.setAppInForeground(false)
@@ -60,7 +61,7 @@ class MainActivity : ComponentActivity() {
         })
 
         setContent {
-            FxxkHilifeTheme(mode = themeMode) {
+            AppTheme(mode = themeMode) {
                 AppNavHost(
                     viewModel = viewModel,
                     onOpenTerminal = {
@@ -68,7 +69,7 @@ class MainActivity : ComponentActivity() {
                     },
                     onThemeChange = { mode ->
                         themeMode = mode
-                        saveThemeMode(this, mode)
+                        viewModel.settingsRepository.setThemeMode(mode)
                     },
                 )
             }

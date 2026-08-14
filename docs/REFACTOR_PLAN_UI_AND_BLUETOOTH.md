@@ -4,7 +4,7 @@
 >
 > 历史基线：v4.2.6 / versionCode 87，2026-08-01
 >
-> 当前发布基线：v4.3.10 / versionCode 98，2026-08-14（BT 重构后的首个公开大版本；BT-0 至 BT-4 蓝牙阶段已完成；BT-4 定向实机门已通过；UI-0 尚未开始）
+> 当前发布基线：v4.3.10 / versionCode 98，2026-08-14（BT 重构后的首个公开大版本；BT-0 至 BT-4 蓝牙阶段已完成；BT-4 定向实机门已通过；UI-0 已进入基线整理）
 >
 > 目标：把当前“能工作但边界偏大”的 UI、蓝牙连接和 SPP 指令实现整理成可持续迭代的结构。蓝牙阶段先稳定现有 HUAWEI / HONOR + RFCOMM SPP 路线；当前转入 UI 基本全量重构，统一视觉、交互、状态和导航，同时保留已经验证可用的美术资源。
 
@@ -32,7 +32,7 @@
 - 关键日志或耗时结论。
 - 回退方式。
 
-当前 **BT-0 至 BT-4 已完成**：`v4.3.10 / 98` 是 BT 重构后的首个公开大版本，主验证设备的蓝牙状态契约门已通过，但结论仍限定在已有型号/固件/系统证据范围内，不外推为所有型号和所有指令均已实机验证。UI-0 尚未开始，下一步先完成 UI 基线与设计系统规划，再进入代码迁移。
+当前 **BT-0 至 BT-4 已完成**：`v4.3.10 / 98` 是 BT 重构后的首个公开大版本，主验证设备的蓝牙状态契约门已通过，但结论仍限定在已有型号/固件/系统证据范围内，不外推为所有型号和所有指令均已实机验证。UI-0 已开始，先固定基线和资源边界，再按 UI-1 至 UI-5 迁移代码。
 
 ### 0.1.1 定向实机测试规则
 
@@ -68,7 +68,7 @@
 
 合计 **20 项**。B、D、E 已在 `4.3.4 / 92` 通过，本轮不重复；若 F/初始化仍失败，只追加对应失败项，不恢复整套 36 项。
 
-> **BT 阶段已收口并作为公开 Release 基线**：`v4.3.10 / 98` 的 `BT4_STATE_CONTRACT_5` 5 轮实机报告已通过。BT-4 只检查通用状态/能力契约，不重复 A-F 或 ANC/低延迟功能矩阵；UI-0 仍未开始，按当前顺序先维护 UI 规划。
+> **BT 阶段已收口并作为公开 Release 基线**：`v4.3.10 / 98` 的 `BT4_STATE_CONTRACT_5` 5 轮实机报告已通过。BT-4 只检查通用状态/能力契约，不重复 A-F 或 ANC/低延迟功能矩阵；UI-0 已进入基线和基础层实现，后续只安排 UI 定向验证。
 
 ### 0.2 本轮执行记录（先蓝牙，后实机测试）
 
@@ -148,12 +148,12 @@
 | BT-2 CommandClient / Scheduler / Feature | [x] 已完成 | 2026-08-14；命令目录、单一 command lane、ANC 权威读回和低延迟路径已有 JVM/人工/定向实机证据；未验证能力仍按型号表标记 |
 | BT-3 ConnectionManager 收敛入口 | [x] 已完成 | 2026-08-14；`ConnectionLifecycle`、session/attempt/Job 所有权收敛，并由 `BT_MANAGER_RUNTIME_20` F10+初始化10 实机确认；`4.3.10 / 98` 补齐统计 flush、失败 session 断开、command 串行边界和同 attempt 状态映射收尾 |
 | BT-4 通用蓝牙状态输出 | [x] 已完成 | `4.3.10 / 98` 完成原子快照投影、canonical channel、pending/failed 语义收敛、空值规范化、metadata-only core readiness 防误报、严格 PASS 报告校验和 5A 协议边界修复；94/94 Debug、94/94 Release 单元测试、`git diff --check`、Debug/Release 构建通过；同一主验证设备 `BT4_STATE_CONTRACT_5` 实机 5/5 通过。页面尚未迁移消费 |
-| UI-0 UI 基线与资源清点 | [ ] 未开始 | 截图、交互路径、字段读写清单、资源保留清单和验收样本齐备；仅文档/诊断，不改页面 |
-| UI-1 设计令牌与渲染基础 | [ ] 未开始 | `ref/sys/comp` 令牌、统一主题、`AppScaffold`/公共 surface 和 `UiAssetCatalog` 建立 |
-| UI-2 typed State / Event / Navigation | [ ] 未开始 | 页面通过 typed state/event 工作，保留兼容层；连接和动作状态不再依赖瞬时快照 |
-| UI-3 全局外壳与主路由 | [ ] 未开始 | Home/Scan/Permission/导航入口迁移到统一外壳，消除重复建连/重复跳转 |
-| UI-4 设备功能页面 | [ ] 未开始 | Device/Gesture/ListeningStats/Terminal 完成新组件迁移，ANC/低延迟等能力按状态展示 |
-| UI-5 设置、持久化与兼容层收口 | [ ] 未开始 | Settings、主题/语言/壁纸、无障碍和 classic/glass 双模式完成；页面移除 raw property |
+| UI-0 UI 基线与资源清点 | [~] 进行中 | 2026-08-14；静态路由/状态/设置 key/资源/Haze 调用基线已写入 `docs/UI_BASELINE.md`，新增更新 manifest 契约；等待新 UI 截图和运行诊断门 |
+| UI-1 设计令牌与渲染基础 | [~] 进行中 | 2026-08-14；`ref/sys/comp` 令牌、`AppScaffold`、公共 surface、alpha05 typed Blur/Glass adapter 和 `UiAssetCatalog` 已落地；等待 CI/截图/性能证据 |
+| UI-2 typed State / Event / Navigation | [~] 进行中 | 2026-08-14；`AppUiState`/`DeviceUiState`/`SettingsUiState`、typed `DeviceEvent`/`SettingsEvent` 已接入核心页面，保留兼容层；等待动作状态矩阵 |
+| UI-3 全局外壳与主路由 | [~] 进行中 | 2026-08-14；背景/source 归属和稳定状态导航已收敛，Home/Scan/Permission 仍需统一外壳截图与入口去重验证 |
+| UI-4 设备功能页面 | [~] 进行中 | 2026-08-14；Device/Gesture/ListeningStats 已使用统一 surface 和 typed event，电量/后台同步/EQ/双设备/选项开关/设备信息组件已拆至 `ui/DeviceFeatureComponents.kt`，能力矩阵验证待完成 |
+| UI-5 设置、持久化与兼容层收口 | [~] 进行中 | 2026-08-14；SettingsRepository、更新检查/下载/安装状态和 UpdateCard 已接入，仍需持久化、无障碍和更新流程验证 |
 
 ### 0.4 应用版本号方案
 
@@ -185,9 +185,37 @@
 - 只有能独立编译、测试、回归和回退的代码里程碑才提升版本号；只改本文件或只做诊断不提升版本。
 - `versionCode` 每次发布递增 1；BT-1 测试包使用 `88`，BT-1/BT-2 首轮修复包使用 `89`，热重连回归包使用 `90`，ANC 摘戴状态稳定性包使用 `91`，36 项定向回归包使用 `92`，状态/重试 follow-up 使用 `93`，BT-3 连接运行时收敛使用 `94`，BT-4 首轮契约包使用 `95`，状态契约 follow-up 使用 `96`，协议样本 follow-up 使用 `97`，BT-3 收尾/BT-4 follow-up 使用 `98`；UI 阶段除版本号外必须同时使用 `UI_FOUNDATION`、`UI_STATE_EVENT` 等明确构建标签，后续以 `98` 为当前基准顺延。
 - 统一使用 `python3 scripts/bump_version.py <versionName> <versionCode> "变更说明"` 更新应用版本、资源、README、`VERSION_MANAGEMENT.md` 和 `DEVELOPMENT_LOG.md`。
+- GitHub Actions 的手动构建必须填写或保留阶段标签；当前默认 `UI_FOUNDATION_SMOKE`，产物名、测试报告名和 metadata 都带该标签，避免只看 `4.3.10 / 98` 无法区分 UI 测试包。
 - 阶段完成时，同时更新本文件的 `[x]`、`VERSION_MANAGEMENT.md` 的历史记录和 `DEVELOPMENT_LOG.md`；版本号不因提前勾选计划项而变更。
 
 本节对应文件：`app/build.gradle.kts`、`app/src/main/res/values/strings.xml`、`VERSION_MANAGEMENT.md`、`scripts/bump_version.py`。
+
+### 0.5 2026-08-14 UI-0 至 UI-5 计划核对结论
+
+本轮开始前核对计划，执行顺序和技术边界没有需要推翻的地方，但原文有三处需要校正：
+
+1. **阶段位置**：当前不是“只做 UI-0 文档规划”，而是 UI-0 基线、UI-1 基础层以及 UI-2 至 UI-5 的第一轮结构迁移已经并行落地；各阶段仍保持 `[~]`，因为没有 CI、截图、无障碍和真实运行证据，不能提前标记 `[x]`。
+2. **验收粒度**：UI 不复用 BT 的 36/100 项矩阵。先验证公共外壳、玻璃渲染、状态事件、设置持久化和更新流程；设备功能只针对本轮迁移的组件做定向验证。
+3. **当前实现缺口**：Device 的电量、后台同步、EQ 和双设备卡片需要从 route 文件拆出；更新卡片需要显示检查时间、渠道、发布日期和具体 Release 地址；玻璃配置必须真正进入 `SurfaceRenderer`，不能只通过 `CompositionLocal` 保存。
+4. **本轮边界收口**：设置页已改为 `SettingsEvent` typed event，`AppUiState` 同时包含设备、扫描、设置和更新状态；安装 Intent 在 ViewModel/更新仓库生成，页面只发送事件，路由负责启动系统安装器。新增 `scripts/validate_ui_contract.py`，在 CI 的 Gradle 前检查单一渲染适配器、typed event 和页面持久化边界。版本号仍保持 `4.3.10 / 98`，等待 UI 定向 CI 与截图证据。
+
+本轮实现顺序固定为：先修正导航/更新边界和静态错误，再拆 UI-4 设备组件，随后交给 GitHub Actions 构建；在构建包和截图返回前，UI-0 至 UI-5 都只记录为“实现中”，不提升版本号。
+
+### 0.5.1 2026-08-15 UI-0 至 UI-5 静态收口记录
+
+- `AppNavHost` 已固定为单一 `AppScaffold -> NavHost` 外壳；页面不再创建第二个背景 source。
+- Settings 已统一为 `SettingsEvent`；`AppUiState` 现在同时投影设备、扫描、设置和更新状态，安装 Intent 由 ViewModel/更新仓库产生。
+- Device 的通用选项、开关和设备信息卡已与电量、后台同步、EQ、双设备卡一起移入 `DeviceFeatureComponents.kt`。
+- `scripts/validate_ui_contract.py` 已加入 CI 构建前置检查；手动构建默认使用 `UI_FOUNDATION_SMOKE` 标签，产物和报告不再只依赖版本号区分。
+- `SettingsRepository` 的玻璃配置读取已补齐 typed profile/renderer 依赖；`git diff --check`、UI contract、更新 manifest、Android XML、Workflow YAML 和 Kotlin 分隔符静态检查通过；未执行本地 Gradle，仍待 GitHub Actions、截图、无障碍和实际运行证据。
+
+### 0.5.2 2026-08-15 UI-0 至 UI-5 编译前收口
+
+- 计划核对结论保持不变：UI-0 至 UI-5 的顺序、版本边界和“先代码、再 CI、再定向运行验收”规则可执行；本轮不改蓝牙组件和应用版本号。
+- 第一轮结构迁移已覆盖统一 `AppScaffold`/surface adapter、typed UI state/event、Home/Scan/Permission 主路由、Device 功能组件、SettingsRepository 和更新状态/下载安装边界。
+- 编译前静态门已全部通过：`git diff --check`、`scripts/validate_ui_contract.py`、`scripts/validate_update_manifest.py`、Android XML、Workflow YAML 和 Kotlin 分隔符扫描。
+- UI-0 至 UI-5 继续标记为 `[~]`：当前结果只证明源码边界和静态契约，不能替代 GitHub Actions 编译、classic/glass 截图、无障碍和实际设备运行证据。
+- 下一步固定为使用 `UI_FOUNDATION_SMOKE` 构建标签交给 GitHub Actions；包返回后只做 UI 定向验证，不重复 BT 36/100 项矩阵。
 
 ## 1. 范围与原则
 
@@ -250,7 +278,7 @@ BT_MANAGER_RUNTIME_20 实机报告
   -> 收口 BT-1 / BT-2 / BT-3 的实机门
   -> BT-4：冻结通用连接状态、EarbudCapability、EarbudState 映射契约
   -> ListeningStatsRepository：从连接编排中移出统计
-  -> UI-0：行为、状态、设置 key、美术资源和 DeviceProps 基线
+  -> UI-0：行为、状态、设置 key、美术资源和 DeviceProps 基线（已形成，等待截图/诊断）
   -> UI-1：设计令牌、主题、AppScaffold、surface adapter、UiAssetCatalog
   -> UI-2：AppUiState / DeviceUiState / typed event / NavigationEvent
   -> UI-3：全局外壳与 Home/Scan/Permission 主路由
@@ -259,14 +287,14 @@ BT_MANAGER_RUNTIME_20 实机报告
   -> 第二个真实 Adapter 接入评估
 ```
 
-每一步都按“代码 → JVM/静态测试 → 定向实机或 UI 验证 → 文档回写 → 可回退提交”的顺序执行。当前处于 UI-0 规划阶段；进入真实设备门后只追加本阶段对应的测试，不扩大为完整 BT 矩阵。
+每一步都按“代码 → JVM/静态测试 → GitHub Actions → 定向 UI 验证 → 文档回写 → 可回退提交”的顺序执行。当前处于 UI-0 基线和 UI-1 至 UI-5 第一轮结构迁移阶段；进入真实设备门后只追加本阶段对应的测试，不扩大为完整 BT 矩阵。
 
 ### 2.3 明确延后的方案
 
 - `BleGattTransport`、`NativeBridgeTransport`：当前没有目标设备和协议证据，保留接口位置，不实现伪适配。
 - 动态插件加载、多个 Adapter 试探匹配和多 SPP session：等第二个真实 Adapter 或多设备控制需求出现后再设计。
 - 未验证的 Custom EQ payload：继续只读或按已验证能力展示。
-- Haze 依赖升级：与 UI 状态迁移分开，当前继续使用 Haze 2.0。
+- Haze 依赖升级：不在 UI-0 提前扩散；UI-1 直接锁定 alpha05 typed API，旧 alpha03 调用只保留在基线记录中，生产代码不保留旧渲染兼容分支。
 - 全量 `LogRepository`：现有 `LogBuffer` 和报告导出已经满足诊断需求，避免先做无收益的转发层。
 
 ## 3. 大项一：UI 规范与重构
@@ -277,7 +305,7 @@ BT_MANAGER_RUNTIME_20 实机报告
 
 #### 当前 UI 基线
 
-当前 UI 目录共 14 个 Kotlin 文件、约 185 KB、4410 行；主要复杂度集中在以下文件：
+当前 UI 目录共 14 个 Kotlin 文件、约 183 KB、4325 行；主要复杂度集中在以下文件：
 
 | 文件 | 规模 | 当前职责 | 重构去向 |
 |---|---:|---|---|
@@ -295,9 +323,9 @@ BT_MANAGER_RUNTIME_20 实机报告
 
 检查更新和自动更新也纳入本次 UI 重构，但它属于“设置/关于 + 应用级状态”的独立能力，不进入 Bluetooth Manager、Service、Tile 或启动时的连接编排：
 
-- 当前 `app/src/main/java/com/freebuds/controller/data/UpdateChecker.kt` 只有未接入页面的最小 API 草稿：请求 latest release、按 `versionName` 粗略比较并取第一个资产；异常被静默转成 `null`，没有稳定的状态、缓存、校验或下载流程。
+- 旧 `app/src/main/java/com/freebuds/controller/data/UpdateChecker.kt` 是未接入页面的最小 API 草稿，已在 UI-5 第一轮迁移中删除；当前由 `UpdateRepository` 负责 manifest、版本比较、缓存、校验、下载和安装状态。
 - 当前 Settings 的“更新地址”按钮只打开 Release 页面；页面没有“检查中、已是最新、有新版本、下载中、待安装、失败/重试”等状态，也没有自动检查开关。
-- 当前 `AndroidManifest.xml` 没有更新网络权限，项目也没有 `WorkManager` 等后台更新调度依赖；这些属于后续实现决策，不把现有草稿当作已完成能力。
+- `AndroidManifest.xml` 已加入更新网络、安装权限和受控 `FileProvider`；本轮仍不引入 WorkManager，自动检查只在应用前台生命周期合并触发，长期后台调度留给后续独立阶段。
 - UI-0 盘点现有入口、版本字段、Release 资产、签名/安装约束和本地化 key；UI-2 冻结 typed state/event；UI-5 实现设置页、更新仓库、下载校验和系统安装交互。
 
 更新功能的产品边界固定为：**自动检查可以后台执行，自动安装始终交给 Android 系统确认**。默认提供“手动检查”和“自动检查”两种开关；“自动下载并提醒安装”作为单独可选项，不在蓝牙服务启动、ACL 回调或每次页面重组时触发。
@@ -514,17 +542,121 @@ ViewModel 负责把事件交给用例；用例再调用协议无关的控制接�
 - 所有用户可见文字走 i18n key；协议 raw 值只能出现在调试终端和日志页面。
 - 更新状态、下载进度、待安装提示和失败原因使用同一套 `AsyncActionIndicator`/`ErrorState`；自动检查不弹出打断蓝牙控制的全屏页面。
 
-#### 3.5.1 Haze 2.0 保留方案
+#### 3.5.2 统一按钮、选项与异步动作控件
 
-UI 重构不再把“依赖已声明”或“源码已调用”当作玻璃效果完成标准。渲染基础先以官方当前发布版 `2.0.0-alpha05` 的 typed API 为迁移目标；现有 `2.0.0-alpha03` 只作为迁移前基线，不作为新 surface 的实现依据：
+所有页面必须使用同一套 typed 控件契约；业务页面只声明语义、状态和事件，不自行组合 Material Button、Switch、Dropdown、Slider 或玻璃效果。控件的 surface 由 `SurfaceRenderer` 决定，业务控件不直接导入 Haze。
 
-- UI-0 记录 alpha03 的静态和运行基线；允许加入 Debug-only 诊断，但不把诊断入口带入 Release。
-- UI-1 先完成 alpha05 typed API 迁移和单独 CI 构建，再开始公共 surface 和页面迁移。
-- `LIQUID_GLASS` 模式使用该库的 surface adapter；`CLASSIC` 模式使用 Material 3 surface/render profile。
+**按钮类型：**
+
+| 类型 | 用途 | 默认 surface | 约束 |
+|---|---|---|---|
+| `PrimaryActionButton` | 页面主操作、保存、连接、确认 | Hero/重点区域可用低强度 `hazeGlass`；普通场景使用 Material primary | 同一 surface 只允许一个主操作；Pending 时显示进度，不重复发送 |
+| `SecondaryActionButton` | 次级操作、刷新、选择设备 | `hazeBlur` 或低强度 tint | 不与主操作竞争视觉层级 |
+| `TertiaryActionButton` | 取消、稍后处理、打开详情 | transparent/tint | 保持 44dp 触控区域，不用高折射玻璃 |
+| `DestructiveActionButton` | 断开、删除、清除 | opaque/tint error surface | 必须有确认或可撤销反馈，不使用透明红色叠加玻璃 |
+| `IconActionButton` | 设置、返回、更多、终端入口 | 继承父级 surface；必要时 `hazeBlur` | 必须有 contentDescription、焦点语义和最小触控尺寸 |
+| `ToggleButton` | 显示风格、模式、快速开关 | `hazeGlass` 或 `hazeBlur` 的 selected/unselected surface | selected 状态不能只依赖颜色，必须有语义和图标/文字差异 |
+
+**按钮状态：**
+
+```kotlin
+sealed interface UiActionState {
+    data object Idle : UiActionState
+    data object Disabled : UiActionState
+    data class Pending(val label: UiText? = null) : UiActionState
+    data object Success : UiActionState
+    data class Failure(val error: UiError, val canRetry: Boolean) : UiActionState
+}
+```
+
+- `Pending` 禁止重复提交；按钮保留原布局尺寸，使用进度指示器和明确文案。
+- `Success` 提供短暂但可读的状态反馈；不能只闪烁颜色或依赖玻璃高光。
+- `Failure` 显示结构化原因，并由 `Retry` 事件重新执行同一 typed action。
+- `Disabled` 与“能力不存在/当前状态不可用”分开表达；能力隐藏使用 section 不渲染，业务错误使用 `Failure`。
+- reduced motion 下不使用弹跳、折射动画或连续 shimmer；状态变化保留文本/语义反馈。
+
+**选项控件：**
+
+| 控件 | 数据类型 | 适用场景 | 统一行为 |
+|---|---|---|---|
+| `BooleanOptionRow` | `Boolean` | 自动暂停、低延迟、自动检查 | Switch/checkbox 只发送 typed event，写入显示 Pending→Readback→Success |
+| `SingleChoiceOption` | enum/value | ANC 模式、音质、主题、语言 | 单选列表/菜单统一使用 `UiOption<T>`，当前值未知时不默认选中 |
+| `DependentChoiceOption` | parent + child | ANC 模式与级别、手势目标与动作 | 父选项变化后清理无效子选项，等待设备读回后再确认显示值 |
+| `SegmentedOption` | sealed enum | CLASSIC/LIQUID_GLASS、显示 profile | 适合少量互斥值；selected 由语义状态表达，不只依赖颜色 |
+| `SliderOption` | bounded numeric | 亮度、玻璃强度、可调参数 | 显示当前值和范围；拖动结束后提交，避免每个 frame 写设备或重建 Haze style |
+| `ActionPicker` | typed action | 双击、三击、长按、滑动 | 选项由能力集合过滤；未验证 action 不伪造为可用 |
+
+统一选项模型：
+
+```kotlin
+data class UiOption<T>(
+    val value: T,
+    val title: UiText,
+    val description: UiText? = null,
+    val enabled: Boolean = true,
+    val selected: Boolean = false,
+    val unavailableReason: UiText? = null,
+)
+
+data class OptionUiState<T>(
+    val options: List<UiOption<T>> = emptyList(),
+    val selectedValue: T? = null,
+    val pendingValue: T? = null,
+    val error: UiError? = null,
+)
+```
+
+`UiOption` 的 `title`/`description` 由 `UiTextMapper`/`OptionPresenter` 生成；页面不得继续维护 `chineseAncMode`、`chineseSoundQuality`、`chineseTap` 等 raw-to-text 映射。`enabled=false`、`unavailableReason`、`selectedValue=null` 和 `pendingValue` 必须分别表达，不能用空字符串、默认值或 0 混淆。
+
+**液态玻璃控件表现：**
+
+1. 控件内容层与玻璃 surface 分离：`SurfaceRenderer` 负责 `hazeGlass → hazeBlur → tint → opaque` 选择，按钮/选项只提供 `SurfaceRole`、`selected`、`UiActionState` 和内容。
+2. 主按钮和选中的分段选项可以使用低强度 `hazeGlass`；高折射 Hero 只作为父级 surface，按钮内部不再嵌套第二个独立 `HazeState`/source。
+3. 次级按钮、设置行和大量选项默认使用 `hazeBlur` 或 tint；长列表不逐项创建 effect，优先由父级 Card 承载一个 Haze surface。
+4. Pending、Failure、Disabled 使用稳定的 Material 语义色、图标和文本；不通过改变 blur、折射或透明度表达业务状态。
+5. 高对比度、大字体、低性能设备、无壁纸或 source 不可用时，控件保留相同布局、触控区域、焦点顺序和语义，surface 依次降级到 `hazeBlur`、tint 或 opaque。
+6. 所有按钮和选项最小触控目标为 44dp；Icon-only 控件必须提供 content description，选择器必须向 TalkBack 暴露当前值、可用选项和 Pending/Failure 状态。
+
+**统一组件目录：**
+
+```text
+ui/foundation/components/
+  PrimaryActionButton.kt
+  SecondaryActionButton.kt
+  TertiaryActionButton.kt
+  DestructiveActionButton.kt
+  IconActionButton.kt
+  ToggleButton.kt
+  BooleanOptionRow.kt
+  SingleChoiceOption.kt
+  DependentChoiceOption.kt
+  SegmentedOption.kt
+  SliderOption.kt
+  ActionPicker.kt
+  AsyncActionIndicator.kt
+  OptionPresenter.kt
+  UiTextMapper.kt
+```
+
+这些组件先在 UI-1 建立 visual/state contract，UI-2 接入 typed event 和 `OptionUiState`，UI-3/UI-4 替换 Home、Device、Gesture、Stats、Terminal 的局部控件，UI-5 替换 Settings 和更新流程中的所有按钮/选项。
+
+
+UI 重构采用 Haze 2.0 `2.0.0-alpha05` 作为唯一实现基线，不设计或保留 alpha05 之前的兼容渲染路径。当前 alpha03 调用只作为一次性迁移审计记录；完成 UI-1 后，生产 UI 不再保留旧的 `hazeEffect` 嵌套 DSL、alpha03 facade 或双版本分支。官方截至 2026-08-14 最新发布测试版为 `2.0.0-alpha05`，没有 2.0 beta/stable。alpha04 完成 typed API 的主要破坏性迁移，alpha05 重点补充/明确 `HazePerformanceMode` 和渲染兼容行为：
+
+- UI-0 记录当前 alpha03 的静态和运行基线，仅用于迁移前对照；不把它定义为兼容目标，也不为它保留生产回退实现。
+- UI-1 直接锁定 alpha05 并完成 typed Blur + experimental Glass 的完整迁移：使用 `Modifier.hazeBlur`、`Modifier.hazeGlass`、`HazeInput`、不可变 `HazeBlurStyle`/`GlassStyle` 和明确的 `HazePerformanceMode`，随后进入公共 surface 和页面迁移。
+- `LIQUID_GLASS` 模式使用 alpha05 的 `haze-glass` surface adapter；`CLASSIC` 模式使用 Material 3 surface/render profile。两者共用内容树，但不是两套 Haze 版本实现。
 - Haze 只负责模糊、玻璃材质和渲染层，不参与连接、设备能力、页面导航或持久化状态。
-- `HazeState` 集中由 `AppScaffold` / `AdaptiveGlassSurface` 管理，页面和业务 ViewModel 不直接创建或修改它。
-- 普通模式与玻璃模式共享同一内容组件、`UiState` 和能力隐藏规则，只替换 surface/render profile。
-- 依赖迁移、渲染正确性和页面组件拆分仍分成可回退提交；但 alpha05 迁移必须先于新页面接入，避免继续扩大错误渲染面。
+- `HazeState` 集中由 `GlassHost` / `AppScaffold` 管理，页面和业务 ViewModel 不直接创建或修改它。
+- 普通模式、液态玻璃模式和可读性降级模式共享同一内容组件、`UiState` 和能力隐藏规则，只替换 surface/render profile。
+- alpha05 依赖迁移、Glass surface、渲染正确性和页面组件拆分仍分成可回退提交；回退只切换到项目自己的 `TintRenderer`/`OpaqueRenderer`，不回退 alpha03。
+
+官方核对入口：
+- 版本：https://github.com/chrisbanes/haze/releases/tag/2.0.0-alpha05
+- 迁移：https://chrisbanes.github.io/haze/latest/migrating-2.0/
+- Blur：https://chrisbanes.github.io/haze/latest/blur/usage/
+- Glass：https://chrisbanes.github.io/haze/latest/effects/glass/
+- 性能：https://chrisbanes.github.io/haze/latest/performance/
 
 相关实现文件：
 
@@ -534,16 +666,16 @@ UI 重构不再把“依赖已声明”或“源码已调用”当作玻璃效�
 
 #### 3.5.1.1 Haze 2.0 依赖契约与迁移细则
 
-本次 UI 重构以 `2.0.0-alpha03` 作为迁移前基线，以官方当前发布版 `2.0.0-alpha05` 作为新渲染实现目标。目标是先收拢调用边界和视觉规则，再通过独立提交完成 API 迁移；不把旧实现继续扩散到新页面。
+本次 UI 重构直接锁定官方最新发布测试版 `2.0.0-alpha05`，不把 alpha03 作为兼容目标。alpha04 引入 typed `hazeBlur`/`hazeGlass`、`HazeInput`、不可变 `HazeBlurStyle`/`GlassStyle` 等主要迁移；alpha05 重点补充/明确 `HazePerformanceMode` 和渲染兼容行为。目标是先收拢 alpha05 调用边界和视觉规则，再通过独立提交完成全量页面迁移；不继续扩散旧实现。
 
 **依赖锁定：**
 
 | 依赖 | 当前版本 | 规划处理 |
 |---|---|---|
-| `dev.chrisbanes.haze:haze` | alpha03 基线 | UI-1 迁移到 alpha05 typed API，集中在 surface adapter |
-| `dev.chrisbanes.haze:haze-blur` | alpha03 基线 | UI-1 迁移到 alpha05 的 blur API，显式配置输入、style 和性能模式 |
-| `dev.chrisbanes.haze:haze-blur-materials` | alpha03 基线 | 只有实际使用 preset 才保留；否则在迁移提交中删除 |
-| `haze-glass` 或其他实验模块 | 未接入 | 基础 blur 正确性通过后再做独立 A/B，不与 UI-1 基础迁移混合 |
+| `dev.chrisbanes.haze:haze` | alpha03 迁移基线 | UI-1 锁定 alpha05，集中使用 typed API 和 shared input/state |
+| `dev.chrisbanes.haze:haze-blur` | alpha03 迁移基线 | UI-1 使用 alpha05 的 `hazeBlur` API，显式配置 `HazeInput`、style 和性能模式 |
+| `dev.chrisbanes.haze:haze-blur-materials` | alpha03 迁移基线 | 只有实际使用 `HazeMaterials.*` preset 才升级并保留；否则在 alpha05 迁移提交中删除 |
+| `dev.chrisbanes.haze:haze-glass` | 未接入 | UI-1 直接引入 alpha05 experimental Glass；所有 `hazeGlass`/`GlassStyle` 调用集中在 foundation adapter，需 `@ExperimentalHazeApi` 和独立运行验证 |
 
 **当前调用基线：**
 
@@ -568,23 +700,68 @@ AppScaffold
 ```
 
 1. `GlassHost` 是每个 Activity/window 的唯一 `HazeState` 所有者；页面、ViewModel、UseCase 和设备组件均不创建或修改 `HazeState`。
-2. 只有 `ui/foundation/surface/haze` 包直接导入 Haze API；业务页面只接收 `SurfaceRole`、`SurfaceTone`、`SurfaceSpec` 等项目类型。
+2. 只有 `ui/foundation/surface/haze` 包直接导入 Haze API；业务页面只接收 `SurfaceRole`、`SurfaceTone`、`SurfaceSpec` 等项目类型。alpha05 的 `haze-glass` 是独立 experimental artifact，不与 `haze-blur` 混用依赖边界；`GlassStyle`/`hazeGlass` 的 `@OptIn` 只出现在该 adapter。
 3. `AppScaffold` 负责背景图、渐变、系统栏、Haze source、统一 content padding 和 surface profile；页面只声明内容和语义层级。
-4. `SurfaceRenderer` 是唯一渲染适配面：经典模式走 Material 3 surface，玻璃模式走 Haze 2.0，降级模式走 tint 或 opaque surface。三条路径共享相同的内容树和状态树。
-5. `AdaptiveCard` 等旧函数在 UI-1 至 UI-4 期间保留为兼容 facade，内部转发到 `SurfaceRenderer`；新页面禁止继续增加直接 Haze 调用。
+4. `SurfaceRenderer` 是唯一渲染适配面：经典模式走 Material 3 surface；液态玻璃模式优先走 alpha05 `haze-glass`；低特效、性能受限或 Glass 初始化失败时走 alpha05 `haze-blur`；再按需要降级到 tint 或 opaque。所有路径共享相同的内容树和状态树。
+5. alpha05 Blur 使用 typed `Modifier.hazeBlur(input = HazeInput.Sources(...), style = HazeBlurStyle { ... }, performanceMode = HazePerformanceMode.Default)`；需要只处理组件自身内容时明确使用 `HazeInput.Content`。alpha05 experimental Glass 使用独立 artifact 的 typed `Modifier.hazeGlass`、`GlassStyle`，并集中 `@OptIn`。
+6. `HazeSourceRetention` 只决定 source 不可用时保留最近帧还是清空：默认是 `HazeSourceRetention.KeepLastFrame`，隐私场景使用 `ClearWhenUnavailable`。它不等于页面/后台生命周期控制；进入后台、页面离开或隐私场景时是否停止捕获，必须由 `GlassHost` 的 lifecycle policy 另行控制。诊断不得记录壁纸 URI、设备地址或协议 payload。
+7. `GlassSurface` 等旧函数只作为迁移期间的页面适配入口，不作为 alpha03 兼容层；完成全量 UI 迁移后删除旧的 `hazeEffect` 调用、旧 Haze 参数透传和重复 surface 实现。新页面只能通过 `SurfaceRenderer` 使用 alpha05 的 typed Blur/Glass API。
 
-**Surface 角色和 Haze 使用预算：**
+**渲染层级（液态玻璃的唯一推荐形态）：**
 
-| 语义角色 | 玻璃策略 | 典型位置 | 降级策略 |
-|---|---|---|---|
-| `AppBackground` | 只提供 source，不叠加 effect | 壁纸、渐变、纯色背景 | `background` |
-| `AppBar` | subtle blur + 低透明度边界 | 顶部栏、滚动后的栏 | tint-only |
-| `Hero` | standard blur + 重点边缘光学 | 首页设备摘要、连接横幅 | opaque/tint |
-| `Card` | standard blur，限制可见数量 | Device 功能卡、Stats 卡 | Material surface |
-| `SettingRow` | 默认无独立 blur | Settings 列表行 | 透明/Material surface |
-| `Dialog` / `Sheet` | 优先可读性，不依赖背景采样 | 确认、错误、选择器 | opaque surface |
+```text
+Window / Activity
+└─ GlassHost                         # 每个窗口唯一的 HazeState 所有者
+   ├─ BackgroundLayer                # 壁纸 / 渐变 / 纯色，先绘制真实输入
+   │  ├─ WallpaperLayer
+   │  ├─ AmbientGradientLayer        # 非 Haze 的低成本氛围渐变
+   │  └─ hazeSource(sharedHazeState)  # 只挂一次 source
+   └─ AppScaffold
+      ├─ SystemBars / AppBar          # 低强度 blur 或 tint
+      └─ NavHost
+         └─ RouteContent
+            ├─ HeroSurface             # 少量高折射液态玻璃
+            ├─ FeatureSurface[]        # 电量、ANC、音频等主要卡片
+            ├─ StandardSurface[]      # 普通信息卡，限制数量
+            ├─ CompactSurface[]       # 设置行/列表项，默认不独立采样
+            └─ Dialog / Sheet          # 可读性优先，默认 opaque
+               └─ ContentLayer         # 文本、图标、控件、语义和交互反馈
+```
 
-渲染预算固定为：一个窗口一个共享 `HazeState`；一个 route 只保留一个背景 source；长列表的单行组件不逐项创建 `hazeEffect`；同一视口优先控制在 6 个以内的主要玻璃 effect surface。超过预算时先把低层级 `Card`/`SettingRow` 切换为 tint-only，再考虑降低 blur 参数，避免通过增加透明度掩盖性能问题。
+本次核心目标是使用官方 Haze alpha05 的 `haze-glass` 实现液态玻璃效果；`haze-blur` 同时保留为低特效渲染途径、性能受限时的主动选择，以及 `haze-glass` 初始化/能力不满足时的回退路径。Hero 和需要真实折射的 FeatureCard 默认走 `Modifier.hazeGlass` + `GlassStyle`；普通信息卡可以选择低强度 Glass 或 `Modifier.hazeBlur`。`liquidGlassOptics` 只保留为迁移前实现记录，完成对应 surface 迁移后删除。
+
+**卡片折射分级和性能预算：**
+
+| SurfaceRole | 液态玻璃策略 | 推荐 `GlassStyle` / Blur 强度 | 单屏预算 | 典型位置与说明 |
+|---|---|---|---:|---|
+| `AppBackground` | 只作真实输入，不挂 effect | 无 effect；壁纸/渐变由 source 提供 | 1 source | 全窗口背景；不把纯色背景误报为玻璃输入 |
+| `AppBar` | 顶部滚动栏优先使用低强度 Haze Glass；低性能或静止状态可使用 `hazeBlur`/tint | `hazeGlass` 低强度 `GlassStyle`；必要时 `hazeBlur` 8–12dp；禁用重折射 | 1 | 顶部栏；不与 Hero 叠加独立高强度玻璃 |
+| `Hero` | 完整液态玻璃：背景采样、Glass optics、边缘折射、specular/ambient 高光 | 默认 `hazeGlass`；使用 `GlassOptics.Adaptive` 或受控 `GlassOptics.Fixed`；`depth` 0.32–0.45；低强度 chromatic edge；失败时回退 `hazeBlur` | 1 | 首页设备摘要、核心连接横幅；只允许一个主 Hero |
+| `FeatureCard` | 标准液态玻璃：保留背景层次和圆角边缘，减少动态光学 | 默认 `hazeGlass` 的受控 optics；低特效 profile 使用 `hazeBlur` 14–18dp；`depth` 0.22–0.34；低强度 refraction/specular | 2–3 | Device 的 ANC、电量、音频等主要卡片；同屏只选最重要的 2–3 张 |
+| `StandardCard` | 低特效玻璃：优先 `hazeBlur`，不启用高级折射；必要时 tint-only | `hazeBlur` 10–14dp；可选低 alpha tint；不使用高级 GlassOptics | 2 | Stats、设备信息和次级状态；滚动列表中优先合并为 section surface |
+| `CompactRow` | 不创建独立 Haze effect；使用透明/tint surface 继承父卡片 | 无独立 blur/glass；静态 alpha 和 divider | 0 | Settings 行、长列表项、开关和选择器；避免 N 个行组件各采样一次 |
+| `Dialog/Sheet` | 不依赖背景采样和折射；保证文字和控件可读 | opaque 或高可读 tint；必要时单一低强度 blur | 1 | 确认、错误、权限和更新安装提示；不让动态壁纸影响关键操作 |
+
+默认单个 route 同时最多 6 个主要 effect surface：`AppBar 1 + Hero 1 + Feature 3 + Standard 1`。渲染选择顺序固定为 `hazeGlass → hazeBlur → tint → opaque`：用户关闭高特效、设备性能不足或 effect 预算超限时，优先把 StandardCard/次级 FeatureCard 切到 `hazeBlur`；只有 Blur 仍超预算、输入不可用或初始化失败时才继续降到 tint/opaque。`CompactRow` 永远不因数量增长而增加 Haze effect。横向 pager 或动画转场期间，只保留当前可见 Hero/Feature 的 Glass effect，预加载页使用 Blur 或 tint。
+
+**液态玻璃的真实输入和折射规则：**
+
+1. `HazeInput.Sources(sharedHazeState)` 是 Hero、FeatureCard 和 StandardCard 的唯一背景输入；这些液态玻璃 surface 默认使用 `hazeGlass`，禁止把 effect surface 自身作为唯一 source，也禁止每个卡片创建 `rememberHazeState()`。
+2. `GlassStyle` 只在 Hero 和高优先级 FeatureCard 使用 `optics`、`specularIntensity`、`specularExponent`、`ambientResponse`、`edgeSoftness` 等 alpha05 Glass 参数；其中 `depth` 通过 `GlassStyleScope.optics(...)` / `GlassOptics.Fixed` 表达，不作为独立的 `GlassStyle` 属性。进入低特效 profile 后，FeatureCard/StandardCard 改用 `HazeBlurStyle`，不启用高级 GlassOptics。
+3. 折射、Fresnel、specular、ambient response 和 chromatic aberration 优先由官方 `haze-glass` 的 `GlassStyle`/`GlassOptics` 提供；低特效 profile 使用 `haze-blur` 保留可读的背景层次但关闭高级折射；只有官方 API 未覆盖的品牌装饰才允许作为内容上方的轻量 `drawWithCache` 层。
+4. `GlassStyle` 和 `HazeBlurStyle` 使用稳定、可复用的 replayable style；滚动时不修改 blur radius、optics 或 performance mode。用户调节参数只在设置提交后重建对应 surface profile。
+5. `HazeSourceRetention` 只决定 source 不可用时保留最近帧还是清空：默认是 `HazeSourceRetention.KeepLastFrame`，隐私场景使用 `ClearWhenUnavailable`。它不等于页面/后台生命周期控制；进入后台、页面离开或隐私场景时是否停止捕获，必须由 `GlassHost` 的 lifecycle policy 另行控制。
+6. Haze alpha05 的平台行为按官方 blur/platforms 文档和目标设备实测决定；本项目在 API 26–30 默认使用 `TintRenderer`/`OpaqueRenderer`，API 31/32 仅在实测可接受时启用有限 blur，API 33+ 作为主要 Haze Glass 验证范围。这是项目策略，不是官方兼容承诺；fallback 必须保留同样的颜色语义、shape、内容和交互。
+
+**运行时性能策略：**
+
+- 初始统一使用 `HazePerformanceMode.Default`（其 API 语义等同 `Adaptive`）；`HazePerformanceMode` 是 sealed interface，不是 enum。Glass profile 默认使用 `hazeGlass`；低特效 profile 使用 `hazeBlur`，只有在代表性真机测量后才选择 `Fixed(qualityFraction)` 或其明确别名 `Quality`（1f）、`Balanced`（0.5f）、`Performance`（0f），不直接复制官方示例设备参数。
+- 性能优先级固定为：减少 effect 面积 → 减少同屏 effect 数量 → 减少动态输入/高级 optics → 降低 blur 质量；不要先用更高透明度掩盖卡顿或采样为空。
+- LazyColumn/LazyRow 的 item 不逐个挂 Haze effect；使用父级 FeatureSurface 包住一组内容，或对不可见/低优先级 item 只绘制 tint。
+- 连接状态、蓝牙轮询和玻璃渲染完全分离；连接状态变化只更新内容，不重建 `HazeState`、BackgroundLayer 或所有 surface style。
+- Debug-only 诊断记录 `surfaceRole`、`renderer`、`effectSurfaceCount`、输入是否为空、`performanceMode`、首屏时间、滚动 P95 帧时间、jank、内存和 fallback reason；不记录壁纸 URI、设备地址或协议 payload。
+- UI-1 的目标是无崩溃/ANR，HAZE_GLASS 相对 CLASSIC 的滚动 P95 帧时间回归不超过 20%；超过时按上述降级顺序收敛，不能以“效果更强”为理由保留超预算实现。
+
 
 **参数与主题令牌：**
 
@@ -597,7 +774,7 @@ AppScaffold
 **背景、壁纸和生命周期：**
 
 - 壁纸 URI、作用域和透明度由 `AppUiState` 提供，`BackgroundLayer` 统一加载；Home、Settings 等页面不各自加载背景图。
-- route 切换只改变 content，不重新创建 Haze source；Activity 重建时由 `GlassHost` 重新建立短生命周期状态。
+- route 切换只改变 content，不重新创建 Haze source；Activity 重建时由 `GlassHost` 根据窗口生命周期重新建立 `HazeState` 和 source，并按 privacy policy 决定是否清空 retained frame。
 - 壁纸加载失败、没有壁纸、权限变化和窗口尺寸变化都回到 gradient/solid 背景，玻璃内容继续可读。
 - Haze 渲染状态与蓝牙连接状态分离；设备连接/断开不会触发玻璃参数重置，也不会让页面为连接状态重新创建渲染器。
 
@@ -606,6 +783,7 @@ AppScaffold
 ```kotlin
 enum class SurfaceRenderMode {
     HAZE_GLASS,
+    HAZE_BLUR,
     TINT_ONLY,
     OPAQUE,
 }
@@ -617,8 +795,8 @@ data class GlassRuntimePolicy(
 )
 ```
 
-- Android 12+ 作为主要 blur/render-effect 验证范围；minSdk 26 继续提供 tint/opaque 路径。
-- Haze 初始化或 effect 应用异常时，当前 surface 在同一帧回退到 tint/opaque；页面状态和交互继续存在。
+- Android 26–30 默认走 `TintRenderer`/`OpaqueRenderer`；Android 31/32 只在实测可接受时启用有限 blur；Android 33+ 作为主要 Haze Glass 验证范围。这是本项目的降级策略，不是 Haze 官方完整兼容表；官方平台行为需以 `https://chrisbanes.github.io/haze/latest/blur/platforms/` 和目标设备实测为准。
+- Haze 初始化或 `hazeGlass` effect 应用异常时，当前 surface 先回退到同一输入上的 `hazeBlur`；Blur 也不可用、输入为空或性能策略明确关闭模糊时，再回退到可见 tint/opaque。页面状态和交互继续存在。
 - 高对比度、较大文字、低性能设备和用户关闭玻璃时，降低 refraction/depth，必要时关闭 blur；可读性优先于视觉效果。
 - 不在滚动回调中反复修改 blur 参数；背景、profile 和 shape 使用稳定对象，减少重组和 effect 重建。
 - UI-1 记录同一设备下 `CLASSIC`、`TINT_ONLY` 和 `HAZE_GLASS` 的首屏时间、滚动帧时间、内存和崩溃/ANR；后续玻璃改动以该基线比较，目标为无崩溃/ANR，且 P95 帧时间相对经典模式回归控制在 20% 以内。
@@ -626,7 +804,7 @@ data class GlassRuntimePolicy(
 
 **可读性和无障碍契约：**
 
-- 文本、开关、图标和状态颜色在 `HAZE_GLASS`、`TINT_ONLY`、`OPAQUE` 三种模式使用同一语义色和内容描述。
+- 文本、开关、图标和状态颜色在 `HAZE_GLASS`、`HAZE_BLUR`、`TINT_ONLY`、`OPAQUE` 四种模式使用同一语义色和内容描述。
 - `readabilityStrength` 只增强内容底层遮罩，不改变业务状态，也不把低对比度文字涂成装饰色。
 - TalkBack/键盘焦点顺序由内容树决定，玻璃 surface 不拦截焦点；装饰性壁纸和边缘光学绘制均标记为无障碍装饰。
 - reduced motion 关闭形变、折射和边缘动画；状态变化仍提供文本/语义反馈。
@@ -636,14 +814,14 @@ data class GlassRuntimePolicy(
 
 | 阶段 | Haze 工作 | 直接验收 |
 |---|---|---|
-| UI-0 | 盘点所有 `HazeState`、`hazeSource`、`hazeEffect`、玻璃参数和截图 | 形成调用清单、surface 数量和资源基线 |
-| UI-1 | 建立 `GlassHost`、`SurfaceRenderer`、`GlassTokenResolver` 和三档 fallback | 旧页面可运行；公共 preview 覆盖三种 renderer |
-| UI-2 | typed state/event 与渲染器解耦，Device 组件去除 Haze 参数 | feature 目录无 Haze import；动作状态与渲染模式独立 |
-| UI-3 | `AppScaffold` 接管背景和共享 HazeState，迁移 Home/Scan/Permission | 每个入口只创建一个 host/source，路由切换无重复 source |
-| UI-4 | 按 SurfaceRole 迁移 Device/Gesture/Stats/Terminal | 玻璃卡数量、滚动性能、能力状态和美术资源映射满足基线 |
-| UI-5 | Settings 迁移、fallback/无障碍收口、移除 facade 的页面依赖 | 只剩 foundation 层 Haze import；可通过开关回退 classic |
+| UI-0 | 盘点现有 alpha03 调用、HazeState、hazeSource、hazeEffect、玻璃参数和截图 | 形成迁移清单、surface 数量、effect 数量和资源基线；不承诺 alpha03 兼容 |
+| UI-1 | 直接建立 alpha05 `GlassHost`、`BackgroundLayer`、`SurfaceRenderer` 和四路 renderer；完成 Hero/Feature/Standard/Compact/Dialog 的 effect 预算与 fallback | alpha05 `hazeGlass` 主路径、`hazeBlur` 低特效/回退路径和 Tint/Opaque 最终降级均可运行；公共 preview 覆盖四种 renderer，并记录 source/effect 数量和性能 |
+| UI-2 | typed state/event 与渲染器解耦，Device 组件去除 Haze 参数 | feature 目录无 Haze import；动作状态与渲染模式独立，CompactRow 不增加 effect |
+| UI-3 | `AppScaffold` 接管背景和共享 HazeState，迁移 Home/Scan/Permission | 每个入口只创建一个 host/source，路由切换无重复 source；单屏 effect 不超过预算 |
+| UI-4 | 按 SurfaceRole 迁移 Device/Gesture/Stats/Terminal | Hero/Feature/Standard 的折射级别符合表格，玻璃卡数量、滚动性能、能力状态和美术资源映射满足基线 |
+| UI-5 | Settings 迁移、fallback/无障碍收口、删除旧 Haze facade 和页面依赖 | 只剩 foundation 层 alpha05 Haze import；可通过开关回退 classic/opaque；长列表、Dialog 和高对比度场景不依赖玻璃效果 |
 
-Haze 相关变更的回退点固定为 `SurfaceRenderMode.OPAQUE` 或 `UiDisplayMode.CLASSIC`。任何玻璃渲染问题先回退 surface，不回退 `EarbudState`、连接管理或设备功能代码。
+Haze 相关变更的回退点固定为项目自己的 `SurfaceRenderMode.TINT_ONLY` 或 `SurfaceRenderMode.OPAQUE`，以及 `UiDisplayMode.CLASSIC`；不回退 alpha03，也不回退 `EarbudState`、连接管理或设备功能代码。
 
 #### 3.5.1.2 官方仓库更新核对与本项目实际调用审计
 
@@ -652,15 +830,18 @@ Haze 相关变更的回退点固定为 `SurfaceRenderMode.OPAQUE` 或 `UiDisplay
 - 仓库：[https://github.com/chrisbanes/haze](https://github.com/chrisbanes/haze)
 - 最新预发布：[`2.0.0-alpha05`](https://github.com/chrisbanes/haze/releases/tag/2.0.0-alpha05)，发布于 2026-08-12。
 - 上一预发布：[`2.0.0-alpha04`](https://github.com/chrisbanes/haze/releases/tag/2.0.0-alpha04)，发布于 2026-08-08。
-- 迁移指南：[https://chrisbanes.github.io/haze/migrating-2.0/](https://chrisbanes.github.io/haze/migrating-2.0/)
-- 性能指南：[https://chrisbanes.github.io/haze/performance/](https://chrisbanes.github.io/haze/performance/)
+- 迁移指南：[https://chrisbanes.github.io/haze/latest/migrating-2.0/](https://chrisbanes.github.io/haze/latest/migrating-2.0/)
+- Blur 使用：[https://chrisbanes.github.io/haze/latest/blur/usage/](https://chrisbanes.github.io/haze/latest/blur/usage/)
+- 平台行为：[https://chrisbanes.github.io/haze/latest/blur/platforms/](https://chrisbanes.github.io/haze/latest/blur/platforms/)
+- Glass：[https://chrisbanes.github.io/haze/latest/effects/glass/](https://chrisbanes.github.io/haze/latest/effects/glass/)
+- 性能指南：[https://chrisbanes.github.io/haze/latest/performance/](https://chrisbanes.github.io/haze/latest/performance/)
 - 许可证：Apache-2.0。`main` 在 alpha05 之后仍有未发布提交，因此本项目锁定发布版本，不跟随 `main` 快照。
 
 **官方更新对本项目的影响：**
 
-1. Alpha04 将旧的嵌套 effect DSL 改为 typed modifier：Blur 使用 `Modifier.hazeBlur`、`HazeInput`、不可变 `HazeBlurStyle` 和 `HazePerformanceMode`；Glass 使用 `Modifier.hazeGlass` 和 `GlassStyle`。当前项目的 `Modifier.hazeEffect { blurEffect { ... } }` 属于 alpha03 调用方式，直接升级到 alpha05 前必须完成 API 迁移。
-2. Alpha04 新增实验性的 `haze-glass`；它可以承担折射、深度模糊、tint、Fresnel、光照、渐进模糊和交互效果。当前项目没有声明该模块，`AdaptiveGlass.kt` 的 `liquidGlassOptics` 是项目自己的绘制代码，不应被描述成官方 Glass 实现。
-3. Alpha05 增加/明确 `HazePerformanceMode` 的 `Default/Adaptive/Quality/Balanced/Performance/Fixed` 语义，并修复透明背景合成、Glass Android 渲染和跨窗口/保留输出等问题。性能参数必须按目标设备重新测量，不能把官方 Pixel 6 参考值直接当作本项目预算。
+1. **Alpha04 typed API / alpha05 锁定**：alpha04 将旧的嵌套 effect DSL 改为 typed modifier；alpha05 使用 Blur 的 `Modifier.hazeBlur`、`HazeInput`、不可变 `HazeBlurStyle`，以及独立 experimental Glass artifact 的 `Modifier.hazeGlass`、`GlassStyle`。当前项目的 `Modifier.hazeEffect { blurEffect { ... } }` 属于一次性迁移对象，完成 UI-1 后不再保留。
+2. Alpha05 的 `haze-glass` 是独立 experimental artifact；它可以承担折射、深度模糊、tint、Fresnel、光照、渐进模糊和交互效果。当前 production 代码尚未声明该模块；`AdaptiveGlass.kt` 的 `liquidGlassOptics` 是项目自己的绘制代码，不应被描述成官方 Glass 实现。全量 UI 重构将在 alpha05 foundation adapter 中正式引入并集中管理该模块。
+3. Alpha05 增加/明确 `HazePerformanceMode` 的 sealed API 语义（`Adaptive`、`Fixed(qualityFraction)`，以及 `Default`/`Quality`/`Balanced`/`Performance` 别名），并修复透明 captured content 合成、Blur style 更新等行为。跨窗口重组和 retained Glass stages 等内容属于 alpha04，不能归因于 alpha05；所有性能参数必须按目标设备重新测量，不能把官方 Pixel 6 参考值直接当作本项目预算。
 
 **当前依赖和实际调用证据：**
 
@@ -669,48 +850,50 @@ Haze 相关变更的回退点固定为 `SurfaceRenderMode.OPAQUE` 或 `UiDisplay
 | `haze` | `app/build.gradle.kts:75` | `HazeState`、`rememberHazeState`、`hazeSource`、`hazeEffect` | `AppNavHost` 每次创建 source；effect 由玻璃模式决定 | 有实际调用 |
 | `haze-blur` | `app/build.gradle.kts:76` | `HazeColorEffect`、`blurEffect` | `AdaptiveGlass.kt` 的 Card/Panel 进入玻璃模式时执行 | 有实际调用 |
 | `haze-blur-materials` | `app/build.gradle.kts:77` | 当前 `rg` 未发现 `HazeMaterials` 或 `blur.materials` import | 没有直接调用 | 当前属于“只声明未使用”依赖 |
-| `haze-glass` | 未声明 | 无 | 无 | 当前没有使用官方 Glass 模块 |
+| `haze-glass` | `app/build.gradle.kts` UI-1 规划新增 | `Modifier.hazeGlass`、`GlassStyle`、`GlassOptics` | 仅 foundation adapter 的 Hero/Feature surface | alpha05 experimental；需要 `@ExperimentalHazeApi` 和真实运行/截图证据 |
 
 历史代码核对结果：
 
 - `v2.9.0` 已在 `AdaptiveGlass.kt` 使用 `HazeState`、`hazeSource`、`hazeEffect`；当时依赖为 Haze 1.6.7。
-- `v2.12.0` 将依赖切换到 Haze 2.0 alpha03，并把 `HazeTint` 迁移为 `HazeColorEffect` + `blurEffect`；这不是只有 Gradle 声明，代码中已有实际调用。
-- `v4.2.6` 仍保留上述 Haze 2.0 alpha03 调用链；当前重构分支沿用同一调用链。
+- `v2.12.0` 将依赖切换到 Haze 2.0 alpha03，并把 `HazeTint` 迁移为 `HazeColorEffect` + `blurEffect`；这不是只有 Gradle 声明，代码中已有实际调用。该历史调用仅作为迁移来源记录，不作为新 UI 的实现依据。
+- `v4.2.6` 仍保留上述 Haze 2.0 alpha03 调用链；全量 UI 重构完成后不再沿用该调用链。
 - 用户观察到“依赖写了但没有效果”有一个确定原因：`UiDisplayMode` 默认是 `CLASSIC`，而 `AdaptiveCard`、`LiquidGlassPanel`、`AdaptiveGlassBanner` 只有在 `displayMode == LIQUID_GLASS && hazeState != null` 时才挂载 effect。只运行默认经典路径时，Blur effect 不会执行；AppNavHost 的 `hazeSource` 仍会创建。
 
 **依赖处理决定：**
 
-1. UI-0 只记录 alpha03 的现状、运行诊断和视觉基线，不扩散旧调用，也不把“调用存在”标记为完成。
-2. UI-1 先完成一个独立的 alpha05 迁移提交：把 Blur 路径改成 `hazeBlur(input = HazeInput.Sources(...), style = HazeBlurStyle { ... }, performanceMode = HazePerformanceMode.Default)`，再跑 CI 和截图矩阵；通过后才开始公共 surface 和页面迁移。
-3. `haze-blur-materials` 只有在页面实际使用 `HazeMaterials.*` preset 后保留；若继续使用自有 `GlassTokenResolver`，则在 alpha05 迁移提交中删除该无调用依赖，并记录构建结果。
-4. `haze-glass` 作为独立 A/B 试验，不与 UI-1 的基础 Blur 迁移合并：先保留现有 `liquidGlassOptics`，分别比较官方 Glass 与现有美术资源、可读性、性能和 fallback，再决定是否接入。
-5. UI-1 的构建标签区分 `UI_HAZE_ALPHA05_MIGRATION` 与 `UI_GLASS_EXPERIMENT`；版本号不是唯一识别方式。
+1. UI-0 只记录当前 alpha03 的现状、运行诊断和视觉基线，不把它定义为兼容目标。
+2. UI-1 直接完成 alpha05 typed Blur 和 experimental Glass 迁移：Blur 使用 `hazeBlur(input = HazeInput.Sources(...), style = HazeBlurStyle { ... }, performanceMode = HazePerformanceMode.Default)`；Glass 使用独立 `haze-glass` artifact 的 `hazeGlass`/`GlassStyle`。通过 CI、运行截图和性能矩阵后，才开始公共 surface 和页面迁移。
+3. `haze-blur-materials` 只有在页面实际使用 `HazeMaterials.*` preset 后才升级并保留；若继续使用自有 `GlassTokenResolver`，则在 alpha05 迁移提交中删除该无调用依赖，并记录构建结果。
+4. `haze-glass` 不再作为 UI-1 之后的独立延后试验；它是本轮液态玻璃全量重构的正式依赖，但所有 experimental API 仅限 foundation adapter，并以独立运行/截图/性能证据验收。
+5. UI-1 的构建标签为 `UI_HAZE_ALPHA05_MIGRATION`；若未来单独比较官方 Glass 参数或第三方光学效果，再使用独立 `UI_GLASS_EXPERIMENT` 标签。版本号不是唯一识别方式。
 
 **实际调用证明规则：**
 
 - `CLASSIC` 测试记录 `renderer=Material3`、`sourceAttached=0` 或 `effectSurfaces=0` 的预期结果。
-- `LIQUID_GLASS` 测试必须先通过设置选择玻璃模式，再记录 `renderer=Haze`、`sourceAttached=1`、实际 effect surface 数量、profile 和 fallback reason；只看 Gradle 依赖或 import 不算运行证据。
+- `LIQUID_GLASS` 测试必须先通过设置选择玻璃模式，再记录 `renderer=HazeGlass`、`sourceAttached=1`、实际 effect surface 数量、profile 和 fallback reason；低特效/回退测试记录 `renderer=HazeBlur`，只有 Blur 不可用或输入为空时才记录 Tint/Opaque。只看 Gradle 依赖或 import 不算运行证据。
 - Debug-only 的 `GlassRuntimeDiagnostics` 只记录 renderer/profile/effect 数量，不记录壁纸 URI、设备地址或协议 payload；Release 不暴露诊断入口。
-- `haze-blur-materials` 的验收必须包含一次实际 preset 使用，或在报告中明确“已移除未使用依赖”。
+- `haze-glass` 的验收必须包含 alpha05 `hazeGlass`/`GlassStyle` 的实际 Hero/Feature preset 使用、真实输入截图和 fallback 诊断；不能用 `haze-blur-materials` 的依赖存在替代 Glass 运行证据。
 
 #### 3.5.1.3 玻璃渲染正确性硬门槛
 
 “调用成功”与“用户看到了正确效果”分开验收。后续重构必须满足以下约束：
 
 1. **唯一宿主和真实输入**：`GlassHost` 是 Activity/window 内唯一的 `HazeState` 所有者；`BackgroundLayer` 先绘制壁纸、渐变或非纯色背景，再挂载唯一 source，`NavHost` 只作为其后的内容层。禁止让 effect surface 自己成为唯一输入，也禁止在每个页面重复创建 source。
-2. **typed adapter**：业务页面不得直接 import 该库；`SurfaceRenderer` 统一负责 `input`、`style`、`performanceMode`、blur/glass effect 和 Android 能力判断。alpha05 迁移完成后，禁止新增旧的嵌套 DSL 调用。
-3. **不可见降级**：模糊不支持、硬件加速不可用、source 为空、输入是纯色或 effect 初始化失败时，必须切换到可见的 `TintRenderer` 或 `OpaqueRenderer`。不得使用“透明 surface + 空 tint”作为失败结果。
-4. **可观测性**：Debug-only `GlassRuntimeDiagnostics` 记录 `mode`、`renderer`、`sourceAttached`、`sourceAreaCount`、`effectSurfaceCount`、`apiLevel`、`hardwareAccelerated`、`performanceMode` 和 `fallbackReason`。只记录渲染元数据，不记录壁纸 URI、设备地址或协议 payload。
-5. **视觉基线**：每个公共 surface 必须在非纯色渐变/壁纸输入下同时提供 `CLASSIC`、真实 blur/glass、fallback 三张对照预览；截图验收不能只证明组件存在或 import 成功。
-6. **路由覆盖**：Home、Device、Settings 至少各验证一个 surface；切换 route、旋转/重建和切换 `CLASSIC`/`LIQUID_GLASS` 后，source 与 effect 数量不得累积，显示结果不得退化为空白或完全不透明错误色块。
+2. **分层渲染和 effect 预算**：窗口只保留一个 source；Hero 最多 1 个、FeatureCard 最多 3 个、StandardCard 最多 2 个，CompactRow 不创建独立 effect；单屏主要 effect 默认不超过 6 个。超过预算时优先将 StandardCard/FeatureCard/AppBar 降为 tint 或低强度 blur。
+3. **typed adapter**：业务页面不得直接 import 该库；`SurfaceRenderer` 统一负责 `input`、`style`、`performanceMode`、blur/glass effect 和 Android 能力判断。alpha05 迁移完成后，禁止新增旧的嵌套 DSL 调用。
+4. **折射只作增强层**：Hero 和少量 FeatureCard 才允许 `GlassStyleScope.optics(...)`、`specularIntensity`、`specularExponent`、`ambientResponse`、`edgeSoftness` 和受控 chromatic aberration 等 alpha05 Glass 参数；边缘光学使用轻量 `drawWithCache`，不得通过大面积白色填充或透明度伪造玻璃；StandardCard、CompactRow 和 Dialog 不依赖高级折射。
+5. **不可见降级**：模糊不支持、硬件加速不可用、source 为空、输入是纯色或 effect 初始化失败时，必须切换到可见的 `TintRenderer` 或 `OpaqueRenderer`。不得使用“透明 surface + 空 tint”作为失败结果。
+6. **可观测性**：Debug-only `GlassRuntimeDiagnostics` 记录 `mode`、`renderer`、`sourceAttached`、`sourceAreaCount`、`effectSurfaceCount`、`apiLevel`、`hardwareAccelerated`、`performanceMode`、首屏/滚动 P95 帧时间、jank、内存和 `fallbackReason`。只记录渲染元数据，不记录壁纸 URI、设备地址或协议 payload。
+7. **视觉基线**：每个公共 surface 必须在非纯色渐变/壁纸输入下同时提供 `CLASSIC`、真实 blur/glass、fallback 三张对照预览；截图验收不能只证明组件存在或 import 成功。
+8. **路由覆盖**：Home、Device、Settings 至少各验证一个 surface；切换 route、旋转/重建和切换 `CLASSIC`/`LIQUID_GLASS` 后，source 与 effect 数量不得累积，显示结果不得退化为空白或完全不透明错误色块。
 
-本门槛的定向测试标签为 `UI_GLASS_RENDERING_TARGETED`，只覆盖本轮修改涉及的 renderer、surface 和 route，不复跑蓝牙 36 轮矩阵。未满足运行时和截图证据前，UI-1 保持 `[ ] 未开始`。
+本门槛的定向测试标签为 `UI_GLASS_RENDERING_TARGETED`，只覆盖本轮修改涉及的 renderer、surface 和 route，不复跑蓝牙 36 轮矩阵。未满足运行时和截图证据前，UI-1 保持 `[~] 进行中`。
 
 ### 3.6 UI 迁移阶段
 
-所有 UI 阶段都按“实现一层 → JVM/静态检查 → GitHub Actions 构建 → 定向界面/实机验证 → 文档回写 → 可回退提交”执行。阶段标题只有在该阶段的代码、测试、证据和回退记录齐备后才改为 `[x] 已完成`。当前仅完成规划，以下阶段均保持 `[ ]`。
+所有 UI 阶段都按“实现一层 → JVM/静态检查 → GitHub Actions 构建 → 定向界面/实机验证 → 文档回写 → 可回退提交”执行。阶段标题只有在该阶段的代码、测试、证据和回退记录齐备后才改为 `[x] 已完成`。当前已形成 UI-0 基线和 UI-1 至 UI-5 的第一轮结构迁移，以下阶段保持 `[~]`，不把代码已落地误记为验收完成。
 
-#### UI-0：行为、状态、资源基线 `[ ] 未开始`
+#### UI-0：行为、状态、资源基线 `[~] 进行中`
 
 交付物：
 
@@ -719,37 +902,39 @@ Haze 相关变更的回退点固定为 `SurfaceRenderMode.OPAQUE` 或 `UiDisplay
 - 增加 `UI_GLASS_RENDERING_TARGETED` 基线：非纯色输入下的真实效果、无效果能力下的可见 fallback、纯色/无壁纸输入下的明确 tint 或 opaque 结果；记录 source/effect 数量和 fallback reason。
 - 记录断开、系统链路已连接、TransportReady、CoreInitializing、Ready、Degraded、Failed、无能力、动作 Pending/读回/失败等状态的显示矩阵。
 - 列出全部 `DeviceProps` 字段、`EarbudState`/`EarbudCapability` 映射、页面读取位置、`setProperty` 入口、设置 key 和导航触发来源。
-- 盘点现有 `UpdateChecker`、Settings 的“更新地址”入口、`BuildConfig.VERSION_NAME/VERSION_CODE`、Release 资产和安装权限；记录哪些属于旧草稿、哪些需要迁移为 typed update state。
+- 记录已删除的旧 `UpdateChecker` 草稿、Settings 的“更新地址”入口、`BuildConfig.VERSION_NAME/VERSION_CODE`、Release 资产和安装权限，并把有效能力迁移为 typed update state。
 - 完成美术资源保留清单、`UiAssetCatalog` 映射表和旧 XML/主题资源的迁移边界。
-- 为 `EarbudStateMapper`、能力展示、关键选项映射和导航去重补充基线测试；本阶段不修改页面行为、不提升应用版本。
+- 为 `EarbudStateMapper`、能力展示、关键选项映射、更新 manifest 和导航去重补充基线测试；本阶段不提升应用版本。
 
 退出条件：基线清单可逐项回溯，任何现有页面的功能和资源都有“保留、迁移或废弃”的明确结论。
 
-#### UI-1：设计令牌、主题和渲染基础 `[ ] 未开始`
+#### UI-1：设计令牌、主题和渲染基础 `[~] 进行中`
 
 交付物：
 
 - 新增 `ui/foundation/tokens/UiTokens.kt`，按 `ref.*`、`sys.*`、`comp.*` 三层表达颜色、排版、间距、圆角、边框、层级和动效。
-- 新增统一 `AppTheme`、`AppScaffold`、`AppTopBar`、`SectionHeader`、`SettingRow`、`AsyncActionIndicator`、`ConnectionBanner`、`EmptyState`、`ErrorState`。
+- 新增统一 `AppTheme`、`AppScaffold`、`AppTopBar`、`SectionHeader`、`SettingRow`、`PrimaryActionButton`、`SecondaryActionButton`、`TertiaryActionButton`、`DestructiveActionButton`、`IconActionButton`、`ToggleButton`、`BooleanOptionRow`、`SingleChoiceOption`、`DependentChoiceOption`、`SegmentedOption`、`SliderOption`、`ActionPicker`、`AsyncActionIndicator`、`ConnectionBanner`、`EmptyState`、`ErrorState`。
+- 为按钮和选项建立统一 visual/state contract：`UiActionState`、`UiOption<T>`、`OptionUiState<T>`、`UiTextMapper`、`OptionPresenter`；所有控件支持 `Idle/Disabled/Pending/Success/Failure` 或选项 `selected/pending/unknown/unavailable` 语义。
+- 将 CLASSIC/LIQUID_GLASS 收敛为同一内容树的 SurfaceProfile；控件 surface 按 `hazeGlass → hazeBlur → tint → opaque` 选择，Haze 2.0 只位于 surface adapter，长列表行不逐项创建 effect。
+- 统一 8dp 间距节奏、至少 44dp 触控目标、动态字体、深浅色、对比度、TalkBack、键盘焦点和 reduced motion 的工程入口。
+
 - 建立 `UiAssetCatalog`，将 ANC 三种图标、耳机盒、Tile 图标映射为 `AncVisual`、`DeviceVisual` 等语义资源。
-- 将 `CLASSIC`/`LIQUID_GLASS` 收敛为同一内容树的两个 `SurfaceProfile`；Haze 2.0 只位于 surface adapter，保留 opaque/tint/blur 降级路径。
-- 统一 8dp 间距节奏、至少 44dp 触控目标、动态字体、深浅色、对比度和 reduced motion 的工程入口。
 
-退出条件：公共组件和 token 有预览/单元基线，旧页面仍可回退；新 surface 不改变连接和设备状态。
-
-#### UI-2：typed State、Event 与 Navigation `[ ] 未开始`
+退出条件：公共组件、按钮、选项和 token 有预览/单元基线，alpha05 surface 可运行；旧页面的生产入口可暂时保留，但不再保留 alpha03 渲染兼容分支。
+#### UI-2：typed State、Event 与 Navigation `[~] 进行中`
 
 交付物：
 
 - 建立 `AppUiState`、`DeviceUiState`、`SettingsUiState`、`ControlUiState`、`UiActionState` 和一次性 `NavigationEvent`。
 - `DeviceViewModel` 由字符串透传层改为 typed event 入口；先迁移 ANC、低延迟、音质偏好三个高频动作。
 - 页面消费 `EarbudState` 和能力集合；`null` 表示未知/未提供，能力集合决定 section 是否出现。
-- 每个写操作区分 `Pending → Ack/Readback → Success`、`Failure` 和重试；页面不从日志文本猜测状态。
+- 按钮、开关、选择器和滑块全部使用 UI-1 的统一控件契约；页面只发送 typed event，不直接调用 Material 控件状态或 Haze API。
+- 每个写操作区分 `Pending → Ack/Readback → Success`、`Failure` 和重试；选项区分 `selectedValue`、`pendingValue`、未知和不可用原因；页面不从日志文本猜测状态。
 - 连接发起、自动连接、设备点击、扫描完成、Service 和 Tile 统一使用 Manager command 与触发来源，导航只接收稳定状态和 `NavigationEvent`。
 
 退出条件：迁移的三个高频动作具备 pending、ACK/读回、失败提示和重试测试；迁移页面中不再出现厂商 `group/prop` 或协议字节。
 
-#### UI-3：全局外壳与主路由 `[ ] 未开始`
+#### UI-3：全局外壳与主路由 `[~] 进行中`
 
 交付物：
 
@@ -760,32 +945,33 @@ Haze 相关变更的回退点固定为 `SurfaceRenderMode.OPAQUE` 或 `UiDisplay
 
 退出条件：Home/Scan/Permission 的所有入口只产生一个连接命令和一个导航事件；旧 `AppNavHost` 的设置读写和重复连接判断全部移出。
 
-#### UI-4：设备功能页面 `[ ] 未开始`
+#### UI-4：设备功能页面 `[~] 进行中`
 
 交付物：
 
-- 将 `DeviceScreen` 拆为 `BatteryCard`、`NoiseControlSection`、`AudioSection`、`LowLatencyRow`、`DualConnectSection`、`GestureEntryCard`、`DeviceInfoSection` 等独立组件。
-- 迁移 Gesture、ListeningStats 和 Terminal；Terminal 先保持 Debug/诊断能力与旧 XML 回退，最后再切换统一 route。
+- 将 `DeviceScreen` 拆为 `BatteryCard`、`NoiseControlSection`、`AudioSection`、`LowLatencyRow`、`DualConnectSection`、`GestureEntryCard`、`DeviceInfoSection` 等独立组件；当前已将 `BatteryCard`、后台同步、EQ 状态、双设备卡片、通用选项/开关/设备信息卡放入 `ui/DeviceFeatureComponents.kt`，route 只保留布局和事件编排。
+- 迁移 Gesture、ListeningStats 和 Terminal；Terminal 先保持 Debug/诊断能力，旧 XML 仅作为迁移期间的布局输入，完成统一 route 后删除生产入口中的旧布局依赖。
 - 按 `EarbudCapability` 控制 section 可见性；未知、未验证和失败能力只显示结构化降级状态，不展示伪造的默认值。
-- 所有设备功能使用同一 `SettingRow`、选择器、开关、确认反馈、错误重试和连接横幅；保留现有 ANC 美术资源并统一尺寸/语义。
+- 所有设备功能使用同一 `SettingRow`、`PrimaryActionButton`/`SecondaryActionButton`、`BooleanOptionRow`、`SingleChoiceOption`、`DependentChoiceOption`、`SegmentedOption`、`ActionPicker`、确认反馈、错误重试和连接横幅；保留现有 ANC 美术资源并统一尺寸/语义。
+- Device、Gesture、ListeningStats、Terminal 的按钮/选项必须通过 `OptionPresenter` 生成文案和可用状态；不再在各页面维护 raw 值映射。
 
 退出条件：Device/Gesture/ListeningStats/Terminal 在 classic 和 glass 下共用同一状态树；每个本轮改动的设备能力只做对应定向验证，不恢复无关的 36/100 项蓝牙矩阵。
 
-#### UI-5：设置、持久化、无障碍与兼容层收口 `[ ] 未开始`
+#### UI-5：设置、持久化、无障碍与兼容层收口 `[~] 进行中`
 
 交付物：
 
 - 将 Settings 拆为主题、语言、壁纸、显示风格、连接偏好、调试、关于等 section；Composable 只发送事件，不直接读写 `SharedPreferences`。
 - 集中迁移设置 key 到 `SettingsRepository`，按需要落到 DataStore；处理旧 key 读取、一次性迁移和进程重启后的状态恢复。
 - 在“关于/应用详情”加入 `UpdateCard`：展示当前版本、最后检查时间、更新渠道、检查按钮、可用版本、发布日期、更新说明和下载/安装进度；保留 Release 页面入口作为人工兜底。
-- 将现有 `UpdateChecker` 替换为 `UpdateRepository + CheckForUpdateUseCase + DownloadUpdateUseCase`；页面只消费 `UpdateUiState`，更新请求不依赖蓝牙连接状态。
+- 以 `UpdateRepository` 承担 `CheckForUpdateUseCase`/`DownloadUpdateUseCase` 的边界；页面只消费 `UpdateUiState`，更新请求不依赖蓝牙连接状态。后续若拆出独立 UseCase，只改变内部组织，不改变页面契约。
 - 完成 light/dark、中文/English/繁體、横竖屏、较大文字、TalkBack/键盘焦点、对比度和 reduced motion 验收。
 - 对 classic/glass 运行同一页面和状态矩阵；确认资源映射、能力隐藏、错误反馈和导航行为一致。
 - `rg` 确认页面已无 raw `group/prop`、直接 `SharedPreferences` 和重复 option 映射后，才删除兼容 UI 代码；删除项单独记录，保证可回退。
 
-退出条件：全部 UI route 通过统一外壳、状态、事件、持久化和资源目录；旧页面只作为可回退提交保留，不再作为生产入口。
+退出条件：全部 UI route 通过统一外壳、状态、事件、持久化和资源目录；旧页面不再作为生产入口，alpha03 Haze 调用和兼容 facade 均已删除。
 
-#### UI-5 附属能力：检查更新与自动更新设计 `[ ] 未开始`
+#### UI-5 附属能力：检查更新与自动更新设计 `[~] 结构已实现，等待验证`
 
 **数据源与版本契约：**
 
@@ -833,7 +1019,8 @@ UI 阶段不复用 BT 的 36/100 项完整矩阵，测试范围按实际改动�
 | 测试标签 | 对应阶段 | 验证内容 | 默认强度 |
 |---|---|---|---:|
 | `UI_FOUNDATION_SMOKE` | UI-1 | 公共外壳、主题、classic/glass surface、资源加载、深浅色 | 每个页面状态 1 次 |
-| `UI_GLASS_RENDERER_MATRIX` | UI-1/UI-5 | `HAZE_GLASS`、`TINT_ONLY`、`OPAQUE`、有/无壁纸、深浅色和高对比度 | 每个组合 1 次 |
+| `UI_GLASS_RENDERING_TARGETED` | UI-1/UI-5 | `HAZE_GLASS`、`HAZE_BLUR`、`TINT_ONLY`、`OPAQUE`、有/无壁纸、深浅色和高对比度 | 每个组合 1 次 |
+| `UI_CONTROL_STATE_MATRIX` | UI-1/UI-2/UI-4/UI-5 | 所有按钮类型、`Idle/Disabled/Pending/Success/Failure`、Boolean/SingleChoice/Dependent/Segmented/Slider/ActionPicker、未知/不可用/读回失败和四种 surface renderer | 每种关键组合 1 次 |
 | `UI_GLASS_PERFORMANCE` | UI-1/UI-4 | Home/Device/Settings 首屏、滚动、切换 route 的帧时间、内存和 fallback 日志 | 每个 renderer 3 轮 |
 | `UI_STATE_EVENT_TARGETED` | UI-2 | ANC/低延迟/音质的 typed event、Pending、ACK/读回、失败重试和能力隐藏 | 每个改动能力 5 轮 |
 | `UI_SHELL_ROUTES` | UI-3 | Home/Scan/Permission、设备点击、扫描完成、Service/Tile 入口去重和返回行为 | 每个入口 3 轮 |
@@ -848,7 +1035,7 @@ UI 阶段不复用 BT 的 36/100 项完整矩阵，测试范围按实际改动�
 
 验收证据分为三层：GitHub Actions 的 `diff-check`/JVM/构建报告、模拟状态/Compose 或截图基线、需要真实设备的定向报告。只有真实设备验证涉及蓝牙动作时，才收集 `attemptId`、endpoint、channel、source 和阶段耗时；UI 视觉和导航改动只保留对应截图/交互日志。
 
-当某一阶段代码完成并进入真实设备或人工交互门时，将该阶段标题改为 `[~] 目标受阻：等待实测报告`，并在本文件记录测试标签、构建标签、设备/系统、步骤、期望结果和报告路径；报告返回后只修复该阶段对应问题，再把状态改为 `[x]` 或继续保持 `[~]`。当前尚未进入 UI-0 实现，也未创建 UI 测试包。
+当某一阶段代码完成并进入真实设备或人工交互门时，将该阶段标题改为 `[~] 目标受阻：等待实测报告`，并在本文件记录测试标签、构建标签、设备/系统、步骤、期望结果和报告路径；报告返回后只修复该阶段对应问题，再把状态改为 `[x]` 或继续保持 `[~]`。当前 UI-0 至 UI-5 已进入实现态，但尚未生成 UI 专用测试包，也没有截图/运行诊断证据，因此不提前标记完成。
 
 ## 4. 大项二：蓝牙指令与连接重构
 
@@ -1446,10 +1633,13 @@ python3 scripts/analyze_connection_timing.py /path/to/fxxkHilife_diagnostic.txt
 
 - 页面文件只负责渲染和事件分发，不直接读取/写入 `SharedPreferences`。
 - 页面中不存在厂商 raw `group/prop` 和协议命令字节。
-- ANC、低延迟、音质偏好、手势至少具备 pending、成功读回、失败重试/提示状态。
-- 连接页面可以分别呈现系统蓝牙已连接、控制通道已建立、核心能力初始化中、Ready 和 Degraded。
-- classic 与 glass 模式使用同一状态和能力判断，不能出现一套显示、另一套隐藏规则。
+- 所有按钮、开关、选择器、滑块和手势选项都使用统一组件目录、`UiActionState`/`OptionUiState` 和 `OptionPresenter`；页面不得重复定义控件样式、Pending/Failure 逻辑或 raw option 文案映射。
+- 按钮至少覆盖 `Primary`、`Secondary`、`Tertiary`、`Destructive`、`Icon`、`Toggle` 类型，并统一处理 `Idle`、`Disabled`、`Pending`、`Success`、`Failure`。
+- 选项至少覆盖 Boolean、SingleChoice、DependentChoice、Segmented、Slider 和 ActionPicker；必须区分 selected、pending、unknown、unavailable 和读回失败。
 - Home、Scan、Device、Settings、Gesture 的返回、断开、自动连接路径有导航测试。
+- 连接页面可以分别呈现系统蓝牙已连接、控制通道已建立、核心能力初始化中、Ready 和 Degraded。
+- 主要按钮、选中的选项和 Hero surface 可使用 `HAZE_GLASS`；低特效 profile、次级按钮和大量选项使用 `HAZE_BLUR`；所有控件在 `TINT_ONLY`/`OPAQUE` 下保持同样的布局、触控、焦点和状态语义。
+- ANC、低延迟、音质偏好、手势至少具备 Pending、成功读回、失败重试/提示状态。
 - ListeningStats、PermissionGuide 和 Terminal 也纳入统一 route/外壳；旧 XML 只作为迁移期间回退入口。
 - 设备行点击、扫描完成回调、Service 自动连接和 Tile 命令不会重复创建导航事件或连接尝试。
 - 连接成功后的详情页跳转由状态流/一次性导航事件驱动，不依赖连接方法返回瞬间的状态快照。
@@ -1537,8 +1727,8 @@ GitHub 上点击 **Actions → Build & Release → Run workflow → Run workflow
 
 - 2026-08-10：将合并前 `ARCHITECTURE_TODO.md` 的完整通用架构正文、接口示例、迁移步骤和 v4.1–v4.2.1 历史记录归档至本文件附录 A。
 - 2026-08-10：`ARCHITECTURE_TODO.md` 改为旧路径跳转说明，停止维护第二份阶段清单、版本号和测试门。
-- 2026-08-14：BT-0 至 BT-4 已收口，当前应用版本为 `4.3.10 / 98`；本次将下一阶段重心改为 UI 全量重构，新增 UI-0 至 UI-5 顺序、美术资源保留清单、构建标签和定向验收规则；本次仍只维护文档，不提升版本、不进入 UI 实现。
-- 2026-08-14：将检查更新/自动更新纳入 UI-0、UI-2 和 UI-5；保留现有 `UpdateChecker`/Release 页面作为基线，新增 update manifest、版本比较、自动检查/下载、APK 校验、系统安装确认、后台隔离和定向测试契约；本次仅更新规划，不提升版本、不进入实现。
+- 2026-08-14：BT-0 至 BT-4 已收口，当前应用版本为 `4.3.10 / 98`；本次将下一阶段重心改为 UI 全量重构，新增 UI-0 至 UI-5 顺序、美术资源保留清单、构建标签和定向验收规则；版本号保持不变。
+- 2026-08-14：开始 UI-0 至 UI-5 第一轮结构迁移：新增 UI 基线、统一 surface/tokens/assets、typed UI state/event、集中设置仓库、UpdateRepository/manifest、FileProvider 和 CI manifest 校验；删除未接入的 `UpdateChecker` 草稿。代码仍等待 GitHub Actions、截图和定向交互证据，不提前标记阶段完成。
 
 ---
 

@@ -1,36 +1,30 @@
 package com.freebuds.controller.ui
 
 import android.Manifest
+import android.content.Intent
 import android.content.pm.PackageManager
 import android.net.Uri
 import android.os.Build
-import androidx.compose.foundation.background
-import androidx.compose.foundation.layout.Box
-import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.material3.MaterialTheme
-import androidx.compose.runtime.*
-import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.alpha
-import androidx.compose.ui.layout.ContentScale
+import androidx.compose.runtime.Composable
+import androidx.compose.runtime.CompositionLocalProvider
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.collectAsState
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.platform.LocalContext
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.currentBackStackEntryAsState
 import androidx.navigation.compose.rememberNavController
-import coil.compose.AsyncImage
-import dev.chrisbanes.haze.hazeSource
-import dev.chrisbanes.haze.rememberHazeState
-import com.freebuds.controller.data.ConnectionState
 import com.freebuds.controller.data.DeviceViewModel
 import com.freebuds.controller.i18n.I18n
-import com.freebuds.controller.i18n.I18nLocale
 import com.freebuds.controller.i18n.LocalI18n
-import com.freebuds.controller.ui.glass.LiquidGlassConfig
+import com.freebuds.controller.ui.foundation.components.AppScaffold
 import com.freebuds.controller.ui.glass.LocalLiquidGlassConfig
-import com.freebuds.controller.ui.glass.loadLiquidGlassConfig
-import com.freebuds.controller.ui.glass.saveLiquidGlassConfig
+import com.freebuds.controller.ui.state.SettingsEvent
 import com.freebuds.controller.ui.theme.ThemeMode
-import com.freebuds.controller.ui.theme.loadThemeMode
 
 private object Route {
     const val PermissionGuide = "permission_guide"
@@ -49,203 +43,157 @@ fun AppNavHost(
     onThemeChange: (ThemeMode) -> Unit,
 ) {
     val context = LocalContext.current
-    val connState by viewModel.connectionState.collectAsState()
     var userLeftDevice by remember { mutableStateOf(false) }
     val navController = rememberNavController()
     val backStackEntry by navController.currentBackStackEntryAsState()
     val currentRoute = backStackEntry?.destination?.route
 
-    val initialTheme = remember { loadThemeMode(context) }
-    var currentTheme by remember { mutableStateOf(initialTheme) }
-
-    val initialLocale = remember { I18n.loadLocale(context) }
-    var currentLocale by remember { mutableStateOf(initialLocale) }
-
-    val savedWallpaper = remember {
-        context.getSharedPreferences("fxxk_theme", android.content.Context.MODE_PRIVATE)
-            .getString("wallpaper_uri", null)
-    }
-    var wallpaperUri by remember { mutableStateOf(savedWallpaper) }
-    val savedScope = remember { loadWallpaperScope(context) }
-    var wallpaperScope by remember { mutableStateOf(savedScope) }
-
-    val initialDisplayMode = remember { loadUiDisplayMode(context) }
-    var displayMode by remember { mutableStateOf(initialDisplayMode) }
-    var glassConfig by remember { mutableStateOf(loadLiquidGlassConfig(context)) }
-    val hazeState = rememberHazeState()
+    val settingsState by viewModel.settingsState.collectAsState()
+    val currentLocale = settingsState.locale
+    val wallpaperUri = settingsState.wallpaperUri
+    val wallpaperScope = settingsState.wallpaperScope
+    val displayMode = settingsState.displayMode
+    val glassConfig = settingsState.glassConfig
+    val deviceUiState by viewModel.deviceUiState.collectAsState()
 
     val hasPermissions = remember {
         val bluetoothGranted = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
             listOf(Manifest.permission.BLUETOOTH_CONNECT, Manifest.permission.BLUETOOTH_SCAN)
                 .all { context.checkSelfPermission(it) == PackageManager.PERMISSION_GRANTED }
-        } else true
+        } else {
+            true
+        }
         val notificationGranted = Build.VERSION.SDK_INT < 33 ||
             context.checkSelfPermission(Manifest.permission.POST_NOTIFICATIONS) == PackageManager.PERMISSION_GRANTED
         bluetoothGranted && notificationGranted
     }
-
     val startDestination = remember { if (!hasPermissions) Route.PermissionGuide else Route.Home }
 
-    LaunchedEffect(connState, currentRoute, userLeftDevice) {
-        // The details UI already renders partial state.  Do not hold a successfully connected
-        // control channel on the home page while optional/core properties are still arriving.
-        if (connState is ConnectionState.Connected && currentRoute == Route.Home && !userLeftDevice) {
+    LaunchedEffect(deviceUiState.connection, currentRoute, userLeftDevice) {
+        if (deviceUiState.connection.isReady && currentRoute == Route.Home && !userLeftDevice) {
             navController.navigate(Route.Device) { launchSingleTop = true }
         }
-        if (connState !is ConnectionState.Connected) {
+        if (!deviceUiState.connection.isReady) {
             userLeftDevice = false
         }
-    }
-
-    val showWallpaper = wallpaperUri != null && when (wallpaperScope) {
-        WallpaperScope.ALL -> true
-        WallpaperScope.HOME -> currentRoute == Route.Home
-        WallpaperScope.SETTINGS -> currentRoute == Route.Settings
     }
 
     CompositionLocalProvider(
         LocalLiquidGlassConfig provides glassConfig,
         LocalI18n provides I18n.provider(currentLocale),
     ) {
-        Box(
-            modifier = Modifier
-            .fillMaxSize()
-            .hazeSource(hazeState)
-            .background(MaterialTheme.colorScheme.background)
-    ) {
-        if (showWallpaper) {
-            AsyncImage(
-                model = Uri.parse(wallpaperUri),
-                contentDescription = null,
-                modifier = Modifier
-                    .fillMaxSize()
-                    .alpha(if (displayMode == UiDisplayMode.LIQUID_GLASS) 0.5f else 0.35f),
-                contentScale = ContentScale.Crop,
-            )
-        }
-
-        NavHost(
-            navController = navController,
-            startDestination = startDestination,
+        AppScaffold(
+            displayMode = displayMode,
+            wallpaperUri = wallpaperUri,
+            wallpaperScope = wallpaperScope,
+            route = currentRoute,
         ) {
-            composable(Route.PermissionGuide) {
-                PermissionGuideScreen(
-                    onGranted = {
-                        navController.navigate(Route.Home) {
-                            popUpTo(Route.PermissionGuide) { inclusive = true }
-                            launchSingleTop = true
-                        }
-                    }
-                )
-            }
+            NavHost(
+                navController = navController,
+                startDestination = startDestination,
+            ) {
+                composable(Route.PermissionGuide) {
+                    PermissionGuideScreen(
+                        onGranted = {
+                            navController.navigate(Route.Home) {
+                                popUpTo(Route.PermissionGuide) { inclusive = true }
+                                launchSingleTop = true
+                            }
+                        },
+                    )
+                }
 
-            composable(Route.Home) {
-                HomeScreen(
-                    viewModel = viewModel,
-                    displayMode = displayMode,
-                    hazeState = hazeState,
-                    onDeviceClick = { address ->
-                        viewModel.autoConnectSaved(address)
-                        if (viewModel.connectionState.value is ConnectionState.Connected) {
-                            navController.navigate(Route.Device) { launchSingleTop = true }
-                        }
-                    },
-                    onRemoveDevice = { address ->
-                        viewModel.removeSavedDevice(address)
-                        if (viewModel.connectionState.value is ConnectionState.Connected) {
-                            viewModel.disconnect()
-                        }
-                    },
-                    onSettings = { navController.navigate(Route.Settings) { launchSingleTop = true } },
-                    onScan = { navController.navigate(Route.Scan) { launchSingleTop = true } },
-                )
-            }
+                composable(Route.Home) {
+                    HomeScreen(
+                        viewModel = viewModel,
+                        displayMode = displayMode,
+                        onDeviceClick = { address -> viewModel.autoConnectSaved(address) },
+                        onRemoveDevice = { address ->
+                            viewModel.removeSavedDevice(address)
+                            if (deviceUiState.connection.address == address) {
+                                viewModel.disconnect()
+                            }
+                        },
+                        onSettings = { navController.navigate(Route.Settings) { launchSingleTop = true } },
+                        onScan = { navController.navigate(Route.Scan) { launchSingleTop = true } },
+                    )
+                }
 
-            composable(Route.Scan) {
-                ScanScreen(
-                    viewModel = viewModel,
-                    displayMode = displayMode,
-                    hazeState = hazeState,
-                    onBack = { navController.popBackStack() },
-                    onDeviceSelected = { address ->
-                        viewModel.autoConnectSaved(address)
-                        if (viewModel.connectionState.value is ConnectionState.Connected) {
-                            navController.navigate(Route.Device) { launchSingleTop = true }
-                        } else {
+                composable(Route.Scan) {
+                    ScanScreen(
+                        viewModel = viewModel,
+                        displayMode = displayMode,
+                        onBack = { navController.popBackStack() },
+                        onDeviceSelected = { address ->
+                            viewModel.autoConnectSaved(address)
                             navController.popBackStack(Route.Home, inclusive = false)
-                        }
-                    },
-                )
-            }
+                        },
+                    )
+                }
 
-            composable(Route.Device) {
-                DeviceScreen(
-                    viewModel = viewModel,
-                    displayMode = displayMode,
-                    hazeState = hazeState,
-                    onBack = {
-                        userLeftDevice = true
-                        navController.popBackStack(Route.Home, inclusive = false)
-                    },
-                    onGesture = { navController.navigate(Route.Gesture) { launchSingleTop = true } },
-                    onListeningStats = { navController.navigate(Route.ListeningStats) { launchSingleTop = true } },
-                    onSettings = { navController.navigate(Route.Settings) { launchSingleTop = true } },
-                    onOpenTerminal = onOpenTerminal,
-                )
-            }
+                composable(Route.Device) {
+                    DeviceScreen(
+                        viewModel = viewModel,
+                        displayMode = displayMode,
+                        onBack = {
+                            userLeftDevice = true
+                            navController.popBackStack(Route.Home, inclusive = false)
+                        },
+                        onGesture = { navController.navigate(Route.Gesture) { launchSingleTop = true } },
+                        onListeningStats = { navController.navigate(Route.ListeningStats) { launchSingleTop = true } },
+                        onSettings = { navController.navigate(Route.Settings) { launchSingleTop = true } },
+                        onOpenTerminal = onOpenTerminal,
+                    )
+                }
 
-            composable(Route.ListeningStats) {
-                ListeningStatsScreen(
-                    viewModel = viewModel,
-                    displayMode = displayMode,
-                    hazeState = hazeState,
-                    onBack = { navController.popBackStack() },
-                )
-            }
+                composable(Route.ListeningStats) {
+                    ListeningStatsScreen(
+                        viewModel = viewModel,
+                        displayMode = displayMode,
+                        onBack = { navController.popBackStack() },
+                    )
+                }
 
-            composable(Route.Gesture) {
-                GestureScreen(
-                    props = viewModel.props.collectAsState().value,
-                    viewModel = viewModel,
-                    displayMode = displayMode,
-                    hazeState = hazeState,
-                    onBack = { navController.popBackStack() },
-                )
-            }
+                composable(Route.Gesture) {
+                    GestureScreen(
+                        props = viewModel.props.collectAsState().value,
+                        viewModel = viewModel,
+                        displayMode = displayMode,
+                        onBack = { navController.popBackStack() },
+                    )
+                }
 
-            composable(Route.Settings) {
-                SettingsScreen(
-                    viewModel = viewModel,
-                    onBack = { navController.popBackStack() },
-                    themeMode = currentTheme,
-                    onThemeChange = { mode ->
-                        currentTheme = mode
-                        onThemeChange(mode)
-                    },
-                    wallpaperUri = wallpaperUri,
-                    onWallpaperChange = { wallpaperUri = it },
-                    wallpaperScope = wallpaperScope,
-                    onWallpaperScopeChange = { wallpaperScope = it },
-                    displayMode = displayMode,
-                    hazeState = hazeState,
-                    glassConfig = glassConfig,
-                    onGlassConfigChange = { config: LiquidGlassConfig ->
-                        glassConfig = config
-                        saveLiquidGlassConfig(context, config)
-                    },
-                    onDisplayModeChange = { mode ->
-                        displayMode = mode
-                        saveUiDisplayMode(context, mode)
-                    },
-                    locale = currentLocale,
-                    onLocaleChange = { locale: I18nLocale ->
-                        currentLocale = locale
-                        I18n.setLocale(locale)
-                        I18n.saveLocale(context, locale)
-                    },
-                )
+                composable(Route.Settings) {
+                    SettingsScreen(
+                        viewModel = viewModel,
+                        onBack = { navController.popBackStack() },
+                        onEvent = { event ->
+                            when (event) {
+                                is SettingsEvent.SetThemeMode -> {
+                                    onThemeChange(event.value)
+                                    viewModel.onSettingsEvent(event)
+                                }
+                                is SettingsEvent.SetLocale -> {
+                                    I18n.setLocale(event.value)
+                                    viewModel.onSettingsEvent(event)
+                                }
+                                SettingsEvent.InstallUpdate -> {
+                                    viewModel.onSettingsEvent(event)?.let(context::startActivity)
+                                }
+                                is SettingsEvent.OpenRelease -> {
+                                    context.startActivity(
+                                        Intent(
+                                            Intent.ACTION_VIEW,
+                                            Uri.parse(event.url ?: "https://github.com/ct-yx/fxxkHilife/releases"),
+                                        )
+                                    )
+                                }
+                                else -> viewModel.onSettingsEvent(event)
+                            }
+                        },
+                    )
+                }
             }
         }
-    }
     }
 }

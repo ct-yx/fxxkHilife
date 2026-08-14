@@ -1,0 +1,13 @@
+{
+  "schemaVersion": 1,
+  "channel": "stable",
+  "versionName": "4.3.10",
+  "versionCode": 98,
+  "releaseUrl": "https://github.com/ct-yx/fxxkHilife/releases/tag/v4.3.10",
+  "apkUrl": "https://github.com/ct-yx/fxxkHilife/releases/download/v4.3.10/fxxkHilife-v4.3.10-98.apk",
+  "sha256": "8189ae90d8c6c26f01c275ca0e7fb1638a9ce2d565ac9b442829ee89275b1334",
+  "publishedAt": "2026-08-14T12:22:11Z",
+  "minSdk": 26,
+  "notesUrl": "https://github.com/ct-yx/fxxkHilife/releases/tag/v4.3.10",
+  "notes": "BT 重构后的首个公开大版本。"
+}

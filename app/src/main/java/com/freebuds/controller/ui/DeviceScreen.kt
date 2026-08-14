@@ -1,13 +1,5 @@
 package com.freebuds.controller.ui
 
-import androidx.compose.animation.AnimatedVisibility
-import androidx.compose.animation.animateContentSize
-import androidx.compose.animation.core.tween
-import androidx.compose.animation.expandVertically
-import androidx.compose.animation.fadeIn
-import androidx.compose.animation.fadeOut
-import androidx.compose.animation.shrinkVertically
-import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
@@ -22,22 +14,19 @@ import kotlinx.coroutines.delay
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.geometry.Offset
-import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
-import com.freebuds.controller.R
-import com.freebuds.controller.data.ConnectionState
-import com.freebuds.controller.data.DeviceProps
 import com.freebuds.controller.data.DeviceViewModel
-import com.freebuds.controller.data.DualConnectDevice
 import com.freebuds.controller.i18n.I18n
 import com.freebuds.controller.i18n.i18n
 import com.freebuds.controller.ui.glass.AdaptiveCard
 import com.freebuds.controller.ui.glass.LiquidGlassPanel
-import dev.chrisbanes.haze.HazeState
+import com.freebuds.controller.ui.state.DeviceEvent
+import com.freebuds.controller.ui.state.DualDeviceProperty
+import com.freebuds.controller.ui.foundation.components.AppTopBar
+import com.freebuds.controller.ui.foundation.assets.UiAssetCatalog
 
 // ── 中文映射（DeviceScreen 专用）──────────────────────────────────────────
 
@@ -109,16 +98,17 @@ fun chineseEqualizerPreset(raw: String?): String = when (raw) {
 fun DeviceScreen(
     viewModel: DeviceViewModel,
     displayMode: UiDisplayMode,
-    hazeState: HazeState?,
     onBack: () -> Unit,
     onSettings: () -> Unit,
     onOpenTerminal: () -> Unit,
     onGesture: () -> Unit,
     onListeningStats: () -> Unit,
 ) {
-    val connState by viewModel.connectionState.collectAsState()
+    val deviceUiState by viewModel.deviceUiState.collectAsState()
     val props by viewModel.props.collectAsState()
-    val deviceName = (connState as? ConnectionState.Connected)?.deviceName ?: I18n.t("device.battery.earbuds")
+    val deviceName = deviceUiState.connection.deviceName
+        ?: props.deviceModel
+        ?: I18n.t("device.battery.earbuds")
     var optimisticAncMode by remember { mutableStateOf<String?>(null) }
     val displayAncMode = optimisticAncMode ?: props.ancMode
 
@@ -138,21 +128,15 @@ fun DeviceScreen(
     Scaffold(
         containerColor = androidx.compose.ui.graphics.Color.Transparent,
         topBar = {
-            TopAppBar(
-                title = { Text(deviceName) },
-                navigationIcon = {
-                    IconButton(onClick = onBack) {
-                        Icon(Icons.Default.ArrowBack, contentDescription = i18n("common.back"))
-                    }
-                },
+            AppTopBar(
+                title = deviceName,
+                displayMode = displayMode,
+                onBack = onBack,
                 actions = {
                     IconButton(onClick = onSettings) {
                         Icon(Icons.Default.Settings, contentDescription = i18n("common.settings"))
                     }
                 },
-                colors = TopAppBarDefaults.topAppBarColors(
-                    containerColor = if (displayMode == UiDisplayMode.LIQUID_GLASS) androidx.compose.ui.graphics.Color.Transparent else MaterialTheme.colorScheme.surface
-                )
             )
         }
     ) { padding ->
@@ -163,9 +147,9 @@ fun DeviceScreen(
             contentPadding = PaddingValues(bottom = 24.dp)
         ) {
             // ── 电池卡片 ─────────────────────────────────────────────────────
-            item { BatteryCard(props, displayMode, hazeState) }
+            item { BatteryCard(props, displayMode) }
             if (props.pendingInitHandlers.isNotEmpty()) {
-                item { BackgroundSyncCard(props.pendingInitHandlers, displayMode, hazeState) }
+                item { BackgroundSyncCard(props.pendingInitHandlers, displayMode) }
             }
 
             // ── ANC ─────────────────────────────────────────────────────────
@@ -175,8 +159,7 @@ fun DeviceScreen(
                 item {
                     LiquidGlassPanel(
                         displayMode = displayMode,
-                        hazeState = hazeState,
-                        modifier = Modifier.padding(horizontal = 16.dp, vertical = 6.dp),
+                                        modifier = Modifier.padding(horizontal = 16.dp, vertical = 6.dp),
                     ) {
                         AncModeSlider(
                             current = syncedAncMode,
@@ -185,7 +168,7 @@ fun DeviceScreen(
                             },
                             onSelect = {
                                 optimisticAncMode = it
-                                viewModel.setProperty("anc", "mode", it)
+                                viewModel.onEvent(DeviceEvent.SetAncMode(it))
                             },
                         )
                     }
@@ -197,13 +180,12 @@ fun DeviceScreen(
                     item {
                         DeviceOptionItem(
                             displayMode = displayMode,
-                            hazeState = hazeState,
-                            icon = Icons.Default.Tune,
+                                                icon = Icons.Default.Tune,
                             title = ancLevelTitle(syncedAncMode),
                             current = chineseAncLevel(props.ancLevel, syncedAncMode),
                             options = normalizedAncLevelOptions.map { chineseAncLevel(it, syncedAncMode) },
                             rawOptions = normalizedAncLevelOptions,
-                            onSelect = { viewModel.setProperty("anc", "level", it) }
+                            onSelect = { viewModel.onEvent(DeviceEvent.SetAncLevel(it)) }
                         )
                     }
                 }
@@ -219,13 +201,12 @@ fun DeviceScreen(
                     item {
                         DeviceOptionItem(
                             displayMode = displayMode,
-                            hazeState = hazeState,
-                            icon = Icons.Default.GraphicEq,
+                                                icon = Icons.Default.GraphicEq,
                             title = i18n("device.option.sound_quality"),
                             current = chineseSoundQuality(props.soundQuality),
                             options = props.soundQualityOptions.map(::chineseSoundQuality),
                             rawOptions = props.soundQualityOptions,
-                            onSelect = { viewModel.setProperty("sound", "quality_preference", it) }
+                            onSelect = { viewModel.onEvent(DeviceEvent.SetSoundQuality(it)) }
                         )
                     }
                 }
@@ -233,13 +214,12 @@ fun DeviceScreen(
                     item {
                         DeviceOptionItem(
                             displayMode = displayMode,
-                            hazeState = hazeState,
-                            icon = Icons.Default.Equalizer,
+                                                icon = Icons.Default.Equalizer,
                             title = i18n("device.option.equalizer_preset"),
                             current = chineseEqualizerPreset(props.equalizerPreset),
                             options = props.equalizerPresetOptions.map(::chineseEqualizerPreset),
                             rawOptions = props.equalizerPresetOptions,
-                            onSelect = { viewModel.setProperty("sound", "equalizer_preset", it) }
+                            onSelect = { viewModel.onEvent(DeviceEvent.SetEqualizerPreset(it)) }
                         )
                     }
                 }
@@ -248,19 +228,17 @@ fun DeviceScreen(
                         EqualizerStatusCard(
                             props = props,
                             displayMode = displayMode,
-                            hazeState = hazeState,
-                        )
+                                            )
                     }
                 }
                 if (props.autoPause != null) {
                     item {
                         SwitchSettingItem(
                             displayMode = displayMode,
-                            hazeState = hazeState,
-                            icon = Icons.Default.PauseCircle,
+                                                icon = Icons.Default.PauseCircle,
                             title = i18n("device.option.auto_pause"),
                             checked = props.autoPause,
-                            onCheckedChange = { viewModel.setProperty("config", "auto_pause", it.toString()) }
+                            onCheckedChange = { viewModel.onEvent(DeviceEvent.SetAutoPause(it)) }
                         )
                     }
                 }
@@ -268,11 +246,10 @@ fun DeviceScreen(
                     item {
                         SwitchSettingItem(
                             displayMode = displayMode,
-                            hazeState = hazeState,
-                            icon = Icons.Default.Speed,
+                                                icon = Icons.Default.Speed,
                             title = i18n("device.option.low_latency"),
                             checked = props.lowLatency,
-                            onCheckedChange = { viewModel.setProperty("config", "low_latency", it.toString()) }
+                            onCheckedChange = { viewModel.onEvent(DeviceEvent.SetLowLatency(it)) }
                         )
                     }
                 }
@@ -284,11 +261,10 @@ fun DeviceScreen(
                     item {
                         SwitchSettingItem(
                             displayMode = displayMode,
-                            hazeState = hazeState,
-                            icon = Icons.Default.Devices,
+                                                icon = Icons.Default.Devices,
                             title = i18n("device.option.dual_connect"),
                             checked = enabled,
-                            onCheckedChange = { viewModel.setProperty("dual_connect", "enabled", it.toString()) }
+                            onCheckedChange = { viewModel.onEvent(DeviceEvent.SetDualConnect(it)) }
                         )
                     }
                 }
@@ -298,13 +274,12 @@ fun DeviceScreen(
                             device = device,
                             preferredAddress = props.dualConnectPreferredDevice,
                             displayMode = displayMode,
-                            hazeState = hazeState,
-                            onPreferred = { viewModel.setProperty("dual_connect", "preferred_device", device.address) },
+                                                onPreferred = { viewModel.onEvent(DeviceEvent.SetPreferredDevice(device.address)) },
                             onConnectionToggle = { target ->
-                                viewModel.setProperty("dual_connect", "${device.address}:connected", target.toString())
+                                viewModel.onEvent(DeviceEvent.SetDualDeviceOption(device.address, DualDeviceProperty.Connected, target))
                             },
                             onAutoToggle = { target ->
-                                viewModel.setProperty("dual_connect", "${device.address}:auto_connect", target.toString())
+                                viewModel.onEvent(DeviceEvent.SetDualDeviceOption(device.address, DualDeviceProperty.AutoConnect, target))
                             },
                         )
                     }
@@ -316,8 +291,7 @@ fun DeviceScreen(
             item {
                 AdaptiveCard(
                     displayMode = displayMode,
-                    hazeState = hazeState,
-                    modifier = Modifier
+                                modifier = Modifier
                         .fillMaxWidth()
                         .padding(horizontal = 16.dp, vertical = 5.dp)
                         .clickable(onClick = onListeningStats),
@@ -340,8 +314,7 @@ fun DeviceScreen(
                 item {
                     AdaptiveCard(
                         displayMode = displayMode,
-                        hazeState = hazeState,
-                        modifier = Modifier
+                                        modifier = Modifier
                             .fillMaxWidth()
                             .padding(horizontal = 16.dp, vertical = 5.dp)
                             .clickable(onClick = onGesture),
@@ -362,19 +335,18 @@ fun DeviceScreen(
             item { SettingsGroupHeader(i18n("device.group.about")) }
             props.deviceModel?.let { model ->
                 item {
-                    InfoItem(displayMode, hazeState, Icons.Default.Info, i18n("device.model"), model)
+                    InfoItem(displayMode, Icons.Default.Info, i18n("device.model"), model)
                 }
             }
             props.firmwareVersion?.let { firmware ->
                 item {
-                    InfoItem(displayMode, hazeState, Icons.Default.SystemUpdate, i18n("device.firmware"), firmware)
+                    InfoItem(displayMode, Icons.Default.SystemUpdate, i18n("device.firmware"), firmware)
                 }
             }
             item {
                 AdaptiveCard(
                     displayMode = displayMode,
-                    hazeState = hazeState,
-                    modifier = Modifier
+                                modifier = Modifier
                         .fillMaxWidth()
                         .padding(horizontal = 16.dp, vertical = 5.dp)
                         .clickable(onClick = onOpenTerminal),
@@ -393,185 +365,7 @@ fun DeviceScreen(
     }
 }
 
-// ── 组件 ──────────────────────────────────────────────────────────────────────
-
-@Composable
-private fun BatteryCard(props: DeviceProps, displayMode: UiDisplayMode, hazeState: HazeState?) {
-    if (props.batteryGlobal == null && props.batteryLeft == null && props.batteryRight == null && props.batteryCase == null) return
-    val leftLevel = props.batteryLeft ?: props.batteryGlobal
-    val rightLevel = props.batteryRight ?: props.batteryGlobal
-    AdaptiveCard(
-        displayMode = displayMode,
-        hazeState = hazeState,
-        modifier = Modifier
-            .fillMaxWidth()
-            .padding(16.dp),
-    ) {
-        Column(verticalArrangement = Arrangement.spacedBy(14.dp)) {
-            Text(i18n("device.battery"), style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                verticalAlignment = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.SpaceBetween,
-            ) {
-                Box(
-                    modifier = Modifier
-                        .weight(1f)
-                        .height(122.dp),
-                    contentAlignment = Alignment.Center,
-                ) {
-                    BatteryEarbud(
-                        label = i18n("device.battery.left"),
-                        level = leftLevel,
-                        disconnected = leftLevel == null || leftLevel == 0,
-                        mirror = false,
-                        modifier = Modifier
-                            .align(Alignment.TopStart)
-                            .offset(x = 10.dp, y = 0.dp),
-                    )
-                    BatteryEarbud(
-                        label = i18n("device.battery.right"),
-                        level = rightLevel,
-                        disconnected = rightLevel == null || rightLevel == 0,
-                        mirror = true,
-                        modifier = Modifier
-                            .align(Alignment.BottomEnd)
-                            .offset(x = (-10).dp, y = 0.dp),
-                    )
-                }
-                Spacer(Modifier.width(18.dp))
-                BatteryCaseBox(
-                    level = props.batteryCase,
-                    charging = props.isCharging == true,
-                    modifier = Modifier.width(116.dp),
-                )
-            }
-        }
-    }
-}
-
-@Composable
-private fun BatteryEarbud(
-    label: String,
-    level: Int?,
-    disconnected: Boolean,
-    mirror: Boolean,
-    modifier: Modifier = Modifier,
-) {
-    val color = MaterialTheme.colorScheme.primary
-    Column(
-        modifier = modifier.width(82.dp),
-        horizontalAlignment = Alignment.CenterHorizontally,
-    ) {
-        Box(modifier = Modifier.size(width = 62.dp, height = 70.dp), contentAlignment = Alignment.Center) {
-            BatteryWaterCircle(
-                level = level,
-                modifier = Modifier
-                    .size(38.dp)
-                    .align(if (mirror) Alignment.TopEnd else Alignment.TopStart),
-            )
-            Box(
-                modifier = Modifier
-                    .width(16.dp)
-                    .height(42.dp)
-                    .align(if (mirror) Alignment.BottomStart else Alignment.BottomEnd)
-                    .background(color, RoundedCornerShape(12.dp)),
-            )
-            Box(
-                modifier = Modifier
-                    .width(26.dp)
-                    .height(11.dp)
-                    .align(Alignment.Center)
-                    .background(color, RoundedCornerShape(8.dp)),
-            )
-            if (disconnected) {
-                Canvas(modifier = Modifier.matchParentSize()) {
-                    drawLine(
-                        color = color,
-                        start = Offset(size.width * 0.14f, size.height * 0.84f),
-                        end = Offset(size.width * 0.86f, size.height * 0.16f),
-                        strokeWidth = 5f,
-                    )
-                }
-            }
-        }
-        Text(level?.let { "$it%" } ?: "--", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
-        Text(label, style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
-    }
-}
-
-@Composable
-private fun BatteryWaterCircle(level: Int?, modifier: Modifier = Modifier) {
-    val color = MaterialTheme.colorScheme.primary
-    val fraction = ((level ?: 0).coerceIn(0, 100) / 100f)
-    Box(
-        modifier = modifier
-            .clip(CircleShape)
-            .background(color.copy(alpha = 0.14f)),
-    ) {
-        Box(
-            modifier = Modifier
-                .fillMaxWidth()
-                .fillMaxHeight(fraction)
-                .align(Alignment.BottomCenter)
-                .background(color.copy(alpha = 0.48f)),
-        )
-        Box(
-            modifier = Modifier
-                .width(28.dp)
-                .height(4.dp)
-                .align(Alignment.Center)
-                .background(color.copy(alpha = 0.26f), RoundedCornerShape(4.dp)),
-        )
-    }
-}
-
-@Composable
-private fun BatteryCaseBox(
-    level: Int?,
-    charging: Boolean,
-    modifier: Modifier = Modifier,
-) {
-    val color = MaterialTheme.colorScheme.primary
-    Column(modifier = modifier, horizontalAlignment = Alignment.CenterHorizontally) {
-        Box(
-            modifier = Modifier
-                .width(96.dp)
-                .height(72.dp)
-                .background(color.copy(alpha = 0.16f), RoundedCornerShape(24.dp)),
-            contentAlignment = Alignment.Center,
-        ) {
-            Box(
-                modifier = Modifier
-                    .width(72.dp)
-                    .height(42.dp)
-                    .background(color, RoundedCornerShape(18.dp)),
-            )
-            Box(
-                modifier = Modifier
-                    .width(42.dp)
-                    .height(6.dp)
-                    .align(Alignment.Center)
-                    .clip(RoundedCornerShape(4.dp))
-                    .background(MaterialTheme.colorScheme.onPrimary.copy(alpha = 0.28f)),
-            ) {
-                Box(
-                    modifier = Modifier
-                        .fillMaxHeight()
-                        .fillMaxWidth(((level ?: 0).coerceIn(0, 100) / 100f))
-                        .background(MaterialTheme.colorScheme.onPrimary.copy(alpha = 0.82f)),
-                )
-            }
-        }
-        Spacer(Modifier.height(6.dp))
-        Text(level?.let { "$it%" } ?: "--", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
-        Text(
-            if (charging) i18n("common.charging") else i18n("device.battery.case"),
-            style = MaterialTheme.typography.labelSmall,
-            color = MaterialTheme.colorScheme.onSurfaceVariant,
-        )
-    }
-}
+// ── 页面编排 ──────────────────────────────────────────────────────────────────
 
 @Composable
 private fun SettingsGroupHeader(text: String) {
@@ -583,273 +377,6 @@ private fun SettingsGroupHeader(text: String) {
             style = MaterialTheme.typography.labelMedium,
             color = MaterialTheme.colorScheme.primary
         )
-    }
-}
-
-@Composable
-private fun BackgroundSyncCard(
-    pendingHandlers: List<String>,
-    displayMode: UiDisplayMode,
-    hazeState: HazeState?,
-) {
-    val labels = pendingHandlers.map(::initHandlerLabel).distinct()
-    val preview = labels.take(4).joinToString("、")
-    val suffix = if (labels.size > 4) i18n("device.pending.more_suffix", labels.size) else ""
-    AdaptiveCard(
-        displayMode = displayMode,
-        hazeState = hazeState,
-        modifier = Modifier
-            .fillMaxWidth()
-            .padding(horizontal = 16.dp, vertical = 6.dp),
-    ) {
-        Row(verticalAlignment = Alignment.CenterVertically) {
-            Icon(Icons.Default.Sync, contentDescription = null)
-            Spacer(Modifier.width(12.dp))
-            Column(modifier = Modifier.weight(1f)) {
-                Text(i18n("device.group.background_sync"), style = MaterialTheme.typography.titleSmall, fontWeight = FontWeight.Bold)
-                Text(
-                    i18n("device.pending.detail", preview, suffix),
-                    style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                )
-            }
-        }
-    }
-}
-
-private fun initHandlerLabel(id: String): String = when (id) {
-    "device_info" -> I18n.t("device.pending.device_info")
-    "anc_global" -> "ANC"
-    "gesture_double" -> I18n.t("device.pending.gesture_double")
-    "gesture_triple" -> I18n.t("device.pending.gesture_triple")
-    "gesture_long" -> I18n.t("device.pending.gesture_long")
-    "gesture_swipe" -> I18n.t("device.pending.gesture_swipe")
-    "tws_auto_pause" -> I18n.t("device.pending.auto_pause")
-    "config_sound_quality" -> I18n.t("device.pending.config_sound_quality")
-    "config_eq" -> I18n.t("device.pending.config_eq")
-    "dual_connect" -> I18n.t("device.pending.dual_connect")
-    "voice_language" -> I18n.t("device.pending.voice_language")
-    "tws_in_ear" -> I18n.t("device.pending.tws_in_ear")
-    "battery" -> I18n.t("device.pending.battery")
-    "low_latency" -> I18n.t("device.pending.low_latency")
-    else -> id
-}
-
-@Composable
-private fun EqualizerStatusCard(
-    props: DeviceProps,
-    displayMode: UiDisplayMode,
-    hazeState: HazeState?,
-) {
-    AdaptiveCard(
-        displayMode = displayMode,
-        hazeState = hazeState,
-        modifier = Modifier
-            .fillMaxWidth()
-            .padding(horizontal = 16.dp, vertical = 5.dp),
-    ) {
-        Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(14.dp)) {
-            Icon(Icons.Default.GraphicEq, contentDescription = null)
-            Column(Modifier.weight(1f)) {
-                Text(i18n("device.option.custom_eq"), style = MaterialTheme.typography.titleSmall)
-                val rows = props.equalizerRows.takeIf { it.isNotEmpty() }?.joinToString(", ") ?: i18n("common.unknown")
-                Text(
-                    i18n("device.option.custom_eq_desc", props.equalizerMaxCustomModes, rows),
-                    style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                )
-            }
-            AssistChip(
-                onClick = {},
-                enabled = false,
-                label = { Text(if (props.equalizerSaved == false) i18n("device.eq.unsaved") else i18n("device.eq.read_only")) },
-            )
-        }
-    }
-}
-
-@Composable
-private fun DualConnectDeviceCard(
-    device: DualConnectDevice,
-    preferredAddress: String?,
-    displayMode: UiDisplayMode,
-    hazeState: HazeState?,
-    onPreferred: () -> Unit,
-    onConnectionToggle: (Boolean) -> Unit,
-    onAutoToggle: (Boolean) -> Unit,
-) {
-    val isPreferred = device.preferred || preferredAddress == device.address
-    AdaptiveCard(
-        displayMode = displayMode,
-        hazeState = hazeState,
-        modifier = Modifier
-            .fillMaxWidth()
-            .padding(horizontal = 16.dp, vertical = 5.dp),
-    ) {
-        Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(14.dp)) {
-            Icon(
-                if (device.connected) Icons.Default.BluetoothConnected else Icons.Default.Bluetooth,
-                contentDescription = null,
-                tint = if (device.connected) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant,
-            )
-            Column(Modifier.weight(1f)) {
-                Text(device.name, style = MaterialTheme.typography.titleSmall)
-                Text(
-                    buildString {
-                        append(formatMac(device.address))
-                        append(" · ")
-                        append(if (device.connected) i18n("device.dual.connected") else i18n("device.dual.disconnected"))
-                        if (device.playing) append(" · ").append(i18n("device.dual.playing"))
-                        if (isPreferred) append(" · ").append(i18n("device.dual.preferred"))
-                    },
-                    style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                )
-            }
-            Switch(
-                checked = device.connected,
-                onCheckedChange = onConnectionToggle,
-            )
-        }
-        Row(
-            modifier = Modifier.padding(top = 12.dp),
-            horizontalArrangement = Arrangement.spacedBy(8.dp),
-        ) {
-            FilterChip(
-                selected = isPreferred,
-                onClick = onPreferred,
-                label = { Text(i18n("device.dual.preferred")) },
-                leadingIcon = if (isPreferred) {
-                    { Icon(Icons.Default.Check, contentDescription = null, modifier = Modifier.size(18.dp)) }
-                } else null,
-            )
-            device.autoConnect?.let { auto ->
-                FilterChip(
-                    selected = auto,
-                    onClick = { onAutoToggle(!auto) },
-                    label = { Text(i18n("device.dual.auto_connect")) },
-                    leadingIcon = if (auto) {
-                        { Icon(Icons.Default.Check, contentDescription = null, modifier = Modifier.size(18.dp)) }
-                    } else null,
-                )
-            }
-        }
-    }
-}
-
-private fun formatMac(raw: String): String =
-    raw.chunked(2).joinToString(":").uppercase()
-
-@OptIn(ExperimentalLayoutApi::class)
-@Composable
-private fun DeviceOptionItem(
-    displayMode: UiDisplayMode,
-    hazeState: HazeState?,
-    icon: ImageVector,
-    title: String,
-    current: String?,
-    options: List<String>,
-    rawOptions: List<String>,
-    onSelect: (String) -> Unit,
-) {
-    var expanded by remember(title) { mutableStateOf(false) }
-    AdaptiveCard(
-        displayMode = displayMode,
-        hazeState = hazeState,
-        modifier = Modifier
-            .fillMaxWidth()
-            .padding(horizontal = 16.dp, vertical = 5.dp)
-            .animateContentSize(animationSpec = tween(durationMillis = 260))
-            .clickable(enabled = options.isNotEmpty()) { expanded = !expanded },
-    ) {
-        Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(14.dp)) {
-            Icon(icon, contentDescription = null)
-            Column(Modifier.weight(1f)) {
-                Text(title, style = MaterialTheme.typography.titleSmall)
-                if (current != null) Text(current, style = MaterialTheme.typography.bodySmall)
-            }
-            if (options.isNotEmpty()) {
-                Icon(
-                    if (expanded) Icons.Default.ExpandLess else Icons.Default.ExpandMore,
-                    contentDescription = null,
-                )
-            }
-        }
-        AnimatedVisibility(
-            visible = expanded && options.isNotEmpty(),
-            enter = fadeIn(tween(160)) + expandVertically(tween(240)),
-            exit = shrinkVertically(tween(180)) + fadeOut(tween(120)),
-        ) {
-            FlowRow(
-                modifier = Modifier.padding(top = 14.dp),
-                horizontalArrangement = Arrangement.spacedBy(8.dp),
-                verticalArrangement = Arrangement.spacedBy(8.dp),
-            ) {
-                options.forEachIndexed { index, label ->
-                    val raw = rawOptions.getOrNull(index) ?: return@forEachIndexed
-                    val selected = label == current
-                    FilterChip(
-                        selected = selected,
-                        onClick = {
-                            onSelect(raw)
-                            expanded = false
-                        },
-                        label = { Text(label) },
-                        leadingIcon = if (selected) {
-                            { Icon(Icons.Default.Check, contentDescription = null, modifier = Modifier.size(18.dp)) }
-                        } else null,
-                    )
-                }
-            }
-        }
-    }
-}
-
-@Composable
-private fun SwitchSettingItem(
-    displayMode: UiDisplayMode,
-    hazeState: HazeState?,
-    icon: ImageVector,
-    title: String,
-    checked: Boolean?,
-    onCheckedChange: (Boolean) -> Unit,
-) {
-    AdaptiveCard(
-        displayMode = displayMode,
-        hazeState = hazeState,
-        modifier = Modifier
-            .fillMaxWidth()
-            .padding(horizontal = 16.dp, vertical = 5.dp)
-            .clickable(enabled = checked != null) { onCheckedChange(!(checked ?: false)) },
-    ) {
-        Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(14.dp)) {
-            Icon(icon, contentDescription = null)
-            Text(title, modifier = Modifier.weight(1f))
-            Switch(
-                checked = checked ?: false,
-                onCheckedChange = onCheckedChange,
-                enabled = checked != null,
-            )
-        }
-    }
-}
-
-@Composable
-private fun InfoItem(displayMode: UiDisplayMode, hazeState: HazeState?, icon: ImageVector, label: String, value: String) {
-    AdaptiveCard(
-        displayMode = displayMode,
-        hazeState = hazeState,
-        modifier = Modifier
-            .fillMaxWidth()
-            .padding(horizontal = 16.dp, vertical = 5.dp),
-    ) {
-        Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(14.dp)) {
-            Icon(icon, contentDescription = null)
-            Column {
-                Text(label)
-                Text(value, style = MaterialTheme.typography.bodySmall)
-            }
-        }
     }
 }
 
@@ -879,12 +406,13 @@ private fun AncModeSlider(
             visibleOptions.forEach { raw ->
                 val label = chineseAncMode(raw)
                 val isSelected = raw == current
-                val iconId = when (raw) {
-                    "normal" -> R.drawable.ic_anc_normal
-                    "cancellation" -> R.drawable.ic_anc_cancellation
-                    "awareness" -> R.drawable.ic_anc_awareness
-                    else -> R.drawable.ic_anc_normal
-                }
+                val iconId = UiAssetCatalog.anc(
+                    when (raw) {
+                        "cancellation" -> UiAssetCatalog.AncVisual.Cancellation
+                        "awareness" -> UiAssetCatalog.AncVisual.Awareness
+                        else -> UiAssetCatalog.AncVisual.Off
+                    }
+                )
                 val iconSize = when (raw) {
                     "normal" -> 23.dp
                     "cancellation" -> 22.dp

@@ -8,6 +8,12 @@ on:
   pull_request:
     branches: [ "main", "refactor/v2-alpha" ]
   workflow_dispatch:
+    inputs:
+      build_label:
+        description: "用于区分本次测试包的阶段标签"
+        required: false
+        default: "UI_FOUNDATION_SMOKE"
+        type: string
 
 permissions:
   contents: read
@@ -20,6 +26,8 @@ jobs:
   build:
     name: Build release APK
     runs-on: ubuntu-latest
+    env:
+      BUILD_LABEL: ${{ github.event.inputs.build_label || 'UI_FOUNDATION_SMOKE' }}
     permissions:
       contents: write
 
@@ -65,6 +73,7 @@ jobs:
           echo "VERSION_NAME=${VERSION_NAME}" >> "$GITHUB_ENV"
           echo "VERSION_CODE=${VERSION_CODE}" >> "$GITHUB_ENV"
           echo "TAG=${TAG}" >> "$GITHUB_ENV"
+          echo "BUILD_LABEL=${BUILD_LABEL}" >> "$GITHUB_ENV"
 
       - name: Validate release tag
         if: startsWith(github.ref, 'refs/tags/v')
@@ -75,12 +84,15 @@ jobs:
             exit 1
           fi
 
+      - name: Validate checked-in update manifest
+        run: python3 scripts/validate_update_manifest.py docs/update.json
+
       - name: Run automated tests and build
         id: checks
         continue-on-error: true
         run: |
-          chmod +x gradlew scripts/run_ci_checks.sh
-          scripts/run_ci_checks.sh ci-output
+          chmod +x gradlew scripts/run_ci_checks.sh scripts/validate_ui_contract.py scripts/validate_update_manifest.py
+          CI_BUILD_LABEL="$BUILD_LABEL" scripts/run_ci_checks.sh ci-output
 
       - name: Locate APK
         id: apk
@@ -93,7 +105,7 @@ jobs:
             echo "available=false" >> "$GITHUB_OUTPUT"
             exit 0
           fi
-          OUT="fxxkHilife-${TAG}-${VERSION_CODE}.apk"
+          OUT="fxxkHilife-${BUILD_LABEL}-${TAG}-${VERSION_CODE}.apk"
           cp "$APK" "$OUT"
           echo "path=$OUT" >> "$GITHUB_OUTPUT"
           echo "available=true" >> "$GITHUB_OUTPUT"
@@ -109,16 +121,42 @@ jobs:
             echo "available=false" >> "$GITHUB_OUTPUT"
             exit 0
           fi
-          OUT="fxxkHilife-debug-${TAG}-${VERSION_CODE}.apk"
+          OUT="fxxkHilife-debug-${BUILD_LABEL}-${TAG}-${VERSION_CODE}.apk"
           cp "$APK" "$OUT"
           echo "path=$OUT" >> "$GITHUB_OUTPUT"
           echo "available=true" >> "$GITHUB_OUTPUT"
+
+      - name: Generate release update manifest
+        id: manifest
+        if: startsWith(github.ref, 'refs/tags/v') && steps.apk.outputs.available == 'true'
+        shell: bash
+        run: |
+          APK="${{ steps.apk.outputs.path }}"
+          SHA256=$(sha256sum "$APK" | awk '{print $1}')
+          PUBLISHED_AT=$(date -u '+%Y-%m-%dT%H:%M:%SZ')
+          cat > update.json <<JSON
+          {
+            "schemaVersion": 1,
+            "channel": "stable",
+            "versionName": "${VERSION_NAME}",
+            "versionCode": ${VERSION_CODE},
+            "releaseUrl": "https://github.com/ct-yx/fxxkHilife/releases/tag/${TAG}",
+            "apkUrl": "https://github.com/ct-yx/fxxkHilife/releases/download/${TAG}/${APK}",
+            "sha256": "${SHA256}",
+            "publishedAt": "${PUBLISHED_AT}",
+            "minSdk": 26,
+            "notesUrl": "https://github.com/ct-yx/fxxkHilife/releases/tag/${TAG}",
+            "notes": "See the release notes for this version."
+          }
+          JSON
+          python3 scripts/validate_update_manifest.py update.json
+          echo "path=update.json" >> "$GITHUB_OUTPUT"
 
       - name: Upload automated test report
         if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: automated-test-report-${{ steps.version.outputs.tag }}-${{ steps.version.outputs.version_code }}
+          name: automated-test-report-${{ env.BUILD_LABEL }}-${{ steps.version.outputs.tag }}-${{ steps.version.outputs.version_code }}
           path: ci-output/
           if-no-files-found: error
 
@@ -126,7 +164,7 @@ jobs:
         if: steps.apk.outputs.available == 'true'
         uses: actions/upload-artifact@v4
         with:
-          name: fxxkHilife-${{ steps.version.outputs.tag }}-${{ steps.version.outputs.version_code }}
+          name: fxxkHilife-${{ env.BUILD_LABEL }}-${{ steps.version.outputs.tag }}-${{ steps.version.outputs.version_code }}
           path: ${{ steps.apk.outputs.path }}
           if-no-files-found: error
 
@@ -134,8 +172,16 @@ jobs:
         if: steps.debug_apk.outputs.available == 'true'
         uses: actions/upload-artifact@v4
         with:
-          name: fxxkHilife-debug-${{ steps.version.outputs.tag }}-${{ steps.version.outputs.version_code }}
+          name: fxxkHilife-debug-${{ env.BUILD_LABEL }}-${{ steps.version.outputs.tag }}-${{ steps.version.outputs.version_code }}
           path: ${{ steps.debug_apk.outputs.path }}
+          if-no-files-found: error
+
+      - name: Upload update manifest artifact
+        if: steps.manifest.outputs.path != ''
+        uses: actions/upload-artifact@v4
+        with:
+          name: update-manifest-${{ steps.version.outputs.tag }}-${{ steps.version.outputs.version_code }}
+          path: update.json
           if-no-files-found: error
 
       - name: Fail workflow when automated checks failed
@@ -174,10 +220,10 @@ jobs:
         run: |
           if gh release view "$TAG" >/dev/null 2>&1; then
             echo "Release $TAG exists, updating assets..."
-            gh release upload "$TAG" "${{ steps.apk.outputs.path }}" --clobber
+            gh release upload "$TAG" "${{ steps.apk.outputs.path }}" update.json --clobber
           else
             echo "Creating release $TAG..."
-            gh release create "$TAG" "${{ steps.apk.outputs.path }}" \
+            gh release create "$TAG" "${{ steps.apk.outputs.path }}" update.json \
               --title "Release $TAG" \
               --notes-file release_notes.md \
               --target "${{ github.sha }}"

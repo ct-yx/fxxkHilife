@@ -49,6 +49,7 @@ run_step() {
   echo "- repository: $ROOT_DIR"
   echo "- commit: $(git rev-parse HEAD 2>/dev/null || echo unknown)"
   echo "- branch: $(git branch --show-current 2>/dev/null || echo unknown)"
+  echo "- build_label: ${CI_BUILD_LABEL:-unlabeled}"
   echo "- java: ${JAVA_HOME:-system default}"
   if [[ -f app/build.gradle.kts ]]; then
     version_name=$(sed -n 's/.*versionName = "\([^"]*\)".*/\1/p' app/build.gradle.kts | head -1)
@@ -63,6 +64,7 @@ run_step() {
 
 chmod +x ./gradlew 2>/dev/null || true
 run_step "diff-check" git diff --check
+run_step "ui-contract" python3 scripts/validate_ui_contract.py
 run_step "gradle" ./gradlew --no-daemon clean test assembleDebug assembleRelease --stacktrace
 
 # Keep the standard Gradle reports beside the console logs for one-click download.

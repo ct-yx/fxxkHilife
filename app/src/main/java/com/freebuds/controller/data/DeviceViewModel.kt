@@ -9,6 +9,14 @@ import com.freebuds.controller.bluetooth.BluetoothScanner
 import com.freebuds.controller.bluetooth.ScannedDevice
 import com.freebuds.controller.core.capability.EarbudCapability
 import com.freebuds.controller.core.state.EarbudState
+import com.freebuds.controller.ui.state.AppUiState
+import com.freebuds.controller.ui.state.DeviceEvent
+import com.freebuds.controller.ui.state.DeviceUiState
+import com.freebuds.controller.ui.state.DualDeviceProperty
+import com.freebuds.controller.ui.state.GestureTarget
+import com.freebuds.controller.ui.state.ScanUiState
+import com.freebuds.controller.ui.state.SettingsEvent
+import com.freebuds.controller.ui.state.SettingsUiState
 import kotlinx.coroutines.flow.*
 import kotlinx.coroutines.launch
 
@@ -21,6 +29,9 @@ class DeviceViewModel : ViewModel() {
 
     private val repo = HilifeApplication.instance.deviceRepository
     private val connectionManager = repo.connectionManager
+    /** One settings owner for Activity, routes and update tasks. */
+    val settingsRepository = SettingsRepository(HilifeApplication.instance)
+    private val updateRepository = UpdateRepository(HilifeApplication.instance, settingsRepository)
 
     // ── 透传 Repository 的 Flow ───────────────────────────────────────────────
     val connectionState: StateFlow<ConnectionState> = repo.connectionState
@@ -30,12 +41,52 @@ class DeviceViewModel : ViewModel() {
     val props: StateFlow<DeviceProps> = repo.props
     val listeningStats: StateFlow<ListeningStats> = repo.listeningStats
     val savedDeviceConnections: StateFlow<List<SavedDeviceConnection>> = repo.savedDeviceConnections
+    val updateState: StateFlow<UpdateUiState> = updateRepository.state
+    val settingsState: StateFlow<SettingsSnapshot> = settingsRepository.state
 
     fun isCoreStateReady(): Boolean = repo.isCoreStateReady()
 
     // ── 扫描状态（只在 ViewModel 层维护，与连接无关） ─────────────────────────
     private val _scanState = MutableStateFlow(ScanState())
     val scanState: StateFlow<ScanState> = _scanState.asStateFlow()
+
+    /** Typed projection used by routes; legacy props remains available during migration. */
+    val deviceUiState: StateFlow<DeviceUiState> = combine(
+        controlChannelState,
+        earbudState,
+        capabilities,
+    ) { channel, state, capabilitySet ->
+        DeviceUiState(
+            connection = com.freebuds.controller.ui.state.ConnectionSummary.from(channel),
+            state = state,
+            capabilities = capabilitySet,
+        )
+    }.stateIn(viewModelScope, SharingStarted.Eagerly, DeviceUiState())
+
+    private val baseAppUiState: Flow<AppUiState> = combine(
+        deviceUiState,
+        scanState,
+        savedDeviceConnections,
+        listeningStats,
+    ) { device, scan, saved, stats ->
+        AppUiState(
+            device = device,
+            scan = ScanUiState(scan.isScanning, scan.devices),
+            savedDevices = saved,
+            listeningStats = stats,
+        )
+    }
+
+    val appUiState: StateFlow<AppUiState> = combine(
+        baseAppUiState,
+        settingsState,
+        updateState,
+    ) { base, settings, update ->
+        base.copy(
+            settings = SettingsUiState(settings),
+            update = update,
+        )
+    }.stateIn(viewModelScope, SharingStarted.Eagerly, AppUiState())
 
     private var scanner: BluetoothScanner? = null
 
@@ -50,6 +101,66 @@ class DeviceViewModel : ViewModel() {
     // ── 属性写入 ──────────────────────────────────────────────────────────────
     fun setProperty(group: String, prop: String, value: String) {
         viewModelScope.launch { repo.setProperty(group, prop, value) }
+    }
+
+    /** Typed UI command boundary. Raw protocol keys stay inside this compatibility mapping. */
+    fun onEvent(event: DeviceEvent) {
+        when (event) {
+            is DeviceEvent.SetAncMode -> setProperty("anc", "mode", event.value)
+            is DeviceEvent.SetAncLevel -> setProperty("anc", "level", event.value)
+            is DeviceEvent.SetSoundQuality -> setProperty("sound", "quality_preference", event.value)
+            is DeviceEvent.SetEqualizerPreset -> setProperty("sound", "equalizer_preset", event.value)
+            is DeviceEvent.SetAutoPause -> setProperty("config", "auto_pause", event.enabled.toString())
+            is DeviceEvent.SetLowLatency -> setProperty("config", "low_latency", event.enabled.toString())
+            is DeviceEvent.SetDualConnect -> setProperty("dual_connect", "enabled", event.enabled.toString())
+            is DeviceEvent.SetPreferredDevice -> setProperty("dual_connect", "preferred_device", event.address)
+            is DeviceEvent.SetDualDeviceOption -> setProperty(
+                "dual_connect",
+                "${event.address}:${event.property.name.lowercase()}",
+                event.enabled.toString(),
+            )
+            is DeviceEvent.SetGesture -> setProperty(
+                "action",
+                when (event.target) {
+                    GestureTarget.DoubleTapLeft -> "double_tap_left"
+                    GestureTarget.DoubleTapRight -> "double_tap_right"
+                    GestureTarget.TripleTapLeft -> "triple_tap_left"
+                    GestureTarget.TripleTapRight -> "triple_tap_right"
+                    GestureTarget.Swipe -> "swipe_gesture"
+                    GestureTarget.LongTap -> "long_tap"
+                },
+                event.value,
+            )
+            DeviceEvent.Refresh -> refreshSavedDeviceConnections()
+        }
+    }
+
+    fun checkForUpdate(force: Boolean = false) = updateRepository.check(force)
+    fun downloadUpdate() = updateRepository.download()
+    fun cancelUpdateDownload() = updateRepository.cancelDownload()
+    fun installUpdate(): android.content.Intent? = updateRepository.install()
+    fun maybeCheckForUpdate() = updateRepository.check(force = false)
+
+    /** Typed settings boundary used by the Settings route. */
+    fun onSettingsEvent(event: SettingsEvent): android.content.Intent? {
+        when (event) {
+            is SettingsEvent.SetThemeMode -> settingsRepository.setThemeMode(event.value)
+            is SettingsEvent.SetLocale -> settingsRepository.setLocale(event.value)
+            is SettingsEvent.SetDisplayMode -> settingsRepository.setDisplayMode(event.value)
+            is SettingsEvent.SetWallpaperUri -> settingsRepository.setWallpaperUri(event.value)
+            is SettingsEvent.SetWallpaperScope -> settingsRepository.setWallpaperScope(event.value)
+            is SettingsEvent.SetGlassConfig -> settingsRepository.setGlassConfig(event.value)
+            is SettingsEvent.SetAutoLowLatency -> settingsRepository.setAutoLowLatency(event.value)
+            is SettingsEvent.SetUpdateSettings -> settingsRepository.setUpdateSettings(event.value)
+            is SettingsEvent.SetLogMaxLines -> settingsRepository.setLogMaxLines(event.value)
+            is SettingsEvent.SetProtocolFrameLogging -> settingsRepository.setProtocolFrameLogging(event.value)
+            is SettingsEvent.CheckForUpdate -> checkForUpdate(force = event.force)
+            SettingsEvent.DownloadUpdate -> downloadUpdate()
+            SettingsEvent.CancelUpdateDownload -> cancelUpdateDownload()
+            SettingsEvent.InstallUpdate -> return installUpdate()
+            is SettingsEvent.OpenRelease -> Unit
+        }
+        return null
     }
 
     // ── 分享日志 ──────────────────────────────────────────────────────────────
@@ -104,6 +215,7 @@ class DeviceViewModel : ViewModel() {
 
     override fun onCleared() {
         stopScan()
+        updateRepository.close()
         super.onCleared()
     }
 }

@@ -26,7 +26,7 @@ import com.freebuds.controller.data.ListeningStats
 import com.freebuds.controller.i18n.I18n
 import com.freebuds.controller.i18n.i18n
 import com.freebuds.controller.ui.glass.AdaptiveCard
-import dev.chrisbanes.haze.HazeState
+import com.freebuds.controller.ui.foundation.components.AppTopBar
 import java.text.SimpleDateFormat
 import java.util.Calendar
 import java.util.Locale
@@ -36,23 +36,16 @@ import java.util.Locale
 fun ListeningStatsScreen(
     viewModel: DeviceViewModel,
     displayMode: UiDisplayMode,
-    hazeState: HazeState?,
     onBack: () -> Unit,
 ) {
     val stats by viewModel.listeningStats.collectAsState()
     Scaffold(
         containerColor = Color.Transparent,
         topBar = {
-            TopAppBar(
-                title = { Text(i18n("stats.title")) },
-                navigationIcon = {
-                    IconButton(onClick = onBack) {
-                        Icon(Icons.Default.ArrowBack, contentDescription = i18n("common.back"))
-                    }
-                },
-                colors = TopAppBarDefaults.topAppBarColors(
-                    containerColor = if (displayMode == UiDisplayMode.LIQUID_GLASS) Color.Transparent else MaterialTheme.colorScheme.surface
-                )
+            AppTopBar(
+                title = i18n("stats.title"),
+                displayMode = displayMode,
+                onBack = onBack,
             )
         }
     ) { padding ->
@@ -63,8 +56,8 @@ fun ListeningStatsScreen(
             contentPadding = PaddingValues(16.dp),
             verticalArrangement = Arrangement.spacedBy(14.dp),
         ) {
-            item { StatsSummaryGrid(stats, displayMode, hazeState) }
-            item { ListeningHeatmapCard(stats, displayMode, hazeState) }
+            item { StatsSummaryGrid(stats, displayMode) }
+            item { ListeningHeatmapCard(stats, displayMode) }
             item {
                 Text(
                     i18n("stats.description"),
@@ -78,15 +71,15 @@ fun ListeningStatsScreen(
 }
 
 @Composable
-private fun StatsSummaryGrid(stats: ListeningStats, displayMode: UiDisplayMode, hazeState: HazeState?) {
+private fun StatsSummaryGrid(stats: ListeningStats, displayMode: UiDisplayMode) {
     Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
         Row(horizontalArrangement = Arrangement.spacedBy(12.dp), modifier = Modifier.fillMaxWidth()) {
-            StatTile(Icons.Default.Schedule, i18n("stats.total"), formatDuration(stats.totalMs), displayMode, hazeState, Modifier.weight(1f))
-            StatTile(Icons.Default.TextFields, i18n("stats.today"), formatDuration(stats.todayMs), displayMode, hazeState, Modifier.weight(1f))
+            StatTile(Icons.Default.Schedule, i18n("stats.total"), formatDuration(stats.totalMs), displayMode, Modifier.weight(1f))
+            StatTile(Icons.Default.TextFields, i18n("stats.today"), formatDuration(stats.todayMs), displayMode, Modifier.weight(1f))
         }
         Row(horizontalArrangement = Arrangement.spacedBy(12.dp), modifier = Modifier.fillMaxWidth()) {
-            StatTile(Icons.Default.Book, i18n("stats.heard"), i18n("stats.days", stats.activeDays), displayMode, hazeState, Modifier.weight(1f))
-            StatTile(Icons.Default.LocalFireDepartment, i18n("stats.streak"), i18n("stats.days", stats.streakDays), displayMode, hazeState, Modifier.weight(1f))
+            StatTile(Icons.Default.Book, i18n("stats.heard"), i18n("stats.days", stats.activeDays), displayMode, Modifier.weight(1f))
+            StatTile(Icons.Default.LocalFireDepartment, i18n("stats.streak"), i18n("stats.days", stats.streakDays), displayMode, Modifier.weight(1f))
         }
     }
 }
@@ -97,10 +90,9 @@ private fun StatTile(
     label: String,
     value: String,
     displayMode: UiDisplayMode,
-    hazeState: HazeState?,
     modifier: Modifier = Modifier,
 ) {
-    AdaptiveCard(displayMode = displayMode, hazeState = hazeState, modifier = modifier.height(142.dp)) {
+    AdaptiveCard(displayMode = displayMode, modifier = modifier.height(142.dp)) {
         Column(verticalArrangement = Arrangement.SpaceBetween, modifier = Modifier.fillMaxSize()) {
             Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(10.dp)) {
                 Box(
@@ -120,8 +112,8 @@ private fun StatTile(
 }
 
 @Composable
-private fun ListeningHeatmapCard(stats: ListeningStats, displayMode: UiDisplayMode, hazeState: HazeState?) {
-    AdaptiveCard(displayMode = displayMode, hazeState = hazeState, modifier = Modifier.fillMaxWidth()) {
+private fun ListeningHeatmapCard(stats: ListeningStats, displayMode: UiDisplayMode) {
+    AdaptiveCard(displayMode = displayMode, modifier = Modifier.fillMaxWidth()) {
         Column(verticalArrangement = Arrangement.spacedBy(14.dp)) {
             Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.fillMaxWidth()) {
                 Text(i18n("stats.activity"), style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold, modifier = Modifier.weight(1f))
