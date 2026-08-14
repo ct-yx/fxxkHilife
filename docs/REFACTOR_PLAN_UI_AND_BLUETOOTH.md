@@ -223,6 +223,12 @@
 - GitHub Actions `31819769359` 已给出明确阻断证据：alpha05 的 `haze`、`haze-blur`、`haze-glass` 要求 compileSdk 37；解析出的 Lifecycle Compose 2.11.0 同时要求 compileSdk 37 和 AGP 9.1，而项目当前基线是 compileSdk 36 / AGP 8.9.1。失败发生在 `checkDebugAarMetadata`，不是页面逻辑或 Haze 是否被调用。
 - 当前 UI-0 至 UI-5 改用 Haze 2.0 `2.0.0-alpha03` 兼容基线：只保留 `haze` 与 `haze-blur`，由 `SurfaceRenderer` 集中使用 `HazeState`、`hazeSource`、`hazeEffect`、`blurEffect` 和 `HazeColorEffect`；删除未使用的 `haze-blur-materials`/`haze-glass` 声明，避免“声明了但没有实际调用”。
 - `LIQUID_GLASS` 是本项目的视觉 profile 名称；当前实现使用 alpha03 的 Haze blur/tint 组合，不把它描述成官方 `haze-glass` artifact。官方 alpha05 仍记录为后续独立升级候选，升级时必须单独验证 compileSdk、AGP、生命周期依赖、真实截图和性能。
+
+### 0.5.4 2026-08-15 CI 编译跟进
+
+- `5c6e2d6` 对应的 GitHub Actions `31821253213` 已越过 AAR metadata 门，但暴露了第一轮结构迁移的 Compose import 缺口：`DeviceFeatureComponents` 缺少 `remember`/`mutableStateOf`/delegate import，`AppScaffold` 的返回图标引用方式不兼容；已在 `e073cab`、`df7bfd2` 修正。
+- 随后的 CI 已进入 JVM 测试，98 个测试中只有 `UpdateManifestTest` 2 项失败，根因是本地单元测试使用 Android `org.json.JSONObject` stub，`getInt` 直接抛出 `Method ... not mocked`；这不是更新业务逻辑失败。已加入 test-only `org.json:json` 实现，生产 APK 不携带该依赖。
+- 当前仍不标记 UI-0 至 UI-5 完成，也不提升版本号；下一次 GitHub Actions 通过后，才进入 `UI_GLASS_RENDERING_TARGETED`、截图、无障碍和性能定向验收。
 - 本次只修正依赖、适配器、静态契约和计划记录，版本仍为 `4.3.10 / 98`；UI-0 至 UI-5 继续保持 `[~]`，等待 GitHub Actions、截图、无障碍和实际运行证据。
 
 ## 1. 范围与原则

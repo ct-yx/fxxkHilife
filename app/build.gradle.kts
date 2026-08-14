@@ -91,5 +91,8 @@ dependencies {
     implementation("org.jetbrains.kotlinx:kotlinx-coroutines-android:1.9.0")
 
     testImplementation("junit:junit:4.13.2")
+    // Android's local-test android.jar provides JSONObject stubs only; use the
+    // JVM implementation so update-manifest parsing tests exercise real JSON.
+    testImplementation("org.json:json:20250517")
     androidTestImplementation("androidx.test.ext:junit:1.2.1")
 }
