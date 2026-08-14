@@ -29,9 +29,21 @@ def main() -> int:
     if not SURFACE_ADAPTER.is_file():
         fail("SurfaceRenderer.kt is missing")
     surface_text = SURFACE_ADAPTER.read_text(encoding="utf-8")
-    for required in ("hazeSource", "hazeGlass", "hazeBlur", "SurfaceRenderMode"):
+    for required in ("hazeSource", "hazeEffect", "blurEffect", "SurfaceRenderMode"):
         if required not in surface_text:
             fail(f"surface adapter does not contain {required}")
+
+    build_text = (ROOT / "app/build.gradle.kts").read_text(encoding="utf-8")
+    for required in (
+        'dev.chrisbanes.haze:haze:2.0.0-alpha03',
+        'dev.chrisbanes.haze:haze-blur:2.0.0-alpha03',
+    ):
+        if required not in build_text:
+            fail(f"Haze compatibility dependency is missing: {required}")
+    if "dev.chrisbanes.haze:haze-glass" in build_text:
+        fail("haze-glass is not part of the current compileSdk 36 baseline")
+    if "dev.chrisbanes.haze:haze-blur-materials" in build_text:
+        fail("haze-blur-materials has no production call site")
 
     for path in UI_ROOT.rglob("*.kt"):
         if path == SURFACE_ADAPTER:

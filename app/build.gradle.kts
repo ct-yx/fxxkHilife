@@ -72,9 +72,11 @@ dependencies {
     implementation("androidx.navigation:navigation-compose:2.8.5")
     debugImplementation("androidx.compose.ui:ui-tooling")
 
-    implementation("dev.chrisbanes.haze:haze:2.0.0-alpha05")
-    implementation("dev.chrisbanes.haze:haze-blur:2.0.0-alpha05")
-    implementation("dev.chrisbanes.haze:haze-glass:2.0.0-alpha05")
+    // Keep the UI refactor on the project's compileSdk 36 / AGP 8.9.1 baseline.
+    // Haze alpha05 currently requires compileSdk 37 and AGP 9.1, so it is a
+    // separate upgrade gate rather than a hidden build-toolchain migration.
+    implementation("dev.chrisbanes.haze:haze:2.0.0-alpha03")
+    implementation("dev.chrisbanes.haze:haze-blur:2.0.0-alpha03")
     implementation("io.coil-kt:coil-compose:2.7.0")
 
     implementation("androidx.core:core-ktx:1.15.0")

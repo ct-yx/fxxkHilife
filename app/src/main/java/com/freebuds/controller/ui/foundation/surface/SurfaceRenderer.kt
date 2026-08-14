@@ -1,6 +1,7 @@
 package com.freebuds.controller.ui.foundation.surface
 
 import android.os.Build
+import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.BoxScope
@@ -33,16 +34,10 @@ import androidx.compose.ui.unit.dp
 import com.freebuds.controller.ui.UiDisplayMode
 import com.freebuds.controller.ui.foundation.tokens.UiTokens
 import com.freebuds.controller.ui.glass.LocalLiquidGlassConfig
-import dev.chrisbanes.haze.ExperimentalHazeApi
-import dev.chrisbanes.haze.HazeInput
-import dev.chrisbanes.haze.HazePerformanceMode
 import dev.chrisbanes.haze.HazeState
-import dev.chrisbanes.haze.blur.HazeBlurStyle
 import dev.chrisbanes.haze.blur.HazeColorEffect
-import dev.chrisbanes.haze.blur.hazeBlur
-import dev.chrisbanes.haze.glass.GlassOptics
-import dev.chrisbanes.haze.glass.GlassStyle
-import dev.chrisbanes.haze.glass.hazeGlass
+import dev.chrisbanes.haze.blur.blurEffect
+import dev.chrisbanes.haze.hazeEffect
 import dev.chrisbanes.haze.hazeSource
 import dev.chrisbanes.haze.rememberHazeState
 
@@ -126,7 +121,6 @@ fun BackgroundLayer(
  * than leaving a transparent card with no background.
  */
 object SurfaceRenderer {
-    @OptIn(ExperimentalHazeApi::class)
     @Composable
     fun Card(
         spec: SurfaceSpec,
@@ -155,11 +149,18 @@ object SurfaceRenderer {
         val tintAlpha = if (spec.tint == null) glassConfig.tintAlpha else tintBase.alpha
         val tint = tintBase.copy(alpha = tintAlpha.coerceIn(0.04f, 0.92f))
         val effectModifier = if (host != null && actual.isEffect()) {
-            val input = HazeInput.Sources(host.hazeState)
-            when (actual) {
-                SurfaceRenderMode.HazeGlass -> Modifier.hazeGlass(input, glassStyle(shape, configuredSpec, tint, glassConfig), HazePerformanceMode.Default)
-                SurfaceRenderMode.HazeBlur -> Modifier.hazeBlur(input, blurStyle(configuredSpec, tint), HazePerformanceMode.Default)
-                else -> Modifier
+            Modifier.hazeEffect(state = host.hazeState) {
+                blurEffect {
+                    blurRadius = configuredSpec.blurRadius
+                    noiseFactor = if (actual == SurfaceRenderMode.HazeGlass) 0.055f else 0.035f
+                    colorEffects = listOf(
+                        HazeColorEffect.tint(
+                            tint.copy(
+                                alpha = if (actual == SurfaceRenderMode.HazeGlass) 0.20f else 0.14f,
+                            ),
+                        ),
+                    )
+                }
             }
         } else {
             Modifier
@@ -207,6 +208,12 @@ object SurfaceRenderer {
                 modifier = modifier.clip(shape).then(effectModifier),
                 shape = shape,
                 color = visibleColor,
+                border = if (actual.isEffect()) {
+                    BorderStroke(
+                        width = 0.7.dp,
+                        color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.14f + configuredSpec.depth * 0.10f),
+                    )
+                } else null,
                 tonalElevation = if (actual == SurfaceRenderMode.Opaque) 1.dp else 0.dp,
             ) {
                 Column(Modifier.padding(UiTokens.ref.space4), content = content)
@@ -223,38 +230,6 @@ object SurfaceRenderer {
         return if (Build.VERSION.SDK_INT >= 33) SurfaceRenderMode.HazeGlass
         else if (Build.VERSION.SDK_INT >= 31) SurfaceRenderMode.HazeBlur
         else SurfaceRenderMode.TintOnly
-    }
-
-    @Composable
-    private fun blurStyle(spec: SurfaceSpec, tint: Color): HazeBlurStyle = HazeBlurStyle {
-        blurRadius(spec.blurRadius)
-        noiseFactor(0.045f)
-        colorEffects(listOf(HazeColorEffect.tint(tint.copy(alpha = 0.22f))))
-        fallbackColorEffect(HazeColorEffect.tint(tint.copy(alpha = 0.84f)))
-    }
-
-    @Composable
-    private fun glassStyle(
-        roundedShape: RoundedCornerShape,
-        spec: SurfaceSpec,
-        tint: Color,
-        config: com.freebuds.controller.ui.glass.LiquidGlassConfig,
-    ): GlassStyle {
-        return GlassStyle {
-            shape(roundedShape)
-            tint(tint)
-            alpha((0.92f + config.readabilityStrength * 0.08f).coerceIn(0.92f, 1f))
-            specularIntensity((0.14f + config.readabilityStrength * 0.28f).coerceIn(0.12f, 0.42f))
-            ambientResponse(0.18f)
-            edgeSoftness(1.dp)
-            optics(GlassOptics.Fixed(
-                refractionStrength = spec.depth.coerceIn(0.2f, 1f),
-                refractionHeightFraction = 0.45f,
-                refractionDisplacement = 8.dp,
-                depth = spec.depth.coerceIn(0.1f, 0.8f),
-                blurRadius = 10.dp,
-            ))
-        }
     }
 
     private fun SurfaceRenderMode.isEffect(): Boolean =

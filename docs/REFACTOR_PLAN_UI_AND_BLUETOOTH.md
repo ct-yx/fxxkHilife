@@ -149,7 +149,7 @@
 | BT-3 ConnectionManager 收敛入口 | [x] 已完成 | 2026-08-14；`ConnectionLifecycle`、session/attempt/Job 所有权收敛，并由 `BT_MANAGER_RUNTIME_20` F10+初始化10 实机确认；`4.3.10 / 98` 补齐统计 flush、失败 session 断开、command 串行边界和同 attempt 状态映射收尾 |
 | BT-4 通用蓝牙状态输出 | [x] 已完成 | `4.3.10 / 98` 完成原子快照投影、canonical channel、pending/failed 语义收敛、空值规范化、metadata-only core readiness 防误报、严格 PASS 报告校验和 5A 协议边界修复；94/94 Debug、94/94 Release 单元测试、`git diff --check`、Debug/Release 构建通过；同一主验证设备 `BT4_STATE_CONTRACT_5` 实机 5/5 通过。页面尚未迁移消费 |
 | UI-0 UI 基线与资源清点 | [~] 进行中 | 2026-08-14；静态路由/状态/设置 key/资源/Haze 调用基线已写入 `docs/UI_BASELINE.md`，新增更新 manifest 契约；等待新 UI 截图和运行诊断门 |
-| UI-1 设计令牌与渲染基础 | [~] 进行中 | 2026-08-14；`ref/sys/comp` 令牌、`AppScaffold`、公共 surface、alpha05 typed Blur/Glass adapter 和 `UiAssetCatalog` 已落地；等待 CI/截图/性能证据 |
+| UI-1 设计令牌与渲染基础 | [~] 进行中 | 2026-08-14；`ref/sys/comp` 令牌、`AppScaffold`、公共 surface、Haze 2.0 alpha03 共享 blur adapter 和 `UiAssetCatalog` 已落地；等待 CI/截图/性能证据 |
 | UI-2 typed State / Event / Navigation | [~] 进行中 | 2026-08-14；`AppUiState`/`DeviceUiState`/`SettingsUiState`、typed `DeviceEvent`/`SettingsEvent` 已接入核心页面，保留兼容层；等待动作状态矩阵 |
 | UI-3 全局外壳与主路由 | [~] 进行中 | 2026-08-14；背景/source 归属和稳定状态导航已收敛，Home/Scan/Permission 仍需统一外壳截图与入口去重验证 |
 | UI-4 设备功能页面 | [~] 进行中 | 2026-08-14；Device/Gesture/ListeningStats 已使用统一 surface 和 typed event，电量/后台同步/EQ/双设备/选项开关/设备信息组件已拆至 `ui/DeviceFeatureComponents.kt`，能力矩阵验证待完成 |
@@ -216,6 +216,14 @@
 - 编译前静态门已全部通过：`git diff --check`、`scripts/validate_ui_contract.py`、`scripts/validate_update_manifest.py`、Android XML、Workflow YAML 和 Kotlin 分隔符扫描。
 - UI-0 至 UI-5 继续标记为 `[~]`：当前结果只证明源码边界和静态契约，不能替代 GitHub Actions 编译、classic/glass 截图、无障碍和实际设备运行证据。
 - 下一步固定为使用 `UI_FOUNDATION_SMOKE` 构建标签交给 GitHub Actions；包返回后只做 UI 定向验证，不重复 BT 36/100 项矩阵。
+
+### 0.5.3 2026-08-15 Haze 依赖计划复核与修正
+
+- 计划原先把官方最新的 Haze `2.0.0-alpha05`、typed API、`haze-glass` 和 UI 页面迁移绑定在同一个阶段，这会把 UI 重构和 Android 构建工具链升级混成一个不可定位的变更，计划有问题。
+- GitHub Actions `31819769359` 已给出明确阻断证据：alpha05 的 `haze`、`haze-blur`、`haze-glass` 要求 compileSdk 37；解析出的 Lifecycle Compose 2.11.0 同时要求 compileSdk 37 和 AGP 9.1，而项目当前基线是 compileSdk 36 / AGP 8.9.1。失败发生在 `checkDebugAarMetadata`，不是页面逻辑或 Haze 是否被调用。
+- 当前 UI-0 至 UI-5 改用 Haze 2.0 `2.0.0-alpha03` 兼容基线：只保留 `haze` 与 `haze-blur`，由 `SurfaceRenderer` 集中使用 `HazeState`、`hazeSource`、`hazeEffect`、`blurEffect` 和 `HazeColorEffect`；删除未使用的 `haze-blur-materials`/`haze-glass` 声明，避免“声明了但没有实际调用”。
+- `LIQUID_GLASS` 是本项目的视觉 profile 名称；当前实现使用 alpha03 的 Haze blur/tint 组合，不把它描述成官方 `haze-glass` artifact。官方 alpha05 仍记录为后续独立升级候选，升级时必须单独验证 compileSdk、AGP、生命周期依赖、真实截图和性能。
+- 本次只修正依赖、适配器、静态契约和计划记录，版本仍为 `4.3.10 / 98`；UI-0 至 UI-5 继续保持 `[~]`，等待 GitHub Actions、截图、无障碍和实际运行证据。
 
 ## 1. 范围与原则
 
@@ -294,7 +302,7 @@ BT_MANAGER_RUNTIME_20 实机报告
 - `BleGattTransport`、`NativeBridgeTransport`：当前没有目标设备和协议证据，保留接口位置，不实现伪适配。
 - 动态插件加载、多个 Adapter 试探匹配和多 SPP session：等第二个真实 Adapter 或多设备控制需求出现后再设计。
 - 未验证的 Custom EQ payload：继续只读或按已验证能力展示。
-- Haze 依赖升级：不在 UI-0 提前扩散；UI-1 直接锁定 alpha05 typed API，旧 alpha03 调用只保留在基线记录中，生产代码不保留旧渲染兼容分支。
+- Haze 依赖冻结：当前 UI-1 锁定 Haze 2.0 alpha03 的 `hazeSource`/`hazeEffect`/`blurEffect` 组合，先完成 UI 重构和运行验收；alpha05 虽是官方最新预发布，但要求 compileSdk 37 与 AGP 9.1，另立升级门，不把构建工具链升级混入 UI-0 至 UI-5。
 - 全量 `LogRepository`：现有 `LogBuffer` 和报告导出已经满足诊断需求，避免先做无收益的转发层。
 
 ## 3. 大项一：UI 规范与重构
@@ -550,12 +558,12 @@ ViewModel 负责把事件交给用例；用例再调用协议无关的控制接�
 
 | 类型 | 用途 | 默认 surface | 约束 |
 |---|---|---|---|
-| `PrimaryActionButton` | 页面主操作、保存、连接、确认 | Hero/重点区域可用低强度 `hazeGlass`；普通场景使用 Material primary | 同一 surface 只允许一个主操作；Pending 时显示进度，不重复发送 |
+| `PrimaryActionButton` | 页面主操作、保存、连接、确认 | Hero/重点区域可用低强度 Haze effect profile；普通场景使用 Material primary | 同一 surface 只允许一个主操作；Pending 时显示进度，不重复发送 |
 | `SecondaryActionButton` | 次级操作、刷新、选择设备 | `hazeBlur` 或低强度 tint | 不与主操作竞争视觉层级 |
 | `TertiaryActionButton` | 取消、稍后处理、打开详情 | transparent/tint | 保持 44dp 触控区域，不用高折射玻璃 |
 | `DestructiveActionButton` | 断开、删除、清除 | opaque/tint error surface | 必须有确认或可撤销反馈，不使用透明红色叠加玻璃 |
 | `IconActionButton` | 设置、返回、更多、终端入口 | 继承父级 surface；必要时 `hazeBlur` | 必须有 contentDescription、焦点语义和最小触控尺寸 |
-| `ToggleButton` | 显示风格、模式、快速开关 | `hazeGlass` 或 `hazeBlur` 的 selected/unselected surface | selected 状态不能只依赖颜色，必须有语义和图标/文字差异 |
+| `ToggleButton` | 显示风格、模式、快速开关 | 高/低强度 Haze effect 或 tint 的 selected/unselected surface | selected 状态不能只依赖颜色，必须有语义和图标/文字差异 |
 
 **按钮状态：**
 
@@ -610,8 +618,8 @@ data class OptionUiState<T>(
 
 **液态玻璃控件表现：**
 
-1. 控件内容层与玻璃 surface 分离：`SurfaceRenderer` 负责 `hazeGlass → hazeBlur → tint → opaque` 选择，按钮/选项只提供 `SurfaceRole`、`selected`、`UiActionState` 和内容。
-2. 主按钮和选中的分段选项可以使用低强度 `hazeGlass`；高折射 Hero 只作为父级 surface，按钮内部不再嵌套第二个独立 `HazeState`/source。
+1. 控件内容层与玻璃 surface 分离：`SurfaceRenderer` 负责高强度 Haze effect → 低强度 blur → tint → opaque 选择，按钮/选项只提供 `SurfaceRole`、`selected`、`UiActionState` 和内容。
+2. 主按钮和选中的分段选项可以使用低强度 Haze effect；高强度 Hero 只作为父级 surface，按钮内部不再嵌套第二个独立 `HazeState`/source。
 3. 次级按钮、设置行和大量选项默认使用 `hazeBlur` 或 tint；长列表不逐项创建 effect，优先由父级 Card 承载一个 Haze surface。
 4. Pending、Failure、Disabled 使用稳定的 Material 语义色、图标和文本；不通过改变 blur、折射或透明度表达业务状态。
 5. 高对比度、大字体、低性能设备、无壁纸或 source 不可用时，控件保留相同布局、触控区域、焦点顺序和语义，surface 依次降级到 `hazeBlur`、tint 或 opaque。
@@ -641,15 +649,15 @@ ui/foundation/components/
 这些组件先在 UI-1 建立 visual/state contract，UI-2 接入 typed event 和 `OptionUiState`，UI-3/UI-4 替换 Home、Device、Gesture、Stats、Terminal 的局部控件，UI-5 替换 Settings 和更新流程中的所有按钮/选项。
 
 
-UI 重构采用 Haze 2.0 `2.0.0-alpha05` 作为唯一实现基线，不设计或保留 alpha05 之前的兼容渲染路径。当前 alpha03 调用只作为一次性迁移审计记录；完成 UI-1 后，生产 UI 不再保留旧的 `hazeEffect` 嵌套 DSL、alpha03 facade 或双版本分支。官方截至 2026-08-14 最新发布测试版为 `2.0.0-alpha05`，没有 2.0 beta/stable。alpha04 完成 typed API 的主要破坏性迁移，alpha05 重点补充/明确 `HazePerformanceMode` 和渲染兼容行为：
+UI 重构当前采用 Haze 2.0 `2.0.0-alpha03` 作为可编译实现基线。官方截至 2026-08-15 最新发布测试版为 `2.0.0-alpha05`，没有 2.0 beta/stable；但 alpha05 要求 compileSdk 37/AGP 9.1，超出本项目 compileSdk 36/AGP 8.9.1 基线，因此不把工具链升级混入 UI-0 至 UI-5。alpha05 的 typed API 和 `haze-glass` 只作为后续独立升级候选。
 
-- UI-0 记录当前 alpha03 的静态和运行基线，仅用于迁移前对照；不把它定义为兼容目标，也不为它保留生产回退实现。
-- UI-1 直接锁定 alpha05 并完成 typed Blur + experimental Glass 的完整迁移：使用 `Modifier.hazeBlur`、`Modifier.hazeGlass`、`HazeInput`、不可变 `HazeBlurStyle`/`GlassStyle` 和明确的 `HazePerformanceMode`，随后进入公共 surface 和页面迁移。
-- `LIQUID_GLASS` 模式使用 alpha05 的 `haze-glass` surface adapter；`CLASSIC` 模式使用 Material 3 surface/render profile。两者共用内容树，但不是两套 Haze 版本实现。
-- Haze 只负责模糊、玻璃材质和渲染层，不参与连接、设备能力、页面导航或持久化状态。
+- UI-0 记录当前 alpha03 调用、实际 source/effect 数量、截图和 fallback；这些记录同时作为本轮实现的兼容基线。
+- UI-1 使用 alpha03 的 `HazeState`、`hazeSource`、`hazeEffect`、`blurEffect` 和 `HazeColorEffect`，由 `SurfaceRenderer` 统一封装；页面不直接依赖 Haze API。
+- `LIQUID_GLASS` 是本项目的视觉 profile，当前由 Haze blur、tint、边框和可见 fallback 组成；不把它误报为官方 `haze-glass` artifact。`CLASSIC` 使用 Material 3 surface/render profile，两者共用内容树。
+- Haze 只负责模糊、玻璃视觉 profile 和渲染层，不参与连接、设备能力、页面导航或持久化状态。
 - `HazeState` 集中由 `GlassHost` / `AppScaffold` 管理，页面和业务 ViewModel 不直接创建或修改它。
 - 普通模式、液态玻璃模式和可读性降级模式共享同一内容组件、`UiState` 和能力隐藏规则，只替换 surface/render profile。
-- alpha05 依赖迁移、Glass surface、渲染正确性和页面组件拆分仍分成可回退提交；回退只切换到项目自己的 `TintRenderer`/`OpaqueRenderer`，不回退 alpha03。
+- alpha05 升级、官方 Glass surface 和构建工具链升级另立可回退提交；当前回退只切换到项目自己的 `TintOnly`/`Opaque` 或 `CLASSIC`，不影响蓝牙和 typed UI 状态。
 
 官方核对入口：
 - 版本：https://github.com/chrisbanes/haze/releases/tag/2.0.0-alpha05
@@ -662,27 +670,28 @@ UI 重构采用 Haze 2.0 `2.0.0-alpha05` 作为唯一实现基线，不设计或
 
 - `app/src/main/java/com/freebuds/controller/ui/glass/AdaptiveGlass.kt`
 - `app/src/main/java/com/freebuds/controller/ui/glass/LiquidGlassConfig.kt`
+- `app/src/main/java/com/freebuds/controller/ui/foundation/surface/SurfaceRenderer.kt`
 - `app/build.gradle.kts`
 
 #### 3.5.1.1 Haze 2.0 依赖契约与迁移细则
 
-本次 UI 重构直接锁定官方最新发布测试版 `2.0.0-alpha05`，不把 alpha03 作为兼容目标。alpha04 引入 typed `hazeBlur`/`hazeGlass`、`HazeInput`、不可变 `HazeBlurStyle`/`GlassStyle` 等主要迁移；alpha05 重点补充/明确 `HazePerformanceMode` 和渲染兼容行为。目标是先收拢 alpha05 调用边界和视觉规则，再通过独立提交完成全量页面迁移；不继续扩散旧实现。
+本轮直接锁定官方已发布且与项目工具链兼容的 Haze 2.0 `alpha03`。目标是先收拢唯一 source、唯一 surface adapter、可见 fallback 和页面迁移边界；不在 UI 重构中同时升级 compileSdk、AGP、Lifecycle 或引入未能运行验收的 `haze-glass`。未来升级 alpha05 时，必须以独立提交重新核对官方迁移指南、依赖元数据和真实设备效果。
 
 **依赖锁定：**
 
 | 依赖 | 当前版本 | 规划处理 |
 |---|---|---|
-| `dev.chrisbanes.haze:haze` | alpha03 迁移基线 | UI-1 锁定 alpha05，集中使用 typed API 和 shared input/state |
-| `dev.chrisbanes.haze:haze-blur` | alpha03 迁移基线 | UI-1 使用 alpha05 的 `hazeBlur` API，显式配置 `HazeInput`、style 和性能模式 |
-| `dev.chrisbanes.haze:haze-blur-materials` | alpha03 迁移基线 | 只有实际使用 `HazeMaterials.*` preset 才升级并保留；否则在 alpha05 迁移提交中删除 |
-| `dev.chrisbanes.haze:haze-glass` | 未接入 | UI-1 直接引入 alpha05 experimental Glass；所有 `hazeGlass`/`GlassStyle` 调用集中在 foundation adapter，需 `@ExperimentalHazeApi` 和独立运行验证 |
+| `dev.chrisbanes.haze:haze` | `2.0.0-alpha03` | 当前 UI-1 基线；仅由 foundation adapter 直接调用 |
+| `dev.chrisbanes.haze:haze-blur` | `2.0.0-alpha03` | 当前 UI-1 基线；使用 `hazeEffect`/`blurEffect`/`HazeColorEffect` |
+| `dev.chrisbanes.haze:haze-blur-materials` | 已删除 | 当前没有 `HazeMaterials` 调用，不保留只声明未使用的依赖 |
+| `dev.chrisbanes.haze:haze-glass` | 未接入 | alpha05 experimental 模块；因 compileSdk/AGP 门槛列入后续独立升级，不作为 UI-0 至 UI-5 的通过条件 |
 
 **当前调用基线：**
 
-- `AppNavHost` 创建 `rememberHazeState()`，根容器使用 `.hazeSource(hazeState)`。
-- `AdaptiveGlass.kt` 使用 `.hazeEffect(state = hazeState) { blurEffect { ... } }`、`HazeColorEffect.tint` 和自定义边缘光学绘制。
-- Home、Scan、Device、Gesture、ListeningStats、Settings 目前通过 `HazeState?` 和 `UiDisplayMode` 层层传递玻璃状态。
-- 上述调用仅作为迁移前基线；不能据此判定运行时有可见效果。UI-1 完成后，页面只能通过 `SurfaceRenderer` 使用公共 surface。
+- `AppScaffold` 创建唯一 `GlassHost`，由根背景容器使用 `.hazeSource(sharedHazeState)`。
+- `SurfaceRenderer.kt` 使用 `.hazeEffect(state = hazeState) { blurEffect { ... } }`、`HazeColorEffect.tint` 和可见 tint/border fallback。
+- `AdaptiveGlass.kt` 只保留公共迁移入口，页面不再持有 `HazeState?`；Home、Scan、Device、Gesture、ListeningStats、Settings 只传 `UiDisplayMode` 和项目自己的 `SurfaceSpec`。
+- 依赖存在和 import 不算运行证据；必须在 `LIQUID_GLASS` 下记录 source/effect 数量、renderer 和 fallback reason，确认用户确实看到有效 blur 或可读降级。
 
 **目标依赖边界：**
 
@@ -694,18 +703,19 @@ AppScaffold
       │   └─ hazeSource(sharedHazeState)
       └─ NavHost + route content
           └─ SurfaceRenderer
-              ├─ HazeGlassRenderer
+              ├─ HazeEffectGlassRenderer
+              ├─ HazeBlurRenderer
               ├─ TintOnlyRenderer
               └─ OpaqueRenderer
 ```
 
 1. `GlassHost` 是每个 Activity/window 的唯一 `HazeState` 所有者；页面、ViewModel、UseCase 和设备组件均不创建或修改 `HazeState`。
-2. 只有 `ui/foundation/surface/haze` 包直接导入 Haze API；业务页面只接收 `SurfaceRole`、`SurfaceTone`、`SurfaceSpec` 等项目类型。alpha05 的 `haze-glass` 是独立 experimental artifact，不与 `haze-blur` 混用依赖边界；`GlassStyle`/`hazeGlass` 的 `@OptIn` 只出现在该 adapter。
+2. 只有 `ui/foundation/surface` 包直接导入 Haze API；业务页面只接收 `SurfaceRole`、`SurfaceTone`、`SurfaceSpec` 等项目类型。未来 alpha05 的 experimental API 也只能放在该 adapter，不能扩散到页面。
 3. `AppScaffold` 负责背景图、渐变、系统栏、Haze source、统一 content padding 和 surface profile；页面只声明内容和语义层级。
-4. `SurfaceRenderer` 是唯一渲染适配面：经典模式走 Material 3 surface；液态玻璃模式优先走 alpha05 `haze-glass`；低特效、性能受限或 Glass 初始化失败时走 alpha05 `haze-blur`；再按需要降级到 tint 或 opaque。所有路径共享相同的内容树和状态树。
-5. alpha05 Blur 使用 typed `Modifier.hazeBlur(input = HazeInput.Sources(...), style = HazeBlurStyle { ... }, performanceMode = HazePerformanceMode.Default)`；需要只处理组件自身内容时明确使用 `HazeInput.Content`。alpha05 experimental Glass 使用独立 artifact 的 typed `Modifier.hazeGlass`、`GlassStyle`，并集中 `@OptIn`。
+4. `SurfaceRenderer` 是唯一渲染适配面：经典模式走 Material 3 surface；液态玻璃 profile 走 alpha03 `hazeEffect`/`blurEffect`；性能受限、source 不可用或初始化失败时走可见 tint 或 opaque。所有路径共享相同的内容树和状态树。
+5. alpha03 的 blur 输入通过共享 `HazeState`/`hazeSource` 连接，样式由 `blurEffect` 的 blur radius、noise 和 `HazeColorEffect` 配置；不在页面复制 source，也不把透明 surface 当作失败结果。alpha05 typed API 待独立升级门验证。
 6. `HazeSourceRetention` 只决定 source 不可用时保留最近帧还是清空：默认是 `HazeSourceRetention.KeepLastFrame`，隐私场景使用 `ClearWhenUnavailable`。它不等于页面/后台生命周期控制；进入后台、页面离开或隐私场景时是否停止捕获，必须由 `GlassHost` 的 lifecycle policy 另行控制。诊断不得记录壁纸 URI、设备地址或协议 payload。
-7. `GlassSurface` 等旧函数只作为迁移期间的页面适配入口，不作为 alpha03 兼容层；完成全量 UI 迁移后删除旧的 `hazeEffect` 调用、旧 Haze 参数透传和重复 surface 实现。新页面只能通过 `SurfaceRenderer` 使用 alpha05 的 typed Blur/Glass API。
+7. `GlassSurface` 等旧函数只作为迁移期间的页面适配入口，不新增第二套渲染实现；完成全量 UI 迁移后删除旧的 Haze 参数透传和重复 surface 实现。新页面只能通过 `SurfaceRenderer` 使用 Haze 2.0 适配器。
 
 **渲染层级（液态玻璃的唯一推荐形态）：**
 
@@ -728,39 +738,39 @@ Window / Activity
                └─ ContentLayer         # 文本、图标、控件、语义和交互反馈
 ```
 
-本次核心目标是使用官方 Haze alpha05 的 `haze-glass` 实现液态玻璃效果；`haze-blur` 同时保留为低特效渲染途径、性能受限时的主动选择，以及 `haze-glass` 初始化/能力不满足时的回退路径。Hero 和需要真实折射的 FeatureCard 默认走 `Modifier.hazeGlass` + `GlassStyle`；普通信息卡可以选择低强度 Glass 或 `Modifier.hazeBlur`。`liquidGlassOptics` 只保留为迁移前实现记录，完成对应 surface 迁移后删除。
+本次核心目标是使用 Haze 2.0 alpha03 的共享 source + blur pipeline 实现可验证的液态玻璃视觉 profile；Haze blur 同时承担低特效渲染和性能受限时的主动选择，失败时回退到可见 tint/opaque。Hero 和 FeatureCard 默认走 `SurfaceRenderer` 的高强度 Haze effect profile；普通信息卡走低强度 blur 或 tint。`liquidGlassOptics` 只保留为项目装饰层记录，不把它描述成官方 `haze-glass` 实现。
 
 **卡片折射分级和性能预算：**
 
-| SurfaceRole | 液态玻璃策略 | 推荐 `GlassStyle` / Blur 强度 | 单屏预算 | 典型位置与说明 |
+| SurfaceRole | 液态玻璃策略 | 推荐 Haze effect / Blur 强度 | 单屏预算 | 典型位置与说明 |
 |---|---|---|---:|---|
 | `AppBackground` | 只作真实输入，不挂 effect | 无 effect；壁纸/渐变由 source 提供 | 1 source | 全窗口背景；不把纯色背景误报为玻璃输入 |
-| `AppBar` | 顶部滚动栏优先使用低强度 Haze Glass；低性能或静止状态可使用 `hazeBlur`/tint | `hazeGlass` 低强度 `GlassStyle`；必要时 `hazeBlur` 8–12dp；禁用重折射 | 1 | 顶部栏；不与 Hero 叠加独立高强度玻璃 |
-| `Hero` | 完整液态玻璃：背景采样、Glass optics、边缘折射、specular/ambient 高光 | 默认 `hazeGlass`；使用 `GlassOptics.Adaptive` 或受控 `GlassOptics.Fixed`；`depth` 0.32–0.45；低强度 chromatic edge；失败时回退 `hazeBlur` | 1 | 首页设备摘要、核心连接横幅；只允许一个主 Hero |
-| `FeatureCard` | 标准液态玻璃：保留背景层次和圆角边缘，减少动态光学 | 默认 `hazeGlass` 的受控 optics；低特效 profile 使用 `hazeBlur` 14–18dp；`depth` 0.22–0.34；低强度 refraction/specular | 2–3 | Device 的 ANC、电量、音频等主要卡片；同屏只选最重要的 2–3 张 |
+| `AppBar` | 顶部滚动栏使用低强度 Haze effect；低性能或静止状态切到 tint | `blurEffect` 8–12dp；不启用高强度装饰 | 1 | 顶部栏；不与 Hero 叠加独立高强度 effect |
+| `Hero` | 完整视觉层次：背景采样、blur、tint、边缘边框和可读性遮罩 | 共享 Haze source；blur 22–30dp；`depth` 0.32–0.45 只作为项目 token；失败时回退 tint | 1 | 首页设备摘要、核心连接横幅；只允许一个主 Hero |
+| `FeatureCard` | 标准液态玻璃视觉：保留背景层次和圆角边缘，减少动态 effect | 共享 Haze source；blur 14–18dp；`depth` 0.22–0.34 只作为项目 token；低特效时 tint | 2–3 | Device 的 ANC、电量、音频等主要卡片；同屏只选最重要的 2–3 张 |
 | `StandardCard` | 低特效玻璃：优先 `hazeBlur`，不启用高级折射；必要时 tint-only | `hazeBlur` 10–14dp；可选低 alpha tint；不使用高级 GlassOptics | 2 | Stats、设备信息和次级状态；滚动列表中优先合并为 section surface |
 | `CompactRow` | 不创建独立 Haze effect；使用透明/tint surface 继承父卡片 | 无独立 blur/glass；静态 alpha 和 divider | 0 | Settings 行、长列表项、开关和选择器；避免 N 个行组件各采样一次 |
 | `Dialog/Sheet` | 不依赖背景采样和折射；保证文字和控件可读 | opaque 或高可读 tint；必要时单一低强度 blur | 1 | 确认、错误、权限和更新安装提示；不让动态壁纸影响关键操作 |
 
-默认单个 route 同时最多 6 个主要 effect surface：`AppBar 1 + Hero 1 + Feature 3 + Standard 1`。渲染选择顺序固定为 `hazeGlass → hazeBlur → tint → opaque`：用户关闭高特效、设备性能不足或 effect 预算超限时，优先把 StandardCard/次级 FeatureCard 切到 `hazeBlur`；只有 Blur 仍超预算、输入不可用或初始化失败时才继续降到 tint/opaque。`CompactRow` 永远不因数量增长而增加 Haze effect。横向 pager 或动画转场期间，只保留当前可见 Hero/Feature 的 Glass effect，预加载页使用 Blur 或 tint。
+默认单个 route 同时最多 6 个主要 effect surface：`AppBar 1 + Hero 1 + Feature 3 + Standard 1`。渲染选择顺序固定为 `hazeEffect(高强度) → hazeEffect(低强度) → tint → opaque`：用户关闭高特效、设备性能不足或 effect 预算超限时，优先把 StandardCard/次级 FeatureCard 切到低强度 blur；只有 Blur 仍超预算、输入不可用或初始化失败时才继续降到 tint/opaque。`CompactRow` 永远不因数量增长而增加 Haze effect。横向 pager 或动画转场期间，只保留当前可见 Hero/Feature 的 effect，预加载页使用低强度 blur 或 tint。
 
 **液态玻璃的真实输入和折射规则：**
 
-1. `HazeInput.Sources(sharedHazeState)` 是 Hero、FeatureCard 和 StandardCard 的唯一背景输入；这些液态玻璃 surface 默认使用 `hazeGlass`，禁止把 effect surface 自身作为唯一 source，也禁止每个卡片创建 `rememberHazeState()`。
-2. `GlassStyle` 只在 Hero 和高优先级 FeatureCard 使用 `optics`、`specularIntensity`、`specularExponent`、`ambientResponse`、`edgeSoftness` 等 alpha05 Glass 参数；其中 `depth` 通过 `GlassStyleScope.optics(...)` / `GlassOptics.Fixed` 表达，不作为独立的 `GlassStyle` 属性。进入低特效 profile 后，FeatureCard/StandardCard 改用 `HazeBlurStyle`，不启用高级 GlassOptics。
-3. 折射、Fresnel、specular、ambient response 和 chromatic aberration 优先由官方 `haze-glass` 的 `GlassStyle`/`GlassOptics` 提供；低特效 profile 使用 `haze-blur` 保留可读的背景层次但关闭高级折射；只有官方 API 未覆盖的品牌装饰才允许作为内容上方的轻量 `drawWithCache` 层。
-4. `GlassStyle` 和 `HazeBlurStyle` 使用稳定、可复用的 replayable style；滚动时不修改 blur radius、optics 或 performance mode。用户调节参数只在设置提交后重建对应 surface profile。
+1. 共享 `HazeState`/`hazeSource` 是 Hero、FeatureCard 和 StandardCard 的唯一背景输入；禁止把 effect surface 自身作为唯一 source，也禁止每个卡片创建 `rememberHazeState()`。
+2. Hero 和高优先级 FeatureCard 可以使用更大的 blur、tint 和边框强度；`depth`、refraction 等只作为项目 token，不伪装成 alpha05 官方 optics 参数。进入低特效 profile 后，FeatureCard/StandardCard 改用低强度 blur 或 tint。
+3. 边缘高光、品牌装饰和轻量 chromatic effect 只能作为内容上方的小面积 `drawWithCache` 层；不得用大面积白色填充或透明度伪造玻璃，也不得以装饰层代替 Haze 真实输入。
+4. blur radius、tint 和 shape 使用稳定、可复用的配置；滚动时不动态修改 effect 参数。用户调节参数只在设置提交后重建对应 surface profile。
 5. `HazeSourceRetention` 只决定 source 不可用时保留最近帧还是清空：默认是 `HazeSourceRetention.KeepLastFrame`，隐私场景使用 `ClearWhenUnavailable`。它不等于页面/后台生命周期控制；进入后台、页面离开或隐私场景时是否停止捕获，必须由 `GlassHost` 的 lifecycle policy 另行控制。
-6. Haze alpha05 的平台行为按官方 blur/platforms 文档和目标设备实测决定；本项目在 API 26–30 默认使用 `TintRenderer`/`OpaqueRenderer`，API 31/32 仅在实测可接受时启用有限 blur，API 33+ 作为主要 Haze Glass 验证范围。这是项目策略，不是官方兼容承诺；fallback 必须保留同样的颜色语义、shape、内容和交互。
+6. Haze 2.0 alpha03 的平台行为按官方 blur/platforms 文档和目标设备实测决定；本项目在 API 26–30 默认使用 `TintRenderer`/`OpaqueRenderer`，API 31/32 仅在实测可接受时启用有限 blur，API 33+ 作为主要 Haze effect 验证范围。这是项目策略，不是官方兼容承诺；fallback 必须保留同样的颜色语义、shape、内容和交互。
 
 **运行时性能策略：**
 
-- 初始统一使用 `HazePerformanceMode.Default`（其 API 语义等同 `Adaptive`）；`HazePerformanceMode` 是 sealed interface，不是 enum。Glass profile 默认使用 `hazeGlass`；低特效 profile 使用 `hazeBlur`，只有在代表性真机测量后才选择 `Fixed(qualityFraction)` 或其明确别名 `Quality`（1f）、`Balanced`（0.5f）、`Performance`（0f），不直接复制官方示例设备参数。
+- 当前 alpha03 不使用 alpha05 的 `HazePerformanceMode`/typed style API；性能策略由 effect 数量、blur radius、source 是否可用和 `SurfaceRenderMode` 控制。只有在后续 alpha05 升级门通过依赖和真机验证后，才重新设计对应的性能参数。
 - 性能优先级固定为：减少 effect 面积 → 减少同屏 effect 数量 → 减少动态输入/高级 optics → 降低 blur 质量；不要先用更高透明度掩盖卡顿或采样为空。
 - LazyColumn/LazyRow 的 item 不逐个挂 Haze effect；使用父级 FeatureSurface 包住一组内容，或对不可见/低优先级 item 只绘制 tint。
 - 连接状态、蓝牙轮询和玻璃渲染完全分离；连接状态变化只更新内容，不重建 `HazeState`、BackgroundLayer 或所有 surface style。
 - Debug-only 诊断记录 `surfaceRole`、`renderer`、`effectSurfaceCount`、输入是否为空、`performanceMode`、首屏时间、滚动 P95 帧时间、jank、内存和 fallback reason；不记录壁纸 URI、设备地址或协议 payload。
-- UI-1 的目标是无崩溃/ANR，HAZE_GLASS 相对 CLASSIC 的滚动 P95 帧时间回归不超过 20%；超过时按上述降级顺序收敛，不能以“效果更强”为理由保留超预算实现。
+- UI-1 的目标是无崩溃/ANR，Haze effect profile 相对 CLASSIC 的滚动 P95 帧时间回归不超过 20%；超过时按上述降级顺序收敛，不能以“效果更强”为理由保留超预算实现。
 
 
 **参数与主题令牌：**
@@ -796,10 +806,10 @@ data class GlassRuntimePolicy(
 ```
 
 - Android 26–30 默认走 `TintRenderer`/`OpaqueRenderer`；Android 31/32 只在实测可接受时启用有限 blur；Android 33+ 作为主要 Haze Glass 验证范围。这是本项目的降级策略，不是 Haze 官方完整兼容表；官方平台行为需以 `https://chrisbanes.github.io/haze/latest/blur/platforms/` 和目标设备实测为准。
-- Haze 初始化或 `hazeGlass` effect 应用异常时，当前 surface 先回退到同一输入上的 `hazeBlur`；Blur 也不可用、输入为空或性能策略明确关闭模糊时，再回退到可见 tint/opaque。页面状态和交互继续存在。
+- Haze 初始化或 `hazeEffect` 应用异常时，当前 surface 先回退到同一输入上的低强度 blur；Blur 也不可用、输入为空或性能策略明确关闭模糊时，再回退到可见 tint/opaque。页面状态和交互继续存在。
 - 高对比度、较大文字、低性能设备和用户关闭玻璃时，降低 refraction/depth，必要时关闭 blur；可读性优先于视觉效果。
 - 不在滚动回调中反复修改 blur 参数；背景、profile 和 shape 使用稳定对象，减少重组和 effect 重建。
-- UI-1 记录同一设备下 `CLASSIC`、`TINT_ONLY` 和 `HAZE_GLASS` 的首屏时间、滚动帧时间、内存和崩溃/ANR；后续玻璃改动以该基线比较，目标为无崩溃/ANR，且 P95 帧时间相对经典模式回归控制在 20% 以内。
+- UI-1 记录同一设备下 `CLASSIC`、`TINT_ONLY` 和 Haze effect profile 的首屏时间、滚动帧时间、内存和崩溃/ANR；后续玻璃改动以该基线比较，目标为无崩溃/ANR，且 P95 帧时间相对经典模式回归控制在 20% 以内。
 - 诊断日志仅记录 `renderer`、`surfaceRole`、`blurEnabled`、`fallbackReason` 和窗口 profile，不写入用户壁纸 URI 或设备协议数据。
 
 **可读性和无障碍契约：**
@@ -814,18 +824,18 @@ data class GlassRuntimePolicy(
 
 | 阶段 | Haze 工作 | 直接验收 |
 |---|---|---|
-| UI-0 | 盘点现有 alpha03 调用、HazeState、hazeSource、hazeEffect、玻璃参数和截图 | 形成迁移清单、surface 数量、effect 数量和资源基线；不承诺 alpha03 兼容 |
-| UI-1 | 直接建立 alpha05 `GlassHost`、`BackgroundLayer`、`SurfaceRenderer` 和四路 renderer；完成 Hero/Feature/Standard/Compact/Dialog 的 effect 预算与 fallback | alpha05 `hazeGlass` 主路径、`hazeBlur` 低特效/回退路径和 Tint/Opaque 最终降级均可运行；公共 preview 覆盖四种 renderer，并记录 source/effect 数量和性能 |
+| UI-0 | 盘点现有 alpha03 调用、HazeState、hazeSource、hazeEffect、玻璃参数和截图 | 形成迁移清单、surface 数量、effect 数量和资源基线；确认 alpha03 依赖与真实调用一致 |
+| UI-1 | 建立共享 `GlassHost`、`BackgroundLayer`、`SurfaceRenderer` 和四路 renderer；完成 Hero/Feature/Standard/Compact/Dialog 的 effect 预算与 fallback | alpha03 `hazeEffect` 主路径、低强度 blur、Tint/Opaque 最终降级均可运行；公共 preview 覆盖四种 renderer，并记录 source/effect 数量和性能 |
 | UI-2 | typed state/event 与渲染器解耦，Device 组件去除 Haze 参数 | feature 目录无 Haze import；动作状态与渲染模式独立，CompactRow 不增加 effect |
 | UI-3 | `AppScaffold` 接管背景和共享 HazeState，迁移 Home/Scan/Permission | 每个入口只创建一个 host/source，路由切换无重复 source；单屏 effect 不超过预算 |
 | UI-4 | 按 SurfaceRole 迁移 Device/Gesture/Stats/Terminal | Hero/Feature/Standard 的折射级别符合表格，玻璃卡数量、滚动性能、能力状态和美术资源映射满足基线 |
-| UI-5 | Settings 迁移、fallback/无障碍收口、删除旧 Haze facade 和页面依赖 | 只剩 foundation 层 alpha05 Haze import；可通过开关回退 classic/opaque；长列表、Dialog 和高对比度场景不依赖玻璃效果 |
+| UI-5 | Settings 迁移、fallback/无障碍收口、删除旧 Haze facade 和页面依赖 | 只剩 foundation 层 Haze 2.0 alpha03 import；可通过开关回退 classic/opaque；长列表、Dialog 和高对比度场景不依赖玻璃效果 |
 
-Haze 相关变更的回退点固定为项目自己的 `SurfaceRenderMode.TINT_ONLY` 或 `SurfaceRenderMode.OPAQUE`，以及 `UiDisplayMode.CLASSIC`；不回退 alpha03，也不回退 `EarbudState`、连接管理或设备功能代码。
+Haze 相关变更的回退点固定为项目自己的 `SurfaceRenderMode.TintOnly` 或 `SurfaceRenderMode.Opaque`，以及 `UiDisplayMode.CLASSIC`；不回退 `EarbudState`、连接管理或设备功能代码。alpha05 升级另立分支和回退点。
 
 #### 3.5.1.2 官方仓库更新核对与本项目实际调用审计
 
-核对日期：2026-08-14。官方来源：
+核对日期：2026-08-15。官方来源：
 
 - 仓库：[https://github.com/chrisbanes/haze](https://github.com/chrisbanes/haze)
 - 最新预发布：[`2.0.0-alpha05`](https://github.com/chrisbanes/haze/releases/tag/2.0.0-alpha05)，发布于 2026-08-12。
@@ -839,40 +849,40 @@ Haze 相关变更的回退点固定为项目自己的 `SurfaceRenderMode.TINT_ON
 
 **官方更新对本项目的影响：**
 
-1. **Alpha04 typed API / alpha05 锁定**：alpha04 将旧的嵌套 effect DSL 改为 typed modifier；alpha05 使用 Blur 的 `Modifier.hazeBlur`、`HazeInput`、不可变 `HazeBlurStyle`，以及独立 experimental Glass artifact 的 `Modifier.hazeGlass`、`GlassStyle`。当前项目的 `Modifier.hazeEffect { blurEffect { ... } }` 属于一次性迁移对象，完成 UI-1 后不再保留。
-2. Alpha05 的 `haze-glass` 是独立 experimental artifact；它可以承担折射、深度模糊、tint、Fresnel、光照、渐进模糊和交互效果。当前 production 代码尚未声明该模块；`AdaptiveGlass.kt` 的 `liquidGlassOptics` 是项目自己的绘制代码，不应被描述成官方 Glass 实现。全量 UI 重构将在 alpha05 foundation adapter 中正式引入并集中管理该模块。
-3. Alpha05 增加/明确 `HazePerformanceMode` 的 sealed API 语义（`Adaptive`、`Fixed(qualityFraction)`，以及 `Default`/`Quality`/`Balanced`/`Performance` 别名），并修复透明 captured content 合成、Blur style 更新等行为。跨窗口重组和 retained Glass stages 等内容属于 alpha04，不能归因于 alpha05；所有性能参数必须按目标设备重新测量，不能把官方 Pixel 6 参考值直接当作本项目预算。
+1. 官方仓库当前最新发布预览是 alpha05，但它要求 compileSdk 37/AGP 9.1；本项目当前 compileSdk 36/AGP 8.9.1。该依赖元数据门在 GitHub Actions `31819769359` 的 `checkDebugAarMetadata` 阶段失败，说明直接升级会同时改变构建工具链，不应混入本轮页面重构。
+2. alpha05 的 `haze-glass` 是独立 experimental artifact；它可以承担官方折射和 Glass style，但当前 production 代码不声明该模块。`AdaptiveGlass.kt` 的 `liquidGlassOptics` 是项目自己的装饰层，不应被描述成官方 Glass 实现；后续若升级，必须单独完成依赖、截图和性能验证。
+3. 当前代码保留 alpha03 的 `hazeEffect`/`blurEffect` 组合，因为它在项目现有基线可编译且有实际调用。alpha05 typed API (`HazeInput`、`HazeBlurStyle`、`HazePerformanceMode` 等) 只写入迁移候选，不把未编译 API 当作当前实现或验收依据。
 
 **当前依赖和实际调用证据：**
 
 | 项目 | 声明位置 | 直接源码调用 | 默认运行路径 | 结论 |
 |---|---|---|---|---|
-| `haze` | `app/build.gradle.kts:75` | `HazeState`、`rememberHazeState`、`hazeSource`、`hazeEffect` | `AppNavHost` 每次创建 source；effect 由玻璃模式决定 | 有实际调用 |
-| `haze-blur` | `app/build.gradle.kts:76` | `HazeColorEffect`、`blurEffect` | `AdaptiveGlass.kt` 的 Card/Panel 进入玻璃模式时执行 | 有实际调用 |
-| `haze-blur-materials` | `app/build.gradle.kts:77` | 当前 `rg` 未发现 `HazeMaterials` 或 `blur.materials` import | 没有直接调用 | 当前属于“只声明未使用”依赖 |
-| `haze-glass` | `app/build.gradle.kts` UI-1 规划新增 | `Modifier.hazeGlass`、`GlassStyle`、`GlassOptics` | 仅 foundation adapter 的 Hero/Feature surface | alpha05 experimental；需要 `@ExperimentalHazeApi` 和真实运行/截图证据 |
+| `haze` | `app/build.gradle.kts:78` | `HazeState`、`rememberHazeState`、`hazeSource`、`hazeEffect` | `AppScaffold` 的 `GlassHost` 创建唯一 source；effect 由 surface profile 决定 | 有实际调用 |
+| `haze-blur` | `app/build.gradle.kts:79` | `HazeColorEffect`、`blurEffect` | `SurfaceRenderer` 的 Hero/Feature/Standard surface 进入 Haze profile 时执行 | 有实际调用 |
+| `haze-blur-materials` | 已删除 | 没有 `HazeMaterials` 或 `blur.materials` import | 没有直接调用 | 不保留只声明未使用依赖 |
+| `haze-glass` | 未声明 | 当前没有 `Modifier.hazeGlass`、`GlassStyle`、`GlassOptics` 调用 | 不进入 UI-0 至 UI-5 当前路径 | alpha05 后续独立升级；需先通过 compileSdk/AGP 和真实运行/截图证据 |
 
 历史代码核对结果：
 
 - `v2.9.0` 已在 `AdaptiveGlass.kt` 使用 `HazeState`、`hazeSource`、`hazeEffect`；当时依赖为 Haze 1.6.7。
-- `v2.12.0` 将依赖切换到 Haze 2.0 alpha03，并把 `HazeTint` 迁移为 `HazeColorEffect` + `blurEffect`；这不是只有 Gradle 声明，代码中已有实际调用。该历史调用仅作为迁移来源记录，不作为新 UI 的实现依据。
-- `v4.2.6` 仍保留上述 Haze 2.0 alpha03 调用链；全量 UI 重构完成后不再沿用该调用链。
+- `v2.12.0` 将依赖切换到 Haze 2.0 alpha03，并把 `HazeTint` 迁移为 `HazeColorEffect` + `blurEffect`；这不是只有 Gradle 声明，代码中已有实际调用。
+- `v4.2.6` 仍保留上述 Haze 2.0 alpha03 调用链；本轮没有复制旧页面的 Haze 参数透传，而是把调用收拢到 `SurfaceRenderer`。
 - 用户观察到“依赖写了但没有效果”有一个确定原因：`UiDisplayMode` 默认是 `CLASSIC`，而 `AdaptiveCard`、`LiquidGlassPanel`、`AdaptiveGlassBanner` 只有在 `displayMode == LIQUID_GLASS && hazeState != null` 时才挂载 effect。只运行默认经典路径时，Blur effect 不会执行；AppNavHost 的 `hazeSource` 仍会创建。
 
 **依赖处理决定：**
 
-1. UI-0 只记录当前 alpha03 的现状、运行诊断和视觉基线，不把它定义为兼容目标。
-2. UI-1 直接完成 alpha05 typed Blur 和 experimental Glass 迁移：Blur 使用 `hazeBlur(input = HazeInput.Sources(...), style = HazeBlurStyle { ... }, performanceMode = HazePerformanceMode.Default)`；Glass 使用独立 `haze-glass` artifact 的 `hazeGlass`/`GlassStyle`。通过 CI、运行截图和性能矩阵后，才开始公共 surface 和页面迁移。
-3. `haze-blur-materials` 只有在页面实际使用 `HazeMaterials.*` preset 后才升级并保留；若继续使用自有 `GlassTokenResolver`，则在 alpha05 迁移提交中删除该无调用依赖，并记录构建结果。
-4. `haze-glass` 不再作为 UI-1 之后的独立延后试验；它是本轮液态玻璃全量重构的正式依赖，但所有 experimental API 仅限 foundation adapter，并以独立运行/截图/性能证据验收。
-5. UI-1 的构建标签为 `UI_HAZE_ALPHA05_MIGRATION`；若未来单独比较官方 Glass 参数或第三方光学效果，再使用独立 `UI_GLASS_EXPERIMENT` 标签。版本号不是唯一识别方式。
+1. UI-0 记录当前 alpha03 的静态调用、运行诊断和视觉基线，并确认依赖和实际调用一致。
+2. UI-1 先完成 alpha03 的共享 Haze effect adapter：`GlassHost` 提供唯一 source，`SurfaceRenderer` 负责 blur/tint/opaque 选择；通过 CI、运行截图和性能矩阵后，再继续页面迁移。
+3. `haze-blur-materials` 当前没有实际调用，已删除；只有出现明确的 `HazeMaterials.*` 使用场景时才另行评估依赖。
+4. `haze-glass` 不作为 UI-0 至 UI-5 的正式依赖；alpha05 升级另立 `UI_HAZE_ALPHA05_UPGRADE` 标签，必须先解决 compileSdk/AGP/Lifecycle 兼容，再验证官方 Glass 的真实效果。
+5. 当前 UI-1 构建标签使用 `UI_FOUNDATION_SMOKE`；版本号不是唯一识别方式。
 
 **实际调用证明规则：**
 
 - `CLASSIC` 测试记录 `renderer=Material3`、`sourceAttached=0` 或 `effectSurfaces=0` 的预期结果。
-- `LIQUID_GLASS` 测试必须先通过设置选择玻璃模式，再记录 `renderer=HazeGlass`、`sourceAttached=1`、实际 effect surface 数量、profile 和 fallback reason；低特效/回退测试记录 `renderer=HazeBlur`，只有 Blur 不可用或输入为空时才记录 Tint/Opaque。只看 Gradle 依赖或 import 不算运行证据。
+- `LIQUID_GLASS` 测试必须先通过设置选择玻璃模式，再记录 `renderer=HazeGlass`（项目 profile，底层为 alpha03 `hazeEffect`）、`sourceAttached=1`、实际 effect surface 数量、profile 和 fallback reason；低特效/回退测试记录 `renderer=HazeBlur`，只有 Blur 不可用或输入为空时才记录 Tint/Opaque。只看 Gradle 依赖或 import 不算运行证据。
 - Debug-only 的 `GlassRuntimeDiagnostics` 只记录 renderer/profile/effect 数量，不记录壁纸 URI、设备地址或协议 payload；Release 不暴露诊断入口。
-- `haze-glass` 的验收必须包含 alpha05 `hazeGlass`/`GlassStyle` 的实际 Hero/Feature preset 使用、真实输入截图和 fallback 诊断；不能用 `haze-blur-materials` 的依赖存在替代 Glass 运行证据。
+- 后续若启动 `UI_HAZE_ALPHA05_UPGRADE`，验收必须包含 alpha05 `hazeGlass`/`GlassStyle` 的实际 Hero/Feature preset、真实输入截图、fallback 诊断和依赖元数据；不能用 import 或依赖存在替代运行证据。
 
 #### 3.5.1.3 玻璃渲染正确性硬门槛
 
@@ -880,8 +890,8 @@ Haze 相关变更的回退点固定为项目自己的 `SurfaceRenderMode.TINT_ON
 
 1. **唯一宿主和真实输入**：`GlassHost` 是 Activity/window 内唯一的 `HazeState` 所有者；`BackgroundLayer` 先绘制壁纸、渐变或非纯色背景，再挂载唯一 source，`NavHost` 只作为其后的内容层。禁止让 effect surface 自己成为唯一输入，也禁止在每个页面重复创建 source。
 2. **分层渲染和 effect 预算**：窗口只保留一个 source；Hero 最多 1 个、FeatureCard 最多 3 个、StandardCard 最多 2 个，CompactRow 不创建独立 effect；单屏主要 effect 默认不超过 6 个。超过预算时优先将 StandardCard/FeatureCard/AppBar 降为 tint 或低强度 blur。
-3. **typed adapter**：业务页面不得直接 import 该库；`SurfaceRenderer` 统一负责 `input`、`style`、`performanceMode`、blur/glass effect 和 Android 能力判断。alpha05 迁移完成后，禁止新增旧的嵌套 DSL 调用。
-4. **折射只作增强层**：Hero 和少量 FeatureCard 才允许 `GlassStyleScope.optics(...)`、`specularIntensity`、`specularExponent`、`ambientResponse`、`edgeSoftness` 和受控 chromatic aberration 等 alpha05 Glass 参数；边缘光学使用轻量 `drawWithCache`，不得通过大面积白色填充或透明度伪造玻璃；StandardCard、CompactRow 和 Dialog 不依赖高级折射。
+3. **统一适配器**：业务页面不得直接 import 该库；`SurfaceRenderer` 统一负责共享 `HazeState`、`hazeEffect`/`blurEffect`、tint、opaque fallback 和 Android 能力判断。alpha03 的嵌套 DSL 只允许存在于该适配器内；后续 alpha05 升级仍必须保持同一边界。
+4. **装饰只作增强层**：Hero 和少量 FeatureCard 才允许轻量边缘高光、内侧遮罩和受控 chromatic 装饰；不得通过大面积白色填充或透明度伪造玻璃；StandardCard、CompactRow 和 Dialog 不依赖高级折射。
 5. **不可见降级**：模糊不支持、硬件加速不可用、source 为空、输入是纯色或 effect 初始化失败时，必须切换到可见的 `TintRenderer` 或 `OpaqueRenderer`。不得使用“透明 surface + 空 tint”作为失败结果。
 6. **可观测性**：Debug-only `GlassRuntimeDiagnostics` 记录 `mode`、`renderer`、`sourceAttached`、`sourceAreaCount`、`effectSurfaceCount`、`apiLevel`、`hardwareAccelerated`、`performanceMode`、首屏/滚动 P95 帧时间、jank、内存和 `fallbackReason`。只记录渲染元数据，不记录壁纸 URI、设备地址或协议 payload。
 7. **视觉基线**：每个公共 surface 必须在非纯色渐变/壁纸输入下同时提供 `CLASSIC`、真实 blur/glass、fallback 三张对照预览；截图验收不能只证明组件存在或 import 成功。
@@ -915,12 +925,12 @@ Haze 相关变更的回退点固定为项目自己的 `SurfaceRenderMode.TINT_ON
 - 新增 `ui/foundation/tokens/UiTokens.kt`，按 `ref.*`、`sys.*`、`comp.*` 三层表达颜色、排版、间距、圆角、边框、层级和动效。
 - 新增统一 `AppTheme`、`AppScaffold`、`AppTopBar`、`SectionHeader`、`SettingRow`、`PrimaryActionButton`、`SecondaryActionButton`、`TertiaryActionButton`、`DestructiveActionButton`、`IconActionButton`、`ToggleButton`、`BooleanOptionRow`、`SingleChoiceOption`、`DependentChoiceOption`、`SegmentedOption`、`SliderOption`、`ActionPicker`、`AsyncActionIndicator`、`ConnectionBanner`、`EmptyState`、`ErrorState`。
 - 为按钮和选项建立统一 visual/state contract：`UiActionState`、`UiOption<T>`、`OptionUiState<T>`、`UiTextMapper`、`OptionPresenter`；所有控件支持 `Idle/Disabled/Pending/Success/Failure` 或选项 `selected/pending/unknown/unavailable` 语义。
-- 将 CLASSIC/LIQUID_GLASS 收敛为同一内容树的 SurfaceProfile；控件 surface 按 `hazeGlass → hazeBlur → tint → opaque` 选择，Haze 2.0 只位于 surface adapter，长列表行不逐项创建 effect。
+- 将 CLASSIC/LIQUID_GLASS 收敛为同一内容树的 SurfaceProfile；控件 surface 按高强度 Haze effect → 低强度 blur → tint → opaque 选择，Haze 2.0 只位于 surface adapter，长列表行不逐项创建 effect。
 - 统一 8dp 间距节奏、至少 44dp 触控目标、动态字体、深浅色、对比度、TalkBack、键盘焦点和 reduced motion 的工程入口。
 
 - 建立 `UiAssetCatalog`，将 ANC 三种图标、耳机盒、Tile 图标映射为 `AncVisual`、`DeviceVisual` 等语义资源。
 
-退出条件：公共组件、按钮、选项和 token 有预览/单元基线，alpha05 surface 可运行；旧页面的生产入口可暂时保留，但不再保留 alpha03 渲染兼容分支。
+退出条件：公共组件、按钮、选项和 token 有预览/单元基线，alpha03 Haze effect surface 可运行；旧页面的生产入口可暂时保留，但不再复制旧的页面级 Haze 参数透传。alpha05 surface 属于独立升级门。
 #### UI-2：typed State、Event 与 Navigation `[~] 进行中`
 
 交付物：
