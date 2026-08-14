@@ -497,14 +497,15 @@ ViewModel 负责把事件交给用例；用例再调用协议无关的控制接�
 
 #### 3.5.1 Haze 2.0 保留方案
 
-继续使用当前 Haze 2.0，不在本次 UI 重构中替换或升级玻璃渲染依赖：
+UI 重构不再把“依赖已声明”或“源码已调用”当作玻璃效果完成标准。渲染基础先以官方当前发布版 `2.0.0-alpha05` 的 typed API 为迁移目标；现有 `2.0.0-alpha03` 只作为迁移前基线，不作为新 surface 的实现依据：
 
-- 当前锁定 `haze:2.0.0-alpha03`、`haze-blur:2.0.0-alpha03`、`haze-blur-materials:2.0.0-alpha03`。
-- `LIQUID_GLASS` 模式继续使用 Haze 2.0；`CLASSIC` 模式使用 Material 3 surface/render profile。
+- UI-0 记录 alpha03 的静态和运行基线；允许加入 Debug-only 诊断，但不把诊断入口带入 Release。
+- UI-1 先完成 alpha05 typed API 迁移和单独 CI 构建，再开始公共 surface 和页面迁移。
+- `LIQUID_GLASS` 模式使用该库的 surface adapter；`CLASSIC` 模式使用 Material 3 surface/render profile。
 - Haze 只负责模糊、玻璃材质和渲染层，不参与连接、设备能力、页面导航或持久化状态。
 - `HazeState` 集中由 `AppScaffold` / `AdaptiveGlassSurface` 管理，页面和业务 ViewModel 不直接创建或修改它。
 - 普通模式与玻璃模式共享同一内容组件、`UiState` 和能力隐藏规则，只替换 surface/render profile。
-- Haze 依赖升级另开独立变更；UI-1 至 UI-5 期间不与状态、导航、组件拆分混合升级，避免难以定位构建和视觉回归。
+- 依赖迁移、渲染正确性和页面组件拆分仍分成可回退提交；但 alpha05 迁移必须先于新页面接入，避免继续扩大错误渲染面。
 
 相关实现文件：
 
@@ -514,23 +515,23 @@ ViewModel 负责把事件交给用例；用例再调用协议无关的控制接�
 
 #### 3.5.1.1 Haze 2.0 依赖契约与迁移细则
 
-本次 UI 重构以现有 Haze 2.0 `2.0.0-alpha03` 为固定渲染依赖。目标是收拢调用边界和视觉规则，而不是在 UI 重构期间升级库或引入另一套玻璃实现。
+本次 UI 重构以 `2.0.0-alpha03` 作为迁移前基线，以官方当前发布版 `2.0.0-alpha05` 作为新渲染实现目标。目标是先收拢调用边界和视觉规则，再通过独立提交完成 API 迁移；不把旧实现继续扩散到新页面。
 
 **依赖锁定：**
 
 | 依赖 | 当前版本 | 规划处理 |
 |---|---|---|
-| `dev.chrisbanes.haze:haze` | `2.0.0-alpha03` | 保留，作为 `HazeState`、`hazeSource` 和 `hazeEffect` 基础模块 |
-| `dev.chrisbanes.haze:haze-blur` | `2.0.0-alpha03` | 保留，提供 `blurEffect` |
-| `dev.chrisbanes.haze:haze-blur-materials` | `2.0.0-alpha03` | 保留，作为 Material surface 的渲染适配依赖 |
-| `haze-liquidglass` 或其他替代实现 | 未接入 | 本轮不新增；如需更换，单独建立依赖升级计划和对比报告 |
+| `dev.chrisbanes.haze:haze` | alpha03 基线 | UI-1 迁移到 alpha05 typed API，集中在 surface adapter |
+| `dev.chrisbanes.haze:haze-blur` | alpha03 基线 | UI-1 迁移到 alpha05 的 blur API，显式配置输入、style 和性能模式 |
+| `dev.chrisbanes.haze:haze-blur-materials` | alpha03 基线 | 只有实际使用 preset 才保留；否则在迁移提交中删除 |
+| `haze-glass` 或其他实验模块 | 未接入 | 基础 blur 正确性通过后再做独立 A/B，不与 UI-1 基础迁移混合 |
 
 **当前调用基线：**
 
 - `AppNavHost` 创建 `rememberHazeState()`，根容器使用 `.hazeSource(hazeState)`。
 - `AdaptiveGlass.kt` 使用 `.hazeEffect(state = hazeState) { blurEffect { ... } }`、`HazeColorEffect.tint` 和自定义边缘光学绘制。
 - Home、Scan、Device、Gesture、ListeningStats、Settings 目前通过 `HazeState?` 和 `UiDisplayMode` 层层传递玻璃状态。
-- `AdaptiveCard`、`LiquidGlassCard`、`LiquidGlassPanel`、`AdaptiveGlassBanner` 已形成初步兼容面，但每个页面仍直接决定展示模式和 surface 参数。
+- 上述调用仅作为迁移前基线；不能据此判定运行时有可见效果。UI-1 完成后，页面只能通过 `SurfaceRenderer` 使用公共 surface。
 
 **目标依赖边界：**
 
@@ -660,8 +661,8 @@ Haze 相关变更的回退点固定为 `SurfaceRenderMode.OPAQUE` 或 `UiDisplay
 
 **依赖处理决定：**
 
-1. UI-0 先保留 alpha03，记录现有调用与默认经典路径的基线；本轮不直接改 Gradle，避免把 API 升级和页面重构混在一起。
-2. UI-1 增加一个独立的 alpha05 迁移提交：先把当前 Blur 路径改成 `hazeBlur(input = HazeInput.Sources(...), style = HazeBlurStyle { ... }, performanceMode = HazePerformanceMode.Default)`，再跑 CI 和截图矩阵。
+1. UI-0 只记录 alpha03 的现状、运行诊断和视觉基线，不扩散旧调用，也不把“调用存在”标记为完成。
+2. UI-1 先完成一个独立的 alpha05 迁移提交：把 Blur 路径改成 `hazeBlur(input = HazeInput.Sources(...), style = HazeBlurStyle { ... }, performanceMode = HazePerformanceMode.Default)`，再跑 CI 和截图矩阵；通过后才开始公共 surface 和页面迁移。
 3. `haze-blur-materials` 只有在页面实际使用 `HazeMaterials.*` preset 后保留；若继续使用自有 `GlassTokenResolver`，则在 alpha05 迁移提交中删除该无调用依赖，并记录构建结果。
 4. `haze-glass` 作为独立 A/B 试验，不与 UI-1 的基础 Blur 迁移合并：先保留现有 `liquidGlassOptics`，分别比较官方 Glass 与现有美术资源、可读性、性能和 fallback，再决定是否接入。
 5. UI-1 的构建标签区分 `UI_HAZE_ALPHA05_MIGRATION` 与 `UI_GLASS_EXPERIMENT`；版本号不是唯一识别方式。
@@ -673,6 +674,19 @@ Haze 相关变更的回退点固定为 `SurfaceRenderMode.OPAQUE` 或 `UiDisplay
 - Debug-only 的 `GlassRuntimeDiagnostics` 只记录 renderer/profile/effect 数量，不记录壁纸 URI、设备地址或协议 payload；Release 不暴露诊断入口。
 - `haze-blur-materials` 的验收必须包含一次实际 preset 使用，或在报告中明确“已移除未使用依赖”。
 
+#### 3.5.1.3 玻璃渲染正确性硬门槛
+
+“调用成功”与“用户看到了正确效果”分开验收。后续重构必须满足以下约束：
+
+1. **唯一宿主和真实输入**：`GlassHost` 是 Activity/window 内唯一的 `HazeState` 所有者；`BackgroundLayer` 先绘制壁纸、渐变或非纯色背景，再挂载唯一 source，`NavHost` 只作为其后的内容层。禁止让 effect surface 自己成为唯一输入，也禁止在每个页面重复创建 source。
+2. **typed adapter**：业务页面不得直接 import 该库；`SurfaceRenderer` 统一负责 `input`、`style`、`performanceMode`、blur/glass effect 和 Android 能力判断。alpha05 迁移完成后，禁止新增旧的嵌套 DSL 调用。
+3. **不可见降级**：模糊不支持、硬件加速不可用、source 为空、输入是纯色或 effect 初始化失败时，必须切换到可见的 `TintRenderer` 或 `OpaqueRenderer`。不得使用“透明 surface + 空 tint”作为失败结果。
+4. **可观测性**：Debug-only `GlassRuntimeDiagnostics` 记录 `mode`、`renderer`、`sourceAttached`、`sourceAreaCount`、`effectSurfaceCount`、`apiLevel`、`hardwareAccelerated`、`performanceMode` 和 `fallbackReason`。只记录渲染元数据，不记录壁纸 URI、设备地址或协议 payload。
+5. **视觉基线**：每个公共 surface 必须在非纯色渐变/壁纸输入下同时提供 `CLASSIC`、真实 blur/glass、fallback 三张对照预览；截图验收不能只证明组件存在或 import 成功。
+6. **路由覆盖**：Home、Device、Settings 至少各验证一个 surface；切换 route、旋转/重建和切换 `CLASSIC`/`LIQUID_GLASS` 后，source 与 effect 数量不得累积，显示结果不得退化为空白或完全不透明错误色块。
+
+本门槛的定向测试标签为 `UI_GLASS_RENDERING_TARGETED`，只覆盖本轮修改涉及的 renderer、surface 和 route，不复跑蓝牙 36 轮矩阵。未满足运行时和截图证据前，UI-1 保持 `[ ] 未开始`。
+
 ### 3.6 UI 迁移阶段
 
 所有 UI 阶段都按“实现一层 → JVM/静态检查 → GitHub Actions 构建 → 定向界面/实机验证 → 文档回写 → 可回退提交”执行。阶段标题只有在该阶段的代码、测试、证据和回退记录齐备后才改为 `[x] 已完成`。当前仅完成规划，以下阶段均保持 `[ ]`。
@@ -683,6 +697,7 @@ Haze 相关变更的回退点固定为 `SurfaceRenderMode.OPAQUE` 或 `UiDisplay
 
 - 建立 Home、Scan、Device、Gesture、ListeningStats、Settings、PermissionGuide、Terminal 的路由和截图基线。
 - 现有 `docs/screenshot_home.jpg`、`docs/screenshot_device.jpg` 作为初始视觉参照；补齐其余 route、classic/glass、深浅色和状态截图，不把现有截图直接当作新 UI 验收通过。
+- 增加 `UI_GLASS_RENDERING_TARGETED` 基线：非纯色输入下的真实效果、无效果能力下的可见 fallback、纯色/无壁纸输入下的明确 tint 或 opaque 结果；记录 source/effect 数量和 fallback reason。
 - 记录断开、系统链路已连接、TransportReady、CoreInitializing、Ready、Degraded、Failed、无能力、动作 Pending/读回/失败等状态的显示矩阵。
 - 列出全部 `DeviceProps` 字段、`EarbudState`/`EarbudCapability` 映射、页面读取位置、`setProperty` 入口、设置 key 和导航触发来源。
 - 完成美术资源保留清单、`UiAssetCatalog` 映射表和旧 XML/主题资源的迁移边界。
