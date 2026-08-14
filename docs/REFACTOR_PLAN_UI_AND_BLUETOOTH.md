@@ -291,6 +291,17 @@ BT_MANAGER_RUNTIME_20 实机报告
 
 已确认的重构触发点：页面直接使用 `DeviceProps` 和 `setProperty(group, prop, value)`；多个页面重复实现 `Scaffold`、TopBar、卡片和间距；`SharedPreferences` 在 Composable 内直接读写；`CLASSIC`/`LIQUID_GLASS` 分支与 Haze 状态跨页面传递；连接成功后的跳转依赖异步调用返回瞬间的状态。上述问题全部纳入 UI 阶段，阶段完成前保留兼容投影，避免一次替换造成行为回退。
 
+#### 应用更新能力纳入范围
+
+检查更新和自动更新也纳入本次 UI 重构，但它属于“设置/关于 + 应用级状态”的独立能力，不进入 Bluetooth Manager、Service、Tile 或启动时的连接编排：
+
+- 当前 `app/src/main/java/com/freebuds/controller/data/UpdateChecker.kt` 只有未接入页面的最小 API 草稿：请求 latest release、按 `versionName` 粗略比较并取第一个资产；异常被静默转成 `null`，没有稳定的状态、缓存、校验或下载流程。
+- 当前 Settings 的“更新地址”按钮只打开 Release 页面；页面没有“检查中、已是最新、有新版本、下载中、待安装、失败/重试”等状态，也没有自动检查开关。
+- 当前 `AndroidManifest.xml` 没有更新网络权限，项目也没有 `WorkManager` 等后台更新调度依赖；这些属于后续实现决策，不把现有草稿当作已完成能力。
+- UI-0 盘点现有入口、版本字段、Release 资产、签名/安装约束和本地化 key；UI-2 冻结 typed state/event；UI-5 实现设置页、更新仓库、下载校验和系统安装交互。
+
+更新功能的产品边界固定为：**自动检查可以后台执行，自动安装始终交给 Android 系统确认**。默认提供“手动检查”和“自动检查”两种开关；“自动下载并提醒安装”作为单独可选项，不在蓝牙服务启动、ACL 回调或每次页面重组时触发。
+
 #### 美术资源保留清单
 
 下列资源属于现有视觉资产，继续保留并在新 UI 中通过语义目录引用：
@@ -403,6 +414,10 @@ ui/
     SettingsScreen.kt
     SettingsUiState.kt
     SettingsEvent.kt
+  update/
+    UpdateRoute.kt              # 检查、下载、安装状态的 UI 入口
+    UpdateUiState.kt
+    UpdateEvent.kt
   components/
     AppTopBar.kt
     SettingsSection.kt
@@ -465,6 +480,7 @@ sealed interface ControlUiState {
 - `ScreenStatus` 至少区分 `Loading`、`Ready`、`Degraded`、`Disconnected`、`Error`。
 - `ControlUiState` 还要区分 `Connecting`、`TransportReady`、`Initializing` 和 `Ready`，避免把 RFCOMM 成功误显示成全部功能已经可用。
 - 写操作必须有 `Pending/Success/Failure` 状态，并支持设备读回确认。
+- 更新操作必须区分 `Checking`、`UpToDate`、`Available`、`Downloading`、`ReadyToInstall`、`Installing`、`Deferred` 和 `Error`；下载失败、哈希不匹配、签名/包名不符和系统安装设置均显示结构化原因。
 - raw 值到展示文案的映射放到 `UiTextMapper` / `OptionPresenter`，不要散落在页面。
 - 连接提示横幅只消费 `ControlUiState` 和结构化失败原因；页面不根据日志字符串猜测当前阶段。
 
@@ -483,6 +499,8 @@ sealed interface DeviceEvent {
 }
 ```
 
+应用级更新事件单独放在 `AppEvent`/`UpdateEvent`，不混入 `DeviceEvent`：`CheckNow`、`EnableAutoCheck`、`EnableAutoDownload`、`Download`、`CancelDownload`、`Install`、`DismissVersion`、`OpenReleasePage` 和 `Retry`。ViewModel 只调用更新用例，不让 Composable 直接访问网络、文件或安装器。
+
 ViewModel 负责把事件交给用例；用例再调用协议无关的控制接口。页面中不出现 `setProperty(group, prop, value)`。
 
 ### 3.5 UI 规范
@@ -494,6 +512,7 @@ ViewModel 负责把事件交给用例；用例再调用协议无关的控制接�
 - 统一 loading、disabled、pending、失败重试和成功反馈，不用瞬时乐观值掩盖失败。
 - 设置持久化迁移到 `SettingsRepository`，优先使用 DataStore；Composable 只读写状态，不直接操作 `SharedPreferences`。
 - 所有用户可见文字走 i18n key；协议 raw 值只能出现在调试终端和日志页面。
+- 更新状态、下载进度、待安装提示和失败原因使用同一套 `AsyncActionIndicator`/`ErrorState`；自动检查不弹出打断蓝牙控制的全屏页面。
 
 #### 3.5.1 Haze 2.0 保留方案
 
@@ -700,6 +719,7 @@ Haze 相关变更的回退点固定为 `SurfaceRenderMode.OPAQUE` 或 `UiDisplay
 - 增加 `UI_GLASS_RENDERING_TARGETED` 基线：非纯色输入下的真实效果、无效果能力下的可见 fallback、纯色/无壁纸输入下的明确 tint 或 opaque 结果；记录 source/effect 数量和 fallback reason。
 - 记录断开、系统链路已连接、TransportReady、CoreInitializing、Ready、Degraded、Failed、无能力、动作 Pending/读回/失败等状态的显示矩阵。
 - 列出全部 `DeviceProps` 字段、`EarbudState`/`EarbudCapability` 映射、页面读取位置、`setProperty` 入口、设置 key 和导航触发来源。
+- 盘点现有 `UpdateChecker`、Settings 的“更新地址”入口、`BuildConfig.VERSION_NAME/VERSION_CODE`、Release 资产和安装权限；记录哪些属于旧草稿、哪些需要迁移为 typed update state。
 - 完成美术资源保留清单、`UiAssetCatalog` 映射表和旧 XML/主题资源的迁移边界。
 - 为 `EarbudStateMapper`、能力展示、关键选项映射和导航去重补充基线测试；本阶段不修改页面行为、不提升应用版本。
 
@@ -757,11 +777,54 @@ Haze 相关变更的回退点固定为 `SurfaceRenderMode.OPAQUE` 或 `UiDisplay
 
 - 将 Settings 拆为主题、语言、壁纸、显示风格、连接偏好、调试、关于等 section；Composable 只发送事件，不直接读写 `SharedPreferences`。
 - 集中迁移设置 key 到 `SettingsRepository`，按需要落到 DataStore；处理旧 key 读取、一次性迁移和进程重启后的状态恢复。
+- 在“关于/应用详情”加入 `UpdateCard`：展示当前版本、最后检查时间、更新渠道、检查按钮、可用版本、发布日期、更新说明和下载/安装进度；保留 Release 页面入口作为人工兜底。
+- 将现有 `UpdateChecker` 替换为 `UpdateRepository + CheckForUpdateUseCase + DownloadUpdateUseCase`；页面只消费 `UpdateUiState`，更新请求不依赖蓝牙连接状态。
 - 完成 light/dark、中文/English/繁體、横竖屏、较大文字、TalkBack/键盘焦点、对比度和 reduced motion 验收。
 - 对 classic/glass 运行同一页面和状态矩阵；确认资源映射、能力隐藏、错误反馈和导航行为一致。
 - `rg` 确认页面已无 raw `group/prop`、直接 `SharedPreferences` 和重复 option 映射后，才删除兼容 UI 代码；删除项单独记录，保证可回退。
 
 退出条件：全部 UI route 通过统一外壳、状态、事件、持久化和资源目录；旧页面只作为可回退提交保留，不再作为生产入口。
+
+#### UI-5 附属能力：检查更新与自动更新设计 `[ ] 未开始`
+
+**数据源与版本契约：**
+
+- 首选读取 Pages 上的 `update.json`，避免每次启动直接依赖 Release API 的速率限制；GitHub Releases API 只作为临时 fallback 和“打开 Release 页面”的来源。
+- `update.json` 固定包含 `schemaVersion`、`channel`、`versionName`、`versionCode`、`releaseUrl`、`apkUrl`、`sha256`、`publishedAt`、`minSdk` 和 `notesUrl`。CI 在 `v*` 标签发布时生成或校验它，`versionName`/`versionCode` 必须与 `app/build.gradle.kts` 一致。
+- 稳定版默认只消费非 draft、非 prerelease 的 Release；Debug 不把开发测试包推入稳定更新渠道。下载地址只接受 HTTPS 和允许的仓库域名，禁止从 Release 正文或不明跳转地址猜测 APK。
+- 版本比较以 `versionCode` 为主、`versionName` 为展示和回退；明确处理同版本、降级、预发布后缀、损坏字段和当前版本高于远端版本的情况。
+
+**更新流程：**
+
+```text
+App start / Settings / 手动检查
+        -> UpdateViewModel
+        -> CheckForUpdateUseCase
+        -> UpdateRepository (update.json -> Releases API fallback)
+        -> UpdateUiState: UpToDate / Available / Error
+
+Available + 用户允许自动下载
+        -> DownloadUpdateUseCase
+        -> HTTPS 临时文件 + 进度/取消/有限重试
+        -> SHA-256 + packageName + versionCode + APK 签名校验
+        -> ReadyToInstall
+        -> Android Package Installer 的用户确认
+```
+
+**持久化与触发策略：**
+
+- 设置 key 统一进入 `SettingsRepository`/DataStore：`update_channel`、`auto_check_enabled`、`auto_download_enabled`、`check_interval`、`last_check_at`、`last_notified_version_code`、`metered_network_allowed`。
+- 默认开启低频自动检查，检查间隔至少 24 小时；手动检查绕过间隔但保留请求超时和退避。应用前台恢复、设置页进入和网络恢复只合并为一个检查任务。
+- 自动下载默认关闭；开启后仅在新版本、网络条件和存储空间满足时下载，下载完成后显示明确的“准备安装”卡片。取消、稍后处理和忽略当前版本都可恢复。
+- 更新任务与 Bluetooth Service、BootReceiver、ACL、扫描和连接 attempt 完全隔离；检查失败、限流、无网络或安装器被拒绝均不改变耳机状态。
+- 安装前使用 `FileProvider`/受控缓存目录和 Android 系统 Package Installer；校验失败立即删除临时文件并保留可诊断错误，安装权限和用户确认由系统设置流程处理。
+
+**UI 状态与退出条件：**
+
+- Settings/About 具备当前版本、检查时间、渠道、可用版本、更新说明、下载百分比、暂停/取消、重试、稍后安装和打开 Release 页面等完整状态。
+- 冷启动、前后台切换、进程重启、横竖屏、深浅色、三种语言、无网络、API 限流、manifest 损坏、下载中断、哈希错误、签名不符和系统安装确认均有可回溯状态。
+- 自动下载不会阻塞首页、蓝牙连接或详情页；页面销毁后任务继续由 repository/worker 管理，回到页面时从持久化状态恢复。
+- 只有远端 `versionCode` 更高、manifest 完整、APK 下载成功且哈希/包名/签名校验通过时，才把状态提升为 `ReadyToInstall`。
 
 ### 3.7 UI 阶段的定向测试与目标受阻点
 
@@ -776,6 +839,10 @@ UI 阶段不复用 BT 的 36/100 项完整矩阵，测试范围按实际改动�
 | `UI_SHELL_ROUTES` | UI-3 | Home/Scan/Permission、设备点击、扫描完成、Service/Tile 入口去重和返回行为 | 每个入口 3 轮 |
 | `UI_DEVICE_FEATURES` | UI-4 | 本轮迁移的设备组件、状态横幅、无能力/降级/断开展示 | 每个改动功能 5 轮 |
 | `UI_SETTINGS_PERSISTENCE` | UI-5 | 设置迁移、进程重启、语言/主题/壁纸/显示模式和横竖屏恢复 | 每个设置路径 3 轮 |
+| `UI_UPDATE_CHECK_TARGETED` | UI-0/UI-2/UI-5 | update manifest/API、versionCode 比较、稳定渠道、缓存、限流、无网络和失败状态 | 每个状态 1 次 |
+| `UI_UPDATE_DOWNLOAD_VERIFY` | UI-5 | HTTPS 下载、进度/取消/恢复、SHA-256、packageName、versionCode、签名和临时文件清理 | 每个异常 1 次 |
+| `UI_UPDATE_INSTALL_FLOW` | UI-5 | Package Installer、安装权限、用户确认、稍后安装、忽略版本和进程重启恢复 | Android API 26/35 各 1 次 |
+| `UI_UPDATE_BACKGROUND` | UI-5 | 24 小时去重、前后台/网络恢复合并、计费网络策略，以及与 Bluetooth Service 的隔离 | 3 个生命周期场景 |
 | `UI_ACCESSIBILITY_MATRIX` | UI-5 | TalkBack、键盘焦点、较大文字、reduced motion、对比度和 opaque fallback | 每个 route 1 次 |
 | `UI_RELEASE_AUDIT` | UI-5 | 全 route、全状态、全部语言、无障碍和 classic/glass 的最终回归 | 1 个完整 UI 矩阵 |
 
@@ -1369,7 +1436,7 @@ python3 scripts/analyze_connection_timing.py /path/to/fxxkHilife_diagnostic.txt
 10. **UI-2 `[ ]`**：建立 `AppUiState`、`DeviceUiState`、typed event、`NavigationEvent` 和动作反馈；先迁移 ANC/低延迟/音质。
 11. **UI-3 `[ ]`**：收拢 App 外壳与 Home/Scan/Permission 主路由，消除重复导航和连接入口状态判断。
 12. **UI-4 `[ ]`**：迁移 Device/Gesture/ListeningStats/Terminal，统一能力 section、状态横幅和组件行为。
-13. **UI-5 `[ ]`**：迁移 Settings 与 DataStore/设置仓库，完成多语言、无障碍、classic/glass 双模式和 raw property 兼容层清理。
+13. **UI-5 `[ ]`**：迁移 Settings 与 DataStore/设置仓库，加入检查更新/自动下载/系统安装流程，完成多语言、无障碍、classic/glass 双模式和 raw property 兼容层清理。
 
 每个阶段都遵循：**改一层、加测试、跑实机、记录日志、更新本文件状态和版本记录、再迁移下一层**。未满足验收条件时保持 `[~]` 或 `[ ]`，不提前标记完成。
 
@@ -1386,6 +1453,9 @@ python3 scripts/analyze_connection_timing.py /path/to/fxxkHilife_diagnostic.txt
 - ListeningStats、PermissionGuide 和 Terminal 也纳入统一 route/外壳；旧 XML 只作为迁移期间回退入口。
 - 设备行点击、扫描完成回调、Service 自动连接和 Tile 命令不会重复创建导航事件或连接尝试。
 - 连接成功后的详情页跳转由状态流/一次性导航事件驱动，不依赖连接方法返回瞬间的状态快照。
+- 检查更新/自动下载拥有独立的 typed state、任务去重和失败恢复；不会启动蓝牙连接、改变 `ConnectionState` 或阻塞首屏。
+- 更新只接受稳定渠道的更高 `versionCode`，并在安装前完成 HTTPS、SHA-256、包名、版本和签名校验；安装过程由系统确认，应用不静默替换自身。
+- 关于页可以从当前版本进入手动检查、Release 页面和待安装状态；自动检查偏好在进程重启、语言/主题切换后保持一致。
 - light/dark、中文/English/繁體、无能力、初始化降级和断开状态均可渲染。
 - 所有用户可见图标经过 `UiAssetCatalog` 语义映射；保留清单中的图标、启动图、多语言和终端资源在迁移期间可回退、可追溯。
 - 44dp 触控目标、动态字体、TalkBack/键盘焦点、对比度和 reduced motion 有明确检查结果；公共组件不再由各页面重复实现。
@@ -1468,6 +1538,7 @@ GitHub 上点击 **Actions → Build & Release → Run workflow → Run workflow
 - 2026-08-10：将合并前 `ARCHITECTURE_TODO.md` 的完整通用架构正文、接口示例、迁移步骤和 v4.1–v4.2.1 历史记录归档至本文件附录 A。
 - 2026-08-10：`ARCHITECTURE_TODO.md` 改为旧路径跳转说明，停止维护第二份阶段清单、版本号和测试门。
 - 2026-08-14：BT-0 至 BT-4 已收口，当前应用版本为 `4.3.10 / 98`；本次将下一阶段重心改为 UI 全量重构，新增 UI-0 至 UI-5 顺序、美术资源保留清单、构建标签和定向验收规则；本次仍只维护文档，不提升版本、不进入 UI 实现。
+- 2026-08-14：将检查更新/自动更新纳入 UI-0、UI-2 和 UI-5；保留现有 `UpdateChecker`/Release 页面作为基线，新增 update manifest、版本比较、自动检查/下载、APK 校验、系统安装确认、后台隔离和定向测试契约；本次仅更新规划，不提升版本、不进入实现。
 
 ---
 
