@@ -20,9 +20,9 @@
 
 ## 当前执行点
 
-当前唯一待测门是 `4.3.9 / 97` 的 `BT4_STATE_CONTRACT_5`：
+当前最近完成的 BT 门是 `4.3.10 / 98` 的 `BT4_STATE_CONTRACT_5`：
 
 - 通用状态/能力契约 5 轮：连接到 `Ready` 后检查同一 attempt、精确能力集合、已声明状态域读回、`DeviceProps` 兼容投影，以及 pending/failed 终态。
 - 不重复 BT-3 已通过的 F10 + 初始化10，不恢复历史 36/100 项矩阵。
 
-返回同一主验证设备的实机报告后，继续按主计划顺序推进；测试失败只追加对应状态/能力项。当前 BT-4 仍标记为进行中，计划版本为 `4.3.9 / 97`。
+实机报告 `/Users/chenhong/Downloads/fxxkHilife_hardware_regression_1786696542049.txt` 已返回并满足 5/5、`reportValid=true`、`overall=PASS`。BT-0 至 BT-4 已收口；UI-0 仍未开始，后续等待用户指示再进入 UI 阶段。

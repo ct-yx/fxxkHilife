@@ -3,7 +3,7 @@
 > 版本号统一修改入口，按清单逐一更新。
 
 ## 当前版本
-- **v4.3.10** (versionCode=98, 2026-08-14；BT 连接收尾、状态契约竞态与定向测试修复，BT-4 定向实机门待回灌)
+- **v4.3.10** (versionCode=98, 2026-08-14；BT 连接收尾、状态契约竞态与定向测试修复，BT-4 定向实机门已通过，UI-0 尚未开始)
 
 ## 文档同步记录
 
@@ -16,7 +16,8 @@
 - 2026-08-14：发布 v4.3.8（versionCode=96）BT-4 状态契约 follow-up 包；收紧并发投影、能力域和报告 PASS 校验，实机报告返回前不关闭 BT-4 阶段。
 - 2026-08-14：发布 v4.3.9（versionCode=97）BT-0 协议固定样本 follow-up 包；修正 5A 双字节长度、完整帧边界、参数边界和可选 CRC 校验，BT-4 仍等待同一 Debug 包的 5 轮实机报告。
 - 2026-08-14：发布 v4.3.10（versionCode=98）BT 连接收尾与状态契约竞态 follow-up 包；修复状态映射串行化、断开前统计 flush、失败 session 清理、Manager command 串行边界、Handler 去重和共享 Adapter Registry，BT-4 重新等待该 Debug 包的 5 轮实机报告。
-- 2026-08-14：v4.3.10 / 98 最终本地 CI 通过；Debug/Release 各 94 个 JVM 单元测试、`diff-check`、Debug/Release 构建均通过。Debug APK SHA-256=`d36085bc37a271d99aa5d0575d9af36be63e93b8eec69af134d562740c72bfec`，Release APK SHA-256=`501df2aa286c19141407c83e926ade357f1b1f55ff5706b6851b19d54de78e54`；当前仍等待 `BT4_STATE_CONTRACT_5` 5 轮实机报告。
+- 2026-08-14：v4.3.10 / 98 最终本地 CI 通过；Debug/Release 各 94 个 JVM 单元测试、`diff-check`、Debug/Release 构建均通过。Debug APK SHA-256=`d36085bc37a271d99aa5d0575d9af36be63e93b8eec69af134d562740c72bfec`，Release APK SHA-256=`501df2aa286c19141407c83e926ade357f1b1f55ff5706b6851b19d54de78e54`；随后由 `BT4_STATE_CONTRACT_5` 5 轮实机报告完成回灌。
+- 2026-08-14：`/Users/chenhong/Downloads/fxxkHilife_hardware_regression_1786696542049.txt` 回灌并通过 `BT4_STATE_CONTRACT_5`：5/5、`expectedOperations=5`、`completedOperations=5`、`reportValid=true`、`overall=PASS`；BT-0 至 BT-4 蓝牙重构收口，应用版本仍为 v4.3.10 / versionCode 98，UI-0 暂不启动。
 
 ## 版本号位置
 

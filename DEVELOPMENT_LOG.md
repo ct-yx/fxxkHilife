@@ -1501,4 +1501,7 @@
 - 本轮新增 4 个 JVM 断言：元数据-only core readiness、兼容 pending 投影、Handler ID 去重和共享 Adapter Registry；Debug/Release 各 `94 tests`，均为 `0 failures`、`0 errors`、`0 skipped`。
 - `./scripts/run_ci_checks.sh ci-output-bt-connection-followup-4.3.10-98` 已通过：`diff-check`、Debug/Release 单元测试和 Debug/Release 构建均通过；Debug/Release 各 `94 tests`，均为 `0 failures / 0 errors / 0 skipped`。结果目录为 `ci-output-bt-connection-followup-4.3.10-98`；Debug APK SHA-256=`d36085bc37a271d99aa5d0575d9af36be63e93b8eec69af134d562740c72bfec`，Release APK SHA-256=`501df2aa286c19141407c83e926ade357f1b1f55ff5706b6851b19d54de78e54`。
 - 统计 flush 单测改用可递减的日期键，避免测试夹具用固定日期键让连续天数遍历无法结束；生产连接断开前 flush 逻辑保持不变。
-- `BT4_STATE_CONTRACT_5` 仍为唯一实机门：在 `4.3.10 / 98` Debug 包上执行 5 轮通用状态/能力契约读取，报告必须为 `expectedOperations=5`、`completedOperations=5`、`reportValid=true`、`overall=PASS`；不重复 BT-3 F10 + 初始化10、历史36项或完整 A-F 矩阵。
+- `BT4_STATE_CONTRACT_5` 的实机门要求为：在 `4.3.10 / 98` Debug 包上执行 5 轮通用状态/能力读取，报告必须为 `expectedOperations=5`、`completedOperations=5`、`reportValid=true`、`overall=PASS`；不重复 BT-3 F10 + 初始化10、历史36项或完整 A-F 矩阵，回灌结果见下方。
+- 2026-08-14 实机报告回灌：`/Users/chenhong/Downloads/fxxkHilife_hardware_regression_1786696542049.txt` 使用 `4.3.10 / 98`、`BT4_STATE_CONTRACT_5`，设备为 HUAWEI FreeBuds 6i / Android API 36 / 固件 `HarmonyOS 6.0.0.292(F001H003C00)`；5/5 通过，`expectedOperations=5`、`completedOperations=5`、`reportValid=true`、`overall=PASS`。
+- 五轮均为同一轮内 `expectedAttempt=actualAttempt`、`stage=Ready`、`coreReady=true`，能力集合精确匹配，pending 三方一致且为空，failed 为空，`projectionMatches=true`；endpoint=`rfcomm-channel=1`、source=`VerifiedModelConfig`。契约读取耗时 P50/P95=`2549/3573ms`，最大 `3573ms`。
+- 该报告只关闭 BT-4 通用状态/能力契约实机门，不代表重新执行 A-F、ANC 或低延迟功能矩阵；BT-0 至 BT-4 蓝牙重构现已收口，UI-0 按当前安排暂不启动。

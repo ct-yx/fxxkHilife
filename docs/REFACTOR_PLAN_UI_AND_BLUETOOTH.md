@@ -4,7 +4,7 @@
 >
 > 基线：v4.2.6，2026-08-01
 >
-> 当前开发基线：v4.3.10 / versionCode 98，2026-08-14（BT-3 实机门已通过；BT-3 收尾竞态与资源清理已补齐；BT-0 协议固定样本已收口；BT-4 Debug 测试包等待定向实机门）
+> 当前开发基线：v4.3.10 / versionCode 98，2026-08-14（BT-0 至 BT-4 蓝牙阶段已完成；BT-4 定向实机门已通过；UI-0 尚未开始）
 >
 > 目标：把当前“能工作但边界偏大”的 UI、蓝牙连接和 SPP 指令实现整理成可持续迭代的结构。先稳定现有 HUAWEI / HONOR + RFCOMM SPP 路线，再为后续型号和协议扩展留出边界。
 
@@ -68,14 +68,15 @@
 
 合计 **20 项**。B、D、E 已在 `4.3.4 / 92` 通过，本轮不重复；若 F/初始化仍失败，只追加对应失败项，不恢复整套 36 项。
 
-> **当前目标受阻**：BT-3 已由主验证设备完成；BT-0 协议固定样本和 `v4.3.10 / 98` 的 JVM/静态检查已完成，BT-4 测试包已完成本地 CI，当前等待 `BT4_STATE_CONTRACT_5` 5 轮实机报告。实机门只检查通用状态/能力契约，不重复 A-F 或 ANC/低延迟功能矩阵。
+> **BT 阶段已收口**：`v4.3.10 / 98` 的 `BT4_STATE_CONTRACT_5` 5 轮实机报告已通过。BT-4 只检查通用状态/能力契约，不重复 A-F 或 ANC/低延迟功能矩阵；UI-0 仍未开始，按用户要求暂不进入 UI 重构。
 
 ### 0.2 本轮执行记录（先蓝牙，后实机测试）
 
 本轮继续完成蓝牙组件重构、定向实机测试矩阵和本地验证；代码/CI 完成后，只安排与本轮改动对应的测试项。
 
 - 当前测试包为 `4.3.10 / 98`，对应 BT-4 通用状态/能力契约的 `BT4_STATE_CONTRACT_5` 定向门槛；`4.3.9 / 97` 为 BT-0 协议固定样本 follow-up 包，`4.3.8 / 96` 为上一版 BT-4 状态契约 follow-up 包，`4.3.7 / 95` 为首轮 BT-4 契约测试包，`4.3.6 / 94` 为已通过实机门的 BT-3 连接运行时包，`4.3.5 / 93` 为上一轮状态/重试修复包，`4.3.4 / 92` 为 36 项报告包，`4.3.3 / 91` 为 ANC 摘戴状态修复包，`4.3.2 / 90` 为上一轮热重连/初始化回归包，`4.3.1 / 89` 为更早的完整实机报告包，`4.3.0 / 88` 仅作为 BT-1 首轮实机报告包，`4.2.6 / 87` 仅保留为重构前基线。
-- `4.3.10 / 98` 本轮补齐 BT 收尾：同一 attempt 内的状态映射串行化、兼容 pending 投影同步、失败连接资源断开、统计 ticker 断开前 flush、Manager command 边界串行化、Handler ID 去重和共享 Adapter Registry；代码验证后重新进入同一 `BT4_STATE_CONTRACT_5` 5 轮实机门。
+- `4.3.10 / 98` 本轮补齐 BT 收尾：同一 attempt 内的状态映射串行化、兼容 pending 投影同步、失败连接资源断开、统计 ticker 断开前 flush、Manager command 边界串行化、Handler ID 去重和共享 Adapter Registry；代码验证后完成同一 `BT4_STATE_CONTRACT_5` 5 轮实机门。
+- `/Users/chenhong/Downloads/fxxkHilife_hardware_regression_1786696542049.txt` 已回灌：FreeBuds 6i、Android API 36、固件 `HarmonyOS 6.0.0.292(F001H003C00)`，5/5 轮通过；`expectedOperations=5`、`completedOperations=5`、`reportValid=true`、`overall=PASS`。五轮均为同一轮内 `expectedAttempt=actualAttempt`、`stage=Ready`、`coreReady=true`、能力集合精确匹配、三方 pending 一致且为空、failed 为空、兼容投影一致；endpoint=`rfcomm-channel=1`、source=`VerifiedModelConfig`，契约检查 P50/P95=`2549/3573ms`，最大 `3573ms`。
 - `4.3.10 / 98` 最终本地 CI 已通过：`diff-check`、Debug/Release 单元测试和 Debug/Release 构建均通过；Debug/Release 各 `94 tests`，均为 `0 failures / 0 errors / 0 skipped`。结果目录为 `ci-output-bt-connection-followup-4.3.10-98`；Debug APK SHA-256=`d36085bc37a271d99aa5d0575d9af36be63e93b8eec69af134d562740c72bfec`，Release APK SHA-256=`501df2aa286c19141407c83e926ade357f1b1f55ff5706b6851b19d54de78e54`。
 - `4.3.8 / 96` 本地完整 CI 已通过：82 个 Debug 单元测试和 82 个 Release 单元测试均为 `0 failures / 0 errors / 0 skipped`；`diff-check`、Debug/Release 测试与构建均通过。Debug APK SHA-256=`c1441879f2c0a678f78d1dea33af5751e9ba6a610c6ae4fc90cde51857754927`，Release APK SHA-256=`0c3008501d51c0bbab1efe68a30284695051d7dad8c71dc870d7af2e3c2ad6d4`；结果目录为 `ci-output-bt4-state-contract-4.3.8-96`。
 - 保留未跟踪的 `.DS_Store` 和 `对话历史记录.md`，不纳入代码提交。
@@ -146,7 +147,7 @@
 | BT-1 唯一生产 Transport | [x] 已完成 | 2026-08-14；唯一 `RfcommSppTransport` 路径及 endpoint/source 在同设备定向回归中稳定；保留跨型号/固件未覆盖边界 |
 | BT-2 CommandClient / Scheduler / Feature | [x] 已完成 | 2026-08-14；命令目录、单一 command lane、ANC 权威读回和低延迟路径已有 JVM/人工/定向实机证据；未验证能力仍按型号表标记 |
 | BT-3 ConnectionManager 收敛入口 | [x] 已完成 | 2026-08-14；`ConnectionLifecycle`、session/attempt/Job 所有权收敛，并由 `BT_MANAGER_RUNTIME_20` F10+初始化10 实机确认；`4.3.10 / 98` 补齐统计 flush、失败 session 断开、command 串行边界和同 attempt 状态映射收尾 |
-| BT-4 通用蓝牙状态输出 | [~] 进行中 | `4.3.10 / 98` 已完成原子快照投影、canonical channel、pending/failed 语义收敛、空值规范化、metadata-only core readiness 防误报、严格 PASS 报告校验和 5A 协议边界修复；94/94 Debug、94/94 Release 单元测试、`git diff --check`、Debug/Release 构建均已通过，等待 `BT4_STATE_CONTRACT_5` 实机报告；页面尚未迁移消费 |
+| BT-4 通用蓝牙状态输出 | [x] 已完成 | `4.3.10 / 98` 完成原子快照投影、canonical channel、pending/failed 语义收敛、空值规范化、metadata-only core readiness 防误报、严格 PASS 报告校验和 5A 协议边界修复；94/94 Debug、94/94 Release 单元测试、`git diff --check`、Debug/Release 构建通过；同一主验证设备 `BT4_STATE_CONTRACT_5` 实机 5/5 通过。页面尚未迁移消费 |
 | UI-0 UI 行为基线 | [ ] 未开始 | 截图、交互路径、字段读写清单和测试基线齐备 |
 | UI-1 UI State / Event | [ ] 未开始 | 页面通过 typed state/event 工作，保留兼容层 |
 | UI-2 页面与公共组件拆分 | [ ] 未开始 | Device/Settings 和公共外壳拆分完成 |
@@ -1055,7 +1056,7 @@ python3 scripts/analyze_connection_timing.py /path/to/fxxkHilife_diagnostic.txt
 4. **BT-1 `[x]`**：`RfcommSppTransport` 已成为唯一生产 Socket 路径，并由 `4.3.6 / 94` 主设备报告验证阶段统计。
 5. **BT-2 `[x]`**：`CommandClient`、`CommandScheduler`、命令目录和 ANC/低延迟读回路径已完成当前主设备门；未验证型号仍保守处理。
 6. **BT-3 `[x]`**：attempt/session 竞态、连接运行时状态/Job 句柄、Manager host 接口和统计职责已完成当前收尾，`4.3.6 / 94` F10/初始化10 已通过。
-7. **BT-4 `[~]`**：`4.3.10 / 98` 已完成状态契约代码、5A 协议边界、JVM/静态检查和严格报告校验；当前目标受阻于同一主验证设备的 `BT4_STATE_CONTRACT_5` 5 轮实机报告。
+7. **BT-4 `[x]`**：`4.3.10 / 98` 已完成状态契约代码、5A 协议边界、JVM/静态检查和严格报告校验；同一主验证设备的 `BT4_STATE_CONTRACT_5` 5 轮实机报告已通过。
 8. **UI-0 `[ ]`**：蓝牙链路稳定后，再记录页面截图、交互和字段读写基线。
 9. **UI-1 `[ ]`**：建立 `DeviceUiState`、typed event 和导航事件，先保留旧属性兼容层。
 10. **UI-2 `[ ]`**：拆分页面和公共组件，继续保持 Haze 2.0 与 Material 3 双展示模式。
