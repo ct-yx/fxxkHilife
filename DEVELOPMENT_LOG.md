@@ -1516,7 +1516,7 @@
 - versionCode: 99
 - versionName: 4.4.0
 - build label: `UI_ERROR_FIX_ALPHA05`
-- 这是等待 GitHub Actions 与定向实测的开发包，不提前标记 UI 阶段完成，也不代表已发布 Release。
+- 这是 CI 已通过、等待定向实测的开发包，不提前标记 UI 阶段完成，也不代表已发布 Release。
 
 ### 代码收口
 - `SurfaceRenderer.kt` 迁移到 alpha05 的 `hazeGlass`/`hazeBlur`、`GlassStyle`、`GlassOptics.Fixed` 和 `HazeBlurStyle`；Liquid 与 Blur 不再共用旧 `hazeEffect + blurEffect` 实现。
@@ -1528,10 +1528,11 @@
 
 ### 验证与下一道门
 - 静态验证：`git diff --check`、`python3 scripts/validate_ui_contract.py`、`python3 scripts/validate_update_manifest.py docs/update.json`；未执行本地 Gradle，构建交由 GitHub Actions。
+- GitHub Actions `31833142274` 已通过：`diff-check`、UI contract、102 个 JVM 测试（0 failures / 0 errors / 0 skipped）以及 Debug/Release 构建均通过；Debug SHA-256=`0aaa7353a39412cdc15ae80af3fcfcbcfa7340fdebb465e338ba44c9f764991f`，Release SHA-256=`853ffb596090289b89456d991c06769b59c94385e9d1e1603c4dc2a3d818e9a8`。
 - GitHub Actions 手动构建默认标签为 `UI_ERROR_FIX_ALPHA05`；包返回后只执行 `UI_GLASS_RENDERING_TARGETED`、`UI_GLASS_PERFORMANCE`、`UI_NAVIGATION_SESSION` 和无背景 fallback 诊断，不重复 BT A-F/36/100 项矩阵。
-- UI-0 至 UI-5 继续为 `[~] 目标受阻`，等待 CI 产物、截图/运行诊断、滚动性能和导航交互报告。
+- UI-0 至 UI-5 继续为 `[~] 目标受阻`，等待截图/运行诊断、滚动性能和导航交互报告。
 
 ### v4.4.0 CI 配置跟进（2026-08-15）
 - GitHub Actions `31832633710` 已完成 Android 37 SDK 安装，但 AGP 9.1 在模块级应用 `org.jetbrains.kotlin.android` 时直接终止；失败发生在插件应用阶段，尚未进入 Kotlin/Haze 源码编译。
 - 已移除模块和根项目中多余的 Kotlin Android 插件声明，保留 `org.jetbrains.kotlin.plugin.compose`，使用 AGP 9.1 内置 Kotlin 支持；版本仍为 `4.4.0 / 99`，构建标签仍为 `UI_ERROR_FIX_ALPHA05`。
-- 本地只完成 `git diff --check`、UI contract、update manifest 和 XML 静态校验；构建继续交给 GitHub Actions。下一道门仍为 CI 编译、截图/运行诊断、滚动性能和导航交互证据。
+- 本地只完成 `git diff --check`、UI contract、update manifest 和 XML 静态校验；GitHub Actions 已完成源码编译和 APK 构建。下一道门为截图/运行诊断、滚动性能和导航交互证据。

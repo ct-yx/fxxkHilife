@@ -6,7 +6,7 @@
 >
 > 当前发布基线：v4.3.10 / versionCode 98，2026-08-14（BT 重构后的首个公开大版本；BT-0 至 BT-4 蓝牙阶段已完成；BT-4 定向实机门已通过）
 >
-> 当前开发包：v4.4.0 / versionCode 99，2026-08-15（UI 错误报告修复包；等待 GitHub Actions、截图/运行诊断和定向交互实测，不代表已发布 Release）
+> 当前开发包：v4.4.0 / versionCode 99，2026-08-15（UI 错误报告修复包；GitHub Actions 已通过，等待截图/运行诊断和定向交互实测，不代表已发布 Release）
 >
 > 目标：把当前“能工作但边界偏大”的 UI、蓝牙连接和 SPP 指令实现整理成可持续迭代的结构。蓝牙阶段先稳定现有 HUAWEI / HONOR + RFCOMM SPP 路线；当前转入 UI 基本全量重构，统一视觉、交互、状态和导航，同时保留已经验证可用的美术资源。
 
@@ -258,13 +258,19 @@
 - UI-ERR-002：保存设备、扫描设备和双连接设备使用地址稳定 key；长列表默认 Tint/Material 3，不逐行创建 glass/blur effect；展开内容只保留 `AnimatedVisibility` 尺寸动画；路由使用生命周期感知收集，Home 刷新只绑定目标地址。
 - UI-ERR-003：设备详情自动进入绑定 `address + attemptId`，系统触发只消费一次；用户返回后同一会话不再自动重开，Home/Scan 点击设备都显式导航到详情页。
 - 本轮版本为开发测试包 `4.4.0 / 99`，不修改 BT-0 至 BT-4 和既有蓝牙实机矩阵；GitHub Actions 构建标签改为 `UI_ERROR_FIX_ALPHA05`。
-- 当前目标受阻点：等待 GitHub Actions 构建、`UI_GLASS_RENDERING_TARGETED`、`UI_GLASS_PERFORMANCE`、`UI_NAVIGATION_SESSION` 和无背景 fallback 截图/运行诊断；未执行本地 Gradle，不将静态门当作 UI 完成证据。
+- 当前目标受阻点：`UI_GLASS_RENDERING_TARGETED`、`UI_GLASS_PERFORMANCE`、`UI_NAVIGATION_SESSION` 和无背景 fallback 截图/运行诊断；GitHub Actions 构建已通过，未执行本地 Gradle，不将静态门当作 UI 完成证据。
 
 ### 0.5.7 2026-08-15 AGP 9.1 Kotlin 配置修复
 
 - GitHub Actions `31832633710` 的失败根因为 AGP 9.1 拒绝模块级 `org.jetbrains.kotlin.android` 插件；错误发生在构建脚本应用阶段，尚未验证 alpha05 typed API 的源码编译。
 - 已从 `app/build.gradle.kts` 和根 `build.gradle.kts` 移除多余 Kotlin Android 插件声明，保留 `org.jetbrains.kotlin.plugin.compose`，由 AGP 9.1 内置 Kotlin 提供 Android Kotlin 支持。
-- 版本保持 `4.4.0 / 99`，构建标签保持 `UI_ERROR_FIX_ALPHA05`；静态 contract、manifest 和 XML 校验通过，下一步以 GitHub Actions 编译结果为准。
+- 版本保持 `4.4.0 / 99`，构建标签保持 `UI_ERROR_FIX_ALPHA05`；静态 contract、manifest 和 XML 校验通过，下一步以定向 UI 实测结果为准。
+
+### 0.5.8 2026-08-15 UI 错误修复包 CI 通过
+
+- GitHub Actions `31833142274` 在 AGP 9.1 内置 Kotlin 配置下通过 `diff-check`、UI contract、102 个 JVM 测试（0 failures / 0 errors / 0 skipped）和 Debug/Release APK 构建。
+- Debug SHA-256：`0aaa7353a39412cdc15ae80af3fcfcbcfa7340fdebb465e338ba44c9f764991f`；Release SHA-256：`853ffb596090289b89456d991c06769b59c94385e9d1e1603c4dc2a3d818e9a8`。
+- CI 通过只关闭构建验证门；UI-0 至 UI-5 继续保持 `[~] 目标受阻`，下一阶段仅执行 `UI_GLASS_RENDERING_TARGETED`、`UI_GLASS_PERFORMANCE`、`UI_NAVIGATION_SESSION`、无背景 fallback、设置持久化和无障碍定向验证。
 
 ## 1. 范围与原则
 

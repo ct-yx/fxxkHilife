@@ -3,7 +3,7 @@
 - 报告日期：2026-08-15
 - 影响范围：液态玻璃渲染、列表滚动性能、设备详情页导航
 - 原始状态：报告创建时已确认根因，尚未修复（历史快照）
-- 当前状态：v4.4.0 / 99 已完成代码修复与生命周期收口，等待 GitHub Actions、截图/运行诊断和定向交互实测
+- 当前状态：v4.4.0 / 99 已完成代码修复、生命周期收口和 GitHub Actions 构建，等待截图/运行诊断和定向交互实测
 - 证据边界：本报告基于当前源码审查；未将构建通过、静态检查或蓝牙连接状态当作 UI 运行成功证据
 
 ## 修复回灌（2026-08-15，v4.4.0 / 99）
@@ -14,7 +14,8 @@
 - **UI-ERR-002**：保存设备、扫描设备和双连接列表加入地址稳定 key；长列表默认 Tint/Material 3；展开选项移除与 `AnimatedVisibility` 重复的 `animateContentSize`。
 - **UI-ERR-002/003 收口**：页面状态改用生命周期感知的 `collectAsStateWithLifecycle`；Home 只在控制目标地址变化时刷新保存设备连接，避免每个 `systemConnected` 阶段重复刷新；扫描设备点击使用明确的 `BluetoothDevice` 用户连接入口，保存设备点击继续使用已保存地址入口。
 - **UI-ERR-003**：详情页自动导航绑定 `address + attemptId`，同一会话只消费一次；用户返回后不再自动重开，Home/Scan 点击设备直接产生详情导航意图。
-- **CI 配置跟进**：GitHub Actions 首次进入 AGP 9.1 后发现模块级 `org.jetbrains.kotlin.android` 插件已被内置 Kotlin 接管；已移除模块/根项目的多余声明，保留 Compose Compiler 插件，等待 CI 重新验证源码和 alpha05 typed API。
+- **CI 配置跟进**：GitHub Actions 首次进入 AGP 9.1 后发现模块级 `org.jetbrains.kotlin.android` 插件已被内置 Kotlin 接管；已移除模块/根项目的多余声明，保留 Compose Compiler 插件，后续 CI 已完成源码和 alpha05 typed API 编译验证。
+- **CI 验证完成**：GitHub Actions `31833142274` 通过 `diff-check`、UI contract、102 个 JVM 测试和 Debug/Release 构建；Debug SHA-256 为 `0aaa7353a39412cdc15ae80af3fcfcbcfa7340fdebb465e338ba44c9f764991f`，Release SHA-256 为 `853ffb596090289b89456d991c06769b59c94385e9d1e1603c4dc2a3d818e9a8`。
 
 **未关闭条件**：GitHub Actions 构建通过；`UI_GLASS_RENDERING_TARGETED`、`UI_GLASS_PERFORMANCE`、`UI_NAVIGATION_SESSION` 和无背景 Material 3 fallback 的截图/运行诊断通过。未完成这些条件前，不把本报告标记为完全解决。
 
@@ -236,4 +237,4 @@ onDeviceClick = { address -> viewModel.autoConnectSaved(address) }
 
 三个代码级根因已经在 `v4.4.0 / 99` 修复：Liquid 请求现在只在有效壁纸 source 下进入真实 typed glass，列表不再逐行创建 effect 并使用稳定 key，详情自动导航按 `address + attemptId` 消费且手动入口显式导航。页面收集也已切换到生命周期感知方式，Home 的保存设备刷新不再绑定每个系统连接阶段。
 
-问题仍保持“目标受阻”，因为代码修复不能替代 GitHub Actions 编译、真实输入下的截图/运行诊断、滚动性能和导航交互证据。报告返回前，不将 UI-ERR-001/002/003 标记为完全关闭。
+问题仍保持“目标受阻”，因为代码修复和 CI 通过不能替代真实输入下的截图/运行诊断、滚动性能和导航交互证据。报告返回前，不将 UI-ERR-001/002/003 标记为完全关闭。
