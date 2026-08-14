@@ -512,6 +512,119 @@ ViewModel 负责把事件交给用例；用例再调用协议无关的控制接�
 - `app/src/main/java/com/freebuds/controller/ui/glass/LiquidGlassConfig.kt`
 - `app/build.gradle.kts`
 
+#### 3.5.1.1 Haze 2.0 依赖契约与迁移细则
+
+本次 UI 重构以现有 Haze 2.0 `2.0.0-alpha03` 为固定渲染依赖。目标是收拢调用边界和视觉规则，而不是在 UI 重构期间升级库或引入另一套玻璃实现。
+
+**依赖锁定：**
+
+| 依赖 | 当前版本 | 规划处理 |
+|---|---|---|
+| `dev.chrisbanes.haze:haze` | `2.0.0-alpha03` | 保留，作为 `HazeState`、`hazeSource` 和 `hazeEffect` 基础模块 |
+| `dev.chrisbanes.haze:haze-blur` | `2.0.0-alpha03` | 保留，提供 `blurEffect` |
+| `dev.chrisbanes.haze:haze-blur-materials` | `2.0.0-alpha03` | 保留，作为 Material surface 的渲染适配依赖 |
+| `haze-liquidglass` 或其他替代实现 | 未接入 | 本轮不新增；如需更换，单独建立依赖升级计划和对比报告 |
+
+**当前调用基线：**
+
+- `AppNavHost` 创建 `rememberHazeState()`，根容器使用 `.hazeSource(hazeState)`。
+- `AdaptiveGlass.kt` 使用 `.hazeEffect(state = hazeState) { blurEffect { ... } }`、`HazeColorEffect.tint` 和自定义边缘光学绘制。
+- Home、Scan、Device、Gesture、ListeningStats、Settings 目前通过 `HazeState?` 和 `UiDisplayMode` 层层传递玻璃状态。
+- `AdaptiveCard`、`LiquidGlassCard`、`LiquidGlassPanel`、`AdaptiveGlassBanner` 已形成初步兼容面，但每个页面仍直接决定展示模式和 surface 参数。
+
+**目标依赖边界：**
+
+```text
+AppScaffold
+  └─ GlassHost
+      ├─ BackgroundLayer
+      │   ├─ Wallpaper / Gradient / SolidColor
+      │   └─ hazeSource(sharedHazeState)
+      └─ NavHost + route content
+          └─ SurfaceRenderer
+              ├─ HazeGlassRenderer
+              ├─ TintOnlyRenderer
+              └─ OpaqueRenderer
+```
+
+1. `GlassHost` 是每个 Activity/window 的唯一 `HazeState` 所有者；页面、ViewModel、UseCase 和设备组件均不创建或修改 `HazeState`。
+2. 只有 `ui/foundation/surface/haze` 包直接导入 Haze API；业务页面只接收 `SurfaceRole`、`SurfaceTone`、`SurfaceSpec` 等项目类型。
+3. `AppScaffold` 负责背景图、渐变、系统栏、Haze source、统一 content padding 和 surface profile；页面只声明内容和语义层级。
+4. `SurfaceRenderer` 是唯一渲染适配面：经典模式走 Material 3 surface，玻璃模式走 Haze 2.0，降级模式走 tint 或 opaque surface。三条路径共享相同的内容树和状态树。
+5. `AdaptiveCard` 等旧函数在 UI-1 至 UI-4 期间保留为兼容 facade，内部转发到 `SurfaceRenderer`；新页面禁止继续增加直接 Haze 调用。
+
+**Surface 角色和 Haze 使用预算：**
+
+| 语义角色 | 玻璃策略 | 典型位置 | 降级策略 |
+|---|---|---|---|
+| `AppBackground` | 只提供 source，不叠加 effect | 壁纸、渐变、纯色背景 | `background` |
+| `AppBar` | subtle blur + 低透明度边界 | 顶部栏、滚动后的栏 | tint-only |
+| `Hero` | standard blur + 重点边缘光学 | 首页设备摘要、连接横幅 | opaque/tint |
+| `Card` | standard blur，限制可见数量 | Device 功能卡、Stats 卡 | Material surface |
+| `SettingRow` | 默认无独立 blur | Settings 列表行 | 透明/Material surface |
+| `Dialog` / `Sheet` | 优先可读性，不依赖背景采样 | 确认、错误、选择器 | opaque surface |
+
+渲染预算固定为：一个窗口一个共享 `HazeState`；一个 route 只保留一个背景 source；长列表的单行组件不逐项创建 `hazeEffect`；同一视口优先控制在 6 个以内的主要玻璃 effect surface。超过预算时先把低层级 `Card`/`SettingRow` 切换为 tint-only，再考虑降低 blur 参数，避免通过增加透明度掩盖性能问题。
+
+**参数与主题令牌：**
+
+- `LiquidGlassConfig` 继续作为持久化兼容模型；`tintAlpha`、`readabilityStrength`、`refractionStrength`、`depth`、`cornerRadiusDp` 和 `surfaceProfile` 由 `GlassTokenResolver` 转成语义 `SurfaceSpec`。
+- 页面不再传递单独的 `tint`、`depth`、`refractionStrength` 常量；页面只声明 `Hero`、`Card`、`AppBar` 等角色。
+- 现有参数范围和默认值先保持，UI-0 记录现状；UI-1 将默认方案收敛为 `Subtle`、`Standard`、`Emphasis`、`OpaqueFallback` 四个 profile。
+- Settings 的用户选项只改变显示偏好；渲染器根据高对比度、大字体、reduced motion、设备能力和当前窗口状态自动选择可读性更高的 profile。
+- 玻璃边框、内侧 readability veil、颜色 tint 和阴影均使用 Material 语义色与 `comp.*` 令牌，页面不写近似色值。
+
+**背景、壁纸和生命周期：**
+
+- 壁纸 URI、作用域和透明度由 `AppUiState` 提供，`BackgroundLayer` 统一加载；Home、Settings 等页面不各自加载背景图。
+- route 切换只改变 content，不重新创建 Haze source；Activity 重建时由 `GlassHost` 重新建立短生命周期状态。
+- 壁纸加载失败、没有壁纸、权限变化和窗口尺寸变化都回到 gradient/solid 背景，玻璃内容继续可读。
+- Haze 渲染状态与蓝牙连接状态分离；设备连接/断开不会触发玻璃参数重置，也不会让页面为连接状态重新创建渲染器。
+
+**性能和降级策略：**
+
+```kotlin
+enum class SurfaceRenderMode {
+    HAZE_GLASS,
+    TINT_ONLY,
+    OPAQUE,
+}
+
+data class GlassRuntimePolicy(
+    val mode: SurfaceRenderMode,
+    val blurEnabled: Boolean,
+    val reason: String?,
+)
+```
+
+- Android 12+ 作为主要 blur/render-effect 验证范围；minSdk 26 继续提供 tint/opaque 路径。
+- Haze 初始化或 effect 应用异常时，当前 surface 在同一帧回退到 tint/opaque；页面状态和交互继续存在。
+- 高对比度、较大文字、低性能设备和用户关闭玻璃时，降低 refraction/depth，必要时关闭 blur；可读性优先于视觉效果。
+- 不在滚动回调中反复修改 blur 参数；背景、profile 和 shape 使用稳定对象，减少重组和 effect 重建。
+- UI-1 记录同一设备下 `CLASSIC`、`TINT_ONLY` 和 `HAZE_GLASS` 的首屏时间、滚动帧时间、内存和崩溃/ANR；后续玻璃改动以该基线比较，目标为无崩溃/ANR，且 P95 帧时间相对经典模式回归控制在 20% 以内。
+- 诊断日志仅记录 `renderer`、`surfaceRole`、`blurEnabled`、`fallbackReason` 和窗口 profile，不写入用户壁纸 URI 或设备协议数据。
+
+**可读性和无障碍契约：**
+
+- 文本、开关、图标和状态颜色在 `HAZE_GLASS`、`TINT_ONLY`、`OPAQUE` 三种模式使用同一语义色和内容描述。
+- `readabilityStrength` 只增强内容底层遮罩，不改变业务状态，也不把低对比度文字涂成装饰色。
+- TalkBack/键盘焦点顺序由内容树决定，玻璃 surface 不拦截焦点；装饰性壁纸和边缘光学绘制均标记为无障碍装饰。
+- reduced motion 关闭形变、折射和边缘动画；状态变化仍提供文本/语义反馈。
+- UI-5 的高对比度和大字体验收中，允许自动切到 `OPAQUE`，但功能入口、资源语义和布局顺序保持一致。
+
+**Haze 迁移阶段与退出条件：**
+
+| 阶段 | Haze 工作 | 直接验收 |
+|---|---|---|
+| UI-0 | 盘点所有 `HazeState`、`hazeSource`、`hazeEffect`、玻璃参数和截图 | 形成调用清单、surface 数量和资源基线 |
+| UI-1 | 建立 `GlassHost`、`SurfaceRenderer`、`GlassTokenResolver` 和三档 fallback | 旧页面可运行；公共 preview 覆盖三种 renderer |
+| UI-2 | typed state/event 与渲染器解耦，Device 组件去除 Haze 参数 | feature 目录无 Haze import；动作状态与渲染模式独立 |
+| UI-3 | `AppScaffold` 接管背景和共享 HazeState，迁移 Home/Scan/Permission | 每个入口只创建一个 host/source，路由切换无重复 source |
+| UI-4 | 按 SurfaceRole 迁移 Device/Gesture/Stats/Terminal | 玻璃卡数量、滚动性能、能力状态和美术资源映射满足基线 |
+| UI-5 | Settings 迁移、fallback/无障碍收口、移除 facade 的页面依赖 | 只剩 foundation 层 Haze import；可通过开关回退 classic |
+
+Haze 相关变更的回退点固定为 `SurfaceRenderMode.OPAQUE` 或 `UiDisplayMode.CLASSIC`。任何玻璃渲染问题先回退 surface，不回退 `EarbudState`、连接管理或设备功能代码。
+
 ### 3.6 UI 迁移阶段
 
 所有 UI 阶段都按“实现一层 → JVM/静态检查 → GitHub Actions 构建 → 定向界面/实机验证 → 文档回写 → 可回退提交”执行。阶段标题只有在该阶段的代码、测试、证据和回退记录齐备后才改为 `[x] 已完成`。当前仅完成规划，以下阶段均保持 `[ ]`。
@@ -521,6 +634,7 @@ ViewModel 负责把事件交给用例；用例再调用协议无关的控制接�
 交付物：
 
 - 建立 Home、Scan、Device、Gesture、ListeningStats、Settings、PermissionGuide、Terminal 的路由和截图基线。
+- 现有 `docs/screenshot_home.jpg`、`docs/screenshot_device.jpg` 作为初始视觉参照；补齐其余 route、classic/glass、深浅色和状态截图，不把现有截图直接当作新 UI 验收通过。
 - 记录断开、系统链路已连接、TransportReady、CoreInitializing、Ready、Degraded、Failed、无能力、动作 Pending/读回/失败等状态的显示矩阵。
 - 列出全部 `DeviceProps` 字段、`EarbudState`/`EarbudCapability` 映射、页面读取位置、`setProperty` 入口、设置 key 和导航触发来源。
 - 完成美术资源保留清单、`UiAssetCatalog` 映射表和旧 XML/主题资源的迁移边界。
@@ -593,10 +707,13 @@ UI 阶段不复用 BT 的 36/100 项完整矩阵，测试范围按实际改动�
 | 测试标签 | 对应阶段 | 验证内容 | 默认强度 |
 |---|---|---|---:|
 | `UI_FOUNDATION_SMOKE` | UI-1 | 公共外壳、主题、classic/glass surface、资源加载、深浅色 | 每个页面状态 1 次 |
+| `UI_GLASS_RENDERER_MATRIX` | UI-1/UI-5 | `HAZE_GLASS`、`TINT_ONLY`、`OPAQUE`、有/无壁纸、深浅色和高对比度 | 每个组合 1 次 |
+| `UI_GLASS_PERFORMANCE` | UI-1/UI-4 | Home/Device/Settings 首屏、滚动、切换 route 的帧时间、内存和 fallback 日志 | 每个 renderer 3 轮 |
 | `UI_STATE_EVENT_TARGETED` | UI-2 | ANC/低延迟/音质的 typed event、Pending、ACK/读回、失败重试和能力隐藏 | 每个改动能力 5 轮 |
 | `UI_SHELL_ROUTES` | UI-3 | Home/Scan/Permission、设备点击、扫描完成、Service/Tile 入口去重和返回行为 | 每个入口 3 轮 |
 | `UI_DEVICE_FEATURES` | UI-4 | 本轮迁移的设备组件、状态横幅、无能力/降级/断开展示 | 每个改动功能 5 轮 |
 | `UI_SETTINGS_PERSISTENCE` | UI-5 | 设置迁移、进程重启、语言/主题/壁纸/显示模式和横竖屏恢复 | 每个设置路径 3 轮 |
+| `UI_ACCESSIBILITY_MATRIX` | UI-5 | TalkBack、键盘焦点、较大文字、reduced motion、对比度和 opaque fallback | 每个 route 1 次 |
 | `UI_RELEASE_AUDIT` | UI-5 | 全 route、全状态、全部语言、无障碍和 classic/glass 的最终回归 | 1 个完整 UI 矩阵 |
 
 验收证据分为三层：GitHub Actions 的 `diff-check`/JVM/构建报告、模拟状态/Compose 或截图基线、需要真实设备的定向报告。只有真实设备验证涉及蓝牙动作时，才收集 `attemptId`、endpoint、channel、source 和阶段耗时；UI 视觉和导航改动只保留对应截图/交互日志。
