@@ -1039,7 +1039,7 @@ python3 scripts/analyze_connection_timing.py /path/to/fxxkHilife_diagnostic.txt
 
 #### BT-4：通用蓝牙状态输出（UI 接入前置） `[~] 进行中`
 
-> 本轮进度：`4.3.10 / 98` 在 `4.3.9 / 97` 基础上补齐同一 attempt 状态映射串行化、原子 snapshot 的 canonical channel、兼容 pending 投影、metadata-only core readiness 防误报，并加入 BT 收尾回归测试；Debug/Release 各 94 个单元测试、`git diff --check` 和 Debug/Release 构建均已通过。仍等待 `BT4_STATE_CONTRACT_5` 5 轮实机报告。下一阶段以该状态契约驱动 UI，不在本轮改页面。
+> 本轮进度：`4.3.10 / 98` 在 `4.3.9 / 97` 基础上补齐同一 attempt 状态映射串行化、原子 snapshot 的 canonical channel、兼容 pending 投影、metadata-only core readiness 防误报，并加入 BT 收尾回归测试；Debug/Release 各 94 个单元测试、`git diff --check` 和 Debug/Release 构建均已通过，`BT4_STATE_CONTRACT_5` 5 轮实机报告也已通过。下一阶段以该状态契约驱动 UI，但本轮按要求不改页面。
 
 - `[x]` `DeviceProps` 只作为兼容映射；可变状态流已移入 `EarbudStateStore`，不再让 Repository/UI 直接持有状态写入器。
 - `[x]` Huawei Adapter 输出通用 `EarbudState` 和能力集合；未知型号采用保守空能力集合，不再把未知型号解释为“全部能力”。
