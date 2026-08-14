@@ -1,12 +1,12 @@
 # UI 与蓝牙指令/连接重构规划
 
-> 状态：执行中；当前按“先蓝牙、后 UI”的顺序推进
+> 状态：执行中；BT-0 至 BT-4 已收口，当前重心转为 UI 全量重构（先规划，后实现）
 >
 > 基线：v4.2.6，2026-08-01
 >
 > 当前开发基线：v4.3.10 / versionCode 98，2026-08-14（BT-0 至 BT-4 蓝牙阶段已完成；BT-4 定向实机门已通过；UI-0 尚未开始）
 >
-> 目标：把当前“能工作但边界偏大”的 UI、蓝牙连接和 SPP 指令实现整理成可持续迭代的结构。先稳定现有 HUAWEI / HONOR + RFCOMM SPP 路线，再为后续型号和协议扩展留出边界。
+> 目标：把当前“能工作但边界偏大”的 UI、蓝牙连接和 SPP 指令实现整理成可持续迭代的结构。蓝牙阶段先稳定现有 HUAWEI / HONOR + RFCOMM SPP 路线；当前转入 UI 基本全量重构，统一视觉、交互、状态和导航，同时保留已经验证可用的美术资源。
 
 > 测试模式日志约定：Debug“自动实机测试”每次启动都会清空旧缓存，测试期间不设日志行数上限，改用约 160,000,000 字节的 UTF-8 缓存预算；导出的最终报告在写文件前再限制为 190,000,000 字节以内，确保小于 200 MB。正常日志策略在报告构建完成后恢复。
 
@@ -32,7 +32,7 @@
 - 关键日志或耗时结论。
 - 回退方式。
 
-当前已完成的是 **BT-0.1 的本地协议/能力代码审计、上游快照核对和协议固定样本收口**；这不代表所有型号和所有指令都已经实机验证。BT-0.2 的 FreeBuds 6i 定向连接速度复测已完成，BT-0.3 已完成路线决策；能力证据表和跨型号实机验证仍需分别闭环。
+当前 **BT-0 至 BT-4 已完成**：主验证设备的蓝牙状态契约门已通过，但结论仍限定在已有型号/固件/系统证据范围内，不外推为所有型号和所有指令均已实机验证。UI-0 尚未开始，下一步先完成 UI 基线与设计系统规划，再进入代码迁移。
 
 ### 0.1.1 定向实机测试规则
 
@@ -148,11 +148,12 @@
 | BT-2 CommandClient / Scheduler / Feature | [x] 已完成 | 2026-08-14；命令目录、单一 command lane、ANC 权威读回和低延迟路径已有 JVM/人工/定向实机证据；未验证能力仍按型号表标记 |
 | BT-3 ConnectionManager 收敛入口 | [x] 已完成 | 2026-08-14；`ConnectionLifecycle`、session/attempt/Job 所有权收敛，并由 `BT_MANAGER_RUNTIME_20` F10+初始化10 实机确认；`4.3.10 / 98` 补齐统计 flush、失败 session 断开、command 串行边界和同 attempt 状态映射收尾 |
 | BT-4 通用蓝牙状态输出 | [x] 已完成 | `4.3.10 / 98` 完成原子快照投影、canonical channel、pending/failed 语义收敛、空值规范化、metadata-only core readiness 防误报、严格 PASS 报告校验和 5A 协议边界修复；94/94 Debug、94/94 Release 单元测试、`git diff --check`、Debug/Release 构建通过；同一主验证设备 `BT4_STATE_CONTRACT_5` 实机 5/5 通过。页面尚未迁移消费 |
-| UI-0 UI 行为基线 | [ ] 未开始 | 截图、交互路径、字段读写清单和测试基线齐备 |
-| UI-1 UI State / Event | [ ] 未开始 | 页面通过 typed state/event 工作，保留兼容层 |
-| UI-2 页面与公共组件拆分 | [ ] 未开始 | Device/Settings 和公共外壳拆分完成 |
-| UI-3 全局状态与持久化 | [ ] 未开始 | `AppUiState`、`SettingsRepository`/DataStore 和导航事件收敛 |
-| UI-4 移除兼容层 | [ ] 未开始 | 页面不再依赖 raw property，classic/glass 共用同一能力判断 |
+| UI-0 UI 基线与资源清点 | [ ] 未开始 | 截图、交互路径、字段读写清单、资源保留清单和验收样本齐备；仅文档/诊断，不改页面 |
+| UI-1 设计令牌与渲染基础 | [ ] 未开始 | `ref/sys/comp` 令牌、统一主题、`AppScaffold`/公共 surface 和 `UiAssetCatalog` 建立 |
+| UI-2 typed State / Event / Navigation | [ ] 未开始 | 页面通过 typed state/event 工作，保留兼容层；连接和动作状态不再依赖瞬时快照 |
+| UI-3 全局外壳与主路由 | [ ] 未开始 | Home/Scan/Permission/导航入口迁移到统一外壳，消除重复建连/重复跳转 |
+| UI-4 设备功能页面 | [ ] 未开始 | Device/Gesture/ListeningStats/Terminal 完成新组件迁移，ANC/低延迟等能力按状态展示 |
+| UI-5 设置、持久化与兼容层收口 | [ ] 未开始 | Settings、主题/语言/壁纸、无障碍和 classic/glass 双模式完成；页面移除 raw property |
 
 ### 0.4 应用版本号方案
 
@@ -170,16 +171,19 @@
 | BT-3 连接管理收敛 | 4.3.6 | 94 | Manager 持有连接运行时状态、session 与生命周期 Job 的兼容收敛 |
 | BT-4 通用蓝牙状态输出 | 4.3.7 | 95 | 分层连接状态和通用状态输出 |
 | BT-4 状态契约 follow-up | 4.3.8 | 96 | 并发投影、能力域、空值语义和定向报告严格校验 |
-| BT-0 协议样本 follow-up / BT-4 测试包 | 4.3.9 | 97 | 5A 双字节长度、完整帧/参数/CRC 边界与固定上游样本；继续等待 BT-4 5 轮实机门 |
-| BT-3 收尾 / BT-4 follow-up 测试包 | 4.3.10 | 98 | 状态映射串行化、断开前统计 flush、失败 session 清理、command/handler 边界；继续等待 BT-4 5 轮实机门 |
-| UI-1 + UI-2 | 4.4.0 | 99 | UI State/Event 与页面组件拆分 |
-| UI-3 全局状态与持久化 | 4.4.1 | 100 | 全局状态、设置仓库和导航收敛 |
-| UI-4 移除兼容层 | 4.5.0 | 101 | 完成 UI 重构；若产生不兼容变更，再单独评估大版本 |
+| BT-0 协议样本 follow-up / BT-4 测试包 | 4.3.9 | 97 | 5A 双字节长度、完整帧/参数/CRC 边界与固定上游样本；BT-4 5 轮实机门后续在 4.3.10 收口 |
+| BT-3 收尾 / BT-4 follow-up 测试包 | 4.3.10 | 98 | 状态映射串行化、断开前统计 flush、失败 session 清理、command/handler 边界；BT4_STATE_CONTRACT_5 已 5/5 通过 |
+| UI-0 基线与资源清点 | — | — | 只改描述文件、清单和诊断基线，不发包、不提升版本 |
+| UI-1 设计令牌与渲染基础 | 4.4.0 | 99 | `UI_FOUNDATION`：统一主题、surface、公共外壳和美术资源语义映射 |
+| UI-2 typed State / Event / Navigation | 4.4.1 | 100 | `UI_STATE_EVENT`：页面状态、动作反馈、导航事件和兼容投影 |
+| UI-3 全局外壳与主路由 | 4.4.2 | 101 | `UI_SHELL_ROUTES`：Home/Scan/Permission 以及连接入口收敛 |
+| UI-4 设备功能页面 | 4.4.3 | 102 | `UI_DEVICE_FEATURES`：Device/Gesture/ListeningStats/Terminal 迁移 |
+| UI-5 设置、持久化与兼容层收口 | 4.5.0 | 103 | `UI_COMPLETE`：Settings、无障碍、双模式验收并移除 UI raw property；若产生不兼容变更，再单独评估大版本 |
 
 版本规则：
 
 - 只有能独立编译、测试、回归和回退的代码里程碑才提升版本号；只改本文件或只做诊断不提升版本。
-- `versionCode` 每次发布递增 1；BT-1 测试包使用 `88`，BT-1/BT-2 首轮修复包使用 `89`，热重连回归包使用 `90`，ANC 摘戴状态稳定性包使用 `91`，36 项定向回归包使用 `92`，状态/重试 follow-up 使用 `93`，BT-3 连接运行时收敛使用 `94`，BT-4 首轮契约包使用 `95`，状态契约 follow-up 使用 `96`，协议样本 follow-up 使用 `97`，BT-3 收尾/BT-4 follow-up 使用 `98`，后续以 `98` 为当前基准顺延。
+- `versionCode` 每次发布递增 1；BT-1 测试包使用 `88`，BT-1/BT-2 首轮修复包使用 `89`，热重连回归包使用 `90`，ANC 摘戴状态稳定性包使用 `91`，36 项定向回归包使用 `92`，状态/重试 follow-up 使用 `93`，BT-3 连接运行时收敛使用 `94`，BT-4 首轮契约包使用 `95`，状态契约 follow-up 使用 `96`，协议样本 follow-up 使用 `97`，BT-3 收尾/BT-4 follow-up 使用 `98`；UI 阶段除版本号外必须同时使用 `UI_FOUNDATION`、`UI_STATE_EVENT` 等明确构建标签，后续以 `98` 为当前基准顺延。
 - 统一使用 `python3 scripts/bump_version.py <versionName> <versionCode> "变更说明"` 更新应用版本、资源、README、`VERSION_MANAGEMENT.md` 和 `DEVELOPMENT_LOG.md`。
 - 阶段完成时，同时更新本文件的 `[x]`、`VERSION_MANAGEMENT.md` 的历史记录和 `DEVELOPMENT_LOG.md`；版本号不因提前勾选计划项而变更。
 
@@ -236,7 +240,7 @@ flowchart TD
 | Adapter | 动态插件系统，或静态内置注册表 | 采用静态 `EarbudAdapterRegistry`，先维护 `HuaweiOpenFreebudsAdapter` | 当前只有一个真实 Adapter；静态注册更容易构建、回退和审计。出现第二个真实 Adapter 后再增加优先级匹配 | Adapter 匹配测试、独立日志标识、型号能力表 |
 | Connection orchestration | Repository 继续全包，或 Manager/Repository 双重编排 | `EarbudConnectionManager` 作为唯一连接编排者；Repository 暂作兼容副作用门面 | Manager 持有 attempt/session/state/Job 生命周期，避免多个入口重复建连；下一阶段再收窄 host interface | `ConnectionLifecycleTest`、BT-3 `BT_MANAGER_RUNTIME_20` 实机报告 |
 | Statistics / logging | 立即把所有统计和日志拆成多个 Repository，或继续堆进 Manager | 已抽出 `ListeningStatsRepository`；日志继续由 `LogBuffer + regression report` 负责 | 统计拆分不改变连接时序；断开前由 Repository flush 最后一段连接时长，暂不增加一层无行为收益的 `LogRepository` | 统计单元测试、报告格式检查、连接回归无行为变化 |
-| UI state / rendering | 页面直接读 raw property，或先建立状态/事件再拆页面 | `Route -> ViewModel -> typed state/event -> Repository/UseCase`；统一 `AppScaffold`，保留 Haze 2.0 | 先稳定状态契约，再拆组件；玻璃渲染只属于 UI surface，不参与连接和持久化 | UI-0 基线、UI-1 状态/事件测试、classic/glass 双模式验证 |
+| UI state / rendering | 页面直接读 raw property，或先建立状态/事件再拆页面 | `Route -> ViewModel -> typed state/event -> Repository/UseCase`；统一 `AppScaffold`，保留 Haze 2.0 | 先完成 UI-0 基线，再按 UI-1 至 UI-5 分阶段替换；玻璃渲染只属于 UI surface，不参与连接和持久化 | UI-0 基线、UI-1/2 状态与事件测试、UI-5 classic/glass 双模式验证 |
 | Hardware validation | 每轮都跑完整矩阵，或只测本轮影响面 | 按改动定向测试；当前仅 `BT4_STATE_CONTRACT_5` 5 轮 | 状态契约改动只验证同一 attempt、Ready、能力集合、读回投影和 pending/failed 终态；不重复无关场景 | Debug-only 自动测试报告；Release 不暴露测试按钮 |
 
 ### 2.2 合并后的执行顺序
@@ -246,15 +250,16 @@ BT_MANAGER_RUNTIME_20 实机报告
   -> 收口 BT-1 / BT-2 / BT-3 的实机门
   -> BT-4：冻结通用连接状态、EarbudCapability、EarbudState 映射契约
   -> ListeningStatsRepository：从连接编排中移出统计
-  -> UI-0：截图、交互、DeviceProps 读写基线
-  -> UI-1：DeviceUiState / typed event / NavigationEvent
-  -> UI-2：页面与公共组件拆分
-  -> UI-3：AppUiState / SettingsRepository / DataStore
-  -> UI-4：删除 raw property 兼容层
+  -> UI-0：行为、状态、设置 key、美术资源和 DeviceProps 基线
+  -> UI-1：设计令牌、主题、AppScaffold、surface adapter、UiAssetCatalog
+  -> UI-2：AppUiState / DeviceUiState / typed event / NavigationEvent
+  -> UI-3：全局外壳与 Home/Scan/Permission 主路由
+  -> UI-4：Device/Gesture/ListeningStats/Terminal 功能页面
+  -> UI-5：Settings / DataStore / 无障碍 / classic-glass / raw property 收口
   -> 第二个真实 Adapter 接入评估
 ```
 
-每一步都按“代码 → JVM/静态测试 → 定向实机或 UI 验证 → 文档回写 → 可回退提交”的顺序执行。当前停在第一步；收到日志后只追加失败对应的测试或修复，不扩大为完整矩阵。
+每一步都按“代码 → JVM/静态测试 → 定向实机或 UI 验证 → 文档回写 → 可回退提交”的顺序执行。当前处于 UI-0 规划阶段；进入真实设备门后只追加本阶段对应的测试，不扩大为完整 BT 矩阵。
 
 ### 2.3 明确延后的方案
 
@@ -265,6 +270,72 @@ BT_MANAGER_RUNTIME_20 实机报告
 - 全量 `LogRepository`：现有 `LogBuffer` 和报告导出已经满足诊断需求，避免先做无收益的转发层。
 
 ## 3. 大项一：UI 规范与重构
+
+### 3.0 本轮 UI 重构范围、审计结论与资源保留边界
+
+本轮采用“全量 UI 重构、分阶段替换”的方式，而不是继续在旧页面上叠加样式修补。重构对象包含页面布局、主题令牌、组件、状态展示、导航、设置持久化、文案和无障碍；蓝牙协议、连接时序和已经通过 BT-4 的状态契约作为稳定依赖，UI 只通过 typed state/event 消费它们。
+
+#### 当前 UI 基线
+
+当前 UI 目录共 14 个 Kotlin 文件、约 185 KB、4410 行；主要复杂度集中在以下文件：
+
+| 文件 | 规模 | 当前职责 | 重构去向 |
+|---|---:|---|---|
+| `ui/DeviceScreen.kt` | 935 行 | 设备信息、ANC、音频、低延迟、双连、卡片布局和属性写入 | `device/route`、`device/state`、`device/components` |
+| `ui/SettingsScreen.kt` | 1002 行 | 主题、语言、壁纸、玻璃参数、连接偏好、调试和关于 | `settings/route`、`settings/state`、`settings/components`、`SettingsRepository` |
+| `ui/AppNavHost.kt` | 251 行 | 路由、自动跳转、主题/语言/壁纸、显示模式、Haze 状态 | `app/AppNavHost`、`AppUiState`、`AppScaffold` |
+| `ui/HomeScreen.kt` | 382 行 | 首页设备列表、连接状态和自动跳转 | `home/route`、`home/components`、统一导航事件 |
+| `ui/glass/AdaptiveGlass.kt` | 525 行 | 玻璃/经典 surface 的渲染分支和 Haze 调用 | `foundation/surface`；保留 Haze 适配器 |
+| `ui/GestureScreen.kt`、`ScanScreen.kt`、`ListeningStatsScreen.kt` | 245/201/189 行 | 手势、扫描、统计页面各自维护布局和状态 | 各自 route + typed state + 公共组件 |
+| `ui/TerminalActivity.kt`、`layout/*terminal*.xml` | 218 行及 XML | 终端调试入口和旧 View 布局 | 先保留调试能力，后迁移为统一终端 route |
+
+已确认的重构触发点：页面直接使用 `DeviceProps` 和 `setProperty(group, prop, value)`；多个页面重复实现 `Scaffold`、TopBar、卡片和间距；`SharedPreferences` 在 Composable 内直接读写；`CLASSIC`/`LIQUID_GLASS` 分支与 Haze 状态跨页面传递；连接成功后的跳转依赖异步调用返回瞬间的状态。上述问题全部纳入 UI 阶段，阶段完成前保留兼容投影，避免一次替换造成行为回退。
+
+#### 美术资源保留清单
+
+下列资源属于现有视觉资产，继续保留并在新 UI 中通过语义目录引用：
+
+- `app/src/main/res/drawable/ic_anc_awareness.xml`
+- `app/src/main/res/drawable/ic_anc_cancellation.xml`
+- `app/src/main/res/drawable/ic_anc_normal.xml`
+- `app/src/main/res/drawable/ic_earbuds_case.xml`
+- `app/src/main/res/drawable/ic_tile.xml`
+- `app/src/main/res/mipmap-hdpi/ic_launcher.png`
+- `app/src/main/res/mipmap-mdpi/ic_launcher.png`
+- `app/src/main/res/mipmap-xhdpi/ic_launcher.png`
+- `app/src/main/res/mipmap-xxhdpi/ic_launcher.png`
+- `app/src/main/res/mipmap-xxxhdpi/ic_launcher.png`
+
+以下资源也继续保留，但分别按“文案/主题/兼容布局/运行配置”迁移，不把它们误判为可删除的旧美术资源：
+
+- 多语言：`res/values/strings.xml`、`res/values-en/strings.xml`、`res/values-zh-rTW/strings.xml`。
+- 主题与颜色基线：`res/values/colors.xml`、`res/values/styles.xml`、`res/values/themes.xml`；新主题完成验收前保留，之后仅清理已经无引用的定义。
+- 旧终端布局：`res/layout/activity_terminal.xml`、`res/layout-land/activity_terminal.xml`；终端迁移完成前保留。
+- 运行配置：`res/xml/file_paths.xml`；仅随功能需要调整，保持文件分享契约稳定。
+
+资源迁移规则：
+
+1. UI-0 建立 `UiAssetCatalog` 的语义映射，例如 `AncMode.Awareness -> R.drawable.ic_anc_awareness`；页面只引用语义资源，不散落 `R.drawable` 判断。
+2. 新页面替换旧页面前，旧资源保持可编译、可回退；验证通过后再清理无引用资源，并在提交中记录删除清单。
+3. 图标、启动图和本地化 key 保持现有语义与兼容名称；新文案只增加统一的 i18n key，不在 Composable 中硬编码用户可见文本。
+4. 美术资源保留与布局规则重写分开处理：保留图形资产，不延续旧页面的颜色、圆角、阴影和间距组合。
+
+#### UI 重构完成形态
+
+```text
+AppUiState
+  ├─ AppScaffold / NavigationEvent
+  ├─ ThemeState / DisplayStyle / WallpaperState
+  └─ ConnectionSummary
+
+Route -> ViewModel -> UiState / UiEvent -> UseCase -> Repository / Manager
+                         └─ UiAssetCatalog + semantic UiTokens
+
+EarbudState + capabilities -> feature sections
+Haze 2.0 / Material 3       -> surface adapter only
+```
+
+完成后，页面可以整套替换而不改 Bluetooth Manager；经典和玻璃模式使用相同的内容、能力判定和交互状态，只切换 surface/render profile。
 
 ### 3.1 现存问题
 
@@ -433,7 +504,7 @@ ViewModel 负责把事件交给用例；用例再调用协议无关的控制接�
 - Haze 只负责模糊、玻璃材质和渲染层，不参与连接、设备能力、页面导航或持久化状态。
 - `HazeState` 集中由 `AppScaffold` / `AdaptiveGlassSurface` 管理，页面和业务 ViewModel 不直接创建或修改它。
 - 普通模式与玻璃模式共享同一内容组件、`UiState` 和能力隐藏规则，只替换 surface/render profile。
-- Haze 依赖升级另开独立变更；UI-1 至 UI-4 期间不与状态、导航、组件拆分混合升级，避免难以定位构建和视觉回归。
+- Haze 依赖升级另开独立变更；UI-1 至 UI-5 期间不与状态、导航、组件拆分混合升级，避免难以定位构建和视觉回归。
 
 相关实现文件：
 
@@ -443,38 +514,94 @@ ViewModel 负责把事件交给用例；用例再调用协议无关的控制接�
 
 ### 3.6 UI 迁移阶段
 
-#### UI-0：建立基线 `[ ] 未开始`
+所有 UI 阶段都按“实现一层 → JVM/静态检查 → GitHub Actions 构建 → 定向界面/实机验证 → 文档回写 → 可回退提交”执行。阶段标题只有在该阶段的代码、测试、证据和回退记录齐备后才改为 `[x] 已完成`。当前仅完成规划，以下阶段均保持 `[ ]`。
 
-- 记录 Home、Scan、Device、Gesture、Settings 的截图和主要交互路径。
-- 列出所有 `DeviceProps` 字段、页面读取位置和写入入口。
-- 为 `EarbudStateMapper`、导航和关键选项映射补充单元测试。
+#### UI-0：行为、状态、资源基线 `[ ] 未开始`
 
-#### UI-1：先抽状态和事件 `[ ] 未开始`
+交付物：
 
-- 新增 `DeviceUiState`、`DeviceEvent` 和 `DeviceViewModel` 的事件入口。
-- 保留 `DeviceProps` 与旧 `setProperty` 作为兼容层。
-- 先迁移 ANC、低延迟、音质偏好三个高频控制项，验证 pending/读回/失败状态。
-- 增加 `ControlUiState` 和一次性 `NavigationEvent`；连接发起后由状态流驱动页面反馈，成功后由事件驱动导航。
-- 统一设备行点击、扫描完成自动连接、Service 自动连接和 Tile 连接命令的触发来源与去重规则。
+- 建立 Home、Scan、Device、Gesture、ListeningStats、Settings、PermissionGuide、Terminal 的路由和截图基线。
+- 记录断开、系统链路已连接、TransportReady、CoreInitializing、Ready、Degraded、Failed、无能力、动作 Pending/读回/失败等状态的显示矩阵。
+- 列出全部 `DeviceProps` 字段、`EarbudState`/`EarbudCapability` 映射、页面读取位置、`setProperty` 入口、设置 key 和导航触发来源。
+- 完成美术资源保留清单、`UiAssetCatalog` 映射表和旧 XML/主题资源的迁移边界。
+- 为 `EarbudStateMapper`、能力展示、关键选项映射和导航去重补充基线测试；本阶段不修改页面行为、不提升应用版本。
 
-#### UI-2：拆页面与公共组件 `[ ] 未开始`
+退出条件：基线清单可逐项回溯，任何现有页面的功能和资源都有“保留、迁移或废弃”的明确结论。
 
-- 将 `DeviceScreen` 拆成 `BatteryCard`、`NoiseControlSection`、`AudioSection`、`DualConnectSection`、`GestureEntryCard` 等独立组件。
-- 将 `SettingsScreen` 拆成主题、语言、壁纸、连接偏好、调试、关于等 section。
-- 抽出公共 `AppScaffold`、`AppTopBar`、`SettingsSection` 和 `SettingRow`。
+#### UI-1：设计令牌、主题和渲染基础 `[ ] 未开始`
 
-#### UI-3：收拢全局状态与持久化 `[ ] 未开始`
+交付物：
 
-- `AppNavHost` 只保留 route 和导航事件，不再管理具体设置写入。
-- 建立 `AppUiState`，统一主题、语言、壁纸、显示风格和连接摘要。
-- 将各类 `SharedPreferences` key 集中管理，迁移到 `SettingsRepository` / DataStore。
-- 连接摘要只展示当前设备的 SystemLink、ControlChannel 和 CoreReady 三个必要层级；详细阶段耗时放到诊断页。
+- 新增 `ui/foundation/tokens/UiTokens.kt`，按 `ref.*`、`sys.*`、`comp.*` 三层表达颜色、排版、间距、圆角、边框、层级和动效。
+- 新增统一 `AppTheme`、`AppScaffold`、`AppTopBar`、`SectionHeader`、`SettingRow`、`AsyncActionIndicator`、`ConnectionBanner`、`EmptyState`、`ErrorState`。
+- 建立 `UiAssetCatalog`，将 ANC 三种图标、耳机盒、Tile 图标映射为 `AncVisual`、`DeviceVisual` 等语义资源。
+- 将 `CLASSIC`/`LIQUID_GLASS` 收敛为同一内容树的两个 `SurfaceProfile`；Haze 2.0 只位于 surface adapter，保留 opaque/tint/blur 降级路径。
+- 统一 8dp 间距节奏、至少 44dp 触控目标、动态字体、深浅色、对比度和 reduced motion 的工程入口。
 
-#### UI-4：移除兼容依赖 `[ ] 未开始`
+退出条件：公共组件和 token 有预览/单元基线，旧页面仍可回退；新 surface 不改变连接和设备状态。
 
-- 所有页面改为消费 `EarbudState` 和 typed event。
-- 删除 UI 中的 raw group/prop、中文协议值映射和重复 option 组件。
-- 对 classic/glass 两种展示模式做同一组 UI 测试，确认能力隐藏规则一致。
+#### UI-2：typed State、Event 与 Navigation `[ ] 未开始`
+
+交付物：
+
+- 建立 `AppUiState`、`DeviceUiState`、`SettingsUiState`、`ControlUiState`、`UiActionState` 和一次性 `NavigationEvent`。
+- `DeviceViewModel` 由字符串透传层改为 typed event 入口；先迁移 ANC、低延迟、音质偏好三个高频动作。
+- 页面消费 `EarbudState` 和能力集合；`null` 表示未知/未提供，能力集合决定 section 是否出现。
+- 每个写操作区分 `Pending → Ack/Readback → Success`、`Failure` 和重试；页面不从日志文本猜测状态。
+- 连接发起、自动连接、设备点击、扫描完成、Service 和 Tile 统一使用 Manager command 与触发来源，导航只接收稳定状态和 `NavigationEvent`。
+
+退出条件：迁移的三个高频动作具备 pending、ACK/读回、失败提示和重试测试；迁移页面中不再出现厂商 `group/prop` 或协议字节。
+
+#### UI-3：全局外壳与主路由 `[ ] 未开始`
+
+交付物：
+
+- `AppNavHost` 只维护 route、back stack 和事件分发；主题、语言、壁纸、玻璃配置和连接摘要统一由 `AppUiState` 提供。
+- 迁移 Home、Scan、PermissionGuide 和首页设备列表，统一设备行、空状态、扫描中、扫描结束、连接中和失败状态。
+- 使用 `ConnectionSummary` 分开呈现 SystemLink、ControlChannel、CoreReady/Degraded；详情跳转由状态流驱动。
+- 统一返回、手动断开、自动重连、用户离开详情页和 ACL 断开的导航语义，保留 `attemptId`/触发来源用于诊断。
+
+退出条件：Home/Scan/Permission 的所有入口只产生一个连接命令和一个导航事件；旧 `AppNavHost` 的设置读写和重复连接判断全部移出。
+
+#### UI-4：设备功能页面 `[ ] 未开始`
+
+交付物：
+
+- 将 `DeviceScreen` 拆为 `BatteryCard`、`NoiseControlSection`、`AudioSection`、`LowLatencyRow`、`DualConnectSection`、`GestureEntryCard`、`DeviceInfoSection` 等独立组件。
+- 迁移 Gesture、ListeningStats 和 Terminal；Terminal 先保持 Debug/诊断能力与旧 XML 回退，最后再切换统一 route。
+- 按 `EarbudCapability` 控制 section 可见性；未知、未验证和失败能力只显示结构化降级状态，不展示伪造的默认值。
+- 所有设备功能使用同一 `SettingRow`、选择器、开关、确认反馈、错误重试和连接横幅；保留现有 ANC 美术资源并统一尺寸/语义。
+
+退出条件：Device/Gesture/ListeningStats/Terminal 在 classic 和 glass 下共用同一状态树；每个本轮改动的设备能力只做对应定向验证，不恢复无关的 36/100 项蓝牙矩阵。
+
+#### UI-5：设置、持久化、无障碍与兼容层收口 `[ ] 未开始`
+
+交付物：
+
+- 将 Settings 拆为主题、语言、壁纸、显示风格、连接偏好、调试、关于等 section；Composable 只发送事件，不直接读写 `SharedPreferences`。
+- 集中迁移设置 key 到 `SettingsRepository`，按需要落到 DataStore；处理旧 key 读取、一次性迁移和进程重启后的状态恢复。
+- 完成 light/dark、中文/English/繁體、横竖屏、较大文字、TalkBack/键盘焦点、对比度和 reduced motion 验收。
+- 对 classic/glass 运行同一页面和状态矩阵；确认资源映射、能力隐藏、错误反馈和导航行为一致。
+- `rg` 确认页面已无 raw `group/prop`、直接 `SharedPreferences` 和重复 option 映射后，才删除兼容 UI 代码；删除项单独记录，保证可回退。
+
+退出条件：全部 UI route 通过统一外壳、状态、事件、持久化和资源目录；旧页面只作为可回退提交保留，不再作为生产入口。
+
+### 3.7 UI 阶段的定向测试与目标受阻点
+
+UI 阶段不复用 BT 的 36/100 项完整矩阵，测试范围按实际改动选择：
+
+| 测试标签 | 对应阶段 | 验证内容 | 默认强度 |
+|---|---|---|---:|
+| `UI_FOUNDATION_SMOKE` | UI-1 | 公共外壳、主题、classic/glass surface、资源加载、深浅色 | 每个页面状态 1 次 |
+| `UI_STATE_EVENT_TARGETED` | UI-2 | ANC/低延迟/音质的 typed event、Pending、ACK/读回、失败重试和能力隐藏 | 每个改动能力 5 轮 |
+| `UI_SHELL_ROUTES` | UI-3 | Home/Scan/Permission、设备点击、扫描完成、Service/Tile 入口去重和返回行为 | 每个入口 3 轮 |
+| `UI_DEVICE_FEATURES` | UI-4 | 本轮迁移的设备组件、状态横幅、无能力/降级/断开展示 | 每个改动功能 5 轮 |
+| `UI_SETTINGS_PERSISTENCE` | UI-5 | 设置迁移、进程重启、语言/主题/壁纸/显示模式和横竖屏恢复 | 每个设置路径 3 轮 |
+| `UI_RELEASE_AUDIT` | UI-5 | 全 route、全状态、全部语言、无障碍和 classic/glass 的最终回归 | 1 个完整 UI 矩阵 |
+
+验收证据分为三层：GitHub Actions 的 `diff-check`/JVM/构建报告、模拟状态/Compose 或截图基线、需要真实设备的定向报告。只有真实设备验证涉及蓝牙动作时，才收集 `attemptId`、endpoint、channel、source 和阶段耗时；UI 视觉和导航改动只保留对应截图/交互日志。
+
+当某一阶段代码完成并进入真实设备或人工交互门时，将该阶段标题改为 `[~] 目标受阻：等待实测报告`，并在本文件记录测试标签、构建标签、设备/系统、步骤、期望结果和报告路径；报告返回后只修复该阶段对应问题，再把状态改为 `[x]` 或继续保持 `[~]`。当前尚未进入 UI-0 实现，也未创建 UI 测试包。
 
 ## 4. 大项二：蓝牙指令与连接重构
 
@@ -847,7 +974,7 @@ ControlChannelState
 
 ### 4.7 蓝牙迁移阶段
 
-#### BT-0：协议与连接基线 `[~] 进行中`
+#### BT-0：协议与连接基线 `[x] 已完成`
 
 - 保存当前实机日志样本：连接、初始化、ANC 切换、低延迟切换、断开、重连、双连枚举。
 - `[x]` 为 `HuaweiSppPackage` / `HuaweiSppFramer` 添加分片、粘包、跨读取 magic、嵌套包和非法长度测试；固定样本位于 `app/src/test/resources/fixtures/huawei_spp/`。
@@ -1037,18 +1164,18 @@ python3 scripts/analyze_connection_timing.py /path/to/fxxkHilife_diagnostic.txt
 - `[x]` 入口去重的地址边界、扫描终态回调闸门、`SystemBluetoothMonitor`、ACL typed cleanup、session registry、attempt coordinator 以及连接运行时 Job/state 所有权已补齐；本轮继续将 Manager 依赖收窄为 `ConnectionManagerHost`，并将听音统计抽为 `ListeningStatsRepository`，不改变连接路径。
 - `[x]` `4.3.10 / 98` 收尾了同一 attempt 的 `syncProps()` 串行化、失败 Transport 的 session 断开、断开前听音统计 flush 和 Manager command 边界串行化；这些改动只收紧生命周期，不改变已验证的 RFCOMM endpoint/channel。
 
-#### BT-4：通用蓝牙状态输出（UI 接入前置） `[~] 进行中`
+#### BT-4：通用蓝牙状态输出（UI 接入前置） `[x] 已完成`
 
-> 本轮进度：`4.3.10 / 98` 在 `4.3.9 / 97` 基础上补齐同一 attempt 状态映射串行化、原子 snapshot 的 canonical channel、兼容 pending 投影、metadata-only core readiness 防误报，并加入 BT 收尾回归测试；Debug/Release 各 94 个单元测试、`git diff --check` 和 Debug/Release 构建均已通过，`BT4_STATE_CONTRACT_5` 5 轮实机报告也已通过。下一阶段以该状态契约驱动 UI，但本轮按要求不改页面。
+> 完成记录：`4.3.10 / 98` 在 `4.3.9 / 97` 基础上补齐同一 attempt 状态映射串行化、原子 snapshot 的 canonical channel、兼容 pending 投影、metadata-only core readiness 防误报，并加入 BT 收尾回归测试；Debug/Release 各 94 个单元测试、`git diff --check` 和 Debug/Release 构建均已通过，`BT4_STATE_CONTRACT_5` 5 轮实机报告也已通过。下一阶段以该状态契约驱动 UI，页面迁移尚未开始。
 
 - `[x]` `DeviceProps` 只作为兼容映射；可变状态流已移入 `EarbudStateStore`，不再让 Repository/UI 直接持有状态写入器。
 - `[x]` Huawei Adapter 输出通用 `EarbudState` 和能力集合；未知型号采用保守空能力集合，不再把未知型号解释为“全部能力”。
-- 先稳定通用 `EarbudState`、能力集合和分层连接状态的输出契约；当前契约代码已完成，下一小阶段才改页面。
-- UI-1 再通过 typed state/action 消费该契约；UI-4 完成后删除 raw property 依赖。
+- `[x]` 通用 `EarbudState`、能力集合和分层连接状态的输出契约已完成，页面迁移从 UI-2 开始。
+- UI-2 至 UI-4 通过 typed state/action 逐页消费该契约；UI-5 完成后删除 raw property 依赖。
 
 ## 5. 两项工作的依赖与执行顺序
 
-执行顺序固定为**先完成蓝牙，再开始 UI**，不交叉推进会改变连接时序的 UI 代码：
+执行顺序固定为**先完成蓝牙，再开始 UI**；BT-0 至 BT-4 已收口，UI 阶段按以下顺序推进：
 
 1. **BT-0.1 `[x]`**：完成协议/能力本地审计，冻结 `v4.2.6 / versionCode 87` 基线。
 2. **BT-0.2 `[x]`**：已在主验证设备完成连接速度与生命周期定向复测，并记录 P50/P95；结论范围限定为 FreeBuds 6i / Android 36 / firmware unknown。
@@ -1057,11 +1184,12 @@ python3 scripts/analyze_connection_timing.py /path/to/fxxkHilife_diagnostic.txt
 5. **BT-2 `[x]`**：`CommandClient`、`CommandScheduler`、命令目录和 ANC/低延迟读回路径已完成当前主设备门；未验证型号仍保守处理。
 6. **BT-3 `[x]`**：attempt/session 竞态、连接运行时状态/Job 句柄、Manager host 接口和统计职责已完成当前收尾，`4.3.6 / 94` F10/初始化10 已通过。
 7. **BT-4 `[x]`**：`4.3.10 / 98` 已完成状态契约代码、5A 协议边界、JVM/静态检查和严格报告校验；同一主验证设备的 `BT4_STATE_CONTRACT_5` 5 轮实机报告已通过。
-8. **UI-0 `[ ]`**：蓝牙链路稳定后，再记录页面截图、交互和字段读写基线。
-9. **UI-1 `[ ]`**：建立 `DeviceUiState`、typed event 和导航事件，先保留旧属性兼容层。
-10. **UI-2 `[ ]`**：拆分页面和公共组件，继续保持 Haze 2.0 与 Material 3 双展示模式。
-11. **UI-3 `[ ]`**：收拢 `AppUiState`、设置持久化和导航状态。
-12. **UI-4 `[ ]`**：移除 raw property/兼容层，完成 classic/glass 共用状态和能力判断。
+8. **UI-0 `[ ]`**：建立全 route、状态、交互、字段、设置 key 和美术资源基线；只做规划/诊断，不改页面。
+9. **UI-1 `[ ]`**：建立 `ref/sys/comp` 设计令牌、统一主题、`AppScaffold`、公共组件、surface adapter 和 `UiAssetCatalog`。
+10. **UI-2 `[ ]`**：建立 `AppUiState`、`DeviceUiState`、typed event、`NavigationEvent` 和动作反馈；先迁移 ANC/低延迟/音质。
+11. **UI-3 `[ ]`**：收拢 App 外壳与 Home/Scan/Permission 主路由，消除重复导航和连接入口状态判断。
+12. **UI-4 `[ ]`**：迁移 Device/Gesture/ListeningStats/Terminal，统一能力 section、状态横幅和组件行为。
+13. **UI-5 `[ ]`**：迁移 Settings 与 DataStore/设置仓库，完成多语言、无障碍、classic/glass 双模式和 raw property 兼容层清理。
 
 每个阶段都遵循：**改一层、加测试、跑实机、记录日志、更新本文件状态和版本记录、再迁移下一层**。未满足验收条件时保持 `[~]` 或 `[ ]`，不提前标记完成。
 
@@ -1075,9 +1203,13 @@ python3 scripts/analyze_connection_timing.py /path/to/fxxkHilife_diagnostic.txt
 - 连接页面可以分别呈现系统蓝牙已连接、控制通道已建立、核心能力初始化中、Ready 和 Degraded。
 - classic 与 glass 模式使用同一状态和能力判断，不能出现一套显示、另一套隐藏规则。
 - Home、Scan、Device、Settings、Gesture 的返回、断开、自动连接路径有导航测试。
+- ListeningStats、PermissionGuide 和 Terminal 也纳入统一 route/外壳；旧 XML 只作为迁移期间回退入口。
 - 设备行点击、扫描完成回调、Service 自动连接和 Tile 命令不会重复创建导航事件或连接尝试。
 - 连接成功后的详情页跳转由状态流/一次性导航事件驱动，不依赖连接方法返回瞬间的状态快照。
 - light/dark、中文/English/繁體、无能力、初始化降级和断开状态均可渲染。
+- 所有用户可见图标经过 `UiAssetCatalog` 语义映射；保留清单中的图标、启动图、多语言和终端资源在迁移期间可回退、可追溯。
+- 44dp 触控目标、动态字体、TalkBack/键盘焦点、对比度和 reduced motion 有明确检查结果；公共组件不再由各页面重复实现。
+- UI 测试报告标注 `UI_FOUNDATION_SMOKE`、`UI_STATE_EVENT_TARGETED`、`UI_SHELL_ROUTES`、`UI_DEVICE_FEATURES`、`UI_SETTINGS_PERSISTENCE` 或 `UI_RELEASE_AUDIT`，不以版本号单独作为阶段识别。
 
 ### 蓝牙指令/连接
 
@@ -1096,7 +1228,8 @@ python3 scripts/analyze_connection_timing.py /path/to/fxxkHilife_diagnostic.txt
 - BT-0.1 的协议固定样本已纳入版本控制并覆盖分片、粘包、跨读取 magic、非法长度、CRC/参数边界、EOF 和重连清理；测试名称或 fixture 路径可从报告回溯。
 - 型号能力证据表逐项记录型号、固件、端口、读/写/通知命令、证据路径和 `VERIFIED`/`PARTIAL`/`UNKNOWN`；只有同型号可复核实机或自动化证据才能标记 `VERIFIED`。
 - OpenFreebuds 研究结论可回溯到固定 commit、快照路径和许可证说明；上游资料、CI/JVM 测试和静态审计均不替代硬件实机门。
-- `BT_MANAGER_RUNTIME_20` 只有在同一主验证设备、同一 `4.3.6 / 94` APK 和同一 profile 完成 F10 + 初始化10，并记录报告路径、设备/固件、attemptId、阶段耗时和失败原因后，才能关闭 BT-1/BT-2/BT-3 的实机回归门。
+- `BT_MANAGER_RUNTIME_20` 已在同一主验证设备完成 `4.3.6 / 94` 的 F10 + 初始化10；后续 BT 改动仍须使用对应 profile 和新报告，不把旧报告扩展到新代码。
+- `BT4_STATE_CONTRACT_5` 已在 `4.3.10 / 98` 主验证设备完成 5/5；后续 UI 只消费已冻结的状态契约，UI 改动不重复蓝牙矩阵，除非同时修改 BT 状态映射。
 
 - 暂不新增新的厂商协议或 BLE 控制通道。
 - 暂不实现 Android 侧多条并发 SPP 控制 session。
@@ -1147,14 +1280,14 @@ GitHub 上点击 **Actions → Build & Release → Run workflow → Run workflow
 3. 当前状态只看本文件前文；附录 A 中的 `[x]`/`[ ]` 和旧版本描述仅用于还原当时上下文。
 4. 原始硬件报告、CI 输出和对话历史不复制进计划正文；正文只保留可检索的文件名、版本、profile、结论和证据路径。
 5. 能力证据表、协议 fixture 和上游快照必须保持可回溯：每条结论至少关联代码符号/测试名、固定来源路径或实机报告路径；来源缺失时不得提升状态。
-6. `BT_MANAGER_RUNTIME_20` 在同一主验证设备的 F10 + 初始化10 报告返回前，始终标记为待测；不得用 CI、JVM 测试、静态审计或旧版本报告替代。
+6. `BT_MANAGER_RUNTIME_20` 与 `BT4_STATE_CONTRACT_5` 的当前主验证门已经关闭；后续若修改 BT 状态/连接代码，重新建立对应的定向 profile 和报告，不把 UI 报告当成蓝牙证据。
 7. 每次文档维护完成后执行 `git diff --check`，只提交明确的文档文件，不提交 `.DS_Store`、`ci-output-*` 或本地对话记录。
 
 ### 9.1 本次历史文档维护记录
 
 - 2026-08-10：将合并前 `ARCHITECTURE_TODO.md` 的完整通用架构正文、接口示例、迁移步骤和 v4.1–v4.2.1 历史记录归档至本文件附录 A。
 - 2026-08-10：`ARCHITECTURE_TODO.md` 改为旧路径跳转说明，停止维护第二份阶段清单、版本号和测试门。
-- 本次仅维护文档，当前应用版本仍为 `4.3.6 / 94`，`BT_MANAGER_RUNTIME_20` 实机门状态不变。
+- 2026-08-14：BT-0 至 BT-4 已收口，当前应用版本为 `4.3.10 / 98`；本次将下一阶段重心改为 UI 全量重构，新增 UI-0 至 UI-5 顺序、美术资源保留清单、构建标签和定向验收规则；本次仍只维护文档，不提升版本、不进入 UI 实现。
 
 ---
 
