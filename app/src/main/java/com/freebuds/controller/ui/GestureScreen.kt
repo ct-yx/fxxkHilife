@@ -23,11 +23,10 @@ import com.freebuds.controller.data.DeviceProps
 import com.freebuds.controller.data.DeviceViewModel
 import com.freebuds.controller.i18n.I18n
 import com.freebuds.controller.i18n.i18n
-import com.freebuds.controller.ui.glass.AdaptiveCard
+import com.freebuds.controller.ui.foundation.components.Material3Card
 import com.freebuds.controller.ui.state.DeviceEvent
 import com.freebuds.controller.ui.state.GestureTarget
 import com.freebuds.controller.ui.foundation.components.AppTopBar
-import com.freebuds.controller.ui.foundation.surface.GlassScrollPerformance
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -48,7 +47,6 @@ fun GestureScreen(
             )
         }
     ) { padding ->
-        GlassScrollPerformance(listState)
         LazyColumn(
             modifier = Modifier
                 .fillMaxSize()
@@ -178,7 +176,7 @@ internal fun OptionSettingItem(
     onSelect: (String) -> Unit,
 ) {
     var expanded by remember(title) { mutableStateOf(false) }
-    AdaptiveCard(
+    Material3Card(
         displayMode = displayMode,
         modifier = Modifier
             .fillMaxWidth()

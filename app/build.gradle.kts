@@ -13,8 +13,8 @@ android {
         applicationId = "com.freebuds.controller"
         minSdk = 26
         targetSdk = 35
-        versionCode = 101
-        versionName = "4.4.2"
+        versionCode = 102
+        versionName = "4.5.0"
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
     }
@@ -71,10 +71,7 @@ dependencies {
     implementation("androidx.navigation:navigation-compose:2.9.2")
     debugImplementation("androidx.compose.ui:ui-tooling")
 
-    // UI-ERR-001: alpha05's typed blur/glass APIs are the production surface boundary.
-    implementation("dev.chrisbanes.haze:haze:2.0.0-alpha05")
-    implementation("dev.chrisbanes.haze:haze-blur:2.0.0-alpha05")
-    implementation("dev.chrisbanes.haze:haze-glass:2.0.0-alpha05")
+    // UI-MATERIAL3-BASELINE: standard Material 3 is the only production surface renderer.
     implementation("io.coil-kt:coil-compose:2.7.0")
 
     implementation("androidx.core:core-ktx:1.15.0")

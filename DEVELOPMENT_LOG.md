@@ -1,5 +1,7 @@
 # Development History
 
+> 当前生产 UI 基线：v4.5.0 / versionCode 102 只使用标准 Material 3；早期日志中的第三方玻璃路线仅用于历史追溯，不代表当前依赖、代码或测试要求。
+
 ---
 
 ## 2026-06-26
@@ -1570,3 +1572,21 @@
 - Haze effect 改回 `Adaptive` 与 `expandLayerBounds=false`，降低 GPU layer 和拖动期间的读回成本。
 - 本轮未修改 BT-0 至 BT-4；CI 产物已核验，下一道门是 `UI_GLASS_SCROLL_FIX` 的 Home/Device 定向实测。
 - GitHub Actions `31931436152` 已通过 diff-check、UI contract、Gradle 自动测试和 Debug/Release 构建；Debug SHA-256=`1ab62a8c823120783f459d2916dd654201df1d35ab484160b6bea0dbc7fd6731`，Release SHA-256=`0dc74de065a9380cb874b449c835879c1fea33fded65fd7719b4e44fac146dda`。
+
+## v4.5.0 (2026-08-16)
+
+### 发布
+- 移除玻璃渲染依赖，统一为标准 Material 3 UI 基线
+- versionCode: 102
+- versionName: 4.5.0
+- tag: v4.5.0
+
+### 本轮实现
+- 移除生产构建中的第三方玻璃渲染依赖，以及 source/effect 宿主、玻璃配置和玻璃模式设置入口。
+- `SurfaceRenderer` 收敛为单一标准 Material 3 `Card` 适配器；所有页面 surface 使用主题色、统一圆角、内边距和 tonal elevation。
+- 保留 ANC、耳机、Tile、壁纸和其它现有美术资源；壁纸只作为低透明度普通背景，不参与控件渲染。
+- 更新 UI 静态契约校验和 GitHub Actions 默认标签为 `UI_MATERIAL3_BASELINE`；本轮不修改 BT-0 至 BT-4。
+
+### 验证边界
+- 已通过 `python3 scripts/validate_ui_contract.py` 和 `git diff --check`；按项目约定未执行本地 Gradle，Android 编译与 JVM 测试交由 GitHub Actions。
+- CI 返回后只验证标准 Material 3 的首屏、滚动、设置迁移、壁纸显示、深浅色和资源显示，不重复蓝牙 A-F/36/100 项矩阵。

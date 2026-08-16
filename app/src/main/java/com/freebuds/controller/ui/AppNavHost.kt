@@ -24,7 +24,6 @@ import com.freebuds.controller.data.DeviceViewModel
 import com.freebuds.controller.i18n.I18n
 import com.freebuds.controller.i18n.LocalI18n
 import com.freebuds.controller.ui.foundation.components.AppScaffold
-import com.freebuds.controller.ui.glass.LocalLiquidGlassConfig
 import com.freebuds.controller.ui.state.SettingsEvent
 import com.freebuds.controller.ui.state.ConnectionSummary
 import com.freebuds.controller.ui.state.DeviceConnectionSession
@@ -57,8 +56,7 @@ fun AppNavHost(
     val currentLocale = settingsState.locale
     val wallpaperUri = settingsState.wallpaperUri
     val wallpaperScope = settingsState.wallpaperScope
-    val displayMode = settingsState.displayMode
-    val glassConfig = settingsState.glassConfig
+    val displayMode = UiDisplayMode.MATERIAL3
     val controlChannelState by viewModel.controlChannelState.collectAsStateWithLifecycle()
     val connection = remember(controlChannelState) { ConnectionSummary.from(controlChannelState) }
 
@@ -119,10 +117,7 @@ fun AppNavHost(
         }
     }
 
-    CompositionLocalProvider(
-        LocalLiquidGlassConfig provides glassConfig,
-        LocalI18n provides I18n.provider(currentLocale),
-    ) {
+    CompositionLocalProvider(LocalI18n provides I18n.provider(currentLocale)) {
         AppScaffold(
             displayMode = displayMode,
             wallpaperUri = wallpaperUri,

@@ -23,14 +23,13 @@ import com.freebuds.controller.data.DeviceViewModel
 import com.freebuds.controller.data.SavedDeviceConnection
 import com.freebuds.controller.i18n.i18n
 import com.freebuds.controller.ui.state.ConnectionSummary
-import com.freebuds.controller.ui.glass.AdaptiveCard
-import com.freebuds.controller.ui.glass.AdaptiveGlassBanner
-import com.freebuds.controller.ui.glass.GlassBannerTone
+import com.freebuds.controller.ui.foundation.components.Material3Card
+import com.freebuds.controller.ui.foundation.components.Material3Banner
+import com.freebuds.controller.ui.foundation.components.Material3BannerTone
 import com.freebuds.controller.ui.foundation.components.ConnectionBanner
 import com.freebuds.controller.ui.foundation.components.AppTopBar
 import com.freebuds.controller.ui.foundation.assets.UiAssetCatalog
 import com.freebuds.controller.ui.foundation.surface.SurfaceRole
-import com.freebuds.controller.ui.foundation.surface.GlassScrollPerformance
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -64,7 +63,6 @@ fun HomeScreen(
             )
         }
     ) { padding ->
-        GlassScrollPerformance(listState)
         LazyColumn(
             modifier = Modifier
                 .fillMaxSize()
@@ -126,7 +124,7 @@ fun HomeScreen(
             // 扫描卡片 → 导航到独立扫描页
             item {
                 Spacer(Modifier.height(8.dp))
-                AdaptiveCard(
+                Material3Card(
                     displayMode = displayMode,
                     role = SurfaceRole.FeatureCard,
                                 modifier = Modifier
@@ -167,7 +165,7 @@ private fun SavedDeviceItem(
 ) {
     val bondedLabel = i18n("home.bonded")
 
-    AdaptiveCard(
+    Material3Card(
         displayMode = displayMode,
         modifier = Modifier
             .fillMaxWidth()
@@ -351,12 +349,12 @@ private fun StatusBanner(
     isError: Boolean = false,
     isConnected: Boolean = false,
 ) {
-    AdaptiveGlassBanner(
+    Material3Banner(
         displayMode = displayMode,
         tone = when {
-            isError -> GlassBannerTone.Error
-            isConnected -> GlassBannerTone.Success
-            else -> GlassBannerTone.Info
+            isError -> Material3BannerTone.Error
+            isConnected -> Material3BannerTone.Success
+            else -> Material3BannerTone.Info
         },
         modifier = Modifier
             .fillMaxWidth()

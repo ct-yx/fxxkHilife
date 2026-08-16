@@ -15,7 +15,7 @@
 | Capability / State | 主计划 §2.1、§3.3、§4.7 BT-4 | `EarbudCapability + EarbudState + ControlChannelState`，`DeviceProps` 保留兼容映射 |
 | Adapter | 主计划 §2.1、§4.5 | 静态 `EarbudAdapterRegistry`，先维护 `HuaweiOpenFreebudsAdapter`；第二个真实 Adapter 出现后再扩展优先级匹配 |
 | Repository 瘦身 | 主计划 §2.1、§4.7 BT-3 | `EarbudConnectionManager` 统一连接编排；`EarbudStateStore` 管状态；BT-3 实机门关闭后再抽 `ListeningStatsRepository` |
-| UI 通用化 | 主计划 §3、§5 | `Route → ViewModel → typed state/event`，统一 `AppScaffold`，继续保留 Haze 2.0 |
+| UI 通用化 | 主计划 §3、§5 | `Route → ViewModel → typed state/event`，统一 `AppScaffold`，只保留标准 Material 3 surface |
 | 新 Adapter 接入准备 | 主计划 §2.2、§7 | 延后到 BT-1/2/3 收口和 UI 状态契约冻结之后，按真实资料逐个接入 |
 
 ## 当前执行点

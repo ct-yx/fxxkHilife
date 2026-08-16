@@ -2,7 +2,9 @@
 
 > 建立日期：2026-08-14
 >
-> 本文件是迁移前基线，不代表新 UI 已通过截图或真机渲染验收。UI-0 的代码迁移允许复用这里的字段和资源结论，但不得把旧页面截图当作新页面通过证据。
+> 本文件已按 v4.5.0 更新为标准 Material 3 基线。它不代表新 UI 已通过截图或真机交互验收；UI-0 的代码迁移允许复用这里的字段和资源结论，但不得把旧页面截图当作新页面通过证据。
+>
+> 旧第三方玻璃调用、配置和显示模式只在历史开发日志中保留，不属于当前 production graph。
 
 ## 1. 静态规模与路由
 
@@ -58,13 +60,13 @@ UI 页面不得再直接组合厂商 `group/prop`。现有 raw 写入位置已�
 | `fxxk_theme` | `wallpaper_scope` | `SettingsRepository.wallpaperScope` |
 | `fxxk_theme` | `log_max_lines` | `SettingsRepository.logMaxLines` |
 | `fxxk_theme` | `log_protocol_frames` | `SettingsRepository.protocolFrameLogging` |
-| `fxxk_ui` | `display_mode` | `SettingsRepository.displayMode` |
-| `fxxk_ui_glass` | `tint_alpha`, `readability_strength`, `refraction_strength`, `depth`, `corner_radius_dp`, `surface_profile` | `LiquidGlassConfig` 兼容模型，最终由 UI surface profile 消费 |
+| `fxxk_ui` | `display_mode` | 旧版本遗留 key；不再读取或写入，统一使用 Material 3 |
+| `fxxk_ui_glass` | `tint_alpha`, `readability_strength`, `refraction_strength`, `depth`, `corner_radius_dp`, `surface_profile` | 旧版本遗留 key；不再读取或写入，不迁移到当前设置 |
 | `fxxk_i18n` | `locale` | `SettingsRepository.locale` |
 | `settings` | `auto_low_latency` | `SettingsRepository.autoLowLatency` |
 | 新增 `fxxk_settings` | `update_channel`, `auto_check_enabled`, `auto_download_enabled`, `check_interval`, `last_check_at`, `last_notified_version_code`, `metered_network_allowed` | 更新流程专用，不进入蓝牙状态 |
 
-迁移规则：首次读取新仓库时从旧 key 复制一次；写入只写新仓库；旧 key 在 UI-5 验收完成前保留读取兼容。
+迁移规则：主题、语言、壁纸、日志和设备偏好首次读取新仓库时从对应旧 key 复制一次；写入只写新仓库；`display_mode` 与 `fxxk_ui_glass` 下的旧渲染参数不再读取、不再写入，也不迁移到当前设置。
 
 ## 4. 美术与兼容资源
 
@@ -105,24 +107,21 @@ update.json -> versionCode 比较 -> HTTPS 临时文件
 
 自动检查和下载不依赖蓝牙 Service、ACL、扫描或连接 attempt；自动安装不绕过系统确认。
 
-## 6. 玻璃渲染基线
+## 6. 标准 Material 3 渲染基线
 
-迁移前静态调用：
+v4.5.0 的生产渲染路径只有标准 Material 3：
 
-- `AppNavHost` 创建一个共享 `HazeState` 并挂载一个 `hazeSource`。
-- `AdaptiveGlass.kt` 的卡片、面板和横幅使用旧嵌套 effect DSL。
-- Home、Scan、Device、Gesture、ListeningStats、Settings 透传 `UiDisplayMode` 和 `HazeState?`。
-- 当前默认 `UiDisplayMode` 是 `CLASSIC`，因此默认路径不会挂载模糊 effect；这解释了“依赖存在但看不到效果”的一部分现象。
-
-UI-1 迁移后只允许 `ui/foundation/surface` 直接导入渲染库：
+- `SurfaceRenderer.kt` 只提供 `SurfaceRenderMode.Material3`，使用 Material 3 `Card`、`CardDefaults`、`Surface`、主题色和 tonal elevation。
+- `AppScaffold` 绘制普通 `MaterialTheme.colorScheme.background`；可选壁纸只作为低透明度普通背景图片，不作为控件渲染输入。
+- Home、Scan、Device、Gesture、ListeningStats、Settings 使用 `Material3Card`、`Material3Panel`、`Material3Banner` 或 Material 3 原生组件；页面不创建背景采样、模糊、折射或 effect/source。
+- `UiDisplayMode` 仅保留 `MATERIAL3` 兼容值，设置页不再提供显示模式、玻璃参数或渲染器选择。
 
 ```text
-GlassHost -> BackgroundLayer -> shared source
-          -> SurfaceRenderer
-             HazeGlass -> HazeBlur -> Tint -> Opaque
+MaterialTheme background -> optional wallpaper image -> AppScaffold -> Route content
+                                        \-> Material3Card / Material3Panel / Material3Banner
 ```
 
-需要运行证据的项目：`renderer`、`sourceAttached`、`effectSurfaceCount`、`fallbackReason`、classic/glass 截图和代表性设备性能。
+需要运行证据的项目：Material 3 首屏截图、深浅色、无壁纸/有壁纸、滚动 P95/jank、触控目标、TalkBack/焦点顺序和现有美术资源显示；不再记录 source、effect 数量或第三方 renderer。
 
 ## 7. UI-0 验收状态
 
@@ -132,21 +131,21 @@ GlassHost -> BackgroundLayer -> shared source
 - `DeviceProps` 到 `EarbudState`/`EarbudCapability` 的迁移表。
 - 设置 key 和更新旧草稿清单。
 - 资源保留与兼容边界。
-- 迁移前 Haze 调用和默认经典路径的静态基线。
+- 标准 Material 3 surface、普通壁纸背景和默认主题路径的静态基线。
 
 待实测/截图：
 
-- 各 route 的 classic/glass、深浅色和状态截图。
-- 真实输入下的 Glass/Blur/Tint/Opaque renderer 诊断。
+- 各 route 的 Material 3、深浅色和状态截图。
+- 无壁纸/有壁纸普通背景、滚动和 Material 3 surface 诊断。
 - 大字体、TalkBack、横竖屏和进程重建的 UI 证据。
 
-因此 UI-0 记录为 `[~] 进行中：等待 UI 基线截图与运行诊断`，不把文档完成误记为 UI-0 完成。
+因此 UI-0 记录为 `[~] 目标受阻：等待 Material 3 基线截图与运行诊断`，不把文档完成误记为 UI-0 完成。
 
 ## 8. 当前静态门
 
 `scripts/validate_ui_contract.py` 已纳入 `scripts/run_ci_checks.sh`，在 Android 构建前检查：
 
-- 只有 `ui/foundation/surface/SurfaceRenderer.kt` 可以直接调用渲染库。
+- `SurfaceRenderer.kt` 是唯一的 Material 3 surface adapter；生产 UI 不得出现第三方渲染依赖或调用。
 - 页面通过 `SettingsEvent`/typed state 交互，不直接持有设置存储或原始属性写入。
 - `AppNavHost` 使用统一 `AppScaffold`，旧更新草稿已移除。
 

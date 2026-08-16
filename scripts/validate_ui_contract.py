@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Validate the UI migration boundaries without requiring an Android device."""
+"""Validate the standard Material 3 UI boundary without requiring a device."""
 
 from __future__ import annotations
 
@@ -28,51 +28,42 @@ def fail(message: str) -> None:
 def main() -> int:
     if not SURFACE_ADAPTER.is_file():
         fail("SurfaceRenderer.kt is missing")
+
     surface_text = SURFACE_ADAPTER.read_text(encoding="utf-8")
     for required in (
-        "hazeSource",
-        "hazeGlass",
-        "hazeBlur",
-        "GlassStyle",
-        "GlassOptics",
-        "backgroundAvailable",
-        "sourceAttached",
-        "SurfaceRenderMode",
-        "hardwareAccelerated",
+        "enum class SurfaceRenderMode { Material3 }",
+        "CardDefaults.cardColors",
+        "MaterialTheme.colorScheme.surfaceVariant",
+        "SurfaceRole",
+        "UiDisplayMode.MATERIAL3",
     ):
         if required not in surface_text:
-            fail(f"surface adapter does not contain {required}")
+            fail(f"Material 3 surface adapter does not contain {required}")
 
     build_text = (ROOT / "app/build.gradle.kts").read_text(encoding="utf-8")
-    for required in (
-        'dev.chrisbanes.haze:haze:2.0.0-alpha05',
-        'dev.chrisbanes.haze:haze-blur:2.0.0-alpha05',
-        'dev.chrisbanes.haze:haze-glass:2.0.0-alpha05',
-    ):
-        if required not in build_text:
-            fail(f"Haze alpha05 dependency is missing: {required}")
-    if "2.0.0-alpha03" in build_text:
-        fail("old Haze alpha03 dependency remains in the production build")
-    if "dev.chrisbanes.haze:haze-blur-materials" in build_text:
-        fail("haze-blur-materials has no production call site")
+    if "dev.chrisbanes.haze" in build_text.lower():
+        fail("the production build still declares the removed rendering library")
+    if 'androidx.compose.material3:material3' not in build_text:
+        fail("Material 3 dependency is missing")
     if 'androidx.lifecycle:lifecycle-runtime-compose:2.11.0' not in build_text:
         fail("lifecycle-aware Compose collection dependency is missing")
 
-    if "compileSdk = 37" not in build_text:
-        fail("alpha05 requires compileSdk 37")
-    if "hazeGlass" not in surface_text or "hazeBlur" not in surface_text:
-        fail("glass and blur must remain separate renderer call sites")
-    if "hazeEffect" in surface_text or "blurEffect" in surface_text:
-        fail("legacy alpha03 effect path remains in the production surface adapter")
-    if "source_unavailable" not in surface_text or "return SurfaceRenderMode.Material3" not in surface_text:
-        fail("missing visible Material 3 fallback for an unavailable background source")
-
-    for path in UI_ROOT.rglob("*.kt"):
-        if path == SURFACE_ADAPTER:
-            continue
-        text = path.read_text(encoding="utf-8")
-        if "dev.chrisbanes.haze" in text:
-            fail(f"direct rendering-library import outside adapter: {path.relative_to(ROOT)}")
+    production_text = "\n".join(
+        path.read_text(encoding="utf-8")
+        for path in UI_ROOT.rglob("*.kt")
+    ).lower()
+    for forbidden in (
+        "dev.chrisbanes.haze",
+        "hazeeffect",
+        "hazeglass",
+        "hazeblur",
+        "hazestate",
+        "liquidglass",
+        "glasshost",
+        "glassscrollperformance",
+    ):
+        if forbidden in production_text:
+            fail(f"removed rendering path remains in production UI: {forbidden}")
 
     for path in ROUTE_FILES:
         if not path.is_file():
@@ -106,9 +97,6 @@ def main() -> int:
     stable_key_requirements = {
         "HomeScreen.kt": "key = { it.address }",
         "ScanScreen.kt": "key = { it.device.address }",
-        # DeviceScreen keeps the dual-connect cards inside an isolated section so the parent
-        # LazyColumn does not rebuild on every props update; the section still keys each card by
-        # address through Compose's key() primitive.
         "DeviceScreen.kt": ("key = { it.address }", "key(device.address)"),
     }
     for filename, required in stable_key_requirements.items():
@@ -122,7 +110,7 @@ def main() -> int:
     if (ROOT / "app/src/main/java/com/freebuds/controller/data/UpdateChecker.kt").exists():
         fail("obsolete UpdateChecker.kt is still present")
 
-    print("ui contract OK: typed state/events, single surface adapter, and route boundaries")
+    print("ui contract OK: standard Material 3 surface, typed state/events, and route boundaries")
     return 0
 
 

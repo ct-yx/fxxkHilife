@@ -25,14 +25,13 @@ import com.freebuds.controller.data.DeviceViewModel
 import com.freebuds.controller.data.DeviceProps
 import com.freebuds.controller.i18n.I18n
 import com.freebuds.controller.i18n.i18n
-import com.freebuds.controller.ui.glass.AdaptiveCard
-import com.freebuds.controller.ui.glass.LiquidGlassPanel
+import com.freebuds.controller.ui.foundation.components.Material3Card
+import com.freebuds.controller.ui.foundation.components.Material3Panel
 import com.freebuds.controller.ui.state.DeviceEvent
 import com.freebuds.controller.ui.state.DualDeviceProperty
 import com.freebuds.controller.ui.state.ConnectionSummary
 import com.freebuds.controller.ui.foundation.components.AppTopBar
 import com.freebuds.controller.ui.foundation.assets.UiAssetCatalog
-import com.freebuds.controller.ui.foundation.surface.GlassScrollPerformance
 import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.map
 
@@ -124,7 +123,6 @@ fun DeviceScreen(
             )
         }
     ) { padding ->
-        GlassScrollPerformance(listState)
         LazyColumn(
             modifier = Modifier
                 .fillMaxSize()
@@ -266,7 +264,7 @@ private fun AncSection(viewModel: DeviceViewModel, displayMode: UiDisplayMode) {
     val syncedAncMode = displayAncMode ?: return
     Column {
         SettingsGroupHeader(i18n("device.group.anc"))
-        LiquidGlassPanel(
+        Material3Panel(
             displayMode = displayMode,
             modifier = Modifier.padding(horizontal = 16.dp, vertical = 6.dp),
         ) {
@@ -399,7 +397,7 @@ private fun DualConnectSection(viewModel: DeviceViewModel, displayMode: UiDispla
 private fun ListeningStatsEntry(displayMode: UiDisplayMode, onClick: () -> Unit) {
     Column {
         SettingsGroupHeader(i18n("stats.title"))
-        AdaptiveCard(
+        Material3Card(
             displayMode = displayMode,
             modifier = Modifier
                 .fillMaxWidth()
@@ -429,7 +427,7 @@ private fun GestureEntry(viewModel: DeviceViewModel, displayMode: UiDisplayMode,
 
     Column {
         SettingsGroupHeader(i18n("device.group.gestures"))
-        AdaptiveCard(
+        Material3Card(
             displayMode = displayMode,
             modifier = Modifier
                 .fillMaxWidth()
@@ -462,7 +460,7 @@ private fun AboutSection(viewModel: DeviceViewModel, displayMode: UiDisplayMode,
         props.firmwareVersion?.let { firmware ->
             InfoItem(displayMode, Icons.Default.SystemUpdate, i18n("device.firmware"), firmware)
         }
-        AdaptiveCard(
+        Material3Card(
             displayMode = displayMode,
             modifier = Modifier
                 .fillMaxWidth()

@@ -16,8 +16,8 @@
   <a href="https://github.com/ct-yx/fxxkHilife/issues">Report / Join testing</a>
 </p>
 
-> **Current development build: v4.4.2 (versionCode 101)**
-> **Current public release: v4.3.10 (versionCode 98)**; the BT refactor is closed, while v4.4.2 is the second targeted glass-visibility and list-scroll performance fix build with GitHub Actions passed and runtime evidence pending.
+> **Current development build: v4.5.0 (versionCode 102)**
+> **Current public release: v4.3.10 (versionCode 98)**; the BT refactor is closed, while v4.5.0 establishes a single standard Material 3 UI baseline and is waiting for the GitHub Actions build.
 
 ---
 
@@ -29,16 +29,16 @@ Full introduction, download links, demos, and development logs are available on 
 
 ---
 
-## v4.4.2: second targeted glass-visibility and list-scroll performance fix build
+## v4.5.0: standard Material 3 UI baseline
 
-This build does not change BT-0 through BT-4. It continues the UI-ERR-001/002 work under the `UI_GLASS_SCROLL_FIX` build label:
+This build does not change BT-0 through BT-4. It removes the previous glass-rendering route and establishes a predictable standard Material 3 baseline:
 
-- A small set of Hero/FeatureCard surfaces uses the real typed glass renderer; ordinary list rows use a visible low-cost translucent glass skin without per-row Haze effects.
-- Liquid mode always supplies a static colour field; an optional wallpaper enriches it instead of being a prerequisite, so missing wallpaper no longer hides the effect behind Material 3.
-- Captured-content effects and source sampling pause during LazyColumn drags and restore when idle; Home, Device, Settings, Scan, Gesture, and statistics screens share the same policy.
-- The detail page collects narrow projections for battery, ANC, audio, dual-connect, and about sections, so unrelated protocol updates do not rebuild the whole list; dual-connect cards remain address-keyed.
+- The production graph no longer declares or calls a third-party glass-rendering dependency; every route uses Material 3 `Card`, `Surface`, `TopAppBar` and theme roles.
+- Display-mode switching, glass-parameter persistence, effect/source hosts and scroll-time effect branches are removed, avoiding invisible configuration and scroll jank.
+- Existing ANC, earbud, Tile and wallpaper assets remain; wallpaper is now an ordinary background image and is not a rendering input.
+- Bluetooth connection, command, state-contract and hardware-test code are outside this build's change scope.
 
-Only source and static-contract work is complete so far. GitHub Actions, screenshots/runtime diagnostics, and targeted interaction reports are still required; testing covers this glass and detail-scroll change only—not the BT A-F/36/100-round matrices.
+The build label is `UI_MATERIAL3_BASELINE`. Testing covers only the changed UI surface, settings migration, route boundaries and asset rendering—not the BT A-F/36/100-round matrices.
 
 ---
 
@@ -62,7 +62,7 @@ This release closes the Bluetooth work first. It does not include the not-yet-st
 
 ### Next phase
 
-UI-0 will first establish page, state, interaction, settings-key, and art-asset baselines, followed by the UI-1 through UI-5 migration. Existing art assets are retained. Haze 2.0 remains a candidate surface-rendering layer and will be accepted only after real rendering, fallback, and screenshot checks; declaring the dependency alone is not UI completion evidence.
+UI-0 will first establish page, state, interaction, settings-key, and art-asset baselines, followed by the UI-1 through UI-5 migration. Existing art assets are retained. The current UI accepts only standard Material 3 surfaces; future visual changes require screenshot and interaction evidence.
 
 ---
 
@@ -78,7 +78,7 @@ The project is still evolving quickly. Testers with more earbud models are very 
 
 ## Key features
 
-- **UI refactor test line**: v4.4.2 uses `UI_GLASS_SCROLL_FIX` for the second UI-ERR-001/002 visibility and list-scroll performance follow-up; existing art assets are retained, and screenshots, runtime diagnostics, accessibility, and interaction reports remain the acceptance evidence.
+- **UI refactor test line**: v4.5.0 uses `UI_MATERIAL3_BASELINE` for the single Material 3 surface, route boundaries, settings migration and existing art assets; GitHub Actions, screenshots, accessibility and interaction reports remain the acceptance evidence.
 
 - **Connection and auto-connect**: scan HUAWEI / HONOR earbuds and save known devices; the foreground service detects saved earbuds already connected by Android Bluetooth and opens the app SPP control channel with backoff.
 - **ANC / Awareness / Off**: switch ANC modes from the in-app pill slider, Quick Settings Tile, or persistent notification actions; on third-party Android phones, you can cycle ANC directly from the system quick settings panel without opening the app.

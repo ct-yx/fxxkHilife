@@ -33,13 +33,10 @@ import com.freebuds.controller.data.UpdateUiState
 import com.freebuds.controller.data.DeviceViewModel
 import com.freebuds.controller.i18n.i18n
 import com.freebuds.controller.i18n.I18nLocale
-import com.freebuds.controller.ui.glass.AdaptiveCard
-import com.freebuds.controller.ui.glass.GlassSurfaceProfile
-import com.freebuds.controller.ui.glass.LiquidGlassConfig
+import com.freebuds.controller.ui.foundation.components.Material3Card
 import com.freebuds.controller.ui.theme.ThemeMode
 import com.freebuds.controller.ui.foundation.components.AppTopBar
 import com.freebuds.controller.ui.foundation.assets.UiAssetCatalog
-import com.freebuds.controller.ui.foundation.surface.GlassScrollPerformance
 import com.freebuds.controller.ui.state.ConnectionSummary
 import com.freebuds.controller.ui.state.SettingsEvent
 import java.text.DateFormat
@@ -62,8 +59,7 @@ fun SettingsScreen(
     val themeMode = settingsState.themeMode
     val wallpaperUri = settingsState.wallpaperUri
     val wallpaperScope = settingsState.wallpaperScope
-    val displayMode = settingsState.displayMode
-    val glassConfig = settingsState.glassConfig
+    val displayMode = UiDisplayMode.MATERIAL3
     val locale = settingsState.locale
     val updateSettings = settingsState.updateSettings
     val isConnected = remember(controlChannelState) {
@@ -94,7 +90,6 @@ fun SettingsScreen(
             )
         }
     ) { padding ->
-        GlassScrollPerformance(listState)
         LazyColumn(
             modifier = Modifier
                 .fillMaxSize()
@@ -113,32 +108,12 @@ fun SettingsScreen(
                     }
                 )
             }
-            item {
-                DisplayModeSelector(
-                    displayMode = displayMode,
-                                current = displayMode,
-                    onSelect = { mode ->
-                        onEvent(SettingsEvent.SetDisplayMode(mode))
-                    },
-                )
-            }
-
             item { SettingsHeader(i18n("settings.language")) }
             item {
                 LanguageSelector(
                     displayMode = displayMode,
                                 current = locale,
                     onSelect = { onEvent(SettingsEvent.SetLocale(it)) },
-                )
-            }
-
-            // ── 个性化 ──
-            item { SettingsHeader(i18n("settings.personalization")) }
-            item {
-                LiquidGlassPersonalizationCard(
-                    displayMode = displayMode,
-                                config = glassConfig,
-                    onConfigChange = { onEvent(SettingsEvent.SetGlassConfig(it)) },
                 )
             }
 
@@ -277,7 +252,7 @@ fun SettingsScreen(
             item { SettingsHeader(i18n("settings.other_credits")) }
             item {
                 var expanded by remember { mutableStateOf(false) }
-                AdaptiveCard(
+                Material3Card(
                     displayMode = displayMode,
                                 modifier = Modifier
                         .fillMaxWidth()
@@ -363,7 +338,7 @@ private fun SettingsCard(
     supportingContent: @Composable (() -> Unit)? = null,
     trailingContent: @Composable (() -> Unit)? = null,
 ) {
-    AdaptiveCard(
+    Material3Card(
         displayMode = displayMode,
         modifier = modifier
             .fillMaxWidth()
@@ -429,7 +404,7 @@ private fun UpdateCard(
         is UpdateUiState.Available -> state.checkedAtMs
         else -> settings.lastCheckAtMs
     }
-    AdaptiveCard(
+    Material3Card(
         displayMode = displayMode,
         modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 6.dp),
     ) {
@@ -503,191 +478,12 @@ private fun formatUpdateTimestamp(timestampMs: Long): String =
     }
 
 @Composable
-private fun LiquidGlassPersonalizationCard(
-    displayMode: UiDisplayMode,
-    config: LiquidGlassConfig,
-    onConfigChange: (LiquidGlassConfig) -> Unit,
-) {
-    var expanded by remember { mutableStateOf(false) }
-    var advancedExpanded by remember { mutableStateOf(false) }
-    AdaptiveCard(
-        displayMode = displayMode,
-        modifier = Modifier
-            .fillMaxWidth()
-            .padding(horizontal = 16.dp, vertical = 6.dp),
-    ) {
-        Row(
-            modifier = Modifier.clickable { expanded = !expanded },
-            verticalAlignment = Alignment.CenterVertically,
-        ) {
-            Icon(Icons.Default.AutoAwesome, contentDescription = null)
-            Spacer(Modifier.width(12.dp))
-            Column(modifier = Modifier.weight(1f)) {
-                Text(i18n("settings.liquid_glass_personalization"), fontWeight = FontWeight.Bold)
-                Text(i18n("settings.liquid_glass_personalization_desc"), style = MaterialTheme.typography.bodySmall)
-            }
-            Icon(if (expanded) Icons.Default.ExpandLess else Icons.Default.ExpandMore, contentDescription = null)
-        }
-
-        AnimatedVisibility(visible = expanded) {
-            Column(modifier = Modifier.padding(top = 14.dp), verticalArrangement = Arrangement.spacedBy(14.dp)) {
-                // 渲染方案固定为最新主线，传统实现仅保留为代码兜底。
-                ConfigSegmentRow(
-                    title = i18n("settings.glass_blur"),
-                    subtitle = i18n("settings.glass_blur_desc"),
-                    options = listOf(
-                        i18n("settings.glass.transparent") to config.copy(tintAlpha = 0.08f, refractionStrength = 0.58f),
-                        i18n("common.default") to config.copy(tintAlpha = 0.12f, refractionStrength = 0.72f),
-                        i18n("settings.glass.misty") to config.copy(tintAlpha = 0.16f, refractionStrength = 0.86f),
-                    ),
-                    selectedIndex = when {
-                        config.tintAlpha < 0.10f -> 0
-                        config.tintAlpha > 0.14f -> 2
-                        else -> 1
-                    },
-                    onSelect = onConfigChange,
-                )
-                ConfigSegmentRow(
-                    title = i18n("settings.glass_refraction"),
-                    subtitle = i18n("settings.glass_lens_desc"),
-                    options = listOf(
-                        i18n("common.disabled") to config.copy(refractionStrength = 0.35f),
-                        i18n("common.default") to config.copy(refractionStrength = 0.72f),
-                        i18n("common.enhanced") to config.copy(refractionStrength = 0.92f),
-                    ),
-                    selectedIndex = when {
-                        config.refractionStrength < 0.50f -> 0
-                        config.refractionStrength > 0.82f -> 2
-                        else -> 1
-                    },
-                    onSelect = onConfigChange,
-                )
-                ConfigSegmentRow(
-                    title = i18n("settings.glass_depth"),
-                    subtitle = i18n("settings.glass_depth_desc"),
-                    options = listOf(
-                        i18n("common.disabled") to config.copy(depth = 0.16f),
-                        i18n("common.default") to config.copy(depth = 0.42f),
-                        i18n("common.enhanced") to config.copy(depth = 0.64f),
-                    ),
-                    selectedIndex = when {
-                        config.depth < 0.25f -> 0
-                        config.depth > 0.55f -> 2
-                        else -> 1
-                    },
-                    onSelect = onConfigChange,
-                )
-                ConfigSegmentRow(
-                    title = i18n("settings.glass_readability"),
-                    subtitle = i18n("settings.glass_readability_desc"),
-                    options = listOf(
-                        i18n("settings.glass.low") to config.copy(readabilityStrength = 0.12f),
-                        i18n("common.default") to config.copy(readabilityStrength = 0.28f),
-                        i18n("settings.glass.high") to config.copy(readabilityStrength = 0.48f),
-                    ),
-                    selectedIndex = when {
-                        config.readabilityStrength < 0.20f -> 0
-                        config.readabilityStrength > 0.40f -> 2
-                        else -> 1
-                    },
-                    onSelect = onConfigChange,
-                )
-
-                Row(
-                    modifier = Modifier.clickable { advancedExpanded = !advancedExpanded },
-                    verticalAlignment = Alignment.CenterVertically,
-                ) {
-                    Icon(Icons.Default.Tune, contentDescription = null)
-                    Spacer(Modifier.width(12.dp))
-                    Text(i18n("settings.advanced_mode"), modifier = Modifier.weight(1f), fontWeight = FontWeight.SemiBold)
-                    Icon(if (advancedExpanded) Icons.Default.ExpandLess else Icons.Default.ExpandMore, contentDescription = null)
-                }
-                AnimatedVisibility(visible = advancedExpanded) {
-                    Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
-                        GlassSliderRow(i18n("settings.glass.slider.tint"), config.tintAlpha, 0.04f..0.20f) {
-                            onConfigChange(config.copy(tintAlpha = it))
-                        }
-                        GlassSliderRow(i18n("settings.glass.slider.readability"), config.readabilityStrength, 0.00f..0.70f) {
-                            onConfigChange(config.copy(readabilityStrength = it))
-                        }
-                        GlassSliderRow(i18n("settings.glass.slider.refraction"), config.refractionStrength, 0.30f..1.00f) {
-                            onConfigChange(config.copy(refractionStrength = it))
-                        }
-                        GlassSliderRow(i18n("settings.glass.slider.depth"), config.depth, 0.10f..0.80f) {
-                            onConfigChange(config.copy(depth = it))
-                        }
-                        GlassSliderRow(i18n("settings.glass.slider.radius"), config.cornerRadiusDp, 16f..42f) {
-                            onConfigChange(config.copy(cornerRadiusDp = it))
-                        }
-                        ConfigSegmentRow(
-                            title = i18n("settings.surface_profile"),
-                            subtitle = i18n("settings.edge_highlight_desc"),
-                            options = listOf(
-                                i18n("settings.surface.rounded") to config.copy(surfaceProfile = GlassSurfaceProfile.Rounded),
-                                i18n("settings.surface.squircle") to config.copy(surfaceProfile = GlassSurfaceProfile.Squircle),
-                                i18n("settings.surface.circle") to config.copy(surfaceProfile = GlassSurfaceProfile.Circle),
-                            ),
-                            selectedIndex = when (config.surfaceProfile) {
-                                GlassSurfaceProfile.Rounded -> 0
-                                GlassSurfaceProfile.Squircle -> 1
-                                GlassSurfaceProfile.Circle -> 2
-                            },
-                            onSelect = onConfigChange,
-                        )
-                    }
-                }
-            }
-        }
-    }
-}
-
-@Composable
-private fun ConfigSegmentRow(
-    title: String,
-    subtitle: String,
-    options: List<Pair<String, LiquidGlassConfig>>,
-    selectedIndex: Int,
-    onSelect: (LiquidGlassConfig) -> Unit,
-) {
-    Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-        Text(title, fontWeight = FontWeight.SemiBold)
-        Text(subtitle, style = MaterialTheme.typography.bodySmall)
-        Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-            options.forEachIndexed { index, option ->
-                FilterChip(
-                    selected = index == selectedIndex,
-                    onClick = { onSelect(option.second) },
-                    label = { Text(option.first) },
-                    modifier = Modifier.weight(1f),
-                )
-            }
-        }
-    }
-}
-
-@Composable
-private fun GlassSliderRow(
-    title: String,
-    value: Float,
-    range: ClosedFloatingPointRange<Float>,
-    onValueChange: (Float) -> Unit,
-) {
-    Column {
-        Row(verticalAlignment = Alignment.CenterVertically) {
-            Text(title, modifier = Modifier.weight(1f), style = MaterialTheme.typography.bodySmall)
-            Text(String.format("%.2f", value), style = MaterialTheme.typography.labelSmall)
-        }
-        Slider(value = value, onValueChange = onValueChange, valueRange = range)
-    }
-}
-
-@Composable
 private fun AppDetailsCard(
     displayMode: UiDisplayMode,
     onOpenProject: () -> Unit,
     onOpenReleases: () -> Unit,
 ) {
-    AdaptiveCard(
+    Material3Card(
         displayMode = displayMode,
         modifier = Modifier
             .fillMaxWidth()
@@ -764,7 +560,7 @@ private fun ThemeSelector(
         Triple(ThemeMode.LIGHT, i18n("settings.theme.light"), Icons.Default.LightMode),
     )
 
-    AdaptiveCard(
+    Material3Card(
         displayMode = displayMode,
         modifier = Modifier
             .fillMaxWidth()
@@ -825,7 +621,7 @@ private fun LanguageSelector(
     current: I18nLocale,
     onSelect: (I18nLocale) -> Unit,
 ) {
-    AdaptiveCard(
+    Material3Card(
         displayMode = displayMode,
         modifier = Modifier
             .fillMaxWidth()
@@ -850,69 +646,13 @@ private fun LanguageSelector(
 }
 
 @Composable
-private fun DisplayModeSelector(
-    displayMode: UiDisplayMode,
-    current: UiDisplayMode,
-    onSelect: (UiDisplayMode) -> Unit,
-) {
-    AdaptiveCard(
-        displayMode = displayMode,
-        modifier = Modifier
-            .fillMaxWidth()
-            .padding(horizontal = 16.dp, vertical = 8.dp),
-    ) {
-        Column(
-            verticalArrangement = Arrangement.spacedBy(8.dp),
-        ) {
-        Text(
-            i18n("settings.display_mode"),
-            style = MaterialTheme.typography.labelLarge,
-            color = MaterialTheme.colorScheme.onSurface,
-            fontWeight = FontWeight.SemiBold,
-        )
-        Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
-            UiDisplayMode.entries.forEach { mode ->
-                val selected = mode == current
-                Surface(
-                    modifier = Modifier
-                        .weight(1f)
-                        .clickable { onSelect(mode) },
-                    shape = RoundedCornerShape(22.dp),
-                    color = if (selected) MaterialTheme.colorScheme.primaryContainer
-                    else MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.72f),
-                    tonalElevation = if (selected) 3.dp else 1.dp,
-                ) {
-                    Column(Modifier.padding(14.dp)) {
-                        Text(
-                            mode.label,
-                            style = MaterialTheme.typography.titleSmall,
-                            fontWeight = FontWeight.Bold,
-                            color = if (selected) MaterialTheme.colorScheme.onPrimaryContainer
-                            else MaterialTheme.colorScheme.onSurfaceVariant,
-                        )
-                        Spacer(Modifier.height(4.dp))
-                        Text(
-                            mode.description,
-                            style = MaterialTheme.typography.bodySmall,
-                            color = if (selected) MaterialTheme.colorScheme.onPrimaryContainer.copy(alpha = 0.76f)
-                            else MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.76f),
-                        )
-                    }
-                }
-            }
-        }
-    }
-}
-}
-
-@Composable
 private fun WallpaperPicker(
     displayMode: UiDisplayMode,
     uri: String?,
     onPick: () -> Unit,
     onClear: () -> Unit,
 ) {
-    AdaptiveCard(
+    Material3Card(
         displayMode = displayMode,
         modifier = Modifier
             .fillMaxWidth()
@@ -960,7 +700,7 @@ private fun WallpaperScopeSelector(
         WallpaperScope.HOME to i18n("settings.scope.home"),
         WallpaperScope.SETTINGS to i18n("settings.scope.settings"),
     )
-    AdaptiveCard(
+    Material3Card(
         displayMode = displayMode,
         modifier = Modifier
             .fillMaxWidth()
@@ -991,7 +731,7 @@ private fun LogRetentionSelector(
 
     val options = listOf(500, 1000, 2000, 5000, 10000).map { it to i18n("settings.log_lines", it) }
 
-    AdaptiveCard(
+    Material3Card(
         displayMode = displayMode,
         modifier = Modifier
             .fillMaxWidth()

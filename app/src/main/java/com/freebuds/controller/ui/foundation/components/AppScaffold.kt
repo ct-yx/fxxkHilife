@@ -1,8 +1,9 @@
 package com.freebuds.controller.ui.foundation.components
 
 import android.net.Uri
+import androidx.compose.foundation.background
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.BoxScope
-import androidx.compose.foundation.layout.RowScope
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
@@ -13,16 +14,14 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.ArrowBack
+import com.freebuds.controller.i18n.i18n
 import com.freebuds.controller.ui.UiDisplayMode
 import com.freebuds.controller.ui.WallpaperScope
-import com.freebuds.controller.i18n.i18n
-import com.freebuds.controller.ui.foundation.surface.GlassHost
-import com.freebuds.controller.ui.foundation.surface.LiquidGlassBackdrop
 
-/** App-level shell: one background/source owner and one content layer. */
+/** App-level shell for the standard Material 3 surface tree. */
 @Composable
 fun AppScaffold(
-    displayMode: UiDisplayMode,
+    displayMode: UiDisplayMode = UiDisplayMode.MATERIAL3,
     wallpaperUri: String? = null,
     wallpaperScope: WallpaperScope = WallpaperScope.ALL,
     route: String? = null,
@@ -35,37 +34,32 @@ fun AppScaffold(
         WallpaperScope.HOME -> route == "home"
         WallpaperScope.SETTINGS -> route == "settings"
     }
-    GlassHost(
-        displayMode = displayMode,
-        // The built-in colour field is always a valid input in Liquid Glass mode. A user
-        // wallpaper enriches it but is no longer a hard prerequisite for the renderer.
-        backgroundAvailable = displayMode == UiDisplayMode.LIQUID_GLASS,
-        modifier = modifier.fillMaxSize(),
-        background = {
-            if (displayMode == UiDisplayMode.LIQUID_GLASS) {
-                LiquidGlassBackdrop()
-            }
-            if (showWallpaper) {
-                AsyncImage(
-                    model = Uri.parse(wallpaperUri),
-                    contentDescription = null,
-                    modifier = Modifier.fillMaxSize(),
-                    contentScale = ContentScale.Crop,
-                    alpha = 0.52f,
-                )
-            }
-        },
-        content = content,
-    )
+
+    Box(
+        modifier = modifier
+            .fillMaxSize()
+            .background(MaterialTheme.colorScheme.background),
+    ) {
+        if (showWallpaper) {
+            AsyncImage(
+                model = Uri.parse(wallpaperUri),
+                contentDescription = null,
+                modifier = Modifier.fillMaxSize(),
+                contentScale = ContentScale.Crop,
+                alpha = 0.16f,
+            )
+        }
+        Box(Modifier.fillMaxSize(), content = content)
+    }
 }
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun AppTopBar(
     title: String,
-    displayMode: UiDisplayMode = UiDisplayMode.CLASSIC,
+    displayMode: UiDisplayMode = UiDisplayMode.MATERIAL3,
     onBack: (() -> Unit)? = null,
-    actions: @Composable RowScope.() -> Unit = {},
+    actions: @Composable androidx.compose.foundation.layout.RowScope.() -> Unit = {},
 ) {
     androidx.compose.material3.TopAppBar(
         title = { androidx.compose.material3.Text(title) },
@@ -81,16 +75,8 @@ fun AppTopBar(
         },
         actions = actions,
         colors = TopAppBarDefaults.topAppBarColors(
-            containerColor = if (displayMode == UiDisplayMode.LIQUID_GLASS) {
-                androidx.compose.ui.graphics.Color.Transparent
-            } else {
-                MaterialTheme.colorScheme.surface
-            },
-            scrolledContainerColor = if (displayMode == UiDisplayMode.LIQUID_GLASS) {
-                androidx.compose.ui.graphics.Color.Transparent
-            } else {
-                MaterialTheme.colorScheme.surface
-            },
+            containerColor = MaterialTheme.colorScheme.surface,
+            scrolledContainerColor = MaterialTheme.colorScheme.surface,
         ),
     )
 }

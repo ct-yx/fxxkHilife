@@ -3,7 +3,7 @@
 > 版本号统一修改入口，按清单逐一更新。
 
 ## 当前版本
-- **当前开发包：v4.4.2** (versionCode=101, 2026-08-16；液态玻璃可见性与列表滑动性能第二轮定向修复测试包，GitHub Actions 已通过，等待定向实测)
+- **当前开发包：v4.5.0** (versionCode=102, 2026-08-16；移除第三方玻璃渲染依赖，统一标准 Material 3 surface，等待 GitHub Actions 构建)
 - **当前公开发布：v4.3.10** (versionCode=98, 2026-08-14；BT 重构后的首个大版本，BT-0 至 BT-4 已完成，BT-4 定向实机门已通过)
 
 ## v4.3.10 发布基线
@@ -11,7 +11,7 @@
 - 发布定位：BT 重构后的首个公开大版本；UI 全量重构不包含在本版本内。
 - 发布触发：推送与应用版本一致的 `v4.3.10` 标签，由 CI 负责重新执行自动化检查、构建 APK 和更新 Release 资产。
 - 实机门：`BT4_STATE_CONTRACT_5`，5/5 PASS；只覆盖 HUAWEI FreeBuds 6i / Android API 36 / 固件 `HarmonyOS 6.0.0.292(F001H003C00)` 及该 profile。
-- 当前开发方向：v4.4.2 的 `UI_GLASS_SCROLL_FIX` 只验证 UI-ERR-001/002 的玻璃可见性和列表滑动；报告返回前不标记 UI 阶段完成，也不重复 BT 全量矩阵。
+- 当前开发方向：v4.5.0 的 `UI_MATERIAL3_BASELINE` 只验证标准 Material 3 surface、路由边界、设置迁移和资源保留；不重复 BT 全量矩阵。
 
 ## 文档同步记录
 
@@ -32,11 +32,11 @@
 
 | 位置 | 当前值 |
 |------|--------|
-| `app/build.gradle.kts` | versionCode=101, versionName="4.4.2" |
-| `app/src/main/res/values/strings.xml` | version_name=4.4.2 |
-| `README.md` | v4.4.2 |
-| `README_EN.md` | v4.4.2 |
-| `DEVELOPMENT_LOG.md` | v4.4.2 (末尾) |
+| `app/build.gradle.kts` | versionCode=102, versionName="4.5.0" |
+| `app/src/main/res/values/strings.xml` | version_name=4.5.0 |
+| `README.md` | v4.5.0 |
+| `README_EN.md` | v4.5.0 |
+| `DEVELOPMENT_LOG.md` | v4.5.0 (末尾) |
 
 ## 一键版本更新脚本
 
@@ -60,9 +60,10 @@ python3 scripts/bump_version.py <versionName> <versionCode> "修复说明"
 
 | 版本 | Code | 日期 | 主要变更 |
 |------|------|------|---------|
-| v4.4.2 | 101 | 2026-08-16 | 修复液态玻璃无输入时不可见，并在列表拖动期间降级为低成本玻璃皮肤以恢复滑动流畅度 |
-| v4.4.1 | 100 | 2026-08-16 | 液态玻璃可见性与详情页滚动性能定向修复测试包 |
-| v4.4.0 | 99 | 2026-08-15 | UI错误报告修复测试包：真实typed glass/blur、无背景Material 3 fallback、列表性能和连接会话导航；待CI与实测 |
+| v4.5.0 | 102 | 2026-08-16 | 移除玻璃渲染依赖，统一为标准 Material 3 UI 基线 |
+| v4.4.2 | 101 | 2026-08-16 | 历史玻璃渲染尝试：无输入可见性与列表拖动 follow-up；已由 v4.5.0 移除 |
+| v4.4.1 | 100 | 2026-08-16 | 历史玻璃渲染可见性与详情页滚动性能测试包 |
+| v4.4.0 | 99 | 2026-08-15 | 历史 UI 错误报告修复包：typed glass/blur、Material 3 fallback、列表性能和连接会话导航 |
 | v4.3.10 | 98 | 2026-08-14 | BT 重构首个公开大版本：连接生命周期、指令调度、能力映射与状态契约收口 |
 | v4.3.9 | 97 | 2026-08-14 | 修正 5A 协议帧长度、CRC 与固定样本边界 |
 | v4.3.8 | 96 | 2026-08-14 | BT-4 状态契约并发、能力语义与定向测试校验收紧 |

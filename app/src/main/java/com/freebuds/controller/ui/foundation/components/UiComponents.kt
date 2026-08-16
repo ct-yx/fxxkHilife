@@ -40,7 +40,6 @@ import androidx.compose.ui.unit.dp
 import com.freebuds.controller.ui.state.ConnectionSummary
 import com.freebuds.controller.ui.state.UiActionState
 import com.freebuds.controller.ui.foundation.tokens.UiTokens
-import com.freebuds.controller.ui.glass.AdaptiveCard
 import com.freebuds.controller.ui.UiDisplayMode
 import com.freebuds.controller.ui.foundation.surface.SurfaceRole
 
@@ -234,7 +233,7 @@ fun ConnectionBanner(
             else -> "$name · ${summary.stageLabel}"
         }
     } ?: summary.stageLabel
-    AdaptiveCard(
+    Material3Card(
         displayMode = displayMode,
         role = SurfaceRole.FeatureCard,
         modifier = modifier,

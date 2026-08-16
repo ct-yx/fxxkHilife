@@ -146,10 +146,8 @@ class DeviceViewModel : ViewModel() {
         when (event) {
             is SettingsEvent.SetThemeMode -> settingsRepository.setThemeMode(event.value)
             is SettingsEvent.SetLocale -> settingsRepository.setLocale(event.value)
-            is SettingsEvent.SetDisplayMode -> settingsRepository.setDisplayMode(event.value)
             is SettingsEvent.SetWallpaperUri -> settingsRepository.setWallpaperUri(event.value)
             is SettingsEvent.SetWallpaperScope -> settingsRepository.setWallpaperScope(event.value)
-            is SettingsEvent.SetGlassConfig -> settingsRepository.setGlassConfig(event.value)
             is SettingsEvent.SetAutoLowLatency -> settingsRepository.setAutoLowLatency(event.value)
             is SettingsEvent.SetUpdateSettings -> settingsRepository.setUpdateSettings(event.value)
             is SettingsEvent.SetLogMaxLines -> settingsRepository.setLogMaxLines(event.value)

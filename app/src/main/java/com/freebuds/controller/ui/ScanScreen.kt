@@ -22,12 +22,11 @@ import com.freebuds.controller.bluetooth.ScannedDevice
 import com.freebuds.controller.data.ControlChannelStage
 import com.freebuds.controller.data.DeviceViewModel
 import com.freebuds.controller.i18n.i18n
-import com.freebuds.controller.ui.glass.AdaptiveCard
-import com.freebuds.controller.ui.glass.AdaptiveGlassBanner
-import com.freebuds.controller.ui.glass.GlassBannerTone
+import com.freebuds.controller.ui.foundation.components.Material3Card
+import com.freebuds.controller.ui.foundation.components.Material3Banner
+import com.freebuds.controller.ui.foundation.components.Material3BannerTone
 import com.freebuds.controller.ui.foundation.components.AppTopBar
 import com.freebuds.controller.ui.foundation.assets.UiAssetCatalog
-import com.freebuds.controller.ui.foundation.surface.GlassScrollPerformance
 import com.freebuds.controller.ui.state.ConnectionSummary
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -54,7 +53,6 @@ fun ScanScreen(
             )
         }
     ) { padding ->
-        GlassScrollPerformance(listState)
         Column(
             modifier = Modifier
                 .fillMaxSize()
@@ -159,7 +157,7 @@ private fun SectionHeader(text: String) {
 @Composable
 private fun DeviceItem(device: ScannedDevice, displayMode: UiDisplayMode, onClick: () -> Unit) {
     val bondedLabel = i18n("home.bonded")
-    AdaptiveCard(
+    Material3Card(
         displayMode = displayMode,
         modifier = Modifier
             .fillMaxWidth()
@@ -201,12 +199,12 @@ private fun StatusBanner(
     isError: Boolean = false,
     isConnected: Boolean = false,
 ) {
-    AdaptiveGlassBanner(
+    Material3Banner(
         displayMode = displayMode,
         tone = when {
-            isError -> GlassBannerTone.Error
-            isConnected -> GlassBannerTone.Success
-            else -> GlassBannerTone.Info
+            isError -> Material3BannerTone.Error
+            isConnected -> Material3BannerTone.Success
+            else -> Material3BannerTone.Info
         },
         modifier = Modifier
             .fillMaxWidth()

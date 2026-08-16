@@ -15,9 +15,7 @@ import com.freebuds.controller.data.SettingsSnapshot
 import com.freebuds.controller.data.UpdateSettings
 import com.freebuds.controller.data.UpdateUiState
 import com.freebuds.controller.i18n.I18nLocale
-import com.freebuds.controller.ui.glass.LiquidGlassConfig
 import com.freebuds.controller.ui.theme.ThemeMode
-import com.freebuds.controller.ui.UiDisplayMode
 import com.freebuds.controller.ui.WallpaperScope
 
 @Immutable
@@ -111,10 +109,8 @@ data class SettingsUiState(
 ) {
     val themeMode: ThemeMode get() = snapshot.themeMode
     val locale: I18nLocale get() = snapshot.locale
-    val displayMode: UiDisplayMode get() = snapshot.displayMode
     val wallpaperUri: String? get() = snapshot.wallpaperUri
     val wallpaperScope: WallpaperScope get() = snapshot.wallpaperScope
-    val glassConfig: LiquidGlassConfig get() = snapshot.glassConfig
     val updateSettings: UpdateSettings get() = snapshot.updateSettings
 }
 
@@ -149,10 +145,8 @@ sealed interface DeviceEvent {
 sealed interface SettingsEvent {
     data class SetThemeMode(val value: ThemeMode) : SettingsEvent
     data class SetLocale(val value: I18nLocale) : SettingsEvent
-    data class SetDisplayMode(val value: UiDisplayMode) : SettingsEvent
     data class SetWallpaperUri(val value: String?) : SettingsEvent
     data class SetWallpaperScope(val value: WallpaperScope) : SettingsEvent
-    data class SetGlassConfig(val value: LiquidGlassConfig) : SettingsEvent
     data class SetAutoLowLatency(val value: Boolean) : SettingsEvent
     data class SetUpdateSettings(val value: UpdateSettings) : SettingsEvent
     data class SetLogMaxLines(val value: Int) : SettingsEvent

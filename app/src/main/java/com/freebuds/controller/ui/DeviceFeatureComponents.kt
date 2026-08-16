@@ -33,7 +33,7 @@ import com.freebuds.controller.data.DeviceProps
 import com.freebuds.controller.data.DualConnectDevice
 import com.freebuds.controller.i18n.I18n
 import com.freebuds.controller.i18n.i18n
-import com.freebuds.controller.ui.glass.AdaptiveCard
+import com.freebuds.controller.ui.foundation.components.Material3Card
 import com.freebuds.controller.ui.foundation.surface.SurfaceRole
 
 /** Device feature cards kept separate from route/layout orchestration. */
@@ -42,7 +42,7 @@ internal fun BatteryCard(props: DeviceProps, displayMode: UiDisplayMode) {
     if (props.batteryGlobal == null && props.batteryLeft == null && props.batteryRight == null && props.batteryCase == null) return
     val leftLevel = props.batteryLeft ?: props.batteryGlobal
     val rightLevel = props.batteryRight ?: props.batteryGlobal
-    AdaptiveCard(
+    Material3Card(
         displayMode = displayMode,
         role = SurfaceRole.FeatureCard,
         modifier = Modifier
@@ -224,7 +224,7 @@ internal fun BackgroundSyncCard(
     val labels = pendingHandlers.map(::initHandlerLabel).distinct()
     val preview = labels.take(4).joinToString("、")
     val suffix = if (labels.size > 4) i18n("device.pending.more_suffix", labels.size) else ""
-    AdaptiveCard(
+    Material3Card(
         displayMode = displayMode,
         modifier = Modifier
             .fillMaxWidth()
@@ -275,7 +275,7 @@ internal fun DeviceOptionItem(
     onSelect: (String) -> Unit,
 ) {
     var expanded by remember(title) { mutableStateOf(false) }
-    AdaptiveCard(
+    Material3Card(
         displayMode = displayMode,
         modifier = Modifier
             .fillMaxWidth()
@@ -333,7 +333,7 @@ internal fun SwitchSettingItem(
     checked: Boolean?,
     onCheckedChange: (Boolean) -> Unit,
 ) {
-    AdaptiveCard(
+    Material3Card(
         displayMode = displayMode,
         modifier = Modifier
             .fillMaxWidth()
@@ -354,7 +354,7 @@ internal fun SwitchSettingItem(
 
 @Composable
 internal fun InfoItem(displayMode: UiDisplayMode, icon: ImageVector, label: String, value: String) {
-    AdaptiveCard(
+    Material3Card(
         displayMode = displayMode,
         modifier = Modifier
             .fillMaxWidth()
@@ -375,7 +375,7 @@ internal fun EqualizerStatusCard(
     props: DeviceProps,
     displayMode: UiDisplayMode,
 ) {
-    AdaptiveCard(
+    Material3Card(
         displayMode = displayMode,
         modifier = Modifier
             .fillMaxWidth()
@@ -411,7 +411,7 @@ internal fun DualConnectDeviceCard(
     onAutoToggle: (Boolean) -> Unit,
 ) {
     val isPreferred = device.preferred || preferredAddress == device.address
-    AdaptiveCard(
+    Material3Card(
         displayMode = displayMode,
         modifier = Modifier
             .fillMaxWidth()

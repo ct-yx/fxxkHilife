@@ -12,7 +12,7 @@ on:
       build_label:
         description: "用于区分本次测试包的阶段标签"
         required: false
-        default: "UI_GLASS_SCROLL_FIX"
+        default: "UI_MATERIAL3_BASELINE"
         type: string
 
 permissions:
@@ -27,7 +27,7 @@ jobs:
     name: Build release APK
     runs-on: ubuntu-latest
     env:
-      BUILD_LABEL: ${{ github.event.inputs.build_label || 'UI_GLASS_SCROLL_FIX' }}
+      BUILD_LABEL: ${{ github.event.inputs.build_label || 'UI_MATERIAL3_BASELINE' }}
     permissions:
       contents: write
 
@@ -47,9 +47,8 @@ jobs:
         uses: android-actions/setup-android@v3
 
       - name: Install Android SDK packages
-        # The repository exposes the API 37 platform as android-37.0. Haze alpha05
-        # needs that compile platform; the matching stable 37.0.0 build tools are
-        # installed explicitly so the job does not depend on runner preloads.
+        # The repository targets API 37 explicitly; install the matching platform and
+        # stable build tools so the job does not depend on runner preloads.
         run: sdkmanager "platforms;android-37.0" "build-tools;37.0.0"
 
       - name: Cache Gradle

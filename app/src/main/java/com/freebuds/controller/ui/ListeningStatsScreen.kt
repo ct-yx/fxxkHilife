@@ -27,9 +27,8 @@ import com.freebuds.controller.data.DeviceViewModel
 import com.freebuds.controller.data.ListeningStats
 import com.freebuds.controller.i18n.I18n
 import com.freebuds.controller.i18n.i18n
-import com.freebuds.controller.ui.glass.AdaptiveCard
+import com.freebuds.controller.ui.foundation.components.Material3Card
 import com.freebuds.controller.ui.foundation.components.AppTopBar
-import com.freebuds.controller.ui.foundation.surface.GlassScrollPerformance
 import java.text.SimpleDateFormat
 import java.util.Calendar
 import java.util.Locale
@@ -53,7 +52,6 @@ fun ListeningStatsScreen(
             )
         }
     ) { padding ->
-        GlassScrollPerformance(listState)
         LazyColumn(
             modifier = Modifier
                 .fillMaxSize()
@@ -98,7 +96,7 @@ private fun StatTile(
     displayMode: UiDisplayMode,
     modifier: Modifier = Modifier,
 ) {
-    AdaptiveCard(displayMode = displayMode, modifier = modifier.height(142.dp)) {
+    Material3Card(displayMode = displayMode, modifier = modifier.height(142.dp)) {
         Column(verticalArrangement = Arrangement.SpaceBetween, modifier = Modifier.fillMaxSize()) {
             Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(10.dp)) {
                 Box(
@@ -119,7 +117,7 @@ private fun StatTile(
 
 @Composable
 private fun ListeningHeatmapCard(stats: ListeningStats, displayMode: UiDisplayMode) {
-    AdaptiveCard(displayMode = displayMode, modifier = Modifier.fillMaxWidth()) {
+    Material3Card(displayMode = displayMode, modifier = Modifier.fillMaxWidth()) {
         Column(verticalArrangement = Arrangement.spacedBy(14.dp)) {
             Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.fillMaxWidth()) {
                 Text(i18n("stats.activity"), style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold, modifier = Modifier.weight(1f))
