@@ -6,6 +6,7 @@ import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.*
 import androidx.compose.material3.*
@@ -29,6 +30,7 @@ import com.freebuds.controller.ui.foundation.components.ConnectionBanner
 import com.freebuds.controller.ui.foundation.components.AppTopBar
 import com.freebuds.controller.ui.foundation.assets.UiAssetCatalog
 import com.freebuds.controller.ui.foundation.surface.SurfaceRole
+import com.freebuds.controller.ui.foundation.surface.GlassScrollPerformance
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -43,6 +45,7 @@ fun HomeScreen(
     val controlChannelState by viewModel.controlChannelState.collectAsStateWithLifecycle()
     val connection = remember(controlChannelState) { ConnectionSummary.from(controlChannelState) }
     val savedConnections by viewModel.savedDeviceConnections.collectAsStateWithLifecycle()
+    val listState = rememberLazyListState()
     LaunchedEffect(connection.address) {
         viewModel.refreshSavedDeviceConnections()
     }
@@ -61,10 +64,12 @@ fun HomeScreen(
             )
         }
     ) { padding ->
+        GlassScrollPerformance(listState)
         LazyColumn(
             modifier = Modifier
                 .fillMaxSize()
-                .padding(padding)
+                .padding(padding),
+            state = listState,
         ) {
             // 连接摘要只消费稳定 typed state，不再从连接命令返回值猜测页面状态。
             item {

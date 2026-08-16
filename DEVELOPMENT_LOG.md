@@ -1554,3 +1554,18 @@
 ### 静态验证与阻塞门
 - `git diff --check`、`python3 scripts/validate_ui_contract.py`、`python3 scripts/validate_update_manifest.py docs/update.json` 通过。
 - 按项目约定未执行本地 Gradle；等待 GitHub Actions 构建，以及 `UI_GLASS_RENDERING_TARGETED` / `UI_GLASS_PERFORMANCE` 的 Home/Device 定向实测。
+
+## v4.4.2 (2026-08-16)
+
+### 发布
+- 修复液态玻璃无输入时不可见，并在列表拖动期间降级为低成本玻璃皮肤以恢复滑动流畅度
+- versionCode: 101
+- versionName: 4.4.2
+- tag: v4.4.2
+
+### 本轮实现
+- Liquid 模式增加静态 `LiquidGlassBackdrop`，无用户壁纸时仍提供非纯色 Haze source；壁纸仅作为增强层。
+- 普通 Tint-only surface 提升透明填充与边框可见性；长列表不增加逐行 captured-content effect。
+- 所有 LazyColumn 接入 `GlassScrollPerformance`：拖动时暂停 source/effect 采样，临时使用低成本玻璃皮肤，静止后恢复真实 glass/blur。
+- Haze effect 改回 `Adaptive` 与 `expandLayerBounds=false`，降低 GPU layer 和拖动期间的读回成本。
+- 本轮未修改 BT-0 至 BT-4；只等待 `UI_GLASS_SCROLL_FIX` 的 GitHub Actions 产物和 Home/Device 定向实测。

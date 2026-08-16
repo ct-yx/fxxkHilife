@@ -3,6 +3,7 @@ package com.freebuds.controller.ui
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.ArrowBack
@@ -28,6 +29,7 @@ import com.freebuds.controller.i18n.I18n
 import com.freebuds.controller.i18n.i18n
 import com.freebuds.controller.ui.glass.AdaptiveCard
 import com.freebuds.controller.ui.foundation.components.AppTopBar
+import com.freebuds.controller.ui.foundation.surface.GlassScrollPerformance
 import java.text.SimpleDateFormat
 import java.util.Calendar
 import java.util.Locale
@@ -40,6 +42,7 @@ fun ListeningStatsScreen(
     onBack: () -> Unit,
 ) {
     val stats by viewModel.listeningStats.collectAsStateWithLifecycle()
+    val listState = rememberLazyListState()
     Scaffold(
         containerColor = Color.Transparent,
         topBar = {
@@ -50,10 +53,12 @@ fun ListeningStatsScreen(
             )
         }
     ) { padding ->
+        GlassScrollPerformance(listState)
         LazyColumn(
             modifier = Modifier
                 .fillMaxSize()
                 .padding(padding),
+            state = listState,
             contentPadding = PaddingValues(16.dp),
             verticalArrangement = Arrangement.spacedBy(14.dp),
         ) {

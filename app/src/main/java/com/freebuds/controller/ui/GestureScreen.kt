@@ -9,6 +9,7 @@ import androidx.compose.animation.shrinkVertically
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.*
 import androidx.compose.material3.*
@@ -26,6 +27,7 @@ import com.freebuds.controller.ui.glass.AdaptiveCard
 import com.freebuds.controller.ui.state.DeviceEvent
 import com.freebuds.controller.ui.state.GestureTarget
 import com.freebuds.controller.ui.foundation.components.AppTopBar
+import com.freebuds.controller.ui.foundation.surface.GlassScrollPerformance
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -35,6 +37,7 @@ fun GestureScreen(
     displayMode: UiDisplayMode,
     onBack: () -> Unit,
 ) {
+    val listState = rememberLazyListState()
     Scaffold(
         containerColor = androidx.compose.ui.graphics.Color.Transparent,
         topBar = {
@@ -45,10 +48,12 @@ fun GestureScreen(
             )
         }
     ) { padding ->
+        GlassScrollPerformance(listState)
         LazyColumn(
             modifier = Modifier
                 .fillMaxSize()
                 .padding(padding),
+            state = listState,
             contentPadding = PaddingValues(bottom = 24.dp)
         ) {
             if (props.doubleTapLeft != null) {

@@ -16,8 +16,8 @@
   <a href="https://github.com/ct-yx/fxxkHilife/issues">Report / Join testing</a>
 </p>
 
-> **Current development build: v4.4.1 (versionCode 100)**
-> **Current public release: v4.3.10 (versionCode 98)**; the BT refactor is closed, while v4.4.1 is the targeted glass-visibility and detail-scroll performance fix build awaiting GitHub Actions and runtime evidence.
+> **Current development build: v4.4.2 (versionCode 101)**
+> **Current public release: v4.3.10 (versionCode 98)**; the BT refactor is closed, while v4.4.2 is the second targeted glass-visibility and list-scroll performance fix build awaiting GitHub Actions and runtime evidence.
 
 ---
 
@@ -29,12 +29,13 @@ Full introduction, download links, demos, and development logs are available on 
 
 ---
 
-## v4.4.1: targeted glass-visibility and scroll-performance fix build
+## v4.4.2: second targeted glass-visibility and list-scroll performance fix build
 
-This build does not change BT-0 through BT-4. It continues the UI-ERR-001/002 work under the `UI_GLASS_VISIBILITY_PERF` build label:
+This build does not change BT-0 through BT-4. It continues the UI-ERR-001/002 work under the `UI_GLASS_SCROLL_FIX` build label:
 
-- Only Hero/FeatureCard surfaces use the real typed glass renderer; ordinary list rows stay Tint/Material 3 so effect work does not grow with scrolling.
-- Edge refraction, surface profile, optical displacement, and bounded chromatic response are strengthened; invalid or missing wallpaper still resolves to Material 3 rather than faking an input source.
+- A small set of Hero/FeatureCard surfaces uses the real typed glass renderer; ordinary list rows use a visible low-cost translucent glass skin without per-row Haze effects.
+- Liquid mode always supplies a static colour field; an optional wallpaper enriches it instead of being a prerequisite, so missing wallpaper no longer hides the effect behind Material 3.
+- Captured-content effects and source sampling pause during LazyColumn drags and restore when idle; Home, Device, Settings, Scan, Gesture, and statistics screens share the same policy.
 - The detail page collects narrow projections for battery, ANC, audio, dual-connect, and about sections, so unrelated protocol updates do not rebuild the whole list; dual-connect cards remain address-keyed.
 
 Only source and static-contract work is complete so far. GitHub Actions, screenshots/runtime diagnostics, and targeted interaction reports are still required; testing covers this glass and detail-scroll change only—not the BT A-F/36/100-round matrices.
@@ -77,7 +78,7 @@ The project is still evolving quickly. Testers with more earbud models are very 
 
 ## Key features
 
-- **UI refactor test line**: v4.4.1 uses `UI_GLASS_VISIBILITY_PERF` for the UI-ERR-001/002 visibility and scroll-performance follow-up; existing art assets are retained, and screenshots, runtime diagnostics, accessibility, and interaction reports remain the acceptance evidence.
+- **UI refactor test line**: v4.4.2 uses `UI_GLASS_SCROLL_FIX` for the second UI-ERR-001/002 visibility and list-scroll performance follow-up; existing art assets are retained, and screenshots, runtime diagnostics, accessibility, and interaction reports remain the acceptance evidence.
 
 - **Connection and auto-connect**: scan HUAWEI / HONOR earbuds and save known devices; the foreground service detects saved earbuds already connected by Android Bluetooth and opens the app SPP control channel with backoff.
 - **ANC / Awareness / Off**: switch ANC modes from the in-app pill slider, Quick Settings Tile, or persistent notification actions; on third-party Android phones, you can cycle ANC directly from the system quick settings panel without opening the app.

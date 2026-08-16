@@ -13,14 +13,11 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.ArrowBack
-import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.remember
-import androidx.compose.runtime.getValue
-import androidx.compose.runtime.setValue
 import com.freebuds.controller.ui.UiDisplayMode
 import com.freebuds.controller.ui.WallpaperScope
 import com.freebuds.controller.i18n.i18n
 import com.freebuds.controller.ui.foundation.surface.GlassHost
+import com.freebuds.controller.ui.foundation.surface.LiquidGlassBackdrop
 
 /** App-level shell: one background/source owner and one content layer. */
 @Composable
@@ -38,22 +35,23 @@ fun AppScaffold(
         WallpaperScope.HOME -> route == "home"
         WallpaperScope.SETTINGS -> route == "settings"
     }
-    var backgroundReady by remember(wallpaperUri, showWallpaper) { mutableStateOf(false) }
-
     GlassHost(
         displayMode = displayMode,
-        backgroundAvailable = showWallpaper && backgroundReady,
+        // The built-in colour field is always a valid input in Liquid Glass mode. A user
+        // wallpaper enriches it but is no longer a hard prerequisite for the renderer.
+        backgroundAvailable = displayMode == UiDisplayMode.LIQUID_GLASS,
         modifier = modifier.fillMaxSize(),
         background = {
+            if (displayMode == UiDisplayMode.LIQUID_GLASS) {
+                LiquidGlassBackdrop()
+            }
             if (showWallpaper) {
                 AsyncImage(
                     model = Uri.parse(wallpaperUri),
                     contentDescription = null,
                     modifier = Modifier.fillMaxSize(),
                     contentScale = ContentScale.Crop,
-                    alpha = if (displayMode == UiDisplayMode.LIQUID_GLASS) 0.5f else 0.35f,
-                    onSuccess = { backgroundReady = true },
-                    onError = { backgroundReady = false },
+                    alpha = 0.52f,
                 )
             }
         },

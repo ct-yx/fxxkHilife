@@ -3,7 +3,7 @@
 - 报告日期：2026-08-16
 - 影响范围：液态玻璃渲染、列表滚动性能、设备详情页导航
 - 原始状态：报告创建时已确认根因，尚未修复（历史快照）
-- 当前状态：v4.4.1 / 100 已完成玻璃可见性与详情页滚动性能 follow-up 代码修复，等待 GitHub Actions、截图/运行诊断和定向性能实测
+- 当前状态：v4.4.2 / 101 已针对上一轮反馈继续修复玻璃输入、普通行可见性和拖动性能，等待 GitHub Actions、截图/运行诊断和定向性能实测
 - 证据边界：本报告基于当前源码审查；未将构建通过、静态检查或蓝牙连接状态当作 UI 运行成功证据
 
 ## 修复回灌（2026-08-15，v4.4.0 / 99）
@@ -35,6 +35,27 @@
 2. `UI_GLASS_PERFORMANCE`：只滚动 Home 保存设备列表和 Device 详情列表，分别记录 3 轮 P95 帧时间、jank、内存和 effect 数量；连接状态/电量变化期间确认未变化区域不出现整列跳动。
 
 本轮不要求重新验证导航会话、设置更新流程、无障碍全矩阵或蓝牙实机矩阵。
+
+## Follow-up 2：v4.4.2 / 101 对“效果几乎没有、滑动仍卡顿”的修复
+
+### 代码调整
+
+- `AppScaffold` 在 Liquid 模式下始终绘制静态 `LiquidGlassBackdrop`，用户壁纸改为可选增强层；因此没有壁纸、壁纸加载失败或 URI 无效时仍有真实 Haze source 输入，不再把正常 Liquid 使用场景硬退回 Material 3。
+- `SurfaceRenderer` 提升 Liquid 模式的正文透明度和 Tint-only 行的边框/填充可见性；普通行仍不创建 Haze effect，避免用效果数量换视觉。
+- `GlassScrollPerformance` 绑定 Home、Device、Settings、Scan、Gesture 和 ListeningStats 的 `LazyListState`。拖动期间 effect surface 临时使用低成本 Tint-only 皮肤，且窗口 source 停止采样；静止后恢复 `hazeGlass`/`hazeBlur`。
+- Haze effect 恢复 `Adaptive` performance mode、`expandLayerBounds=false`；上一版为增强效果临时改成 `Default/true`，这会扩大滚动中的 GPU layer，是卡顿风险来源之一。
+- Settings 允许直接开启 Liquid 模式，不再把壁纸选择当作前置条件。
+
+### 当前验证门
+
+仅对 `UI_GLASS_SCROLL_FIX` 做定向验证：
+
+1. 无壁纸打开 Liquid：Home 和 Device 各截静止画面，诊断应为 `sourceAttached=1`；API 33+ 的关键 Feature surface 应为 `HazeGlass`，普通行应为 `TintOnly`。
+2. 有非纯色壁纸打开 Liquid：对照静止截图，确认边缘折射/色散和背景层次明显增加。
+3. Home、Device 各连续滑动 3 轮：记录滚动 P95 帧时间、jank、内存和 effect 数量；拖动期间 effect 数量应降为 0 或仅保留不可见区域，停止后恢复。
+4. Classic 模式做一次回归：确认 Material 3 外观和交互不变。
+
+UI-1/UI-4 仍为 `[~] 目标受阻`，等待本版本 CI 产物和以上定向报告；不重复蓝牙矩阵。
 
 ## UI-ERR-001：液态玻璃实际仍为毛玻璃（原始问题）
 
@@ -252,6 +273,6 @@ onDeviceClick = { address -> viewModel.autoConnectSaved(address) }
 
 ## 当前结论
 
-`v4.4.1 / 100` 在上一轮基础上继续收敛：真实 typed glass 只保留在少量 Hero/Feature surface，关键卡片的边缘光学参数已增强，Tint-only 行不再创建 effect input，Device 页面按区域订阅精简状态，避免无关属性变化牵连整列重组。上一轮的稳定 key、生命周期感知收集、Home 地址刷新和 `address + attemptId` 导航边界继续保留。
+`v4.4.2 / 101` 在上一轮基础上继续收敛：Liquid 始终有静态彩色 source，普通行使用可见但低成本的 Tint-only 玻璃皮肤，所有 LazyColumn 拖动期间暂停 Haze source/effect，静止后恢复真实 typed glass；Device 页面按区域订阅精简状态，上一轮的稳定 key、生命周期感知收集、Home 地址刷新和 `address + attemptId` 导航边界继续保留。
 
 问题仍保持“目标受阻”，因为代码修复和 CI 通过不能替代真实输入下的截图/运行诊断、滚动性能和导航交互证据。报告返回前，不将 UI-ERR-001/002/003 标记为完全关闭。

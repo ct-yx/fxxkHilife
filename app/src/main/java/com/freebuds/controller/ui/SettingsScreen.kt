@@ -8,6 +8,7 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
@@ -38,6 +39,7 @@ import com.freebuds.controller.ui.glass.LiquidGlassConfig
 import com.freebuds.controller.ui.theme.ThemeMode
 import com.freebuds.controller.ui.foundation.components.AppTopBar
 import com.freebuds.controller.ui.foundation.assets.UiAssetCatalog
+import com.freebuds.controller.ui.foundation.surface.GlassScrollPerformance
 import com.freebuds.controller.ui.state.ConnectionSummary
 import com.freebuds.controller.ui.state.SettingsEvent
 import java.text.DateFormat
@@ -70,9 +72,6 @@ fun SettingsScreen(
 
     LaunchedEffect(Unit) { onEvent(SettingsEvent.CheckForUpdate()) }
 
-    var showGlassWallpaperGuide by remember { mutableStateOf(false) }
-    var enableGlassAfterWallpaperPick by remember { mutableStateOf(false) }
-
     val imagePicker = rememberLauncherForActivityResult(
         contract = ActivityResultContracts.OpenDocument()
     ) { uri ->
@@ -81,36 +80,9 @@ fun SettingsScreen(
             runCatching { context.contentResolver.takePersistableUriPermission(it, flags) }
             val uriStr = it.toString()
             onEvent(SettingsEvent.SetWallpaperUri(uriStr))
-            if (enableGlassAfterWallpaperPick) {
-                enableGlassAfterWallpaperPick = false
-                onEvent(SettingsEvent.SetDisplayMode(UiDisplayMode.LIQUID_GLASS))
-            }
         }
     }
-
-    if (showGlassWallpaperGuide) {
-        AlertDialog(
-            onDismissRequest = { showGlassWallpaperGuide = false },
-            title = { Text(i18n("settings.wallpaper_guide.title")) },
-            text = { Text(i18n("settings.wallpaper_guide.text")) },
-            confirmButton = {
-                TextButton(onClick = {
-                    showGlassWallpaperGuide = false
-                    enableGlassAfterWallpaperPick = true
-                    imagePicker.launch(arrayOf("image/*"))
-                }) { Text(i18n("settings.wallpaper_guide.pick")) }
-            },
-            dismissButton = {
-                Row {
-                    TextButton(onClick = {
-                        showGlassWallpaperGuide = false
-                        onEvent(SettingsEvent.SetDisplayMode(UiDisplayMode.LIQUID_GLASS))
-                    }) { Text(i18n("settings.wallpaper_guide.continue")) }
-                    TextButton(onClick = { showGlassWallpaperGuide = false }) { Text(i18n("common.cancel")) }
-                }
-            },
-        )
-    }
+    val listState = rememberLazyListState()
 
     Scaffold(
         containerColor = androidx.compose.ui.graphics.Color.Transparent,
@@ -122,10 +94,12 @@ fun SettingsScreen(
             )
         }
     ) { padding ->
+        GlassScrollPerformance(listState)
         LazyColumn(
             modifier = Modifier
                 .fillMaxSize()
                 .padding(padding),
+            state = listState,
             contentPadding = PaddingValues(bottom = 24.dp)
         ) {
             // ── 主题 ──
@@ -144,11 +118,7 @@ fun SettingsScreen(
                     displayMode = displayMode,
                                 current = displayMode,
                     onSelect = { mode ->
-                        if (mode == UiDisplayMode.LIQUID_GLASS && wallpaperUri == null) {
-                            showGlassWallpaperGuide = true
-                        } else {
-                            onEvent(SettingsEvent.SetDisplayMode(mode))
-                        }
+                        onEvent(SettingsEvent.SetDisplayMode(mode))
                     },
                 )
             }

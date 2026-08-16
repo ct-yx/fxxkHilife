@@ -5,6 +5,7 @@ import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Bluetooth
 import androidx.compose.material.icons.filled.BluetoothConnected
@@ -26,6 +27,7 @@ import com.freebuds.controller.ui.glass.AdaptiveGlassBanner
 import com.freebuds.controller.ui.glass.GlassBannerTone
 import com.freebuds.controller.ui.foundation.components.AppTopBar
 import com.freebuds.controller.ui.foundation.assets.UiAssetCatalog
+import com.freebuds.controller.ui.foundation.surface.GlassScrollPerformance
 import com.freebuds.controller.ui.state.ConnectionSummary
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -40,6 +42,7 @@ fun ScanScreen(
     val scanState by viewModel.scanState.collectAsStateWithLifecycle()
     val controlChannelState by viewModel.controlChannelState.collectAsStateWithLifecycle()
     val connection = remember(controlChannelState) { ConnectionSummary.from(controlChannelState) }
+    val listState = rememberLazyListState()
 
     Scaffold(
         containerColor = androidx.compose.ui.graphics.Color.Transparent,
@@ -51,6 +54,7 @@ fun ScanScreen(
             )
         }
     ) { padding ->
+        GlassScrollPerformance(listState)
         Column(
             modifier = Modifier
                 .fillMaxSize()
@@ -115,7 +119,7 @@ fun ScanScreen(
                 val huawei = scanState.devices.filter { it.isHuaweiOrHonor }
                 val others = scanState.devices.filter { !it.isHuaweiOrHonor }
 
-                LazyColumn {
+                LazyColumn(state = listState) {
                     if (huawei.isNotEmpty()) {
                         item {
                             SectionHeader(i18n("scan.huawei_honor_devices"))

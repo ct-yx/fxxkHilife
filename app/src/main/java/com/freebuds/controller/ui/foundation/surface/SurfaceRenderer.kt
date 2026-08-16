@@ -7,6 +7,7 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.BoxScope
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.ColumnScope
+import androidx.compose.foundation.lazy.LazyListState
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -79,10 +80,16 @@ data class GlassRuntimeDiagnostics(
 class GlassHostState internal constructor(val hazeState: HazeState) {
     var sourceAttached by mutableStateOf(false)
         internal set
+    var isScrolling by mutableStateOf(false)
+        private set
     var lastDiagnostics by mutableStateOf<GlassRuntimeDiagnostics?>(null)
         internal set
     var activeEffectSurfaceCount by mutableStateOf(0)
         internal set
+
+    internal fun setScrolling(value: Boolean) {
+        if (isScrolling != value) isScrolling = value
+    }
 }
 
 val LocalGlassHost = staticCompositionLocalOf<GlassHostState?> { null }
@@ -91,6 +98,21 @@ val LocalGlassHost = staticCompositionLocalOf<GlassHostState?> { null }
 fun rememberGlassHostState(): GlassHostState {
     val hazeState = rememberHazeState()
     return remember(hazeState) { GlassHostState(hazeState) }
+}
+
+/**
+ * Disables expensive captured-content effects while a lazy list is being dragged. The list keeps
+ * the same translucent glass skin during the gesture and restores the real effect after the
+ * gesture, so scrolling does not repeatedly re-render the full background source.
+ */
+@Composable
+fun GlassScrollPerformance(listState: LazyListState) {
+    val host = LocalGlassHost.current
+    val isScrolling = listState.isScrollInProgress
+    SideEffect { host?.setScrolling(isScrolling) }
+    DisposableEffect(host) {
+        onDispose { host?.setScrolling(false) }
+    }
 }
 
 /** Owns the only source for a window. Background is drawn before the content tree. */
@@ -107,7 +129,7 @@ fun GlassHost(
     SideEffect {
         host.sourceAttached = sourceAttached
     }
-    val sourceModifier = if (sourceAttached) {
+    val sourceModifier = if (sourceAttached && !host.isScrolling) {
         Modifier.hazeSource(host.hazeState)
     } else {
         Modifier
@@ -160,19 +182,41 @@ object SurfaceRenderer {
         )
         val view = LocalView.current
         // Keep the requested renderer independent from source availability. Diagnostics must show
-        // that Liquid was requested but resolved to Material 3 when the wallpaper is still
-        // loading or invalid; otherwise a fallback would look like a normal Material 3 choice.
+        // when a caller outside the app shell has no source; the app shell itself supplies a
+        // built-in colour field even when the optional user wallpaper is absent or invalid.
         val requested = configuredSpec.renderMode ?: resolveMode(displayMode, configuredSpec.role)
-        val actual = resolveActualMode(
+        val resolved = resolveActualMode(
             requested = requested,
             displayMode = displayMode,
             host = host,
             hardwareAccelerated = view.isHardwareAccelerated,
         )
+        // A full captured-content effect is useful while still, but is the wrong trade-off for a
+        // moving LazyColumn. TintOnly keeps the same surface geometry and contrast without a GPU
+        // readback/blur pass on every frame.
+        val actual = if (resolved.isEffect() && host?.isScrolling == true) {
+            SurfaceRenderMode.TintOnly
+        } else {
+            resolved
+        }
         val shape = RoundedCornerShape(configuredSpec.cornerRadius)
         val tintBase = spec.tint ?: MaterialTheme.colorScheme.surfaceVariant
-        val tintAlpha = if (spec.tint == null) glassConfig.tintAlpha else tintBase.alpha
+        val minimumGlassAlpha = if (displayMode == UiDisplayMode.LIQUID_GLASS) {
+            (0.18f + glassConfig.readabilityStrength * 0.20f + configuredSpec.depth * 0.04f)
+                .coerceIn(0.18f, 0.42f)
+        } else {
+            0f
+        }
+        val tintAlpha = if (spec.tint == null) {
+            maxOf(glassConfig.tintAlpha, minimumGlassAlpha)
+        } else {
+            tintBase.alpha
+        }
         val tint = tintBase.copy(alpha = tintAlpha.coerceIn(0.04f, 0.92f))
+        val glassBodyColor = tintBase.copy(alpha = minimumGlassAlpha.coerceAtLeast(0.20f))
+        val glassTintColor = tintBase.copy(
+            alpha = (0.10f + configuredSpec.depth * 0.10f).coerceIn(0.10f, 0.24f),
+        )
         // Tint-only rows must not even allocate a source input. The old code created one for
         // every card, which added work during list composition without producing a renderer.
         val hazeInput = if (actual.isEffect()) {
@@ -186,8 +230,8 @@ object SurfaceRenderer {
             remember(configuredSpec, glassConfig, tint, shape) {
                 GlassStyle {
                     shape(shape)
-                    backgroundColor(tint.copy(alpha = (tint.alpha * 0.62f).coerceIn(0.04f, 0.34f)))
-                    tint(tint.copy(alpha = (tint.alpha * 0.72f).coerceIn(0.04f, 0.26f)))
+                    backgroundColor(glassBodyColor)
+                    tint(glassTintColor)
                     optics(
                         GlassOptics.Fixed(
                             refractionStrength = glassConfig.refractionStrength.coerceIn(0f, 1f),
@@ -232,23 +276,27 @@ object SurfaceRenderer {
             actual == SurfaceRenderMode.HazeGlass && hazeInput != null -> Modifier.hazeGlass(
                 input = hazeInput,
                 style = glassStyle ?: GlassStyle,
-                performanceMode = HazePerformanceMode.Default,
-                expandLayerBounds = true,
+                performanceMode = HazePerformanceMode.Adaptive,
+                expandLayerBounds = false,
             )
             actual == SurfaceRenderMode.HazeBlur && hazeInput != null -> Modifier.hazeBlur(
                 input = hazeInput,
                 style = blurStyle ?: HazeBlurStyle,
-                performanceMode = HazePerformanceMode.Default,
-                expandLayerBounds = true,
+                performanceMode = HazePerformanceMode.Adaptive,
+                expandLayerBounds = false,
             )
             else -> Modifier
         }
         val visibleColor = when (actual) {
             SurfaceRenderMode.Material3 -> MaterialTheme.colorScheme.surfaceVariant
-            // Keep a visible tint below the effect. If the platform renderer cannot initialize,
-            // the user still gets a readable surface instead of a transparent hole.
-            SurfaceRenderMode.HazeGlass, SurfaceRenderMode.HazeBlur -> tint.copy(alpha = maxOf(tint.alpha, 0.16f))
-            SurfaceRenderMode.TintOnly -> tint
+            // Keep an explicit translucent body below the effect. This is also the cheap glass
+            // skin used during scrolling, so the visual hierarchy does not disappear mid-drag.
+            SurfaceRenderMode.HazeGlass, SurfaceRenderMode.HazeBlur -> glassBodyColor
+            SurfaceRenderMode.TintOnly -> if (displayMode == UiDisplayMode.LIQUID_GLASS) {
+                glassBodyColor
+            } else {
+                tint
+            }
             SurfaceRenderMode.Opaque -> MaterialTheme.colorScheme.surface
         }
         if (host != null) {
@@ -272,6 +320,7 @@ object SurfaceRenderer {
                     fallbackReason = fallbackReason(
                         requested = requested,
                         actual = actual,
+                        resolved = resolved,
                         displayMode = displayMode,
                         host = host,
                         hardwareAccelerated = view.isHardwareAccelerated,
@@ -293,10 +342,16 @@ object SurfaceRenderer {
                 modifier = modifier.clip(shape).then(effectModifier),
                 shape = shape,
                 color = visibleColor,
-                border = if (actual.isEffect()) {
+                border = if (actual.isEffect() || (displayMode == UiDisplayMode.LIQUID_GLASS && actual == SurfaceRenderMode.TintOnly)) {
                     BorderStroke(
                         width = 0.7.dp,
-                        color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.14f + configuredSpec.depth * 0.10f),
+                        color = MaterialTheme.colorScheme.onSurface.copy(
+                            alpha = if (actual.isEffect()) {
+                                0.16f + configuredSpec.depth * 0.12f
+                            } else {
+                                0.10f + configuredSpec.depth * 0.06f
+                            },
+                        ),
                     )
                 } else null,
                 tonalElevation = if (actual == SurfaceRenderMode.Opaque) 1.dp else 0.dp,
@@ -351,11 +406,13 @@ object SurfaceRenderer {
     private fun fallbackReason(
         requested: SurfaceRenderMode,
         actual: SurfaceRenderMode,
+        resolved: SurfaceRenderMode,
         displayMode: UiDisplayMode,
         host: GlassHostState?,
         hardwareAccelerated: Boolean,
     ): String? = when {
         requested == actual -> null
+        resolved.isEffect() && host?.isScrolling == true -> "scrolling_performance_mode"
         displayMode == UiDisplayMode.CLASSIC -> "display_mode"
         host?.sourceAttached != true -> "source_unavailable"
         !hardwareAccelerated && requested.isEffect() -> "hardware_acceleration"

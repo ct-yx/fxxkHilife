@@ -7,6 +7,7 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.*
 import androidx.compose.material3.*
@@ -31,6 +32,7 @@ import com.freebuds.controller.ui.state.DualDeviceProperty
 import com.freebuds.controller.ui.state.ConnectionSummary
 import com.freebuds.controller.ui.foundation.components.AppTopBar
 import com.freebuds.controller.ui.foundation.assets.UiAssetCatalog
+import com.freebuds.controller.ui.foundation.surface.GlassScrollPerformance
 import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.map
 
@@ -110,6 +112,7 @@ fun DeviceScreen(
     onGesture: () -> Unit,
     onListeningStats: () -> Unit,
 ) {
+    val listState = rememberLazyListState()
     Scaffold(
         containerColor = androidx.compose.ui.graphics.Color.Transparent,
         topBar = {
@@ -121,10 +124,12 @@ fun DeviceScreen(
             )
         }
     ) { padding ->
+        GlassScrollPerformance(listState)
         LazyColumn(
             modifier = Modifier
                 .fillMaxSize()
                 .padding(padding),
+            state = listState,
             contentPadding = PaddingValues(bottom = 24.dp)
         ) {
             // 每个区域独立收集精简后的 props。连接/电量/协议状态变化不会再让整列的

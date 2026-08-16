@@ -16,8 +16,8 @@
   <a href="https://github.com/ct-yx/fxxkHilife/issues">反馈问题 / 参与测试</a>
 </p>
 
-> **当前开发包：v4.4.1（versionCode 100）**
-> **当前公开发布：v4.3.10（versionCode 98）**；BT 重构后的首个大版本已收口，v4.4.1 是液态玻璃可见性与详情页滚动性能定向修复测试包，等待 GitHub Actions 与定向实测。
+> **当前开发包：v4.4.2（versionCode 101）**
+> **当前公开发布：v4.3.10（versionCode 98）**；BT 重构后的首个大版本已收口，v4.4.2 是液态玻璃可见性与列表滑动性能第二轮定向修复测试包，等待 GitHub Actions 与定向实测。
 
 ---
 
@@ -29,12 +29,13 @@
 
 ---
 
-## v4.4.1：液态玻璃可见性与滚动性能定向修复测试包
+## v4.4.2：液态玻璃可见性与列表滑动性能第二轮修复测试包
 
-本包不修改 BT-0 至 BT-4。它针对 `UI_GLASS_VISIBILITY_PERF` 构建标签继续修复 UI-ERR-001/002：
+本包不修改 BT-0 至 BT-4。它针对 `UI_GLASS_SCROLL_FIX` 构建标签继续修复 UI-ERR-001/002：
 
-- 只有 Hero/FeatureCard 进入真实 typed glass；普通列表行仍保持 Tint/Material 3，不把效果数量扩散到滚动区域。
-- 强化边缘折射、表面 profile、光学位移和受控色散；无有效壁纸时仍强制使用 Material 3，不用默认渐变冒充玻璃输入。
+- 保留少量 Hero/FeatureCard 的真实 typed glass；普通列表行使用可见的低成本半透明玻璃皮肤，不创建逐行 Haze effect。
+- 液态模式始终提供静态彩色背景输入；用户壁纸作为增强层而不是开启条件，避免无壁纸时直接退回 Material 3。
+- LazyColumn 拖动期间暂停 captured-content effect、移除 source 采样，静止后恢复真实 glass；Home、Device、Settings、Scan、Gesture 和统计页统一接入。
 - 详情页按电池、ANC、音频、双连和关于区域拆分精简状态订阅，避免无关协议属性变化牵连整列重组；双连卡片仍按地址稳定标识。
 
 当前只完成源码与静态契约收口，尚未把 GitHub Actions、截图/运行诊断和定向交互报告当作 UI 完成证据。测试只覆盖本轮玻璃渲染和详情页滚动，不重复 BT A-F/36/100 项矩阵。
@@ -77,7 +78,7 @@ fxxkHilife 是一个第三方、开源、离线的耳机控制面板，目标是
 
 ## 主要能力
 
-- **UI 重构测试线**：v4.4.1 使用 `UI_GLASS_VISIBILITY_PERF` 针对 UI-ERR-001/002 做可见性与滚动性能 follow-up；现有美术资源保留，最终状态以截图、运行诊断、无障碍和交互报告为准。
+- **UI 重构测试线**：v4.4.2 使用 `UI_GLASS_SCROLL_FIX` 针对 UI-ERR-001/002 做可见性与列表滑动性能第二轮 follow-up；现有美术资源保留，最终状态以截图、运行诊断、无障碍和交互报告为准。
 
 - **设备连接与自动连接**：扫描 HUAWEI / HONOR 耳机，自动保存设备；常驻服务检测到已保存耳机与手机系统蓝牙连接后，会按退避策略自动建立 App SPP 控制连接。
 - **ANC / 透传 / 关闭**：应用内长条胶囊滑块、Quick Settings Tile、常驻通知三按钮均可切换 ANC 模式；在第三方 Android 手机上也可以不打开应用，通过系统快捷开关直接循环切换 ANC。
