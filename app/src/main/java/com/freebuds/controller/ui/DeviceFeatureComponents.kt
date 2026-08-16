@@ -34,6 +34,7 @@ import com.freebuds.controller.data.DualConnectDevice
 import com.freebuds.controller.i18n.I18n
 import com.freebuds.controller.i18n.i18n
 import com.freebuds.controller.ui.glass.AdaptiveCard
+import com.freebuds.controller.ui.foundation.surface.SurfaceRole
 
 /** Device feature cards kept separate from route/layout orchestration. */
 @Composable
@@ -43,6 +44,7 @@ internal fun BatteryCard(props: DeviceProps, displayMode: UiDisplayMode) {
     val rightLevel = props.batteryRight ?: props.batteryGlobal
     AdaptiveCard(
         displayMode = displayMode,
+        role = SurfaceRole.FeatureCard,
         modifier = Modifier
             .fillMaxWidth()
             .padding(16.dp),

@@ -1536,3 +1536,21 @@
 - GitHub Actions `31832633710` 已完成 Android 37 SDK 安装，但 AGP 9.1 在模块级应用 `org.jetbrains.kotlin.android` 时直接终止；失败发生在插件应用阶段，尚未进入 Kotlin/Haze 源码编译。
 - 已移除模块和根项目中多余的 Kotlin Android 插件声明，保留 `org.jetbrains.kotlin.plugin.compose`，使用 AGP 9.1 内置 Kotlin 支持；版本仍为 `4.4.0 / 99`，构建标签仍为 `UI_ERROR_FIX_ALPHA05`。
 - 本地只完成 `git diff --check`、UI contract、update manifest 和 XML 静态校验；GitHub Actions 已完成源码编译和 APK 构建。下一道门为截图/运行诊断、滚动性能和导航交互证据。
+
+## v4.4.1 (2026-08-16)
+
+### 发布
+- 液态玻璃可见性与详情页滚动性能定向修复测试包
+- versionCode: 100
+- versionName: 4.4.1
+- tag: v4.4.1
+
+### 本轮实现
+- `AdaptiveCard` 支持显式 `SurfaceRole`；Home 扫描卡、连接横幅和 Device 电量卡使用有限的 Feature glass，普通列表行继续 Tint/Material 3。
+- `SurfaceRenderer` 只在实际 effect surface 创建 `HazeInput.Sources`，并使用 typed glass 的 `SurfaceProfile`、边缘折射、受控色散和扩展采样边界。
+- `DeviceScreen` 按功能区域收集精简 `DeviceProps` 投影，避免电量/协议更新使整个详情列表重组；双连设备继续按 address 稳定标识。
+- GitHub Actions 默认构建标签更新为 `UI_GLASS_VISIBILITY_PERF`；本轮不修改 BT-0 至 BT-4，也不复跑蓝牙 A-F/36/100 项矩阵。
+
+### 静态验证与阻塞门
+- `git diff --check`、`python3 scripts/validate_ui_contract.py`、`python3 scripts/validate_update_manifest.py docs/update.json` 通过。
+- 按项目约定未执行本地 Gradle；等待 GitHub Actions 构建，以及 `UI_GLASS_RENDERING_TARGETED` / `UI_GLASS_PERFORMANCE` 的 Home/Device 定向实测。

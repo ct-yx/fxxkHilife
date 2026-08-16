@@ -28,6 +28,7 @@ import com.freebuds.controller.ui.glass.GlassBannerTone
 import com.freebuds.controller.ui.foundation.components.ConnectionBanner
 import com.freebuds.controller.ui.foundation.components.AppTopBar
 import com.freebuds.controller.ui.foundation.assets.UiAssetCatalog
+import com.freebuds.controller.ui.foundation.surface.SurfaceRole
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -122,6 +123,7 @@ fun HomeScreen(
                 Spacer(Modifier.height(8.dp))
                 AdaptiveCard(
                     displayMode = displayMode,
+                    role = SurfaceRole.FeatureCard,
                                 modifier = Modifier
                         .fillMaxWidth()
                         .padding(horizontal = 16.dp)

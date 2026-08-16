@@ -42,6 +42,7 @@ import com.freebuds.controller.ui.state.UiActionState
 import com.freebuds.controller.ui.foundation.tokens.UiTokens
 import com.freebuds.controller.ui.glass.AdaptiveCard
 import com.freebuds.controller.ui.UiDisplayMode
+import com.freebuds.controller.ui.foundation.surface.SurfaceRole
 
 @Immutable
 data class UiOption<T>(
@@ -233,7 +234,11 @@ fun ConnectionBanner(
             else -> "$name · ${summary.stageLabel}"
         }
     } ?: summary.stageLabel
-    AdaptiveCard(displayMode = displayMode, modifier = modifier) {
+    AdaptiveCard(
+        displayMode = displayMode,
+        role = SurfaceRole.FeatureCard,
+        modifier = modifier,
+    ) {
         Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(UiTokens.ref.space3)) {
             Icon(if (error) Icons.Default.ErrorOutline else Icons.Default.Info, contentDescription = null)
             Text(text, modifier = Modifier.weight(1f))

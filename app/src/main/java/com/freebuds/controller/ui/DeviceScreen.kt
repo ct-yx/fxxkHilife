@@ -21,6 +21,7 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.freebuds.controller.data.DeviceViewModel
+import com.freebuds.controller.data.DeviceProps
 import com.freebuds.controller.i18n.I18n
 import com.freebuds.controller.i18n.i18n
 import com.freebuds.controller.ui.glass.AdaptiveCard
@@ -30,6 +31,8 @@ import com.freebuds.controller.ui.state.DualDeviceProperty
 import com.freebuds.controller.ui.state.ConnectionSummary
 import com.freebuds.controller.ui.foundation.components.AppTopBar
 import com.freebuds.controller.ui.foundation.assets.UiAssetCatalog
+import kotlinx.coroutines.flow.distinctUntilChanged
+import kotlinx.coroutines.flow.map
 
 // ── 中文映射（DeviceScreen 专用）──────────────────────────────────────────
 
@@ -107,40 +110,14 @@ fun DeviceScreen(
     onGesture: () -> Unit,
     onListeningStats: () -> Unit,
 ) {
-    val controlChannelState by viewModel.controlChannelState.collectAsStateWithLifecycle()
-    val connection = remember(controlChannelState) { ConnectionSummary.from(controlChannelState) }
-    val props by viewModel.props.collectAsStateWithLifecycle()
-    val deviceName = connection.deviceName
-        ?: props.deviceModel
-        ?: I18n.t("device.battery.earbuds")
-    var optimisticAncMode by remember { mutableStateOf<String?>(null) }
-    val displayAncMode = optimisticAncMode ?: props.ancMode
-
-    // 当 props 的实际值追上乐观值时清除乐观状态（含超时保护）
-    LaunchedEffect(props.ancMode) {
-        optimisticAncMode?.let { expected ->
-            if (props.ancMode == expected) {
-                optimisticAncMode = null
-            } else {
-                // 超时保护，防止卡死或乱跳
-                delay(3000)
-                if (optimisticAncMode == expected) optimisticAncMode = null
-            }
-        }
-    }
-
     Scaffold(
         containerColor = androidx.compose.ui.graphics.Color.Transparent,
         topBar = {
-            AppTopBar(
-                title = deviceName,
+            DeviceTopBar(
+                viewModel = viewModel,
                 displayMode = displayMode,
                 onBack = onBack,
-                actions = {
-                    IconButton(onClick = onSettings) {
-                        Icon(Icons.Default.Settings, contentDescription = i18n("common.settings"))
-                    }
-                },
+                onSettings = onSettings,
             )
         }
     ) { padding ->
@@ -150,221 +127,350 @@ fun DeviceScreen(
                 .padding(padding),
             contentPadding = PaddingValues(bottom = 24.dp)
         ) {
-            // ── 电池卡片 ─────────────────────────────────────────────────────
-            item { BatteryCard(props, displayMode) }
-            if (props.pendingInitHandlers.isNotEmpty()) {
-                item { BackgroundSyncCard(props.pendingInitHandlers, displayMode) }
+            // 每个区域独立收集精简后的 props。连接/电量/协议状态变化不会再让整列的
+            // 条件分支和所有 LazyColumn item 一起重组。
+            item(key = "device-battery") { BatterySection(viewModel, displayMode) }
+            item(key = "device-background-sync") { BackgroundSyncSection(viewModel, displayMode) }
+            item(key = "device-anc") { AncSection(viewModel, displayMode) }
+            item(key = "device-audio") { AudioSection(viewModel, displayMode) }
+            item(key = "device-dual-connect") { DualConnectSection(viewModel, displayMode) }
+            item(key = "device-listening-stats") {
+                ListeningStatsEntry(displayMode, onClick = onListeningStats)
             }
-
-            // ── ANC ─────────────────────────────────────────────────────────
-            displayAncMode?.let { syncedAncMode ->
-                item { SettingsGroupHeader(i18n("device.group.anc")) }
-                // haze 模糊滑块切换器
-                item {
-                    LiquidGlassPanel(
-                        displayMode = displayMode,
-                                        modifier = Modifier.padding(horizontal = 16.dp, vertical = 6.dp),
-                    ) {
-                        AncModeSlider(
-                            current = syncedAncMode,
-                            options = props.ancModeOptions.ifEmpty {
-                                listOf("normal", "cancellation", "awareness")
-                            },
-                            onSelect = {
-                                optimisticAncMode = it
-                                viewModel.onEvent(DeviceEvent.SetAncMode(it))
-                            },
-                        )
-                    }
-                }
-                val normalizedAncLevelOptions = props.ancLevelOptions
-                    .map { canonicalAncLevel(it, syncedAncMode) }
-                    .distinct()
-                if (props.ancLevel != null && syncedAncMode != "normal" && normalizedAncLevelOptions.isNotEmpty()) {
-                    item {
-                        DeviceOptionItem(
-                            displayMode = displayMode,
-                                                icon = Icons.Default.Tune,
-                            title = ancLevelTitle(syncedAncMode),
-                            current = chineseAncLevel(props.ancLevel, syncedAncMode),
-                            options = normalizedAncLevelOptions.map { chineseAncLevel(it, syncedAncMode) },
-                            rawOptions = normalizedAncLevelOptions,
-                            onSelect = { viewModel.onEvent(DeviceEvent.SetAncLevel(it)) }
-                        )
-                    }
-                }
+            item(key = "device-gestures") {
+                GestureEntry(viewModel, displayMode, onClick = onGesture)
             }
-
-            // ── 音频 ─────────────────────────────────────────────────────────
-            val hasSoundQuality = props.soundQuality != null && props.soundQualityOptions.isNotEmpty()
-            val hasEqualizer = props.equalizerPreset != null && props.equalizerPresetOptions.isNotEmpty()
-            val hasAudio = hasSoundQuality || hasEqualizer || props.autoPause != null || props.lowLatency != null
-            if (hasAudio) {
-                item { SettingsGroupHeader(i18n("device.group.audio")) }
-                if (hasSoundQuality) {
-                    item {
-                        DeviceOptionItem(
-                            displayMode = displayMode,
-                                                icon = Icons.Default.GraphicEq,
-                            title = i18n("device.option.sound_quality"),
-                            current = chineseSoundQuality(props.soundQuality),
-                            options = props.soundQualityOptions.map(::chineseSoundQuality),
-                            rawOptions = props.soundQualityOptions,
-                            onSelect = { viewModel.onEvent(DeviceEvent.SetSoundQuality(it)) }
-                        )
-                    }
-                }
-                if (hasEqualizer) {
-                    item {
-                        DeviceOptionItem(
-                            displayMode = displayMode,
-                                                icon = Icons.Default.Equalizer,
-                            title = i18n("device.option.equalizer_preset"),
-                            current = chineseEqualizerPreset(props.equalizerPreset),
-                            options = props.equalizerPresetOptions.map(::chineseEqualizerPreset),
-                            rawOptions = props.equalizerPresetOptions,
-                            onSelect = { viewModel.onEvent(DeviceEvent.SetEqualizerPreset(it)) }
-                        )
-                    }
-                }
-                if (props.equalizerRows.isNotEmpty() || props.equalizerMaxCustomModes > 0) {
-                    item {
-                        EqualizerStatusCard(
-                            props = props,
-                            displayMode = displayMode,
-                                            )
-                    }
-                }
-                if (props.autoPause != null) {
-                    item {
-                        SwitchSettingItem(
-                            displayMode = displayMode,
-                                                icon = Icons.Default.PauseCircle,
-                            title = i18n("device.option.auto_pause"),
-                            checked = props.autoPause,
-                            onCheckedChange = { viewModel.onEvent(DeviceEvent.SetAutoPause(it)) }
-                        )
-                    }
-                }
-                if (props.lowLatency != null) {
-                    item {
-                        SwitchSettingItem(
-                            displayMode = displayMode,
-                                                icon = Icons.Default.Speed,
-                            title = i18n("device.option.low_latency"),
-                            checked = props.lowLatency,
-                            onCheckedChange = { viewModel.onEvent(DeviceEvent.SetLowLatency(it)) }
-                        )
-                    }
-                }
+            item(key = "device-about") {
+                AboutSection(viewModel, displayMode, onOpenTerminal)
             }
+        }
+    }
+}
 
-            if (props.dualConnectEnabled != null || props.dualConnectDevices.isNotEmpty()) {
-                item { SettingsGroupHeader(i18n("device.group.dual_connect")) }
-                props.dualConnectEnabled?.let { enabled ->
-                    item {
-                        SwitchSettingItem(
-                            displayMode = displayMode,
-                                                icon = Icons.Default.Devices,
-                            title = i18n("device.option.dual_connect"),
-                            checked = enabled,
-                            onCheckedChange = { viewModel.onEvent(DeviceEvent.SetDualConnect(it)) }
-                        )
-                    }
-                }
-                items(
-                    items = props.dualConnectDevices,
-                    key = { it.address },
-                ) { device ->
-                    DualConnectDeviceCard(
-                        device = device,
-                        preferredAddress = props.dualConnectPreferredDevice,
-                        displayMode = displayMode,
-                        onPreferred = { viewModel.onEvent(DeviceEvent.SetPreferredDevice(device.address)) },
-                        onConnectionToggle = { target ->
-                            viewModel.onEvent(DeviceEvent.SetDualDeviceOption(device.address, DualDeviceProperty.Connected, target))
-                        },
-                        onAutoToggle = { target ->
-                            viewModel.onEvent(DeviceEvent.SetDualDeviceOption(device.address, DualDeviceProperty.AutoConnect, target))
-                        },
-                    )
-                }
+@Composable
+private fun DeviceTopBar(
+    viewModel: DeviceViewModel,
+    displayMode: UiDisplayMode,
+    onBack: () -> Unit,
+    onSettings: () -> Unit,
+) {
+    val controlChannelState by viewModel.controlChannelState.collectAsStateWithLifecycle()
+    val deviceModelFlow = remember(viewModel) {
+        viewModel.props.map { it.deviceModel }.distinctUntilChanged()
+    }
+    val deviceModel by deviceModelFlow.collectAsStateWithLifecycle(initialValue = null)
+    val connection = remember(controlChannelState) { ConnectionSummary.from(controlChannelState) }
+    AppTopBar(
+        title = connection.deviceName ?: deviceModel ?: I18n.t("device.battery.earbuds"),
+        displayMode = displayMode,
+        onBack = onBack,
+        actions = {
+            IconButton(onClick = onSettings) {
+                Icon(Icons.Default.Settings, contentDescription = i18n("common.settings"))
             }
+        },
+    )
+}
 
-            // ── 听音统计 ─────────────────────────────────────────────────────
-            item { SettingsGroupHeader(i18n("stats.title")) }
-            item {
-                AdaptiveCard(
+private fun DeviceProps.batteryProjection() = DeviceProps(
+    batteryGlobal = batteryGlobal,
+    batteryLeft = batteryLeft,
+    batteryRight = batteryRight,
+    batteryCase = batteryCase,
+    isCharging = isCharging,
+)
+
+private fun DeviceProps.pendingProjection() = DeviceProps(pendingInitHandlers = pendingInitHandlers)
+
+private fun DeviceProps.ancProjection() = DeviceProps(
+    ancMode = ancMode,
+    ancModeOptions = ancModeOptions,
+    ancLevel = ancLevel,
+    ancLevelOptions = ancLevelOptions,
+)
+
+private fun DeviceProps.audioProjection() = DeviceProps(
+    soundQuality = soundQuality,
+    soundQualityOptions = soundQualityOptions,
+    equalizerPreset = equalizerPreset,
+    equalizerPresetOptions = equalizerPresetOptions,
+    equalizerRows = equalizerRows,
+    equalizerSaved = equalizerSaved,
+    equalizerMaxCustomModes = equalizerMaxCustomModes,
+    autoPause = autoPause,
+    lowLatency = lowLatency,
+)
+
+private fun DeviceProps.dualConnectProjection() = DeviceProps(
+    dualConnectEnabled = dualConnectEnabled,
+    dualConnectDevices = dualConnectDevices,
+    dualConnectPreferredDevice = dualConnectPreferredDevice,
+)
+
+private fun DeviceProps.gestureProjection() = DeviceProps(
+    doubleTapLeft = doubleTapLeft,
+    longTap = longTap,
+    swipeGesture = swipeGesture,
+)
+
+private fun DeviceProps.aboutProjection() = DeviceProps(
+    deviceModel = deviceModel,
+    firmwareVersion = firmwareVersion,
+)
+
+@Composable
+private fun BatterySection(viewModel: DeviceViewModel, displayMode: UiDisplayMode) {
+    val flow = remember(viewModel) {
+        viewModel.props.map { it.batteryProjection() }.distinctUntilChanged()
+    }
+    val props by flow.collectAsStateWithLifecycle(initialValue = DeviceProps())
+    BatteryCard(props, displayMode)
+}
+
+@Composable
+private fun BackgroundSyncSection(viewModel: DeviceViewModel, displayMode: UiDisplayMode) {
+    val flow = remember(viewModel) {
+        viewModel.props.map { it.pendingProjection() }.distinctUntilChanged()
+    }
+    val props by flow.collectAsStateWithLifecycle(initialValue = DeviceProps())
+    if (props.pendingInitHandlers.isNotEmpty()) {
+        BackgroundSyncCard(props.pendingInitHandlers, displayMode)
+    }
+}
+
+@Composable
+private fun AncSection(viewModel: DeviceViewModel, displayMode: UiDisplayMode) {
+    val flow = remember(viewModel) {
+        viewModel.props.map { it.ancProjection() }.distinctUntilChanged()
+    }
+    val props by flow.collectAsStateWithLifecycle(initialValue = DeviceProps())
+    var optimisticAncMode by remember { mutableStateOf<String?>(null) }
+    val displayAncMode = optimisticAncMode ?: props.ancMode
+
+    LaunchedEffect(props.ancMode) {
+        optimisticAncMode?.let { expected ->
+            if (props.ancMode == expected) {
+                optimisticAncMode = null
+            } else {
+                delay(3000)
+                if (optimisticAncMode == expected) optimisticAncMode = null
+            }
+        }
+    }
+
+    val syncedAncMode = displayAncMode ?: return
+    Column {
+        SettingsGroupHeader(i18n("device.group.anc"))
+        LiquidGlassPanel(
+            displayMode = displayMode,
+            modifier = Modifier.padding(horizontal = 16.dp, vertical = 6.dp),
+        ) {
+            AncModeSlider(
+                current = syncedAncMode,
+                options = props.ancModeOptions.ifEmpty {
+                    listOf("normal", "cancellation", "awareness")
+                },
+                onSelect = {
+                    optimisticAncMode = it
+                    viewModel.onEvent(DeviceEvent.SetAncMode(it))
+                },
+            )
+        }
+        val normalizedAncLevelOptions = props.ancLevelOptions
+            .map { canonicalAncLevel(it, syncedAncMode) }
+            .distinct()
+        if (props.ancLevel != null && syncedAncMode != "normal" && normalizedAncLevelOptions.isNotEmpty()) {
+            DeviceOptionItem(
+                displayMode = displayMode,
+                icon = Icons.Default.Tune,
+                title = ancLevelTitle(syncedAncMode),
+                current = chineseAncLevel(props.ancLevel, syncedAncMode),
+                options = normalizedAncLevelOptions.map { chineseAncLevel(it, syncedAncMode) },
+                rawOptions = normalizedAncLevelOptions,
+                onSelect = { viewModel.onEvent(DeviceEvent.SetAncLevel(it)) },
+            )
+        }
+    }
+}
+
+@Composable
+private fun AudioSection(viewModel: DeviceViewModel, displayMode: UiDisplayMode) {
+    val flow = remember(viewModel) {
+        viewModel.props.map { it.audioProjection() }.distinctUntilChanged()
+    }
+    val props by flow.collectAsStateWithLifecycle(initialValue = DeviceProps())
+    val hasSoundQuality = props.soundQuality != null && props.soundQualityOptions.isNotEmpty()
+    val hasEqualizer = props.equalizerPreset != null && props.equalizerPresetOptions.isNotEmpty()
+    val hasAudio = hasSoundQuality || hasEqualizer || props.autoPause != null || props.lowLatency != null
+    if (!hasAudio) return
+
+    Column {
+        SettingsGroupHeader(i18n("device.group.audio"))
+        if (hasSoundQuality) {
+            DeviceOptionItem(
+                displayMode = displayMode,
+                icon = Icons.Default.GraphicEq,
+                title = i18n("device.option.sound_quality"),
+                current = chineseSoundQuality(props.soundQuality),
+                options = props.soundQualityOptions.map(::chineseSoundQuality),
+                rawOptions = props.soundQualityOptions,
+                onSelect = { viewModel.onEvent(DeviceEvent.SetSoundQuality(it)) },
+            )
+        }
+        if (hasEqualizer) {
+            DeviceOptionItem(
+                displayMode = displayMode,
+                icon = Icons.Default.Equalizer,
+                title = i18n("device.option.equalizer_preset"),
+                current = chineseEqualizerPreset(props.equalizerPreset),
+                options = props.equalizerPresetOptions.map(::chineseEqualizerPreset),
+                rawOptions = props.equalizerPresetOptions,
+                onSelect = { viewModel.onEvent(DeviceEvent.SetEqualizerPreset(it)) },
+            )
+        }
+        if (props.equalizerRows.isNotEmpty() || props.equalizerMaxCustomModes > 0) {
+            EqualizerStatusCard(props, displayMode)
+        }
+        if (props.autoPause != null) {
+            SwitchSettingItem(
+                displayMode = displayMode,
+                icon = Icons.Default.PauseCircle,
+                title = i18n("device.option.auto_pause"),
+                checked = props.autoPause,
+                onCheckedChange = { viewModel.onEvent(DeviceEvent.SetAutoPause(it)) },
+            )
+        }
+        if (props.lowLatency != null) {
+            SwitchSettingItem(
+                displayMode = displayMode,
+                icon = Icons.Default.Speed,
+                title = i18n("device.option.low_latency"),
+                checked = props.lowLatency,
+                onCheckedChange = { viewModel.onEvent(DeviceEvent.SetLowLatency(it)) },
+            )
+        }
+    }
+}
+
+@Composable
+private fun DualConnectSection(viewModel: DeviceViewModel, displayMode: UiDisplayMode) {
+    val flow = remember(viewModel) {
+        viewModel.props.map { it.dualConnectProjection() }.distinctUntilChanged()
+    }
+    val props by flow.collectAsStateWithLifecycle(initialValue = DeviceProps())
+    if (props.dualConnectEnabled == null && props.dualConnectDevices.isEmpty()) return
+
+    Column {
+        SettingsGroupHeader(i18n("device.group.dual_connect"))
+        props.dualConnectEnabled?.let { enabled ->
+            SwitchSettingItem(
+                displayMode = displayMode,
+                icon = Icons.Default.Devices,
+                title = i18n("device.option.dual_connect"),
+                checked = enabled,
+                onCheckedChange = { viewModel.onEvent(DeviceEvent.SetDualConnect(it)) },
+            )
+        }
+        props.dualConnectDevices.forEach { device ->
+            key(device.address) {
+                DualConnectDeviceCard(
+                    device = device,
+                    preferredAddress = props.dualConnectPreferredDevice,
                     displayMode = displayMode,
-                                modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(horizontal = 16.dp, vertical = 5.dp)
-                        .clickable(onClick = onListeningStats),
-                ) {
-                    Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(14.dp)) {
-                        Icon(Icons.Default.QueryStats, contentDescription = null)
-                        Column(Modifier.weight(1f)) {
-                            Text(i18n("stats.title"))
-                            Text(i18n("stats.description"), style = MaterialTheme.typography.bodySmall)
-                        }
-                        Icon(Icons.Default.ChevronRight, contentDescription = null)
-                    }
-                }
+                    onPreferred = { viewModel.onEvent(DeviceEvent.SetPreferredDevice(device.address)) },
+                    onConnectionToggle = { target ->
+                        viewModel.onEvent(DeviceEvent.SetDualDeviceOption(device.address, DualDeviceProperty.Connected, target))
+                    },
+                    onAutoToggle = { target ->
+                        viewModel.onEvent(DeviceEvent.SetDualDeviceOption(device.address, DualDeviceProperty.AutoConnect, target))
+                    },
+                )
             }
+        }
+    }
+}
 
-            // ── 手势（下移到页面底部）────────────────────────────────────────
-            val hasGesture = props.doubleTapLeft != null || props.longTap != null || props.swipeGesture != null
-            if (hasGesture) {
-                item { SettingsGroupHeader(i18n("device.group.gestures")) }
-                item {
-                    AdaptiveCard(
-                        displayMode = displayMode,
-                                        modifier = Modifier
-                            .fillMaxWidth()
-                            .padding(horizontal = 16.dp, vertical = 5.dp)
-                            .clickable(onClick = onGesture),
-                    ) {
-                        Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(14.dp)) {
-                            Icon(Icons.Default.TouchApp, contentDescription = null)
-                            Column(Modifier.weight(1f)) {
-                                Text(i18n("device.gesture_settings"))
-                                Text(i18n("device.gesture_settings_desc"), style = MaterialTheme.typography.bodySmall)
-                            }
-                            Icon(Icons.Default.ChevronRight, contentDescription = null)
-                        }
-                    }
+@Composable
+private fun ListeningStatsEntry(displayMode: UiDisplayMode, onClick: () -> Unit) {
+    Column {
+        SettingsGroupHeader(i18n("stats.title"))
+        AdaptiveCard(
+            displayMode = displayMode,
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(horizontal = 16.dp, vertical = 5.dp)
+                .clickable(onClick = onClick),
+        ) {
+            Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(14.dp)) {
+                Icon(Icons.Default.QueryStats, contentDescription = null)
+                Column(Modifier.weight(1f)) {
+                    Text(i18n("stats.title"))
+                    Text(i18n("stats.description"), style = MaterialTheme.typography.bodySmall)
                 }
+                Icon(Icons.Default.ChevronRight, contentDescription = null)
             }
+        }
+    }
+}
 
-            // ── 关于 / 调试 ───────────────────────────────────────────────────
-            item { SettingsGroupHeader(i18n("device.group.about")) }
-            props.deviceModel?.let { model ->
-                item {
-                    InfoItem(displayMode, Icons.Default.Info, i18n("device.model"), model)
+@Composable
+private fun GestureEntry(viewModel: DeviceViewModel, displayMode: UiDisplayMode, onClick: () -> Unit) {
+    val flow = remember(viewModel) {
+        viewModel.props.map { it.gestureProjection() }.distinctUntilChanged()
+    }
+    val props by flow.collectAsStateWithLifecycle(initialValue = DeviceProps())
+    val hasGesture = props.doubleTapLeft != null || props.longTap != null || props.swipeGesture != null
+    if (!hasGesture) return
+
+    Column {
+        SettingsGroupHeader(i18n("device.group.gestures"))
+        AdaptiveCard(
+            displayMode = displayMode,
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(horizontal = 16.dp, vertical = 5.dp)
+                .clickable(onClick = onClick),
+        ) {
+            Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(14.dp)) {
+                Icon(Icons.Default.TouchApp, contentDescription = null)
+                Column(Modifier.weight(1f)) {
+                    Text(i18n("device.gesture_settings"))
+                    Text(i18n("device.gesture_settings_desc"), style = MaterialTheme.typography.bodySmall)
                 }
+                Icon(Icons.Default.ChevronRight, contentDescription = null)
             }
-            props.firmwareVersion?.let { firmware ->
-                item {
-                    InfoItem(displayMode, Icons.Default.SystemUpdate, i18n("device.firmware"), firmware)
+        }
+    }
+}
+
+@Composable
+private fun AboutSection(viewModel: DeviceViewModel, displayMode: UiDisplayMode, onOpenTerminal: () -> Unit) {
+    val flow = remember(viewModel) {
+        viewModel.props.map { it.aboutProjection() }.distinctUntilChanged()
+    }
+    val props by flow.collectAsStateWithLifecycle(initialValue = DeviceProps())
+    Column {
+        SettingsGroupHeader(i18n("device.group.about"))
+        props.deviceModel?.let { model ->
+            InfoItem(displayMode, Icons.Default.Info, i18n("device.model"), model)
+        }
+        props.firmwareVersion?.let { firmware ->
+            InfoItem(displayMode, Icons.Default.SystemUpdate, i18n("device.firmware"), firmware)
+        }
+        AdaptiveCard(
+            displayMode = displayMode,
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(horizontal = 16.dp, vertical = 5.dp)
+                .clickable(onClick = onOpenTerminal),
+        ) {
+            Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(14.dp)) {
+                Icon(Icons.Default.Terminal, contentDescription = null)
+                Column(Modifier.weight(1f)) {
+                    Text(i18n("device.debug_terminal"))
+                    Text(i18n("device.debug_terminal_desc"), style = MaterialTheme.typography.bodySmall)
                 }
-            }
-            item {
-                AdaptiveCard(
-                    displayMode = displayMode,
-                                modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(horizontal = 16.dp, vertical = 5.dp)
-                        .clickable(onClick = onOpenTerminal),
-                ) {
-                    Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(14.dp)) {
-                        Icon(Icons.Default.Terminal, contentDescription = null)
-                        Column(Modifier.weight(1f)) {
-                            Text(i18n("device.debug_terminal"))
-                            Text(i18n("device.debug_terminal_desc"), style = MaterialTheme.typography.bodySmall)
-                        }
-                        Icon(Icons.Default.ChevronRight, contentDescription = null)
-                    }
-                }
+                Icon(Icons.Default.ChevronRight, contentDescription = null)
             }
         }
     }

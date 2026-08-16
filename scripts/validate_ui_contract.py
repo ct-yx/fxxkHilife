@@ -106,11 +106,15 @@ def main() -> int:
     stable_key_requirements = {
         "HomeScreen.kt": "key = { it.address }",
         "ScanScreen.kt": "key = { it.device.address }",
-        "DeviceScreen.kt": "key = { it.address }",
+        # DeviceScreen keeps the dual-connect cards inside an isolated section so the parent
+        # LazyColumn does not rebuild on every props update; the section still keys each card by
+        # address through Compose's key() primitive.
+        "DeviceScreen.kt": ("key = { it.address }", "key(device.address)"),
     }
     for filename, required in stable_key_requirements.items():
         text = (UI_ROOT / filename).read_text(encoding="utf-8")
-        if required not in text:
+        alternatives = (required,) if isinstance(required, str) else required
+        if not any(candidate in text for candidate in alternatives):
             fail(f"stable device key is missing: {filename}")
 
     if any("animateContentSize" in path.read_text(encoding="utf-8") for path in UI_ROOT.rglob("*.kt")):

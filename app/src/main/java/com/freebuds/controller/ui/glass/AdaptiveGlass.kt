@@ -26,10 +26,11 @@ enum class GlassSurfaceProfile { Rounded, Squircle, Circle }
 fun AdaptiveCard(
     displayMode: UiDisplayMode,
     modifier: Modifier = Modifier,
+    role: SurfaceRole = SurfaceRole.StandardCard,
     content: @Composable ColumnScope.() -> Unit,
 ) {
     SurfaceRenderer.Card(
-        spec = SurfaceSpec(role = SurfaceRole.StandardCard),
+        spec = SurfaceSpec(role = role),
         displayMode = displayMode,
         modifier = modifier,
         content = content,

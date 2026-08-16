@@ -33,6 +33,7 @@ import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import com.freebuds.controller.ui.UiDisplayMode
 import com.freebuds.controller.ui.foundation.tokens.UiTokens
+import com.freebuds.controller.ui.glass.GlassSurfaceProfile
 import com.freebuds.controller.ui.glass.LocalLiquidGlassConfig
 import dev.chrisbanes.haze.ExperimentalHazeApi
 import dev.chrisbanes.haze.HazeState
@@ -45,6 +46,7 @@ import dev.chrisbanes.haze.hazeSource
 import dev.chrisbanes.haze.rememberHazeState
 import dev.chrisbanes.haze.glass.GlassOptics
 import dev.chrisbanes.haze.glass.GlassStyle
+import dev.chrisbanes.haze.glass.SurfaceProfile
 import dev.chrisbanes.haze.glass.hazeGlass
 
 enum class SurfaceRole { Hero, FeatureCard, StandardCard, CompactRow, Dialog, AppBar }
@@ -171,8 +173,14 @@ object SurfaceRenderer {
         val tintBase = spec.tint ?: MaterialTheme.colorScheme.surfaceVariant
         val tintAlpha = if (spec.tint == null) glassConfig.tintAlpha else tintBase.alpha
         val tint = tintBase.copy(alpha = tintAlpha.coerceIn(0.04f, 0.92f))
-        val hazeInput = host?.let {
-            remember(it.hazeState) { HazeInput.Sources(state = it.hazeState) }
+        // Tint-only rows must not even allocate a source input. The old code created one for
+        // every card, which added work during list composition without producing a renderer.
+        val hazeInput = if (actual.isEffect()) {
+            host?.let {
+                remember(it.hazeState) { HazeInput.Sources(state = it.hazeState) }
+            }
+        } else {
+            null
         }
         val glassStyle = if (actual == SurfaceRenderMode.HazeGlass) {
             remember(configuredSpec, glassConfig, tint, shape) {
@@ -183,16 +191,23 @@ object SurfaceRenderer {
                     optics(
                         GlassOptics.Fixed(
                             refractionStrength = glassConfig.refractionStrength.coerceIn(0f, 1f),
-                            refractionHeightFraction = 0.28f,
-                            refractionDisplacement = (8f + configuredSpec.depth * 12f).dp,
+                            refractionHeightFraction = 0.32f,
+                            refractionDisplacement = (14f + configuredSpec.depth * 18f).dp,
                             depth = configuredSpec.depth.coerceIn(0f, 1f),
                             blurRadius = configuredSpec.blurRadius,
                         ),
                     )
+                    surfaceProfile(
+                        when (glassConfig.surfaceProfile) {
+                            GlassSurfaceProfile.Circle -> SurfaceProfile.Circle
+                            GlassSurfaceProfile.Rounded -> SurfaceProfile.Lip
+                            GlassSurfaceProfile.Squircle -> SurfaceProfile.Squircle
+                        },
+                    )
                     specularIntensity((0.30f + configuredSpec.depth * 0.34f).coerceIn(0f, 1f))
                     ambientResponse((0.28f + configuredSpec.depth * 0.36f).coerceIn(0f, 1f))
                     edgeSoftness(1.5.dp)
-                    chromaticAberrationStrength((glassConfig.refractionStrength * 0.08f).coerceIn(0f, 1f))
+                    chromaticAberrationStrength((glassConfig.refractionStrength * 0.16f).coerceIn(0f, 1f))
                 }
             }
         } else {
@@ -217,14 +232,14 @@ object SurfaceRenderer {
             actual == SurfaceRenderMode.HazeGlass && hazeInput != null -> Modifier.hazeGlass(
                 input = hazeInput,
                 style = glassStyle ?: GlassStyle,
-                performanceMode = HazePerformanceMode.Adaptive,
-                expandLayerBounds = false,
+                performanceMode = HazePerformanceMode.Default,
+                expandLayerBounds = true,
             )
             actual == SurfaceRenderMode.HazeBlur && hazeInput != null -> Modifier.hazeBlur(
                 input = hazeInput,
                 style = blurStyle ?: HazeBlurStyle,
-                performanceMode = HazePerformanceMode.Adaptive,
-                expandLayerBounds = false,
+                performanceMode = HazePerformanceMode.Default,
+                expandLayerBounds = true,
             )
             else -> Modifier
         }
@@ -232,7 +247,7 @@ object SurfaceRenderer {
             SurfaceRenderMode.Material3 -> MaterialTheme.colorScheme.surfaceVariant
             // Keep a visible tint below the effect. If the platform renderer cannot initialize,
             // the user still gets a readable surface instead of a transparent hole.
-            SurfaceRenderMode.HazeGlass, SurfaceRenderMode.HazeBlur -> tint.copy(alpha = maxOf(tint.alpha, 0.12f))
+            SurfaceRenderMode.HazeGlass, SurfaceRenderMode.HazeBlur -> tint.copy(alpha = maxOf(tint.alpha, 0.16f))
             SurfaceRenderMode.TintOnly -> tint
             SurfaceRenderMode.Opaque -> MaterialTheme.colorScheme.surface
         }

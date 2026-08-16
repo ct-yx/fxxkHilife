@@ -1,9 +1,9 @@
 # UI 重构错误报告
 
-- 报告日期：2026-08-15
+- 报告日期：2026-08-16
 - 影响范围：液态玻璃渲染、列表滚动性能、设备详情页导航
 - 原始状态：报告创建时已确认根因，尚未修复（历史快照）
-- 当前状态：v4.4.0 / 99 已完成代码修复、生命周期收口和 GitHub Actions 构建，等待截图/运行诊断和定向交互实测
+- 当前状态：v4.4.1 / 100 已完成玻璃可见性与详情页滚动性能 follow-up 代码修复，等待 GitHub Actions、截图/运行诊断和定向性能实测
 - 证据边界：本报告基于当前源码审查；未将构建通过、静态检查或蓝牙连接状态当作 UI 运行成功证据
 
 ## 修复回灌（2026-08-15，v4.4.0 / 99）
@@ -18,6 +18,23 @@
 - **CI 验证完成**：GitHub Actions `31833142274` 通过 `diff-check`、UI contract、102 个 JVM 测试和 Debug/Release 构建；Debug SHA-256 为 `0aaa7353a39412cdc15ae80af3fcfcbcfa7340fdebb465e338ba44c9f764991f`，Release SHA-256 为 `853ffb596090289b89456d991c06769b59c94385e9d1e1603c4dc2a3d818e9a8`。
 
 **未关闭条件**：GitHub Actions 构建通过；`UI_GLASS_RENDERING_TARGETED`、`UI_GLASS_PERFORMANCE`、`UI_NAVIGATION_SESSION` 和无背景 Material 3 fallback 的截图/运行诊断通过。未完成这些条件前，不把本报告标记为完全解决。
+
+## Follow-up：当前反馈“效果几乎没有、滑动仍卡顿”（2026-08-16）
+
+本次只处理 UI-ERR-001/002，不重新打开已经收口的蓝牙任务，也不复跑蓝牙 A-F/36/100 项矩阵。
+
+### 已修改
+
+- `AdaptiveCard` 增加显式 `SurfaceRole`；Home 扫描卡、连接横幅和 Device 电量卡提升为少量 `FeatureCard`，保存设备/扫描设备行、设置行和普通选项仍为 `TintOnly`，避免用“所有卡片都加玻璃”换取可见性。
+- `SurfaceRenderer` 只为真实 effect surface 创建 `HazeInput.Sources`；typed glass 使用 `SurfaceProfile`、更明确的边缘折射高度/位移、受控色散和 `expandLayerBounds=true`。无有效壁纸仍按既定硬门回退 Material 3，不用默认渐变或透明层伪造输入。
+- `DeviceScreen` 拆成独立的电量、后台同步、ANC、音频、双连、手势和关于区域；每个区域只收集对应的 `DeviceProps` 投影并 `distinctUntilChanged`，双连卡片保留地址 key。
+
+### 本轮只需验证
+
+1. `UI_GLASS_RENDERING_TARGETED`：有有效非纯色壁纸时，Home 的连接/扫描重点卡和 Device 的电量/ANC surface 记录实际 renderer、source 和 effect 数量；无壁纸仍记录 Material 3 fallback。
+2. `UI_GLASS_PERFORMANCE`：只滚动 Home 保存设备列表和 Device 详情列表，分别记录 3 轮 P95 帧时间、jank、内存和 effect 数量；连接状态/电量变化期间确认未变化区域不出现整列跳动。
+
+本轮不要求重新验证导航会话、设置更新流程、无障碍全矩阵或蓝牙实机矩阵。
 
 ## UI-ERR-001：液态玻璃实际仍为毛玻璃（原始问题）
 
@@ -235,6 +252,6 @@ onDeviceClick = { address -> viewModel.autoConnectSaved(address) }
 
 ## 当前结论
 
-三个代码级根因已经在 `v4.4.0 / 99` 修复：Liquid 请求现在只在有效壁纸 source 下进入真实 typed glass，列表不再逐行创建 effect 并使用稳定 key，详情自动导航按 `address + attemptId` 消费且手动入口显式导航。页面收集也已切换到生命周期感知方式，Home 的保存设备刷新不再绑定每个系统连接阶段。
+`v4.4.1 / 100` 在上一轮基础上继续收敛：真实 typed glass 只保留在少量 Hero/Feature surface，关键卡片的边缘光学参数已增强，Tint-only 行不再创建 effect input，Device 页面按区域订阅精简状态，避免无关属性变化牵连整列重组。上一轮的稳定 key、生命周期感知收集、Home 地址刷新和 `address + attemptId` 导航边界继续保留。
 
 问题仍保持“目标受阻”，因为代码修复和 CI 通过不能替代真实输入下的截图/运行诊断、滚动性能和导航交互证据。报告返回前，不将 UI-ERR-001/002/003 标记为完全关闭。
