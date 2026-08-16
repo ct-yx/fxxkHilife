@@ -6,7 +6,7 @@
 >
 > 当前发布基线：v4.3.10 / versionCode 98，2026-08-14（BT 重构后的首个公开大版本；BT-0 至 BT-4 蓝牙阶段已完成；BT-4 定向实机门已通过）
 >
-> 当前开发包：v4.4.2 / versionCode 101，2026-08-16（液态玻璃可见性与列表滑动性能第二轮定向修复包；等待 GitHub Actions、截图/运行诊断和定向性能实测，不代表已发布 Release）
+> 当前开发包：v4.4.2 / versionCode 101，2026-08-16（液态玻璃可见性与列表滑动性能第二轮定向修复包；GitHub Actions 已通过，等待截图/运行诊断和定向性能实测，不代表已发布 Release）
 >
 > 目标：把当前“能工作但边界偏大”的 UI、蓝牙连接和 SPP 指令实现整理成可持续迭代的结构。蓝牙阶段先稳定现有 HUAWEI / HONOR + RFCOMM SPP 路线；当前转入 UI 基本全量重构，统一视觉、交互、状态和导航，同时保留已经验证可用的美术资源。
 
@@ -293,7 +293,8 @@
 - **参数收口**：恢复 Haze `Adaptive` performance mode 和 `expandLayerBounds=false`，避免上一版为增强边缘采样而扩大滚动期间的 GPU layer；玻璃正文透明度和普通行边框提升到可辨识范围。
 - **设置行为**：Liquid 模式不再因缺少壁纸弹出阻断式引导；壁纸是可选增强，不是渲染前置条件。
 - **静态门**：本地仅执行 `git diff --check`、UI contract 和 update manifest 校验，不执行 Gradle；构建继续交给 GitHub Actions。
-- **当前目标受阻**：等待本版本 CI 产物后，只测 `UI_GLASS_SCROLL_FIX`：Home/Device 各 3 轮静止截图与滚动 P95/jank/effect 数量；同时各做一次无壁纸与有壁纸对照。回归报告返回前，UI-1/UI-4 继续保持 `[~]`。
+- **CI 门已通过**：GitHub Actions `31931436152` 已通过 diff-check、UI contract、Gradle 自动测试和 Debug/Release 构建；Debug SHA-256=`1ab62a8c823120783f459d2916dd654201df1d35ab484160b6bea0dbc7fd6731`，Release SHA-256=`0dc74de065a9380cb874b449c835879c1fea33fded65fd7719b4e44fac146dda`。
+- **当前目标受阻**：只测 `UI_GLASS_SCROLL_FIX`：Home/Device 各 3 轮静止截图与滚动 P95/jank/effect 数量；同时各做一次无壁纸与有壁纸对照。回归报告返回前，UI-1/UI-4 继续保持 `[~]`。
 
 ## 1. 范围与原则
 

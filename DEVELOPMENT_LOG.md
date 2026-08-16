@@ -1568,4 +1568,5 @@
 - 普通 Tint-only surface 提升透明填充与边框可见性；长列表不增加逐行 captured-content effect。
 - 所有 LazyColumn 接入 `GlassScrollPerformance`：拖动时暂停 source/effect 采样，临时使用低成本玻璃皮肤，静止后恢复真实 glass/blur。
 - Haze effect 改回 `Adaptive` 与 `expandLayerBounds=false`，降低 GPU layer 和拖动期间的读回成本。
-- 本轮未修改 BT-0 至 BT-4；只等待 `UI_GLASS_SCROLL_FIX` 的 GitHub Actions 产物和 Home/Device 定向实测。
+- 本轮未修改 BT-0 至 BT-4；CI 产物已核验，下一道门是 `UI_GLASS_SCROLL_FIX` 的 Home/Device 定向实测。
+- GitHub Actions `31931436152` 已通过 diff-check、UI contract、Gradle 自动测试和 Debug/Release 构建；Debug SHA-256=`1ab62a8c823120783f459d2916dd654201df1d35ab484160b6bea0dbc7fd6731`，Release SHA-256=`0dc74de065a9380cb874b449c835879c1fea33fded65fd7719b4e44fac146dda`。

@@ -17,7 +17,7 @@
 </p>
 
 > **Current development build: v4.4.2 (versionCode 101)**
-> **Current public release: v4.3.10 (versionCode 98)**; the BT refactor is closed, while v4.4.2 is the second targeted glass-visibility and list-scroll performance fix build awaiting GitHub Actions and runtime evidence.
+> **Current public release: v4.3.10 (versionCode 98)**; the BT refactor is closed, while v4.4.2 is the second targeted glass-visibility and list-scroll performance fix build with GitHub Actions passed and runtime evidence pending.
 
 ---
 
