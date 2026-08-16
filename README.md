@@ -16,8 +16,8 @@
   <a href="https://github.com/ct-yx/fxxkHilife/issues">反馈问题 / 参与测试</a>
 </p>
 
-> **当前开发包：v4.4.2（versionCode 101）**
-> **当前公开发布：v4.3.10（versionCode 98）**；BT 重构后的首个大版本已收口，v4.4.2 是液态玻璃可见性与列表滑动性能第二轮定向修复测试包，GitHub Actions 已通过，等待定向实测。
+> **当前开发包：v4.4.3（versionCode 102）**
+> **当前公开发布：v4.3.10（versionCode 98）**；BT 重构后的首个大版本已收口，v4.4.3 是液态玻璃共享视口与滚动性能定向修复测试包，等待 GitHub Actions 与定向实测。
 
 ---
 
@@ -28,6 +28,17 @@
 <https://ct-yx.github.io/fxxkHilife/>
 
 ---
+
+## v4.4.3：液态玻璃共享视口与滚动性能修复测试包
+
+本包不修改 BT-0 至 BT-4。它针对 `UI_GLASS_SHARED_VIEWPORT` 构建标签继续修复 UI-ERR-001/002：
+
+- 每个滚动视口只创建一个稳定的真实 typed `hazeGlass` 背景；普通列表行从首次组合起使用 draw-only 的渐变、内高光和边缘皮肤，不逐行创建 captured-content effect。
+- Home、Device、Settings、Scan、Gesture 和统计页的 LazyColumn 不在拖动开始时切换 effect/source；列表行也不读取滚动布尔状态，避免触摸边界让可见 item 整批重组。
+- 全窗口 Haze source 保持稳定，不再因滚动摘挂 source；重点 glass 保留完整边缘采样范围。
+- 增加共享视口 effect 就绪条件和滚动渲染策略 JVM 回归测试；本轮仍不重复 BT A-F/36/100 项矩阵。
+
+当前只完成源码、策略测试和静态契约，GitHub Actions、截图/运行诊断和定向交互报告仍是 UI 完成门槛。
 
 ## v4.4.2：液态玻璃可见性与列表滑动性能第二轮修复测试包
 
@@ -78,7 +89,7 @@ fxxkHilife 是一个第三方、开源、离线的耳机控制面板，目标是
 
 ## 主要能力
 
-- **UI 重构测试线**：v4.4.2 使用 `UI_GLASS_SCROLL_FIX` 针对 UI-ERR-001/002 做可见性与列表滑动性能第二轮 follow-up；现有美术资源保留，最终状态以截图、运行诊断、无障碍和交互报告为准。
+- **UI 重构测试线**：v4.4.3 使用 `UI_GLASS_SHARED_VIEWPORT` 针对 UI-ERR-001/002 做共享视口玻璃与列表滑动性能 follow-up；现有美术资源保留，最终状态以截图、运行诊断、无障碍和交互报告为准。
 
 - **设备连接与自动连接**：扫描 HUAWEI / HONOR 耳机，自动保存设备；常驻服务检测到已保存耳机与手机系统蓝牙连接后，会按退避策略自动建立 App SPP 控制连接。
 - **ANC / 透传 / 关闭**：应用内长条胶囊滑块、Quick Settings Tile、常驻通知三按钮均可切换 ANC 模式；在第三方 Android 手机上也可以不打开应用，通过系统快捷开关直接循环切换 ANC。

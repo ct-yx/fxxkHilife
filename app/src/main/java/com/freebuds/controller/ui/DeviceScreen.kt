@@ -33,6 +33,7 @@ import com.freebuds.controller.ui.state.ConnectionSummary
 import com.freebuds.controller.ui.foundation.components.AppTopBar
 import com.freebuds.controller.ui.foundation.assets.UiAssetCatalog
 import com.freebuds.controller.ui.foundation.surface.GlassScrollPerformance
+import com.freebuds.controller.ui.foundation.surface.GlassScrollableContent
 import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.map
 
@@ -125,13 +126,14 @@ fun DeviceScreen(
         }
     ) { padding ->
         GlassScrollPerformance(listState)
-        LazyColumn(
-            modifier = Modifier
-                .fillMaxSize()
-                .padding(padding),
-            state = listState,
-            contentPadding = PaddingValues(bottom = 24.dp)
-        ) {
+        GlassScrollableContent(displayMode = displayMode) {
+            LazyColumn(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .padding(padding),
+                state = listState,
+                contentPadding = PaddingValues(bottom = 24.dp)
+            ) {
             // 每个区域独立收集精简后的 props。连接/电量/协议状态变化不会再让整列的
             // 条件分支和所有 LazyColumn item 一起重组。
             item(key = "device-battery") { BatterySection(viewModel, displayMode) }
@@ -147,6 +149,7 @@ fun DeviceScreen(
             }
             item(key = "device-about") {
                 AboutSection(viewModel, displayMode, onOpenTerminal)
+            }
             }
         }
     }

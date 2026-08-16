@@ -40,6 +40,7 @@ import com.freebuds.controller.ui.theme.ThemeMode
 import com.freebuds.controller.ui.foundation.components.AppTopBar
 import com.freebuds.controller.ui.foundation.assets.UiAssetCatalog
 import com.freebuds.controller.ui.foundation.surface.GlassScrollPerformance
+import com.freebuds.controller.ui.foundation.surface.GlassScrollableContent
 import com.freebuds.controller.ui.state.ConnectionSummary
 import com.freebuds.controller.ui.state.SettingsEvent
 import java.text.DateFormat
@@ -95,13 +96,14 @@ fun SettingsScreen(
         }
     ) { padding ->
         GlassScrollPerformance(listState)
-        LazyColumn(
-            modifier = Modifier
-                .fillMaxSize()
-                .padding(padding),
-            state = listState,
-            contentPadding = PaddingValues(bottom = 24.dp)
-        ) {
+        GlassScrollableContent(displayMode = displayMode) {
+            LazyColumn(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .padding(padding),
+                state = listState,
+                contentPadding = PaddingValues(bottom = 24.dp)
+            ) {
             // ── 主题 ──
             item { SettingsHeader(i18n("settings.theme")) }
             item {
@@ -333,6 +335,7 @@ fun SettingsScreen(
                         }
                     }
                 }
+            }
             }
         }
     }

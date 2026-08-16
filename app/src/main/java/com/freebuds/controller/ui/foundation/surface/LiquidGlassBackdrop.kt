@@ -22,9 +22,9 @@ fun LiquidGlassBackdrop(modifier: Modifier = Modifier) {
         drawRect(
             brush = Brush.linearGradient(
                 colors = listOf(
-                    scheme.primary.copy(alpha = 0.24f),
-                    scheme.secondary.copy(alpha = 0.12f),
-                    scheme.tertiary.copy(alpha = 0.22f),
+                    scheme.primary.copy(alpha = 0.34f),
+                    scheme.secondary.copy(alpha = 0.20f),
+                    scheme.tertiary.copy(alpha = 0.32f),
                 ),
                 start = Offset.Zero,
                 end = Offset(size.width, size.height),
@@ -32,7 +32,7 @@ fun LiquidGlassBackdrop(modifier: Modifier = Modifier) {
         )
         drawCircle(
             brush = Brush.radialGradient(
-                colors = listOf(scheme.primary.copy(alpha = 0.34f), Color.Transparent),
+                colors = listOf(scheme.primary.copy(alpha = 0.44f), Color.Transparent),
                 center = Offset(size.width * 0.16f, size.height * 0.16f),
                 radius = size.minDimension * 0.62f,
             ),
@@ -41,7 +41,7 @@ fun LiquidGlassBackdrop(modifier: Modifier = Modifier) {
         )
         drawCircle(
             brush = Brush.radialGradient(
-                colors = listOf(scheme.tertiary.copy(alpha = 0.30f), Color.Transparent),
+                colors = listOf(scheme.tertiary.copy(alpha = 0.40f), Color.Transparent),
                 center = Offset(size.width * 0.90f, size.height * 0.30f),
                 radius = size.minDimension * 0.56f,
             ),
@@ -50,7 +50,7 @@ fun LiquidGlassBackdrop(modifier: Modifier = Modifier) {
         )
         drawCircle(
             brush = Brush.radialGradient(
-                colors = listOf(scheme.secondary.copy(alpha = 0.25f), Color.Transparent),
+                colors = listOf(scheme.secondary.copy(alpha = 0.34f), Color.Transparent),
                 center = Offset(size.width * 0.58f, size.height * 0.94f),
                 radius = size.minDimension * 0.64f,
             ),
