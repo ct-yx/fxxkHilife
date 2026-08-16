@@ -6,7 +6,7 @@
 >
 > 当前发布基线：v4.3.10 / versionCode 98，2026-08-14（BT 重构后的首个公开大版本；BT-0 至 BT-4 蓝牙阶段已完成；BT-4 定向实机门已通过）
 >
-> 当前开发包：v4.4.3 / versionCode 102，2026-08-16（液态玻璃共享视口与滚动性能定向修复包；等待 GitHub Actions、截图/运行诊断和定向性能实测，不代表已发布 Release）
+> 当前开发包：v4.4.2 / versionCode 101，2026-08-16（液态玻璃可见性与列表滑动性能第二轮定向修复包；GitHub Actions 已通过，等待截图/运行诊断和定向性能实测，不代表已发布 Release）
 >
 > 目标：把当前“能工作但边界偏大”的 UI、蓝牙连接和 SPP 指令实现整理成可持续迭代的结构。蓝牙阶段先稳定现有 HUAWEI / HONOR + RFCOMM SPP 路线；当前转入 UI 基本全量重构，统一视觉、交互、状态和导航，同时保留已经验证可用的美术资源。
 
@@ -34,7 +34,7 @@
 - 关键日志或耗时结论。
 - 回退方式。
 
-当前 **BT-0 至 BT-4 已完成**：`v4.3.10 / 98` 是 BT 重构后的首个公开大版本，主验证设备的蓝牙状态契约门已通过，但结论仍限定在已有型号/固件/系统证据范围内，不外推为所有型号和所有指令均已实机验证。UI-0 至 UI-5 已有第一轮结构迁移，但该迁移未完成生产切换，且已由 `docs/UI_ERROR_REPORT.md` 确认存在液态玻璃可见性、滚动性能和详情导航阻塞；它们不能标记为完成，也不能作为完全重构完成的证据。后续 UI 按 BG-0、UI-FOUNDATION、FROSTED-1、LIQUID-1、NAV-1、DEVICE-1、SETTINGS-1、LEGACY-CUTOVER 和 UI-RELEASE 重新收口。
+当前 **BT-0 至 BT-4 已完成**：`v4.3.10 / 98` 是 BT 重构后的首个公开大版本，主验证设备的蓝牙状态契约门已通过，但结论仍限定在已有型号/固件/系统证据范围内，不外推为所有型号和所有指令均已实机验证。UI-0 至 UI-5 已有第一轮结构迁移，但该迁移未完成生产切换，且已由 `docs/UI_ERROR_REPORT.md` 确认存在液态玻璃伪实现、滚动性能和详情导航阻塞；它们不能标记为完成，也不能作为完全重构完成的证据。后续 UI 按 BG-0、UI-FOUNDATION、FROSTED-1、LIQUID-1、NAV-1、DEVICE-1、SETTINGS-1、LEGACY-CUTOVER 和 UI-RELEASE 重新收口。
 
 ### 0.1.1 定向实机测试规则
 
@@ -151,15 +151,15 @@
 | BT-3 ConnectionManager 收敛入口 | [x] 已完成 | 2026-08-14；`ConnectionLifecycle`、session/attempt/Job 所有权收敛，并由 `BT_MANAGER_RUNTIME_20` F10+初始化10 实机确认；`4.3.10 / 98` 补齐统计 flush、失败 session 断开、command 串行边界和同 attempt 状态映射收尾 |
 | BT-4 通用蓝牙状态输出 | [x] 已完成 | `4.3.10 / 98` 完成原子快照投影、canonical channel、pending/failed 语义收敛、空值规范化、metadata-only core readiness 防误报、严格 PASS 报告校验和 5A 协议边界修复；94/94 Debug、94/94 Release 单元测试、`git diff --check`、Debug/Release 构建通过；同一主验证设备 `BT4_STATE_CONTRACT_5` 实机 5/5 通过。页面尚未迁移消费 |
 | UI-0 UI 基线与资源清点 | [~] 目标受阻：等待实测报告 | 2026-08-15；静态路由/状态/设置 key/资源/渲染调用基线已写入 `docs/UI_BASELINE.md`，新增更新 manifest 契约；等待新 UI 截图和运行诊断门 |
-| UI-1 设计令牌与渲染基础 | [~] 目标受阻：等待定向玻璃实测 | 2026-08-16；v4.4.3 增加每个滚动视口一个稳定 typed glass、列表 draw-only 皮肤和滚动策略回归测试；等待 Home/Device/Settings 截图、renderer 诊断和滚动性能证据 |
+| UI-1 设计令牌与渲染基础 | [~] 目标受阻：等待定向玻璃实测 | 2026-08-16；v4.4.2 增加内置彩色输入、可见 Tint-only 皮肤和拖动期间 Haze 降级；等待 Home/Device 截图、renderer 诊断和滚动性能证据 |
 | UI-2 typed State / Event / Navigation | [~] 目标受阻：等待实测报告 | 2026-08-15；`AppUiState`/`DeviceUiState`/`SettingsUiState`、typed `DeviceEvent`/`SettingsEvent` 已接入核心页面，保留兼容层；等待动作状态矩阵 |
 | UI-3 全局外壳与主路由 | [~] 目标受阻：等待 GitHub CI 与定向实测 | 2026-08-15；背景/source 归属、稳定 key 和连接会话导航已收敛，仍需导航会话和外壳截图验证 |
-| UI-4 设备功能页面 | [~] 目标受阻：等待定向滚动实测 | 2026-08-16；v4.4.3 将 Device LazyColumn 从首次组合起固定为 draw-only 行皮肤，并由一个稳定 viewport glass 提供真实效果；只需验证本页滑动帧时间与状态更新，不复跑 BT 矩阵 |
+| UI-4 设备功能页面 | [~] 目标受阻：等待定向滚动实测 | 2026-08-16；v4.4.2 将 Device LazyColumn 拖动期间切换到低成本玻璃皮肤，静止后恢复 effect；只需验证本页滑动帧时间与状态更新，不复跑 BT 矩阵 |
 | UI-5 设置、持久化与兼容层收口 | [~] 目标受阻：等待实测报告 | 2026-08-15；SettingsRepository、更新检查/下载/安装状态和 UpdateCard 已接入，仍需持久化、无障碍和更新流程验证 |
 
 ### 0.4 应用版本号方案
 
-当前开发包为 **versionName `4.4.3` / versionCode `102`**；当前公开发布基线仍为 `4.3.10 / 98`。`4.4.3 / 102` 是 UI-ERR-001/002 的共享 viewport glass 与滚动性能 follow-up 测试包；`4.4.2 / 101` 是上一轮内置输入与滚动降级包，`4.4.1 / 100` 是可见性与详情滚动修复包，`4.4.0 / 99` 是 alpha05 typed UI foundation 首轮测试包。更早的 BT 版本仍按下表保留，BT-0 的审计、研究、日志和测试准备不单独发版。
+当前开发包为 **versionName `4.4.2` / versionCode `101`**；当前公开发布基线仍为 `4.3.10 / 98`。`4.4.2 / 101` 是 UI-ERR-001/002 的第二轮可见性与列表滑动性能 follow-up 测试包；`4.4.1 / 100` 是上一轮可见性与详情滚动修复包，`4.4.0 / 99` 是 alpha05 typed UI foundation 首轮测试包。更早的 BT 版本仍按下表保留，BT-0 的审计、研究、日志和测试准备不单独发版。
 
 | 里程碑 | 计划 versionName | 计划 versionCode | 说明 |
 |---|---:|---:|---|
@@ -179,18 +179,17 @@
 | UI-1 / UI-ERR 修复测试包 | 4.4.0 | 99 | `UI_ERROR_FIX_ALPHA05`：真实 typed glass/blur、无背景 Material 3 fallback、列表稳定 key 和会话导航修复 |
 | UI-ERR-001/002 可见性与性能 follow-up | 4.4.1 | 100 | `UI_GLASS_VISIBILITY_PERF`：关键 FeatureCard 真实 glass、光学参数增强、effect 输入延迟创建和 Device 分区订阅（历史包） |
 | UI-ERR-001/002 第二轮可见性与性能 follow-up | 4.4.2 | 101 | `UI_GLASS_SCROLL_FIX`：内置彩色输入、可见 Tint-only 皮肤、拖动期间暂停 Haze source/effect、所有 LazyColumn 统一滚动策略 |
-| UI-ERR-001/002 第三轮共享视口与滚动策略 follow-up | 4.4.3 | 102 | `UI_GLASS_SHARED_VIEWPORT`：每个列表视口一个稳定 typed glass、行首次组合即使用 draw-only 皮肤、source 稳定挂载 |
-| UI-2 typed State / Event / Navigation | 4.4.4 | 103 | `UI_STATE_EVENT`：页面状态、动作反馈、导航事件和兼容投影 |
-| UI-3 全局外壳与主路由 | 4.4.5 | 104 | `UI_SHELL_ROUTES`：Home/Scan/Permission 以及连接入口收敛 |
-| UI-4 设备功能页面 | 4.4.6 | 105 | `UI_DEVICE_FEATURES`：Device/Gesture/ListeningStats/Terminal 迁移 |
-| UI-5 设置、持久化与兼容层收口 | 4.5.0 | 106 | `UI_COMPLETE`：Settings、无障碍、双模式验收并移除 UI raw property；若产生不兼容变更，再单独评估大版本 |
+| UI-2 typed State / Event / Navigation | 4.4.3 | 102 | `UI_STATE_EVENT`：页面状态、动作反馈、导航事件和兼容投影 |
+| UI-3 全局外壳与主路由 | 4.4.4 | 103 | `UI_SHELL_ROUTES`：Home/Scan/Permission 以及连接入口收敛 |
+| UI-4 设备功能页面 | 4.4.5 | 104 | `UI_DEVICE_FEATURES`：Device/Gesture/ListeningStats/Terminal 迁移 |
+| UI-5 设置、持久化与兼容层收口 | 4.5.0 | 105 | `UI_COMPLETE`：Settings、无障碍、双模式验收并移除 UI raw property；若产生不兼容变更，再单独评估大版本 |
 
 版本规则：
 
 - 只有能独立编译、测试、回归和回退的代码里程碑才提升版本号；只改本文件或只做诊断不提升版本。
 - `versionCode` 每次发布递增 1；BT-1 测试包使用 `88`，BT-1/BT-2 首轮修复包使用 `89`，热重连回归包使用 `90`，ANC 摘戴状态稳定性包使用 `91`，36 项定向回归包使用 `92`，状态/重试 follow-up 使用 `93`，BT-3 连接运行时收敛使用 `94`，BT-4 首轮契约包使用 `95`，状态契约 follow-up 使用 `96`，协议样本 follow-up 使用 `97`，BT-3 收尾/BT-4 follow-up 使用 `98`；UI 阶段除版本号外必须同时使用 `UI_FOUNDATION`、`UI_STATE_EVENT` 等明确构建标签，后续以 `98` 为当前基准顺延。
 - 统一使用 `python3 scripts/bump_version.py <versionName> <versionCode> "变更说明"` 更新应用版本、资源、README、`VERSION_MANAGEMENT.md` 和 `DEVELOPMENT_LOG.md`。
-- GitHub Actions 的手动构建必须填写或保留阶段标签；当前默认 `UI_GLASS_SHARED_VIEWPORT`，产物名、测试报告名和 metadata 都带该标签，避免只看版本号无法区分 UI 测试包。
+- GitHub Actions 的手动构建必须填写或保留阶段标签；当前默认 `UI_GLASS_SCROLL_FIX`，产物名、测试报告名和 metadata 都带该标签，避免只看版本号无法区分 UI 测试包。
 - 阶段完成时，同时更新本文件的 `[x]`、`VERSION_MANAGEMENT.md` 的历史记录和 `DEVELOPMENT_LOG.md`；版本号不因提前勾选计划项而变更。
 
 本节对应文件：`app/build.gradle.kts`、`app/src/main/res/values/strings.xml`、`VERSION_MANAGEMENT.md`、`scripts/bump_version.py`。
@@ -296,27 +295,6 @@
 - **静态门**：本地仅执行 `git diff --check`、UI contract 和 update manifest 校验，不执行 Gradle；构建继续交给 GitHub Actions。
 - **CI 门已通过**：GitHub Actions `31931436152` 已通过 diff-check、UI contract、Gradle 自动测试和 Debug/Release 构建；Debug SHA-256=`1ab62a8c823120783f459d2916dd654201df1d35ab484160b6bea0dbc7fd6731`，Release SHA-256=`0dc74de065a9380cb874b449c835879c1fea33fded65fd7719b4e44fac146dda`。
 - **当前目标受阻**：只测 `UI_GLASS_SCROLL_FIX`：Home/Device 各 3 轮静止截图与滚动 P95/jank/effect 数量；同时各做一次无壁纸与有壁纸对照。回归报告返回前，UI-1/UI-4 继续保持 `[~]`。
-
-### 0.5.11 2026-08-16 共享视口玻璃与滚动性能 follow-up（v4.4.3 / 102）
-
-本轮根据上一轮实测反馈“效果仍几乎没有、滑动仍卡顿”继续处理 UI-ERR-001/002；不修改 BT-0 至 BT-4，也不复跑蓝牙 A-F/36/100 项矩阵。
-
-- **可见性根因复核**：上一版虽然保留了 draw-only 列表皮肤，但 `GlassScrollableContent` 将视口内的 Feature/Hero 也全部降为 Tint-only，页面没有稳定的真实 `hazeGlass` surface；因此“有玻璃色块”不等于用户能看到 typed glass 的背景采样和光学层。
-- **性能根因复核**：把 effect 在拖动边界切换为另一种 renderer 会产生节点重建；同时每个列表行读取 `host.isScrolling`，会在触摸开始/结束时让可见 item 批量失效。
-- **本轮渲染策略**：`GlassScrollableContent` 在 LazyColumn 后台创建一个稳定的 typed `hazeGlass` viewport effect；所有列表卡片从首次组合起固定走 draw-only 皮肤。这样真实 captured-content 只有一个，不随 item 数量和拖动状态变化。
-- **本轮滚动策略**：`GlassHost` source 全程保持挂载；列表行不再读取滚动布尔值；`GlassScrollPerformance` 只为诊断和非列表 surface 保留状态发布，不再负责 source/effect 的切换。
-- **本轮测试**：`GlassScrollPolicyTest` 新增 viewport effect 就绪条件（Liquid + source + 硬件加速 + API 33）覆盖，并继续锁定列表行不得挂 captured effect。
-
-#### 当前目标受阻与定向测试
-
-构建标签改为 `UI_GLASS_SHARED_VIEWPORT`，仍只测试本轮实际修改：
-
-1. Liquid 无壁纸：Home、Device、Settings 各截 1 张静止图；确认静态彩色背景存在、viewport 的实际 renderer 为 `HazeGlass`（API 33+）且 `effectSurfaceCount` 为稳定的小数值，不随列表 item 增长。
-2. Liquid 有非纯色壁纸：重复上述 3 页截图，对比壁纸颜色是否能透过 viewport 和行皮肤产生明显层次；不以 import/依赖代替截图证据。
-3. Home、Device、Settings 各连续滑动 3 轮；记录 P95 帧时间、jank、内存、`effectSurfaceCount` 和 `sourceAttached`。滑动全过程不应出现 effect/source 摘挂，也不应因 item 组合增加 effect 数量。
-4. Classic 模式回归 1 次：确认布局、文本、交互和现有美术资源不变。
-
-报告返回前，UI-1/UI-4 继续保持 `[~] 目标受阻`；不复跑蓝牙矩阵、导航会话、更新流程或无障碍全矩阵。
 
 ## 1. 范围与原则
 
@@ -742,7 +720,7 @@ ui/foundation/components/
 这些组件先在 UI-1 建立 visual/state contract，UI-2 接入 typed event 和 `OptionUiState`，UI-3/UI-4 替换 Home、Device、Gesture、Stats、Terminal 的局部控件，UI-5 替换 Settings 和更新流程中的所有按钮/选项。
 
 
-UI 重构当前锁定 Haze 2.0 `2.0.0-alpha05` typed API 作为可编译实现基线。官方截至 2026-08-15 最新发布测试版为 `2.0.0-alpha05`，没有 2.0 beta/stable；alpha05 要求 compileSdk 37/AGP 9.1，因此工具链升级已作为同一可回退构建门合入 `v4.4.0 / 99`，`v4.4.1 / 100`、`v4.4.2 / 101` 和当前 `v4.4.3 / 102` 只做渲染可见性与列表滑动性能 follow-up，不再把 alpha03 的旧实现混入当前 production path。
+UI 重构当前锁定 Haze 2.0 `2.0.0-alpha05` typed API 作为可编译实现基线。官方截至 2026-08-15 最新发布测试版为 `2.0.0-alpha05`，没有 2.0 beta/stable；alpha05 要求 compileSdk 37/AGP 9.1，因此工具链升级已作为同一可回退构建门合入 `v4.4.0 / 99`，`v4.4.1 / 100` 和当前 `v4.4.2 / 101` 只做渲染可见性与列表滑动性能 follow-up，不再把 alpha03 的旧实现混入当前 production path。
 
 - UI-0 记录 alpha03 旧调用与 alpha05 typed 调用的迁移差异、实际 source/effect 数量、截图和 fallback；旧调用仅作为历史基线。
 - UI-1 使用 alpha05 的 `HazeState`、`hazeSource`、`HazeInput.Sources`、`hazeGlass`、`hazeBlur`、`GlassStyle`、`GlassOptics.Fixed` 和 `HazeBlurStyle`，由 `SurfaceRenderer` 统一封装；页面不直接依赖 Haze API。
@@ -988,7 +966,7 @@ Haze 相关变更的回退点固定为项目自己的 `SurfaceRenderMode.Materia
 **官方更新对本项目的影响：**
 
 1. 历史 CI `31819769359` 曾在 `checkDebugAarMetadata` 阶段证明 alpha05 不能直接放入 compileSdk 36/AGP 8.9.1 基线；该失败记录保留，之后通过同一可回退提交把工具链升级到 compileSdk 37/AGP 9.1。
-2. alpha05 的 `haze-glass` 是独立 experimental artifact；`v4.4.3 / 102` 已声明并在唯一 `SurfaceRenderer` adapter 与共享滚动 viewport 中实际调用。`AdaptiveGlass.kt` 的项目装饰参数不作为官方 Glass 证据，仍必须通过截图、运行诊断和性能验证。
+2. alpha05 的 `haze-glass` 是独立 experimental artifact；`v4.4.2 / 101` 已声明并在唯一 `SurfaceRenderer` adapter 中实际调用。`AdaptiveGlass.kt` 的项目装饰参数不作为官方 Glass 证据，仍必须通过截图、运行诊断和性能验证。
 3. alpha03 的 `hazeEffect`/`blurEffect` 只保留在历史说明和迁移记录中；当前 production graph 使用 alpha05 typed `HazeInput`、`HazeBlurStyle`、`HazePerformanceMode`、`hazeGlass` 和 `hazeBlur`，不能把旧调用当作当前实现。
 
 **当前依赖和实际调用证据：**
@@ -998,7 +976,7 @@ Haze 相关变更的回退点固定为项目自己的 `SurfaceRenderMode.Materia
 | `haze` | `app/build.gradle.kts` | `HazeState`、`rememberHazeState`、`hazeSource`、`HazeInput.Sources` | `AppScaffold` 的 `GlassHost` 创建唯一 source；effect 由 surface profile 决定 | 有实际调用 |
 | `haze-blur` | `app/build.gradle.kts` | `HazeColorEffect`、`hazeBlur`、`HazeBlurStyle` | `SurfaceRenderer` 的明确 Frosted/平台 fallback 路径执行 | 有实际调用 |
 | `haze-blur-materials` | 已删除 | 没有 `HazeMaterials` 或 `blur.materials` import | 没有直接调用 | 不保留只声明未使用依赖 |
-| `haze-glass` | `app/build.gradle.kts` | `Modifier.hazeGlass`、`GlassStyle`、`GlassOptics.Fixed` | `SurfaceRenderer` 的共享滚动 viewport 与少量非列表 Liquid 路径 | 已接入；仍需 GitHub CI、真实输入截图和运行诊断 |
+| `haze-glass` | `app/build.gradle.kts` | `Modifier.hazeGlass`、`GlassStyle`、`GlassOptics.Fixed` | `SurfaceRenderer` 的少量 Hero/Feature Liquid 路径 | 已接入；仍需 GitHub CI、真实输入截图和运行诊断 |
 
 历史代码核对结果：
 
@@ -1012,15 +990,15 @@ Haze 相关变更的回退点固定为项目自己的 `SurfaceRenderMode.Materia
 1. UI-0 记录 alpha05 typed API 的静态调用、运行诊断和视觉基线，并确认依赖和实际调用一致。
 2. UI-1 先完成 alpha05 的共享 Haze adapter：`GlassHost` 提供唯一 source，`SurfaceRenderer` 负责 glass/blur/Material 3 选择；通过 CI、运行截图和性能矩阵后，再继续页面迁移。
 3. `haze-blur-materials` 当前没有实际调用，已删除；只有出现明确的 `HazeMaterials.*` 使用场景时才另行评估依赖。
-4. `haze-glass` 已进入当前 `v4.4.3 / 102` 开发包；`UI_GLASS_SHARED_VIEWPORT` 必须同时通过 compileSdk/AGP/Lifecycle、真实输入截图和运行诊断，不能用 import 或依赖存在替代效果证据。
-5. 当前 UI-1 follow-up 构建标签使用 `UI_GLASS_SHARED_VIEWPORT`；版本号不是唯一识别方式。
+4. `haze-glass` 已进入当前 `v4.4.2 / 101` 开发包；`UI_GLASS_SCROLL_FIX` 必须同时通过 compileSdk/AGP/Lifecycle、真实输入截图和运行诊断，不能用 import 或依赖存在替代效果证据。
+5. 当前 UI-1 follow-up 构建标签使用 `UI_GLASS_SCROLL_FIX`；版本号不是唯一识别方式。
 
 **实际调用证明规则：**
 
 - `CLASSIC` 测试记录 `renderer=Material3`、`sourceAttached=0` 或 `effectSurfaces=0` 的预期结果。
 - `LIQUID_GLASS` 测试必须先通过设置选择玻璃模式，再记录 requested renderer、actual `HazeGlass`、`sourceAttached=1`、实际 effect surface 数量和 fallback reason；API/输入不满足时只能记录 Material 3。低版本 blur 只记录 `HazeBlur`，不能把它当作 Liquid。只看 Gradle 依赖或 import 不算运行证据。
 - Debug-only 的 `GlassRuntimeDiagnostics` 记录 requested/actual renderer、background/source、effect 数量、API、硬件加速和 fallback reason，不记录壁纸 URI、设备地址或协议 payload；Release 不暴露诊断入口。
-- `UI_GLASS_SHARED_VIEWPORT` 验收必须包含 alpha05 `hazeGlass`/`GlassStyle` 的实际共享 viewport、内置彩色输入与用户壁纸对照截图、拖动期间 effect/source 稳定性、列表行 renderer 和 Device 滚动证据；不能用 import 或依赖存在替代运行证据。
+- `UI_GLASS_SCROLL_FIX` 验收必须包含 alpha05 `hazeGlass`/`GlassStyle` 的实际 Hero/Feature preset、内置彩色输入与用户壁纸对照截图、拖动期间 effect 数量、静止恢复和 Device 滚动证据；不能用 import 或依赖存在替代运行证据。
 
 #### 3.5.1.3 玻璃渲染正确性硬门槛
 
@@ -1168,8 +1146,7 @@ UI 阶段不复用 BT 的 36/100 项完整矩阵，测试范围按实际改动�
 |---|---|---|---:|
 | `UI_ERROR_FIX_ALPHA05` | UI-1/UI-3 | alpha05 typed glass/blur、无背景 Material 3 硬门、稳定 key、连接会话导航 | GitHub Actions 1 次；实机定向 1 轮 |
 | `UI_GLASS_VISIBILITY_PERF` | UI-1/UI-4 | 上一轮关键 FeatureCard 的实际 glass 可见性、边缘 optics、Tint-only 输入分配和 Device 分区重组 | 历史包；不作为当前包标签 |
-| `UI_GLASS_SCROLL_FIX` | UI-1/UI-4 | 历史包：内置彩色输入、普通行可见玻璃皮肤、拖动期间 Haze source/effect 暂停和静止恢复 | 历史包；不作为当前包标签 |
-| `UI_GLASS_SHARED_VIEWPORT` | UI-1/UI-4 | 每个 LazyColumn 一个稳定 typed glass viewport、列表行首次组合即 draw-only、source/effect 不随拖动切换 | GitHub Actions 1 次；Home/Device/Settings 定向滚动各 3 轮 |
+| `UI_GLASS_SCROLL_FIX` | UI-1/UI-4 | 内置彩色输入、普通行可见玻璃皮肤、拖动期间 Haze source/effect 暂停、静止恢复和 Device 分区重组 | GitHub Actions 1 次；Home/Device 定向滚动各 3 轮 |
 | `UI_GLASS_RENDERING_TARGETED` | UI-1/UI-5 | requested/actual renderer、`hazeGlass`、`hazeBlur`、Material 3 fallback、有/无壁纸、加载失败、深浅色和高对比度 | 每个关键组合 1 次 |
 | `UI_CONTROL_STATE_MATRIX` | UI-1/UI-2/UI-4/UI-5 | 所有按钮类型、`Idle/Disabled/Pending/Success/Failure`、Boolean/SingleChoice/Dependent/Segmented/Slider/ActionPicker、未知/不可用/读回失败和四种 surface renderer | 每种关键组合 1 次 |
 | `UI_GLASS_PERFORMANCE` | UI-1/UI-4 | Home/Device/Settings 首屏、保存/扫描/双连接列表滚动、切换 route 的帧时间、内存和 effect 数量 | 每个受影响页面 3 轮 |
@@ -1186,7 +1163,7 @@ UI 阶段不复用 BT 的 36/100 项完整矩阵，测试范围按实际改动�
 
 验收证据分为三层：GitHub Actions 的 `diff-check`/JVM/构建报告、模拟状态/Compose 或截图基线、需要真实设备的定向报告。只有真实设备验证涉及蓝牙动作时，才收集 `attemptId`、endpoint、channel、source 和阶段耗时；UI 视觉和导航改动只保留对应截图/交互日志。
 
-当某一阶段代码完成并进入真实设备或人工交互门时，将该阶段标题改为 `[~] 目标受阻：等待实测报告`，并在本文件记录测试标签、构建标签、设备/系统、步骤、期望结果和报告路径；报告返回后只修复该阶段对应问题，再把状态改为 `[x]` 或继续保持 `[~]`。当前 `v4.4.3 / 102` 已准备 UI 专用测试包，但尚无本轮 GitHub CI 产物、截图/运行诊断证据，因此保持目标受阻。
+当某一阶段代码完成并进入真实设备或人工交互门时，将该阶段标题改为 `[~] 目标受阻：等待实测报告`，并在本文件记录测试标签、构建标签、设备/系统、步骤、期望结果和报告路径；报告返回后只修复该阶段对应问题，再把状态改为 `[x]` 或继续保持 `[~]`。当前 `v4.4.2 / 101` 已准备 UI 专用测试包，但尚无本轮 GitHub CI 产物、截图/运行诊断证据，因此保持目标受阻。
 
 ## 4. 大项二：蓝牙指令与连接重构
 

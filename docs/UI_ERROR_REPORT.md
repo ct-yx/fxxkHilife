@@ -3,7 +3,7 @@
 - 报告日期：2026-08-16
 - 影响范围：液态玻璃渲染、列表滚动性能、设备详情页导航
 - 原始状态：报告创建时已确认根因，尚未修复（历史快照）
-- 当前状态：v4.4.3 / 102 已针对“效果几乎没有、滑动仍卡顿”改为共享 viewport glass 和稳定 source 策略；等待 GitHub Actions、截图/运行诊断和定向性能实测
+- 当前状态：v4.4.2 / 101 已针对上一轮反馈继续修复玻璃输入、普通行可见性和拖动性能；GitHub Actions 已通过，等待截图/运行诊断和定向性能实测
 - 证据边界：本报告基于当前源码审查；未将构建通过、静态检查或蓝牙连接状态当作 UI 运行成功证据
 
 ## 修复回灌（2026-08-15，v4.4.0 / 99）
@@ -19,33 +19,7 @@
 
 **未关闭条件**：GitHub Actions 构建通过；`UI_GLASS_RENDERING_TARGETED`、`UI_GLASS_PERFORMANCE`、`UI_NAVIGATION_SESSION` 和无背景 Material 3 fallback 的截图/运行诊断通过。未完成这些条件前，不把本报告标记为完全解决。
 
-## Follow-up 3：v4.4.3 / 102 对“效果几乎没有、滑动仍卡顿”的共享视口修复
-
-### 根因复核
-
-- `StandardCard`、`CompactRow` 和大多数 `AdaptiveCard` 默认解析为 `TintOnly`；上一版又把 LazyColumn 内的 Feature/Hero 一并降级，结果列表只剩装饰皮肤，没有稳定的真实 `hazeGlass` surface，静止画面自然几乎看不到背景采样和光学层。
-- 上一包在滚动开始时切换 effect 节点并摘挂全窗口 `hazeSource`；当前工作树即使改成静态行皮肤，列表行仍读取 `host.isScrolling`，触摸边界仍会让可见 item 批量失效。
-
-### 本轮修改
-
-- `GlassScrollableContent` 现在在 LazyColumn 后台创建一个稳定的真实 typed `hazeGlass` viewport；列表行从首次组合开始固定使用 draw-only 的渐变、内高光和边缘皮肤，不逐行创建 captured-content effect。
-- Home、Device、Settings、Scan、Gesture、ListeningStats 的列表不在手势开始时创建/替换 Haze 节点；列表行也不再读取 `host.isScrolling`，触摸边界不会触发整批可见 item 的 renderer 重算。
-- `GlassHost` 的静态背景 source 在滚动期间保持挂载，viewport effect 使用单一输入；`surfaceRole`、`sourceAttached`、`effectSurfaceCount` 和 `scrollable_surface_budget` 诊断语义继续保留。
-- `LiquidGlassBackdrop` 增加背景色场对比度，使静态皮肤和真实 glass 都有可观察的输入层次。
-- 增加 `GlassScrollPolicyTest`，锁定“列表行 effect 永不挂载、共享 viewport 只在 Liquid/source/硬件/API 33+ 就绪时启用、非 effect renderer 不改变”的回归规则。
-
-### 本轮定向验证门
-
-使用 CI 产物标签 `UI_GLASS_SHARED_VIEWPORT`，只验证本轮改动：
-
-1. Liquid 模式无壁纸：Home、Device、Settings 各截静止图；确认静态彩色背景存在，API 33+ 的共享 viewport 实际记录 `HazeGlass`，普通行记录 `TintOnly`。
-2. Liquid 模式有非纯色壁纸：重复上述截图，确认壁纸颜色能透过共享 viewport 和列表皮肤产生可见层次；不能只看依赖或 import。
-3. Home、Device、Settings 各连续滑动 3 轮：记录 P95 帧时间、jank、内存、`effectSurfaceCount` 和 `sourceAttached`；滚动过程中 effect/source 不摘挂，effect 数量不随列表项组合上升。
-4. Classic 模式回归一次：确认布局、文本、交互和现有美术资源不变。
-
-本轮不复跑蓝牙 A-F、36/100 项矩阵，也不关闭 UI-1/UI-4；完成条件仍是 CI + 真实截图/运行诊断 + 定向性能报告。
-
-## 历史记录：共享视口前的实现阶段（2026-08-16）
+## Follow-up：当前反馈“效果几乎没有、滑动仍卡顿”（2026-08-16）
 
 本次只处理 UI-ERR-001/002，不重新打开已经收口的蓝牙任务，也不复跑蓝牙 A-F/36/100 项矩阵。
 
@@ -299,6 +273,6 @@ onDeviceClick = { address -> viewModel.autoConnectSaved(address) }
 
 ## 当前结论
 
-`v4.4.3 / 102` 在上一轮基础上改为共享 viewport：Liquid 始终有静态彩色 source，每个 LazyColumn 只保留一个稳定的真实 typed glass viewport，普通行使用可见但低成本的 Tint-only 玻璃皮肤；拖动期间不再切换 source/effect，列表行不再观察滚动状态。Device 页面按区域订阅精简状态，上一轮的稳定 key、生命周期感知收集、Home 地址刷新和 `address + attemptId` 导航边界继续保留。
+`v4.4.2 / 101` 在上一轮基础上继续收敛：Liquid 始终有静态彩色 source，普通行使用可见但低成本的 Tint-only 玻璃皮肤，所有 LazyColumn 拖动期间暂停 Haze source/effect，静止后恢复真实 typed glass；Device 页面按区域订阅精简状态，上一轮的稳定 key、生命周期感知收集、Home 地址刷新和 `address + attemptId` 导航边界继续保留。
 
 问题仍保持“目标受阻”，因为代码修复和 CI 通过不能替代真实输入下的截图/运行诊断、滚动性能和导航交互证据。报告返回前，不将 UI-ERR-001/002/003 标记为完全关闭。

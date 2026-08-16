@@ -30,7 +30,6 @@ import com.freebuds.controller.i18n.i18n
 import com.freebuds.controller.ui.glass.AdaptiveCard
 import com.freebuds.controller.ui.foundation.components.AppTopBar
 import com.freebuds.controller.ui.foundation.surface.GlassScrollPerformance
-import com.freebuds.controller.ui.foundation.surface.GlassScrollableContent
 import java.text.SimpleDateFormat
 import java.util.Calendar
 import java.util.Locale
@@ -55,15 +54,14 @@ fun ListeningStatsScreen(
         }
     ) { padding ->
         GlassScrollPerformance(listState)
-        GlassScrollableContent(displayMode = displayMode) {
-            LazyColumn(
-                modifier = Modifier
-                    .fillMaxSize()
-                    .padding(padding),
-                state = listState,
-                contentPadding = PaddingValues(16.dp),
-                verticalArrangement = Arrangement.spacedBy(14.dp),
-            ) {
+        LazyColumn(
+            modifier = Modifier
+                .fillMaxSize()
+                .padding(padding),
+            state = listState,
+            contentPadding = PaddingValues(16.dp),
+            verticalArrangement = Arrangement.spacedBy(14.dp),
+        ) {
             item { StatsSummaryGrid(stats, displayMode) }
             item { ListeningHeatmapCard(stats, displayMode) }
             item {
@@ -73,7 +71,6 @@ fun ListeningStatsScreen(
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                     modifier = Modifier.padding(horizontal = 4.dp),
                 )
-            }
             }
         }
     }

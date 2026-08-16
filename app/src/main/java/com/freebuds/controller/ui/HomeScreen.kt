@@ -31,7 +31,6 @@ import com.freebuds.controller.ui.foundation.components.AppTopBar
 import com.freebuds.controller.ui.foundation.assets.UiAssetCatalog
 import com.freebuds.controller.ui.foundation.surface.SurfaceRole
 import com.freebuds.controller.ui.foundation.surface.GlassScrollPerformance
-import com.freebuds.controller.ui.foundation.surface.GlassScrollableContent
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -66,13 +65,12 @@ fun HomeScreen(
         }
     ) { padding ->
         GlassScrollPerformance(listState)
-        GlassScrollableContent(displayMode = displayMode) {
-            LazyColumn(
-                modifier = Modifier
-                    .fillMaxSize()
-                    .padding(padding),
-                state = listState,
-            ) {
+        LazyColumn(
+            modifier = Modifier
+                .fillMaxSize()
+                .padding(padding),
+            state = listState,
+        ) {
             // 连接摘要只消费稳定 typed state，不再从连接命令返回值猜测页面状态。
             item {
                 val summary = connection
@@ -152,7 +150,6 @@ fun HomeScreen(
                         }
                     }
                 }
-            }
             }
         }
     }

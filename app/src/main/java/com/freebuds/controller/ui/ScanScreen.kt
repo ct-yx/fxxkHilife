@@ -28,7 +28,6 @@ import com.freebuds.controller.ui.glass.GlassBannerTone
 import com.freebuds.controller.ui.foundation.components.AppTopBar
 import com.freebuds.controller.ui.foundation.assets.UiAssetCatalog
 import com.freebuds.controller.ui.foundation.surface.GlassScrollPerformance
-import com.freebuds.controller.ui.foundation.surface.GlassScrollableContent
 import com.freebuds.controller.ui.state.ConnectionSummary
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -120,27 +119,25 @@ fun ScanScreen(
                 val huawei = scanState.devices.filter { it.isHuaweiOrHonor }
                 val others = scanState.devices.filter { !it.isHuaweiOrHonor }
 
-                GlassScrollableContent(displayMode = displayMode) {
-                    LazyColumn(state = listState) {
-                        if (huawei.isNotEmpty()) {
-                            item {
-                                SectionHeader(i18n("scan.huawei_honor_devices"))
-                            }
-                            items(
-                                items = huawei,
-                                key = { it.device.address },
-                            ) { device ->
-                                DeviceItem(device, displayMode) { onDeviceSelected(device.device) }
-                            }
+                LazyColumn(state = listState) {
+                    if (huawei.isNotEmpty()) {
+                        item {
+                            SectionHeader(i18n("scan.huawei_honor_devices"))
                         }
-                        if (others.isNotEmpty()) {
-                            item { SectionHeader(i18n("scan.other_devices")) }
-                            items(
-                                items = others,
-                                key = { it.device.address },
-                            ) { device ->
-                                DeviceItem(device, displayMode) { onDeviceSelected(device.device) }
-                            }
+                        items(
+                            items = huawei,
+                            key = { it.device.address },
+                        ) { device ->
+                            DeviceItem(device, displayMode) { onDeviceSelected(device.device) }
+                        }
+                    }
+                    if (others.isNotEmpty()) {
+                        item { SectionHeader(i18n("scan.other_devices")) }
+                        items(
+                            items = others,
+                            key = { it.device.address },
+                        ) { device ->
+                            DeviceItem(device, displayMode) { onDeviceSelected(device.device) }
                         }
                     }
                 }

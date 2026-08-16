@@ -16,8 +16,8 @@
   <a href="https://github.com/ct-yx/fxxkHilife/issues">Report / Join testing</a>
 </p>
 
-> **Current development build: v4.4.3 (versionCode 102)**
-> **Current public release: v4.3.10 (versionCode 98)**; the BT refactor is closed, while v4.4.3 is the targeted shared-viewport glass and scroll-performance fix build, pending GitHub Actions and runtime evidence.
+> **Current development build: v4.4.2 (versionCode 101)**
+> **Current public release: v4.3.10 (versionCode 98)**; the BT refactor is closed, while v4.4.2 is the second targeted glass-visibility and list-scroll performance fix build with GitHub Actions passed and runtime evidence pending.
 
 ---
 
@@ -28,17 +28,6 @@ Full introduction, download links, demos, and development logs are available on 
 <https://ct-yx.github.io/fxxkHilife/>
 
 ---
-
-## v4.4.3: shared-viewport glass and scroll-performance fix build
-
-This build does not change BT-0 through BT-4. It continues UI-ERR-001/002 under the `UI_GLASS_SHARED_VIEWPORT` build label:
-
-- Each scrolling viewport owns one stable real typed `hazeGlass` backdrop; ordinary list rows use a draw-only gradient, inner highlight, and rim skin from first composition instead of creating per-row captured-content effects.
-- Home, Device, Settings, Scan, Gesture, and statistics LazyColumns never replace effect/source nodes at the drag boundary, and list rows do not observe the scrolling boolean that would invalidate every visible item.
-- The window Haze source stays attached while scrolling, while key glass surfaces retain their optical sampling margin.
-- JVM regression tests cover the shared viewport readiness and scroll renderer policy; the BT A-F/36/100-round matrices are not repeated.
-
-Source, policy-test, and static-contract work is complete only for this step. GitHub Actions, screenshots/runtime diagnostics, and targeted interaction evidence remain required before closing the UI gate.
 
 ## v4.4.2: second targeted glass-visibility and list-scroll performance fix build
 
@@ -89,7 +78,7 @@ The project is still evolving quickly. Testers with more earbud models are very 
 
 ## Key features
 
-- **UI refactor test line**: v4.4.3 uses `UI_GLASS_SHARED_VIEWPORT` for the shared-viewport glass and list-scroll performance follow-up; existing art assets are retained, and screenshots, runtime diagnostics, accessibility, and interaction reports remain the acceptance evidence.
+- **UI refactor test line**: v4.4.2 uses `UI_GLASS_SCROLL_FIX` for the second UI-ERR-001/002 visibility and list-scroll performance follow-up; existing art assets are retained, and screenshots, runtime diagnostics, accessibility, and interaction reports remain the acceptance evidence.
 
 - **Connection and auto-connect**: scan HUAWEI / HONOR earbuds and save known devices; the foreground service detects saved earbuds already connected by Android Bluetooth and opens the app SPP control channel with backoff.
 - **ANC / Awareness / Off**: switch ANC modes from the in-app pill slider, Quick Settings Tile, or persistent notification actions; on third-party Android phones, you can cycle ANC directly from the system quick settings panel without opening the app.

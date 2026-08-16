@@ -28,12 +28,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.runtime.staticCompositionLocalOf
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.draw.drawWithCache
-import androidx.compose.ui.geometry.Offset
-import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.graphics.StrokeCap
-import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.platform.LocalView
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
@@ -71,7 +66,6 @@ data class SurfaceSpec(
 @Immutable
 data class GlassRuntimeDiagnostics(
     val mode: UiDisplayMode,
-    val surfaceRole: SurfaceRole,
     val requestedRenderer: SurfaceRenderMode,
     val renderer: SurfaceRenderMode,
     val backgroundAvailable: Boolean,
@@ -100,38 +94,6 @@ class GlassHostState internal constructor(val hazeState: HazeState) {
 
 val LocalGlassHost = staticCompositionLocalOf<GlassHostState?> { null }
 
-/**
- * Marks content which lives inside a scrolling container.
- *
- * A LazyColumn must not create or replace a graphics effect node for every visible row as the
- * user starts dragging. List rows therefore use the static glass skin from the first composition.
- * The parent [GlassScrollableContent] owns one stable captured backdrop for the whole viewport;
- * this keeps the effect visible without turning every row into a source readback.
- */
-private val LocalGlassScrollableContent = staticCompositionLocalOf { false }
-
-internal fun resolveScrollAwareRenderer(
-    resolved: SurfaceRenderMode,
-    scrollableContent: Boolean,
-    isScrolling: Boolean,
-): SurfaceRenderMode = if (
-    resolved.isCapturedEffect() && (scrollableContent || isScrolling)
-) {
-    SurfaceRenderMode.TintOnly
-} else {
-    resolved
-}
-
-internal fun shouldUseScrollableViewportEffect(
-    displayMode: UiDisplayMode,
-    sourceAttached: Boolean,
-    hardwareAccelerated: Boolean,
-    apiLevel: Int,
-): Boolean = displayMode == UiDisplayMode.LIQUID_GLASS &&
-    sourceAttached &&
-    hardwareAccelerated &&
-    apiLevel >= 33
-
 @Composable
 fun rememberGlassHostState(): GlassHostState {
     val hazeState = rememberHazeState()
@@ -139,9 +101,9 @@ fun rememberGlassHostState(): GlassHostState {
 }
 
 /**
- * Publishes the current scroll state for diagnostics and for non-list surfaces. List content is
- * separately marked with [GlassScrollableContent] so its row renderer is stable before the
- * gesture.
+ * Disables expensive captured-content effects while a lazy list is being dragged. The list keeps
+ * the same translucent glass skin during the gesture and restores the real effect after the
+ * gesture, so scrolling does not repeatedly re-render the full background source.
  */
 @Composable
 fun GlassScrollPerformance(listState: LazyListState) {
@@ -150,100 +112,6 @@ fun GlassScrollPerformance(listState: LazyListState) {
     SideEffect { host?.setScrolling(isScrolling) }
     DisposableEffect(host) {
         onDispose { host?.setScrolling(false) }
-    }
-}
-
-@Composable
-@OptIn(ExperimentalHazeApi::class)
-fun GlassScrollableContent(
-    displayMode: UiDisplayMode,
-    modifier: Modifier = Modifier,
-    content: @Composable BoxScope.() -> Unit,
-) {
-    val host = LocalGlassHost.current
-    val glassConfig = LocalLiquidGlassConfig.current
-    val view = LocalView.current
-    val viewportEffectEnabled = shouldUseScrollableViewportEffect(
-        displayMode = displayMode,
-        sourceAttached = host?.sourceAttached == true,
-        hardwareAccelerated = view.isHardwareAccelerated,
-        apiLevel = Build.VERSION.SDK_INT,
-    )
-    val viewportShape = RoundedCornerShape(glassConfig.cornerRadiusDp.dp)
-    val viewportTint = MaterialTheme.colorScheme.surfaceVariant
-    val viewportBody = viewportTint.copy(
-        alpha = (0.08f + glassConfig.readabilityStrength * 0.06f).coerceIn(0.08f, 0.18f),
-    )
-    val viewportInput = if (viewportEffectEnabled) {
-        host?.let { remember(it.hazeState) { HazeInput.Sources(state = it.hazeState) } }
-    } else {
-        null
-    }
-    val viewportStyle = if (viewportEffectEnabled) {
-        remember(glassConfig, viewportTint, viewportShape) {
-            GlassStyle {
-                shape(viewportShape)
-                backgroundColor(viewportBody)
-                tint(viewportTint.copy(alpha = 0.08f))
-                optics(
-                    GlassOptics.Fixed(
-                        refractionStrength = glassConfig.refractionStrength.coerceIn(0f, 1f),
-                        refractionHeightFraction = 0.24f,
-                        refractionDisplacement = (10f + glassConfig.depth * 12f).dp,
-                        depth = (glassConfig.depth * 0.72f).coerceIn(0f, 1f),
-                        blurRadius = 22.dp,
-                    ),
-                )
-                surfaceProfile(
-                    when (glassConfig.surfaceProfile) {
-                        GlassSurfaceProfile.Circle -> SurfaceProfile.Circle
-                        GlassSurfaceProfile.Rounded -> SurfaceProfile.Lip
-                        GlassSurfaceProfile.Squircle -> SurfaceProfile.Squircle
-                    },
-                )
-                specularIntensity(0.34f)
-                ambientResponse(0.32f)
-                edgeSoftness(1.5.dp)
-                chromaticAberrationStrength(
-                    (glassConfig.refractionStrength * 0.14f).coerceIn(0f, 1f),
-                )
-            }
-        }
-    } else {
-        null
-    }
-    val viewportEffectModifier = if (viewportEffectEnabled && viewportInput != null) {
-        Modifier.hazeGlass(
-            input = viewportInput,
-            style = viewportStyle ?: GlassStyle,
-            performanceMode = HazePerformanceMode.Adaptive,
-            expandLayerBounds = false,
-        )
-    } else {
-        Modifier
-    }
-    if (host != null) {
-        DisposableEffect(host, viewportEffectEnabled) {
-            if (viewportEffectEnabled) host.activeEffectSurfaceCount += 1
-            onDispose {
-                if (viewportEffectEnabled) {
-                    host.activeEffectSurfaceCount =
-                        (host.activeEffectSurfaceCount - 1).coerceAtLeast(0)
-                }
-            }
-        }
-    }
-    Box(modifier = modifier) {
-        Box(
-            modifier = Modifier
-                .fillMaxSize()
-                .clip(viewportShape)
-                .background(viewportBody)
-                .then(viewportEffectModifier),
-        )
-        CompositionLocalProvider(LocalGlassScrollableContent provides true) {
-            Box(Modifier.fillMaxSize(), content = content)
-        }
     }
 }
 
@@ -261,9 +129,7 @@ fun GlassHost(
     SideEffect {
         host.sourceAttached = sourceAttached
     }
-    // The source is static background input. Keep its graphics layer attached while scrolling;
-    // removing and reattaching it at the touch boundary causes a needless capture invalidation.
-    val sourceModifier = if (sourceAttached) {
+    val sourceModifier = if (sourceAttached && !host.isScrolling) {
         Modifier.hazeSource(host.hazeState)
     } else {
         Modifier
@@ -325,19 +191,14 @@ object SurfaceRenderer {
             host = host,
             hardwareAccelerated = view.isHardwareAccelerated,
         )
-        val scrollableContent = LocalGlassScrollableContent.current
         // A full captured-content effect is useful while still, but is the wrong trade-off for a
-        // moving LazyColumn. Resolve list rows to TintOnly before the first frame; this avoids
-        // attaching Haze nodes and then replacing them at the start of a gesture.
-        // A list owns one shared viewport effect, so its cards stay on the draw-only path. Do not
-        // read host.isScrolling for list rows: the boolean changes at the touch boundary and
-        // would invalidate every visible item even though their renderer must remain unchanged.
-        val scrollingPerformanceMode = !scrollableContent && host?.isScrolling == true
-        val actual = resolveScrollAwareRenderer(
-            resolved = resolved,
-            scrollableContent = scrollableContent,
-            isScrolling = scrollingPerformanceMode,
-        )
+        // moving LazyColumn. TintOnly keeps the same surface geometry and contrast without a GPU
+        // readback/blur pass on every frame.
+        val actual = if (resolved.isEffect() && host?.isScrolling == true) {
+            SurfaceRenderMode.TintOnly
+        } else {
+            resolved
+        }
         val shape = RoundedCornerShape(configuredSpec.cornerRadius)
         val tintBase = spec.tint ?: MaterialTheme.colorScheme.surfaceVariant
         val minimumGlassAlpha = if (displayMode == UiDisplayMode.LIQUID_GLASS) {
@@ -416,9 +277,7 @@ object SurfaceRenderer {
                 input = hazeInput,
                 style = glassStyle ?: GlassStyle,
                 performanceMode = HazePerformanceMode.Adaptive,
-                // The effect budget is now limited to non-list surfaces, so retain the optical
-                // sampling margin required for a visible edge fold.
-                expandLayerBounds = true,
+                expandLayerBounds = false,
             )
             actual == SurfaceRenderMode.HazeBlur && hazeInput != null -> Modifier.hazeBlur(
                 input = hazeInput,
@@ -427,18 +286,6 @@ object SurfaceRenderer {
                 expandLayerBounds = false,
             )
             else -> Modifier
-        }
-        val staticGlassSkin = displayMode == UiDisplayMode.LIQUID_GLASS &&
-            actual == SurfaceRenderMode.TintOnly
-        val staticSkinModifier = if (staticGlassSkin) {
-            Modifier.liquidGlassSkin(
-                tint = tintBase,
-                surface = MaterialTheme.colorScheme.surface,
-                depth = configuredSpec.depth,
-                readability = glassConfig.readabilityStrength,
-            )
-        } else {
-            Modifier
         }
         val visibleColor = when (actual) {
             SurfaceRenderMode.Material3 -> MaterialTheme.colorScheme.surfaceVariant
@@ -463,7 +310,6 @@ object SurfaceRenderer {
             SideEffect {
                 host.lastDiagnostics = GlassRuntimeDiagnostics(
                     mode = displayMode,
-                    surfaceRole = configuredSpec.role,
                     requestedRenderer = requested,
                     renderer = actual,
                     backgroundAvailable = host.sourceAttached,
@@ -476,8 +322,6 @@ object SurfaceRenderer {
                         actual = actual,
                         resolved = resolved,
                         displayMode = displayMode,
-                        scrollableContent = scrollableContent,
-                        isScrolling = scrollingPerformanceMode,
                         host = host,
                         hardwareAccelerated = view.isHardwareAccelerated,
                     ),
@@ -495,9 +339,9 @@ object SurfaceRenderer {
             }
         } else {
             Surface(
-                modifier = modifier.clip(shape).then(effectModifier).then(staticSkinModifier),
+                modifier = modifier.clip(shape).then(effectModifier),
                 shape = shape,
-                color = if (staticGlassSkin) Color.Transparent else visibleColor,
+                color = visibleColor,
                 border = if (actual.isEffect() || (displayMode == UiDisplayMode.LIQUID_GLASS && actual == SurfaceRenderMode.TintOnly)) {
                     BorderStroke(
                         width = 0.7.dp,
@@ -564,14 +408,11 @@ object SurfaceRenderer {
         actual: SurfaceRenderMode,
         resolved: SurfaceRenderMode,
         displayMode: UiDisplayMode,
-        scrollableContent: Boolean,
-        isScrolling: Boolean,
         host: GlassHostState?,
         hardwareAccelerated: Boolean,
     ): String? = when {
         requested == actual -> null
-        resolved.isEffect() && scrollableContent -> "scrollable_surface_budget"
-        resolved.isEffect() && isScrolling -> "scrolling_performance_mode"
+        resolved.isEffect() && host?.isScrolling == true -> "scrolling_performance_mode"
         displayMode == UiDisplayMode.CLASSIC -> "display_mode"
         host?.sourceAttached != true -> "source_unavailable"
         !hardwareAccelerated && requested.isEffect() -> "hardware_acceleration"
@@ -579,51 +420,6 @@ object SurfaceRenderer {
         else -> "renderer_selection"
     }
 
-}
-
-private fun SurfaceRenderMode.isCapturedEffect(): Boolean =
-    this == SurfaceRenderMode.HazeGlass || this == SurfaceRenderMode.HazeBlur
-
-private fun SurfaceRenderMode.isEffect(): Boolean = isCapturedEffect()
-
-/**
- * A deliberately draw-only fallback for list rows. It is not a replacement for Haze Glass: it
- * keeps the same translucent layered vocabulary without a source readback or blur pass.
- */
-private fun Modifier.liquidGlassSkin(
-    tint: Color,
-    surface: Color,
-    depth: Float,
-    readability: Float,
-): Modifier = drawWithCache {
-    val depthFactor = depth.coerceIn(0f, 1f)
-    val readabilityFactor = readability.coerceIn(0f, 1f)
-    val baseAlpha = (0.26f + readabilityFactor * 0.14f + depthFactor * 0.08f)
-        .coerceIn(0.24f, 0.52f)
-    val topHighlight = Color.White.copy(alpha = 0.13f + depthFactor * 0.08f)
-    val middleTint = tint.copy(alpha = baseAlpha)
-    val bottomShade = surface.copy(alpha = 0.44f + depthFactor * 0.12f)
-    val fill = Brush.verticalGradient(
-        colors = listOf(topHighlight, middleTint, bottomShade),
-    )
-    val sheen = Brush.linearGradient(
-        colors = listOf(
-            Color.White.copy(alpha = 0.08f + depthFactor * 0.05f),
-            Color.Transparent,
-            Color.Transparent,
-        ),
-        start = Offset.Zero,
-        end = Offset(size.width * 0.92f, size.height * 0.70f),
-    )
-    val rimColor = Color.White.copy(alpha = 0.14f + depthFactor * 0.08f)
-    val radius = 24.dp.toPx()
-    onDrawBehind {
-        drawRect(fill)
-        drawRect(sheen)
-        drawRoundRect(
-            color = rimColor,
-            style = Stroke(width = 1.dp.toPx(), cap = StrokeCap.Round),
-            cornerRadius = androidx.compose.ui.geometry.CornerRadius(radius, radius),
-        )
-    }
+    private fun SurfaceRenderMode.isEffect(): Boolean =
+        this == SurfaceRenderMode.HazeGlass || this == SurfaceRenderMode.HazeBlur
 }

@@ -28,7 +28,6 @@ import com.freebuds.controller.ui.state.DeviceEvent
 import com.freebuds.controller.ui.state.GestureTarget
 import com.freebuds.controller.ui.foundation.components.AppTopBar
 import com.freebuds.controller.ui.foundation.surface.GlassScrollPerformance
-import com.freebuds.controller.ui.foundation.surface.GlassScrollableContent
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -50,14 +49,13 @@ fun GestureScreen(
         }
     ) { padding ->
         GlassScrollPerformance(listState)
-        GlassScrollableContent(displayMode = displayMode) {
-            LazyColumn(
-                modifier = Modifier
-                    .fillMaxSize()
-                    .padding(padding),
-                state = listState,
-                contentPadding = PaddingValues(bottom = 24.dp)
-            ) {
+        LazyColumn(
+            modifier = Modifier
+                .fillMaxSize()
+                .padding(padding),
+            state = listState,
+            contentPadding = PaddingValues(bottom = 24.dp)
+        ) {
             if (props.doubleTapLeft != null) {
                 item {
                     OptionSettingItem(
@@ -135,7 +133,6 @@ fun GestureScreen(
                         onSelect = { viewModel.onEvent(DeviceEvent.SetGesture(GestureTarget.LongTap, it)) }
                     )
                 }
-            }
             }
         }
     }
