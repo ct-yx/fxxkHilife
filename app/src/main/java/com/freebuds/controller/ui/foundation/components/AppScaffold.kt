@@ -7,6 +7,7 @@ import androidx.compose.foundation.layout.BoxScope
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
 import coil.compose.AsyncImage
 import androidx.compose.material3.ExperimentalMaterial3Api
@@ -34,11 +35,16 @@ fun AppScaffold(
         WallpaperScope.HOME -> route == "home"
         WallpaperScope.SETTINGS -> route == "settings"
     }
+    val contentBackground = if (showWallpaper) {
+        Color.Transparent
+    } else {
+        MaterialTheme.colorScheme.background
+    }
 
     Box(
         modifier = modifier
             .fillMaxSize()
-            .background(MaterialTheme.colorScheme.background),
+            .background(contentBackground),
     ) {
         if (showWallpaper) {
             AsyncImage(
@@ -46,7 +52,7 @@ fun AppScaffold(
                 contentDescription = null,
                 modifier = Modifier.fillMaxSize(),
                 contentScale = ContentScale.Crop,
-                alpha = 0.16f,
+                alpha = 1f,
             )
         }
         Box(Modifier.fillMaxSize(), content = content)
