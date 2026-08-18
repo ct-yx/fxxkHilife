@@ -8,6 +8,9 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.ColorFilter
+import androidx.compose.ui.graphics.ColorMatrix
+import androidx.compose.ui.graphics.luminance
 import androidx.compose.ui.layout.ContentScale
 import coil.compose.AsyncImage
 import androidx.compose.material3.ExperimentalMaterial3Api
@@ -40,6 +43,15 @@ fun AppScaffold(
     } else {
         MaterialTheme.colorScheme.background
     }
+    val wallpaperColorFilter = if (showWallpaper && MaterialTheme.colorScheme.background.luminance() < 0.5f) {
+        ColorFilter.colorMatrix(
+            ColorMatrix().apply {
+                setToScale(0.75f, 0.75f, 0.75f, 1f)
+            },
+        )
+    } else {
+        null
+    }
 
     Box(
         modifier = modifier
@@ -53,6 +65,7 @@ fun AppScaffold(
                 modifier = Modifier.fillMaxSize(),
                 contentScale = ContentScale.Crop,
                 alpha = 1f,
+                colorFilter = wallpaperColorFilter,
             )
         }
         Box(Modifier.fillMaxSize(), content = content)

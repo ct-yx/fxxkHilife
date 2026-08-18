@@ -16,8 +16,8 @@
   <a href="https://github.com/ct-yx/fxxkHilife/issues">Report / Join testing</a>
 </p>
 
-> **Current development build: v4.5.0 (versionCode 102)**
-> **Current public release: v4.3.10 (versionCode 98)**; the BT refactor is closed, while v4.5.0 establishes a single standard Material 3 UI baseline and is waiting for the GitHub Actions build.
+> **Current release: v4.6.0 (versionCode 103)**
+> The BT refactor and the standard Material 3 UI baseline are released; dark-mode wallpapers use RGB brightness scaling instead of a black overlay.
 
 ---
 
@@ -29,16 +29,16 @@ Full introduction, download links, demos, and development logs are available on 
 
 ---
 
-## v4.5.0: standard Material 3 UI baseline
+## v4.6.0: standard Material 3 UI and dark-mode wallpaper brightness
 
-This build does not change BT-0 through BT-4. It removes the previous glass-rendering route and establishes a predictable standard Material 3 baseline:
+This release does not change BT-0 through BT-4. It removes the previous third-party rendering route and establishes a predictable standard Material 3 baseline:
 
 - The production graph no longer declares or calls a third-party glass-rendering dependency; every route uses Material 3 `Card`, `Surface`, `TopAppBar` and theme roles.
 - Display-mode switching, glass-parameter persistence, effect/source hosts and scroll-time effect branches are removed, avoiding invisible configuration and scroll jank.
-- Existing ANC, earbud, Tile and wallpaper assets remain; wallpaper is now an ordinary background image and is not a rendering input.
+- Existing ANC, earbud, Tile and wallpaper assets remain; wallpaper is an ordinary background image and is not a rendering input. In dark mode, its RGB brightness is scaled to 75%; light mode keeps the original image.
 - Bluetooth connection, command, state-contract and hardware-test code are outside this build's change scope.
 
-The build label is `UI_MATERIAL3_BASELINE`. Testing covers only the changed UI surface, settings migration, route boundaries and asset rendering—not the BT A-F/36/100-round matrices.
+The Release build label is `UI_MATERIAL3_BASELINE`. Testing covers the changed UI surface, settings migration, route boundaries, wallpaper display and asset rendering—not the BT A-F/36/100-round matrices.
 
 ---
 
@@ -78,7 +78,7 @@ The project is still evolving quickly. Testers with more earbud models are very 
 
 ## Key features
 
-- **UI refactor test line**: v4.5.0 uses `UI_MATERIAL3_BASELINE` for the single Material 3 surface, route boundaries, settings migration and existing art assets; GitHub Actions, screenshots, accessibility and interaction reports remain the acceptance evidence.
+- **UI refactor release**: v4.6.0 uses `UI_MATERIAL3_BASELINE` for the single Material 3 surface, route boundaries, settings migration, wallpaper display and existing art assets; screenshots, accessibility and interaction reports remain the targeted acceptance evidence.
 
 - **Connection and auto-connect**: scan HUAWEI / HONOR earbuds and save known devices; the foreground service detects saved earbuds already connected by Android Bluetooth and opens the app SPP control channel with backoff.
 - **ANC / Awareness / Off**: switch ANC modes from the in-app pill slider, Quick Settings Tile, or persistent notification actions; on third-party Android phones, you can cycle ANC directly from the system quick settings panel without opening the app.

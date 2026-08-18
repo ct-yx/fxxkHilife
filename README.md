@@ -16,8 +16,8 @@
   <a href="https://github.com/ct-yx/fxxkHilife/issues">反馈问题 / 参与测试</a>
 </p>
 
-> **当前开发包：v4.5.0（versionCode 102）**
-> **当前公开发布：v4.3.10（versionCode 98）**；BT 重构后的首个大版本已收口，v4.5.0 将 UI 收敛为单一标准 Material 3 视觉基线，等待 GitHub Actions 构建。
+> **当前正式发布：v4.6.0（versionCode 103）**
+> BT 重构与标准 Material 3 UI 基线已合并发布；深色模式壁纸会按 RGB 亮度缩放处理，不叠加黑色滤镜。
 
 ---
 
@@ -29,16 +29,16 @@
 
 ---
 
-## v4.5.0：标准 Material 3 UI 基线
+## v4.6.0：标准 Material 3 UI 与深色模式壁纸
 
-本包不修改 BT-0 至 BT-4，撤销上一轮未达到预期的玻璃渲染路线，重新建立可预测的标准 Material 3 UI 基线：
+本版本不修改 BT-0 至 BT-4，撤销上一轮未达到预期的第三方渲染路线，建立可预测的标准 Material 3 UI 基线：
 
 - 生产代码不再声明或调用第三方玻璃渲染依赖；所有页面统一使用 Material 3 `Card`、`Surface`、`TopAppBar` 和主题色板。
 - 删除玻璃模式切换、玻璃参数持久化、effect/source 宿主和滚动期特效分支，避免“配置存在但没有效果”或滚动卡顿。
-- 保留现有 ANC、耳机、Tile 图标和壁纸资源；壁纸仅作为普通背景图片，不参与控件渲染。
+- 保留现有 ANC、耳机、Tile 图标和壁纸资源；壁纸作为普通背景图片，不参与控件渲染。深色模式下仅将壁纸 RGB 亮度缩放到 75%，浅色模式保持原图。
 - 蓝牙连接、指令、状态契约和自动实机测试入口不在本包修改范围内。
 
-测试标签为 `UI_MATERIAL3_BASELINE`，只覆盖本轮 UI surface、设置迁移、路由边界和资源显示，不重复 BT A-F/36/100 项矩阵。
+Release 构建标签为 `UI_MATERIAL3_BASELINE`，覆盖本轮 UI surface、设置迁移、路由边界、壁纸显示和资源显示，不重复 BT A-F/36/100 项矩阵。
 
 ---
 
@@ -78,7 +78,7 @@ fxxkHilife 是一个第三方、开源、离线的耳机控制面板，目标是
 
 ## 主要能力
 
-- **UI 重构测试线**：v4.5.0 使用 `UI_MATERIAL3_BASELINE` 验证单一 Material 3 surface、路由边界、设置迁移和现有美术资源；最终状态以 GitHub Actions、截图、无障碍和交互报告为准。
+- **UI 重构 Release**：v4.6.0 使用 `UI_MATERIAL3_BASELINE` 统一单一 Material 3 surface、路由边界、设置迁移、壁纸显示和现有美术资源；后续截图、无障碍和交互报告继续作为定向验收证据。
 
 - **设备连接与自动连接**：扫描 HUAWEI / HONOR 耳机，自动保存设备；常驻服务检测到已保存耳机与手机系统蓝牙连接后，会按退避策略自动建立 App SPP 控制连接。
 - **ANC / 透传 / 关闭**：应用内长条胶囊滑块、Quick Settings Tile、常驻通知三按钮均可切换 ANC 模式；在第三方 Android 手机上也可以不打开应用，通过系统快捷开关直接循环切换 ANC。

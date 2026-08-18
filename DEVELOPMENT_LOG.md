@@ -1,6 +1,6 @@
 # Development History
 
-> 当前生产 UI 基线：v4.5.0 / versionCode 102 只使用标准 Material 3；早期日志中的第三方玻璃路线仅用于历史追溯，不代表当前依赖、代码或测试要求。
+> 当前生产 UI 基线：v4.6.0 / versionCode 103 只使用标准 Material 3；早期日志中的第三方玻璃路线仅用于历史追溯，不代表当前依赖、代码或测试要求。
 
 ---
 
@@ -1590,3 +1590,20 @@
 ### 验证边界
 - 已通过 `python3 scripts/validate_ui_contract.py` 和 `git diff --check`；按项目约定未执行本地 Gradle，Android 编译与 JVM 测试交由 GitHub Actions。
 - CI 返回后只验证标准 Material 3 的首屏、滚动、设置迁移、壁纸显示、深浅色和资源显示，不重复蓝牙 A-F/36/100 项矩阵。
+
+## v4.6.0 (2026-08-18)
+
+### 发布
+- 发布标准 Material 3 UI 与深色模式壁纸亮度优化
+- versionCode: 103
+- versionName: 4.6.0
+- tag: v4.6.0
+
+### 本轮实现
+- 保持生产 surface 只有标准 Material 3 `Card`、`Surface` 和 `TopAppBar`，不修改 BT-0 至 BT-4。
+- 壁纸显示时移除页面根主题背景；浅色模式直接显示原图。
+- 深色模式使用 `ColorMatrix.setToScale(0.75f, 0.75f, 0.75f, 1f)` 缩放壁纸 RGB 亮度，不叠加黑色滤镜；原本较暗的区域保持接近原值，高光区域自然降低亮度。
+- 版本统一为 `v4.6.0 / versionCode 103`，发布构建标签为 `UI_MATERIAL3_BASELINE`。
+
+### 验证边界
+- 已通过 UI contract、更新清单和 diff 静态检查；Android 编译、JVM 测试和 Release 资产交由 GitHub Actions。

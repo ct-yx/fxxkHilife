@@ -6,7 +6,7 @@
 >
 > 当前发布基线：v4.3.10 / versionCode 98，2026-08-14（BT 重构后的首个公开大版本；BT-0 至 BT-4 蓝牙阶段已完成；BT-4 定向实机门已通过）
 >
-> 当前开发包：v4.5.0 / versionCode 102，2026-08-16（移除第三方玻璃渲染依赖、统一标准 Material 3 surface；等待 GitHub Actions 与标准 Material 3 定向 UI 实测，不代表已发布 Release）
+> 当前发布版本：v4.6.0 / versionCode 103，2026-08-18（统一标准 Material 3 surface；深色模式壁纸 RGB 亮度缩放到 75%，不叠加黑色滤镜）
 >
 > 目标：把当前“能工作但边界偏大”的 UI、蓝牙连接和 SPP 指令实现整理成可持续迭代的结构。蓝牙阶段先稳定现有 HUAWEI / HONOR + RFCOMM SPP 路线；当前转入 UI 基本全量重构，统一视觉、交互、状态和导航，同时保留已经验证可用的美术资源。
 
@@ -34,7 +34,7 @@
 - 关键日志或耗时结论。
 - 回退方式。
 
-当前 **BT-0 至 BT-4 已完成**：`v4.3.10 / 98` 是 BT 重构后的首个公开大版本，主验证设备的蓝牙状态契约门已通过，但结论仍限定在已有型号/固件/系统证据范围内，不外推为所有型号和所有指令均已实机验证。旧第三方玻璃路线已撤销；`v4.5.0 / 102` 重新建立单一标准 Material 3 surface、设置和路由基线，生产图中不再存在 Haze 依赖、effect、source 或玻璃模式。UI 仍需通过 GitHub Actions、设备截图/交互和无障碍定向门后再标记完成，不重复蓝牙全量矩阵。
+当前 **BT-0 至 BT-4 已完成**：`v4.3.10 / 98` 是 BT 重构后的首个公开大版本，主验证设备的蓝牙状态契约门已通过，但结论仍限定在已有型号/固件/系统证据范围内，不外推为所有型号和所有指令均已实机验证。旧第三方渲染路线已撤销；`v4.6.0 / 103` 在标准 Material 3 surface、设置和路由基线上加入深色模式壁纸亮度处理，生产图中不再存在第三方渲染依赖、effect、source 或玻璃模式。UI 仍需通过设备截图/交互和无障碍定向门后再标记完成，不重复蓝牙全量矩阵。
 
 ### 0.1.1 定向实机测试规则
 
@@ -153,15 +153,15 @@
 | BT-3 ConnectionManager 收敛入口 | [x] 已完成 | 2026-08-14；`ConnectionLifecycle`、session/attempt/Job 所有权收敛，并由 `BT_MANAGER_RUNTIME_20` F10+初始化10 实机确认；`4.3.10 / 98` 补齐统计 flush、失败 session 断开、command 串行边界和同 attempt 状态映射收尾 |
 | BT-4 通用蓝牙状态输出 | [x] 已完成 | `4.3.10 / 98` 完成原子快照投影、canonical channel、pending/failed 语义收敛、空值规范化、metadata-only core readiness 防误报、严格 PASS 报告校验和 5A 协议边界修复；94/94 Debug、94/94 Release 单元测试、`git diff --check`、Debug/Release 构建通过；同一主验证设备 `BT4_STATE_CONTRACT_5` 实机 5/5 通过。页面尚未迁移消费 |
 | UI-0 UI 基线与资源清点 | [~] 目标受阻：等待标准 Material 3 实测报告 | 2026-08-15；静态路由/状态/设置 key/资源基线已写入 `docs/UI_BASELINE.md`，新增更新 manifest 契约；等待标准 Material 3 截图和运行诊断门 |
-| UI-1 设计令牌与渲染基础 | [~] 目标受阻：等待标准 Material 3 定向实测 | 2026-08-16；v4.5.0 移除第三方渲染路径，统一 `SurfaceRenderer`、Material 3 Card、主题 token 和普通壁纸背景；等待 Home/Device 截图与滚动性能证据 |
+| UI-1 设计令牌与渲染基础 | [~] 目标受阻：等待标准 Material 3 定向实测 | 2026-08-18；v4.6.0 统一 `SurfaceRenderer`、Material 3 Card、主题 token 和普通壁纸背景，并加入深色模式 RGB 亮度缩放；等待 Home/Device 截图与滚动性能证据 |
 | UI-2 typed State / Event / Navigation | [~] 目标受阻：等待实测报告 | 2026-08-15；`AppUiState`/`DeviceUiState`/`SettingsUiState`、typed `DeviceEvent`/`SettingsEvent` 已接入核心页面，保留兼容层；等待动作状态矩阵 |
 | UI-3 全局外壳与主路由 | [~] 目标受阻：等待 GitHub CI 与定向实测 | 2026-08-15；背景/外壳归属、稳定 key 和连接会话导航已收敛，仍需导航会话和外壳截图验证 |
-| UI-4 设备功能页面 | [~] 目标受阻：等待定向 Material 3 滚动实测 | 2026-08-16；v4.5.0 删除逐项特效和滚动期渲染分支；只需验证本页滑动帧时间、状态更新和资源显示，不复跑 BT 矩阵 |
+| UI-4 设备功能页面 | [~] 目标受阻：等待定向 Material 3 滚动实测 | 2026-08-18；v4.6.0 保持标准 Material 3 surface，壁纸背景仅由根外壳绘制；只需验证本页滑动帧时间、状态更新和资源显示，不复跑 BT 矩阵 |
 | UI-5 设置、持久化与兼容层收口 | [~] 目标受阻：等待实测报告 | 2026-08-15；SettingsRepository、更新检查/下载/安装状态和 UpdateCard 已接入，仍需持久化、无障碍和更新流程验证 |
 
 ### 0.4 应用版本号方案
 
-当前开发包为 **versionName `4.5.0` / versionCode `102`**；当前公开发布基线仍为 `4.3.10 / 98`。`4.5.0 / 102` 是移除第三方玻璃渲染路线、统一标准 Material 3 surface 的开发包；`4.4.0 / 99` 至 `4.4.2 / 101` 的玻璃尝试只作为历史版本保留，不再作为当前实现或测试门。更早的 BT 版本仍按下表保留，BT-0 的审计、研究、日志和测试准备不单独发版。
+当前发布版本为 **versionName `4.6.0` / versionCode `103`**；`4.6.0 / 103` 是移除第三方渲染路线、统一标准 Material 3 surface 并加入深色模式壁纸亮度处理的正式版本；`4.4.0 / 99` 至 `4.4.2 / 101` 的玻璃尝试只作为历史版本保留，不再作为当前实现或测试门。更早的 BT 版本仍按下表保留，BT-0 的审计、研究、日志和测试准备不单独发版。
 
 | 里程碑 | 计划 versionName | 计划 versionCode | 说明 |
 |---|---:|---:|---|
@@ -181,12 +181,12 @@
 | UI-1 玻璃路线历史测试包 | 4.4.0 | 99 | `UI_ERROR_FIX_ALPHA05`：历史记录，不再作为当前生产方案 |
 | UI-ERR-001/002 历史 follow-up | 4.4.1 | 100 | `UI_GLASS_VISIBILITY_PERF`：历史记录，不再作为当前生产方案 |
 | UI-ERR-001/002 历史 follow-up | 4.4.2 | 101 | `UI_GLASS_SCROLL_FIX`：历史记录，不再作为当前生产方案 |
-| UI-1 标准 Material 3 surface 基线 | 4.5.0 | 102 | `UI_MATERIAL3_BASELINE`：单一 Material 3 surface、普通壁纸背景、统一 token 和资源保留 |
-| UI-2 typed State / Event / Navigation | 4.5.1 | 103 | `UI_STATE_EVENT`：页面状态、动作反馈、导航事件和兼容投影 |
-| UI-3 全局外壳与主路由 | 4.5.2 | 104 | `UI_SHELL_ROUTES`：Home/Scan/Permission 以及连接入口收敛 |
-| UI-4 设备功能页面 | 4.5.3 | 105 | `UI_DEVICE_FEATURES`：Device/Gesture/ListeningStats/Terminal 迁移 |
-| UI-5 设置、持久化、更新与无障碍收口 | 4.5.4 | 106 | `UI_SETTINGS_UPDATE`：Settings、更新流程、无障碍和 UI raw property 清零 |
-| UI-RELEASE 最终验收 | 4.6.0 | 107 | 全 route、全状态、全部语言、资源和无障碍矩阵 |
+| UI-1 标准 Material 3 surface 基线 | 4.6.0 | 103 | `UI_MATERIAL3_BASELINE`：单一 Material 3 surface、普通壁纸背景、深色模式亮度处理和资源保留 |
+| UI-2 typed State / Event / Navigation | 4.6.1 | 104 | `UI_STATE_EVENT`：页面状态、动作反馈、导航事件和兼容投影 |
+| UI-3 全局外壳与主路由 | 4.6.2 | 105 | `UI_SHELL_ROUTES`：Home/Scan/Permission 以及连接入口收敛 |
+| UI-4 设备功能页面 | 4.6.3 | 106 | `UI_DEVICE_FEATURES`：Device/Gesture/ListeningStats/Terminal 迁移 |
+| UI-5 设置、持久化、更新与无障碍收口 | 4.6.4 | 107 | `UI_SETTINGS_UPDATE`：Settings、更新流程、无障碍和 UI raw property 清零 |
+| UI-RELEASE 最终验收 | 4.6.0 | 103 | 全 route、全状态、全部语言、资源和无障碍矩阵 |
 
 版本规则：
 
@@ -899,7 +899,7 @@ UI 阶段不复用 BT 的 36/100 项完整矩阵，测试范围按实际改动�
 
 验收证据分为三层：GitHub Actions 的 `diff-check`/JVM/构建报告、模拟状态/Compose 或截图基线、需要真实设备的定向报告。只有真实设备验证涉及蓝牙动作时，才收集 `attemptId`、endpoint、channel、source 和阶段耗时；UI 视觉和导航改动只保留对应截图/交互日志。
 
-当某一阶段代码完成并进入真实设备或人工交互门时，将该阶段标题改为 `[~] 目标受阻：等待实测报告`，并在本文件记录测试标签、构建标签、设备/系统、步骤、期望结果和报告路径；报告返回后只修复该阶段对应问题，再把状态改为 `[x]` 或继续保持 `[~]`。当前 `v4.5.0 / 102` 已准备 `UI_MATERIAL3_BASELINE` 测试包，但尚无本轮 GitHub CI 产物、截图/运行诊断证据，因此保持目标受阻。
+当某一阶段代码完成并进入真实设备或人工交互门时，将该阶段标题改为 `[~] 目标受阻：等待实测报告`，并在本文件记录测试标签、构建标签、设备/系统、步骤、期望结果和报告路径；报告返回后只修复该阶段对应问题，再把状态改为 `[x]` 或继续保持 `[~]`。当前 `v4.6.0 / 103` 已进入 Release 构建；UI 阶段仍按截图、运行诊断、无障碍和交互证据逐项收口，不把 Release 本身视为所有 UI 阶段完成。
 
 ## 4. 大项二：蓝牙指令与连接重构
 
