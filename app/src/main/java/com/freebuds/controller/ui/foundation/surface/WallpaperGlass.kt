@@ -296,7 +296,7 @@ private object WallpaperGlassRenderer {
         base: Modifier,
         host: WallpaperGlassContext,
         visual: GlassVisual,
-        density: androidx.compose.ui.unit.Density,
+        renderDensity: androidx.compose.ui.unit.Density,
         tintColor: Color,
     ): Modifier = base.composed {
         val context = LocalContext.current
@@ -318,10 +318,10 @@ private object WallpaperGlassRenderer {
             shader.setInputShader("wallpaper", bitmapShader)
             val brush = RuntimeShaderBrush(shader)
             val matrix = Matrix()
-            val topCornerRadiusPx = with(density) { visual.topCornerRadius.toPx() }
-            val bottomCornerRadiusPx = with(density) { visual.bottomCornerRadius.toPx() }
-            val edgeBandPx = with(density) { visual.edgeBand.toPx() }
-            val displacementPx = with(density) { visual.displacement.toPx() }
+            val topCornerRadiusPx = with(renderDensity) { visual.topCornerRadius.toPx() }
+            val bottomCornerRadiusPx = with(renderDensity) { visual.bottomCornerRadius.toPx() }
+            val edgeBandPx = with(renderDensity) { visual.edgeBand.toPx() }
+            val displacementPx = with(renderDensity) { visual.displacement.toPx() }
 
             onDrawBehind {
                 val rootX = bounds.left - host.rootOrigin.x
@@ -349,7 +349,7 @@ private object WallpaperGlassRenderer {
                 shader.setFloatUniform("bodyAlpha", visual.bodyAlpha)
                 shader.setFloatUniform("tintStrength", visual.tintStrength)
                 shader.setFloatUniform("specular", visual.specular)
-                shader.setFloatUniform("distortion", with(density) { visual.distortion.toPx() })
+                shader.setFloatUniform("distortion", with(renderDensity) { visual.distortion.toPx() })
                 shader.setFloatUniform(
                     "tintColor",
                     floatArrayOf(tintColor.red, tintColor.green, tintColor.blue, 1f),
