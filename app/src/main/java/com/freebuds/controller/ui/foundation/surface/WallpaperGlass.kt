@@ -322,6 +322,7 @@ private object WallpaperGlassRenderer {
             val bottomCornerRadiusPx = with(renderDensity) { visual.bottomCornerRadius.toPx() }
             val edgeBandPx = with(renderDensity) { visual.edgeBand.toPx() }
             val displacementPx = with(renderDensity) { visual.displacement.toPx() }
+            val distortionPx = with(renderDensity) { visual.distortion.toPx() }
 
             onDrawBehind {
                 val rootX = bounds.left - host.rootOrigin.x
@@ -349,7 +350,7 @@ private object WallpaperGlassRenderer {
                 shader.setFloatUniform("bodyAlpha", visual.bodyAlpha)
                 shader.setFloatUniform("tintStrength", visual.tintStrength)
                 shader.setFloatUniform("specular", visual.specular)
-                shader.setFloatUniform("distortion", with(renderDensity) { visual.distortion.toPx() })
+                shader.setFloatUniform("distortion", distortionPx)
                 shader.setFloatUniform(
                     "tintColor",
                     floatArrayOf(tintColor.red, tintColor.green, tintColor.blue, 1f),
