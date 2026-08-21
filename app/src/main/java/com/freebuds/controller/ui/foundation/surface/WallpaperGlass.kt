@@ -322,7 +322,7 @@ private object WallpaperGlassRenderer {
             val bottomCornerRadiusPx = with(renderDensity) { visual.bottomCornerRadius.toPx() }
             val edgeBandPx = with(renderDensity) { visual.edgeBand.toPx() }
             val displacementPx = with(renderDensity) { visual.displacement.toPx() }
-            val distortionPx = with(renderDensity) { visual.distortion.toPx() }
+            val distortionPx = visual.distortion * renderDensity.density
 
             onDrawBehind {
                 val rootX = bounds.left - host.rootOrigin.x
