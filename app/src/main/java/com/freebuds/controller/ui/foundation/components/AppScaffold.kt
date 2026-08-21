@@ -8,6 +8,7 @@ import androidx.compose.foundation.layout.BoxScope
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -42,6 +43,7 @@ import com.freebuds.controller.ui.foundation.surface.GlassProfile
 import com.freebuds.controller.ui.foundation.surface.calculateWallpaperTransform
 import com.freebuds.controller.ui.foundation.surface.rememberWallpaperTexture
 import com.freebuds.controller.ui.foundation.surface.wallpaperGlassModifier
+import com.freebuds.controller.util.LogBuffer
 
 /** App-level shell for the conditional wallpaper-glass / Material 3 surface tree. */
 @Composable
@@ -54,14 +56,22 @@ fun AppScaffold(
     content: @Composable BoxScope.() -> Unit,
 ) {
     val hasWallpaperUri = !wallpaperUri.isNullOrBlank()
-    val showWallpaper = hasWallpaperUri && when (wallpaperScope) {
-        WallpaperScope.ALL -> true
-        WallpaperScope.HOME -> route == "home"
-        WallpaperScope.SETTINGS -> route == "settings"
-    }
+    // Wallpaper is an app-wide visual layer. Keep the legacy scope arguments in the API for
+    // settings migration, but do not let an old persisted scope hide it on another route.
+    val showWallpaper = hasWallpaperUri
     val wallpaperPainter = rememberAsyncImagePainter(
         model = if (showWallpaper) Uri.parse(wallpaperUri) else null,
     )
+    val wallpaperError = wallpaperPainter.state as? AsyncImagePainter.State.Error
+    LaunchedEffect(showWallpaper, wallpaperUri, wallpaperError) {
+        if (showWallpaper && wallpaperError != null) {
+            val sourceScheme = wallpaperUri?.let(Uri::parse)?.scheme ?: "unknown"
+            LogBuffer.w(
+                "Wallpaper",
+                "load failed scheme=$sourceScheme error=${wallpaperError.result.throwable.javaClass.simpleName}",
+            )
+        }
+    }
     val wallpaperResult = (wallpaperPainter.state as? AsyncImagePainter.State.Success)?.result
     val sourceBitmap = remember(wallpaperResult) {
         wallpaperResult?.drawable?.toBitmap()

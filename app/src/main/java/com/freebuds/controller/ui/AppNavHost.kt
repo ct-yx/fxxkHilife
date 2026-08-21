@@ -21,6 +21,7 @@ import androidx.navigation.compose.composable
 import androidx.navigation.compose.currentBackStackEntryAsState
 import androidx.navigation.compose.rememberNavController
 import com.freebuds.controller.data.DeviceViewModel
+import com.freebuds.controller.data.WallpaperStore
 import com.freebuds.controller.i18n.I18n
 import com.freebuds.controller.i18n.LocalI18n
 import com.freebuds.controller.ui.foundation.components.AppScaffold
@@ -29,6 +30,8 @@ import com.freebuds.controller.ui.state.ConnectionSummary
 import com.freebuds.controller.ui.state.DeviceConnectionSession
 import com.freebuds.controller.ui.state.DeviceNavigationState
 import com.freebuds.controller.ui.theme.ThemeMode
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.withContext
 
 private object Route {
     const val PermissionGuide = "permission_guide"
@@ -59,6 +62,18 @@ fun AppNavHost(
     val displayMode = UiDisplayMode.MATERIAL3
     val controlChannelState by viewModel.controlChannelState.collectAsStateWithLifecycle()
     val connection = remember(controlChannelState) { ConnectionSummary.from(controlChannelState) }
+
+    // Migrate wallpapers selected by older builds. New selections are copied into app-private
+    // storage before they reach SettingsRepository, so this only handles legacy content URIs.
+    LaunchedEffect(wallpaperUri) {
+        val legacyUri = wallpaperUri?.takeIf { it.startsWith("content://") } ?: return@LaunchedEffect
+        val storedUri = withContext(Dispatchers.IO) {
+            WallpaperStore.importWallpaper(context, Uri.parse(legacyUri))
+        }
+        if (storedUri != null && storedUri != legacyUri) {
+            viewModel.onSettingsEvent(SettingsEvent.SetWallpaperUri(storedUri))
+        }
+    }
 
     val hasPermissions = remember {
         val bluetoothGranted = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {

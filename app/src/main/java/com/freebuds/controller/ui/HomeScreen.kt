@@ -74,7 +74,14 @@ fun HomeScreen(
             item {
                 val summary = connection
                 if (summary.systemConnected || summary.stage != com.freebuds.controller.data.ControlChannelStage.Idle) {
-                    ConnectionBanner(summary = summary, displayMode = displayMode)
+                    Spacer(Modifier.height(8.dp))
+                    ConnectionBanner(
+                        summary = summary,
+                        displayMode = displayMode,
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(horizontal = 16.dp),
+                    )
                 }
             }
 

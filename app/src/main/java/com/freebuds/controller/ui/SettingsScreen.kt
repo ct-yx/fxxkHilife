@@ -1,6 +1,5 @@
 package com.freebuds.controller.ui
 
-import android.content.Intent
 import android.net.Uri
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
@@ -34,6 +33,7 @@ import com.freebuds.controller.BuildConfig
 import com.freebuds.controller.data.UpdateSettings
 import com.freebuds.controller.data.UpdateUiState
 import com.freebuds.controller.data.DeviceViewModel
+import com.freebuds.controller.data.WallpaperStore
 import com.freebuds.controller.i18n.i18n
 import com.freebuds.controller.i18n.I18nLocale
 import com.freebuds.controller.ui.foundation.components.Material3Card
@@ -46,6 +46,9 @@ import com.freebuds.controller.ui.state.SettingsEvent
 import java.text.DateFormat
 import java.util.Date
 import java.util.Locale
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 
 enum class WallpaperScope { ALL, HOME, SETTINGS }
 
@@ -62,10 +65,11 @@ fun SettingsScreen(
     val updateState by viewModel.updateState.collectAsStateWithLifecycle()
     val themeMode = settingsState.themeMode
     val wallpaperUri = settingsState.wallpaperUri
-    val wallpaperScope = settingsState.wallpaperScope
     val displayMode = UiDisplayMode.MATERIAL3
     val locale = settingsState.locale
     val updateSettings = settingsState.updateSettings
+    var wallpaperImportFailed by remember { mutableStateOf(false) }
+    val wallpaperImportScope = rememberCoroutineScope()
     val isConnected = remember(controlChannelState) {
         ConnectionSummary.from(controlChannelState).isReady
     }
@@ -76,10 +80,16 @@ fun SettingsScreen(
         contract = ActivityResultContracts.OpenDocument()
     ) { uri ->
         uri?.let {
-            val flags = Intent.FLAG_GRANT_READ_URI_PERMISSION
-            runCatching { context.contentResolver.takePersistableUriPermission(it, flags) }
-            val uriStr = it.toString()
-            onEvent(SettingsEvent.SetWallpaperUri(uriStr))
+            wallpaperImportFailed = false
+            wallpaperImportScope.launch(Dispatchers.IO) {
+                val importedUri = WallpaperStore.importWallpaper(context, it)
+                withContext(Dispatchers.Main.immediate) {
+                    wallpaperImportFailed = importedUri == null
+                    importedUri?.let { storedUri ->
+                        onEvent(SettingsEvent.SetWallpaperUri(storedUri))
+                    }
+                }
+            }
         }
     }
     val listState = rememberLazyListState()
@@ -126,23 +136,15 @@ fun SettingsScreen(
             item {
                 WallpaperPicker(
                     displayMode = displayMode,
-                                uri = wallpaperUri,
+                    uri = wallpaperUri,
                     onPick = { imagePicker.launch(arrayOf("image/*")) },
                     onClear = {
+                        WallpaperStore.clear(context, wallpaperUri)
                         onEvent(SettingsEvent.SetWallpaperUri(null))
-                    }
+                    },
+                    importFailed = wallpaperImportFailed,
                 )
             }
-            if (wallpaperUri != null) {
-                item {
-                        WallpaperScopeSelector(
-                        displayMode = displayMode,
-                                        current = wallpaperScope,
-                        onSelect = { onEvent(SettingsEvent.SetWallpaperScope(it)) }
-                    )
-                }
-            }
-
             // ── 关于 ──
             item { SettingsHeader(i18n("settings.about")) }
             item {
@@ -675,6 +677,7 @@ private fun WallpaperPicker(
     uri: String?,
     onPick: () -> Unit,
     onClear: () -> Unit,
+    importFailed: Boolean = false,
 ) {
     Material3Card(
         displayMode = displayMode,
@@ -709,41 +712,16 @@ private fun WallpaperPicker(
                 OutlinedButton(onClick = onClear) { Text(i18n("common.clear")) }
             }
         }
-    }
-}
-}
-
-@Composable
-private fun WallpaperScopeSelector(
-    displayMode: UiDisplayMode,
-    current: WallpaperScope,
-    onSelect: (WallpaperScope) -> Unit,
-) {
-    val options = listOf(
-        WallpaperScope.ALL to i18n("settings.scope.all"),
-        WallpaperScope.HOME to i18n("settings.scope.home"),
-        WallpaperScope.SETTINGS to i18n("settings.scope.settings"),
-    )
-    Material3Card(
-        displayMode = displayMode,
-        modifier = Modifier
-            .fillMaxWidth()
-            .padding(horizontal = 16.dp, vertical = 6.dp),
-    ) {
-        Row(
-            horizontalArrangement = Arrangement.spacedBy(8.dp),
-            verticalAlignment = Alignment.CenterVertically,
-        ) {
-            Text(i18n("settings.display_scope"), style = MaterialTheme.typography.bodySmall)
-            options.forEach { (scope, label) ->
-                FilterChip(
-                    selected = scope == current,
-                    onClick = { onSelect(scope) },
-                    label = { Text(label, style = MaterialTheme.typography.labelSmall) }
-                )
-            }
+        if (importFailed) {
+            Spacer(Modifier.height(8.dp))
+            Text(
+                i18n("settings.wallpaper_import_failed"),
+                color = MaterialTheme.colorScheme.error,
+                style = MaterialTheme.typography.bodySmall,
+            )
         }
     }
+}
 }
 
 @Composable

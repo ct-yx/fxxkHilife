@@ -38,6 +38,8 @@ import androidx.compose.ui.semantics.role
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.unit.dp
 import com.freebuds.controller.ui.state.ConnectionSummary
+import com.freebuds.controller.data.ControlChannelStage
+import com.freebuds.controller.i18n.i18n
 import com.freebuds.controller.ui.state.UiActionState
 import com.freebuds.controller.ui.foundation.tokens.UiTokens
 import com.freebuds.controller.ui.UiDisplayMode
@@ -225,14 +227,19 @@ fun ConnectionBanner(
     displayMode: UiDisplayMode,
     modifier: Modifier = Modifier,
 ) {
-    val error = summary.failedHandlers.isNotEmpty() || summary.reason != null
+    val error = summary.stage == ControlChannelStage.Failed
+    val degraded = summary.stage == ControlChannelStage.Degraded
+    val disconnected = summary.stage == ControlChannelStage.Idle
     val text = summary.deviceName?.let { name ->
         when {
             error -> "$name · ${summary.reason ?: "connection error"}"
-            summary.isReady -> "$name · Ready"
+            disconnected -> "$name · ${i18n("home.not_connected")}"
+            degraded -> "$name · ${i18n("home.connection_degraded")}"
+            summary.stage == ControlChannelStage.CoreReady || summary.isReady ->
+                "$name · ${i18n("home.control_connected")}"
             else -> "$name · ${summary.stageLabel}"
         }
-    } ?: summary.stageLabel
+    } ?: if (disconnected) i18n("home.not_connected") else summary.stageLabel
     Material3Card(
         displayMode = displayMode,
         role = SurfaceRole.FeatureCard,
