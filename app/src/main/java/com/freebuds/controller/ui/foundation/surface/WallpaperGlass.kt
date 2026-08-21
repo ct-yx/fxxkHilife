@@ -27,10 +27,11 @@ import androidx.compose.ui.geometry.CornerRadius
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Rect
 import androidx.compose.ui.geometry.RoundRect
+import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.Path
 import androidx.compose.ui.graphics.ShaderBrush
-import androidx.compose.ui.graphics.asComposeShader
+import androidx.compose.ui.composed
 import androidx.compose.ui.layout.LayoutCoordinates
 import androidx.compose.ui.layout.boundsInRoot
 import androidx.compose.ui.layout.onGloballyPositioned
@@ -202,6 +203,10 @@ internal data class GlassVisual(
     val bottomCornerRadius: Dp = cornerRadius,
 )
 
+private class RuntimeShaderBrush(private val shader: Shader) : ShaderBrush() {
+    override fun createShader(size: Size): Shader = shader
+}
+
 internal fun GlassProfile.visual(): GlassVisual = when (this) {
     GlassProfile.Compact -> GlassVisual(20.dp, 9.dp, 5.dp, 0.70f, 0.20f, 0.34f, 0f)
     GlassProfile.Standard -> GlassVisual(22.dp, 10.dp, 6.dp, 0.72f, 0.22f, 0.40f, 0f)
@@ -293,25 +298,25 @@ private object WallpaperGlassRenderer {
         visual: GlassVisual,
         density: androidx.compose.ui.unit.Density,
         tintColor: Color,
-    ): Modifier = androidx.compose.ui.composed {
-    val context = LocalContext.current
-    val shaderSource = remember(context) {
-        context.resources.openRawResource(R.raw.wallpaper_glass).bufferedReader().use { it.readText() }
-    }
-    var bounds by remember { mutableStateOf(Rect.Zero) }
-    base
-        .onGloballyPositioned { coordinates: LayoutCoordinates ->
-            bounds = coordinates.boundsInRoot()
+    ): Modifier = base.composed {
+        val context = LocalContext.current
+        val shaderSource = remember(context) {
+            context.resources.openRawResource(R.raw.wallpaper_glass).bufferedReader().use { it.readText() }
         }
-        .drawWithCache {
-            val shader = RuntimeShader(shaderSource)
+        var bounds by remember { mutableStateOf(Rect.Zero) }
+        base
+            .onGloballyPositioned { coordinates: LayoutCoordinates ->
+                bounds = coordinates.boundsInRoot()
+            }
+            .drawWithCache {
+                val shader = RuntimeShader(shaderSource)
             val bitmapShader = BitmapShader(
                 host.texture.bitmap,
                 Shader.TileMode.CLAMP,
                 Shader.TileMode.CLAMP,
             )
             shader.setInputShader("wallpaper", bitmapShader)
-            val brush = ShaderBrush(shader.asComposeShader())
+            val brush = RuntimeShaderBrush(shader)
             val matrix = Matrix()
             val topCornerRadiusPx = with(density) { visual.topCornerRadius.toPx() }
             val bottomCornerRadiusPx = with(density) { visual.bottomCornerRadius.toPx() }
@@ -365,5 +370,6 @@ private object WallpaperGlassRenderer {
                     brush = brush,
                 )
             }
-        }
+            }
+    }
 }
