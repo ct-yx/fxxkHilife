@@ -8,6 +8,8 @@
 >
 > 当前发布版本：v4.6.0 / versionCode 103，2026-08-18（统一标准 Material 3 surface；深色模式壁纸 RGB 亮度缩放到 75%，不叠加黑色滤镜）
 >
+> 当前开发测试版本：v4.7.0 / versionCode 104，2026-08-22（有效壁纸 + Android 13 使用自研 AGSL 柔光玻璃；无壁纸、壁纸未完成加载和 Android 12 及以下使用优化后的标准 Material 3）
+>
 > 目标：把当前“能工作但边界偏大”的 UI、蓝牙连接和 SPP 指令实现整理成可持续迭代的结构。蓝牙阶段先稳定现有 HUAWEI / HONOR + RFCOMM SPP 路线；当前转入 UI 基本全量重构，统一视觉、交互、状态和导航，同时保留已经验证可用的美术资源。
 
 > 测试模式日志约定：Debug“自动实机测试”每次启动都会清空旧缓存，测试期间不设日志行数上限，改用约 160,000,000 字节的 UTF-8 缓存预算；导出的最终报告在写文件前再限制为 190,000,000 字节以内，确保小于 200 MB。正常日志策略在报告构建完成后恢复。
@@ -34,7 +36,7 @@
 - 关键日志或耗时结论。
 - 回退方式。
 
-当前 **BT-0 至 BT-4 已完成**：`v4.3.10 / 98` 是 BT 重构后的首个公开大版本，主验证设备的蓝牙状态契约门已通过，但结论仍限定在已有型号/固件/系统证据范围内，不外推为所有型号和所有指令均已实机验证。旧第三方渲染路线已撤销；`v4.6.0 / 103` 在标准 Material 3 surface、设置和路由基线上加入深色模式壁纸亮度处理，生产图中不再存在第三方渲染依赖、effect、source 或玻璃模式。UI 仍需通过设备截图/交互和无障碍定向门后再标记完成，不重复蓝牙全量矩阵。
+当前 **BT-0 至 BT-4 已完成**：`v4.3.10 / 98` 是 BT 重构后的首个公开大版本，主验证设备的蓝牙状态契约门已通过，但结论仍限定在已有型号/固件/系统证据范围内，不外推为所有型号和所有指令均已实机验证。旧第三方渲染路线已撤销；`v4.6.0 / 103` 保留为标准 Material 3 和深色模式壁纸亮度正式基线，`v4.7.0 / 104` 在该基线上加入集中式自研 AGSL 壁纸玻璃测试实现。玻璃只在有效壁纸且 Android 13+ 时启用，低版本和无效壁纸保持 MD3 fallback；UI 仍需通过设备截图/交互和无障碍定向门后再标记完成，不重复蓝牙全量矩阵。
 
 ### 0.1.1 定向实机测试规则
 
@@ -153,15 +155,15 @@
 | BT-3 ConnectionManager 收敛入口 | [x] 已完成 | 2026-08-14；`ConnectionLifecycle`、session/attempt/Job 所有权收敛，并由 `BT_MANAGER_RUNTIME_20` F10+初始化10 实机确认；`4.3.10 / 98` 补齐统计 flush、失败 session 断开、command 串行边界和同 attempt 状态映射收尾 |
 | BT-4 通用蓝牙状态输出 | [x] 已完成 | `4.3.10 / 98` 完成原子快照投影、canonical channel、pending/failed 语义收敛、空值规范化、metadata-only core readiness 防误报、严格 PASS 报告校验和 5A 协议边界修复；94/94 Debug、94/94 Release 单元测试、`git diff --check`、Debug/Release 构建通过；同一主验证设备 `BT4_STATE_CONTRACT_5` 实机 5/5 通过。页面尚未迁移消费 |
 | UI-0 UI 基线与资源清点 | [~] 目标受阻：等待标准 Material 3 实测报告 | 2026-08-15；静态路由/状态/设置 key/资源基线已写入 `docs/UI_BASELINE.md`，新增更新 manifest 契约；等待标准 Material 3 截图和运行诊断门 |
-| UI-1 设计令牌与渲染基础 | [~] 目标受阻：等待标准 Material 3 定向实测 | 2026-08-18；v4.6.0 统一 `SurfaceRenderer`、Material 3 Card、主题 token 和普通壁纸背景，并加入深色模式 RGB 亮度缩放；等待 Home/Device 截图与滚动性能证据 |
+| UI-1 设计令牌与渲染基础 | [~] 目标受阻：等待 AGSL 玻璃定向实测 | 2026-08-22；v4.7.0 统一卡片 profile、共享低分辨率壁纸纹理、AGSL 边缘折射/泛光和 MD3 fallback；等待 API 33+ 截图、API 32 fallback 与滚动性能证据 |
 | UI-2 typed State / Event / Navigation | [~] 目标受阻：等待实测报告 | 2026-08-15；`AppUiState`/`DeviceUiState`/`SettingsUiState`、typed `DeviceEvent`/`SettingsEvent` 已接入核心页面，保留兼容层；等待动作状态矩阵 |
 | UI-3 全局外壳与主路由 | [~] 目标受阻：等待 GitHub CI 与定向实测 | 2026-08-15；背景/外壳归属、稳定 key 和连接会话导航已收敛，仍需导航会话和外壳截图验证 |
-| UI-4 设备功能页面 | [~] 目标受阻：等待定向 Material 3 滚动实测 | 2026-08-18；v4.6.0 保持标准 Material 3 surface，壁纸背景仅由根外壳绘制；只需验证本页滑动帧时间、状态更新和资源显示，不复跑 BT 矩阵 |
+| UI-4 设备功能页面 | [~] 目标受阻：等待定向卡片/展开交互实测 | 2026-08-22；v4.7.0 统一设备卡片、可展开选项卡、箭头旋转和玻璃采样节点；只需验证本页滑动、展开 10 次、状态更新和资源显示，不复跑 BT 矩阵 |
 | UI-5 设置、持久化与兼容层收口 | [~] 目标受阻：等待实测报告 | 2026-08-15；SettingsRepository、更新检查/下载/安装状态和 UpdateCard 已接入，仍需持久化、无障碍和更新流程验证 |
 
 ### 0.4 应用版本号方案
 
-当前发布版本为 **versionName `4.6.0` / versionCode `103`**；`4.6.0 / 103` 是移除第三方渲染路线、统一标准 Material 3 surface 并加入深色模式壁纸亮度处理的正式版本；`4.4.0 / 99` 至 `4.4.2 / 101` 的玻璃尝试只作为历史版本保留，不再作为当前实现或测试门。更早的 BT 版本仍按下表保留，BT-0 的审计、研究、日志和测试准备不单独发版。
+当前正式发布版本为 **versionName `4.6.0` / versionCode `103`**；当前开发测试版本为 **`4.7.0 / 104`**。`4.6.0 / 103` 是标准 Material 3 与深色模式壁纸亮度正式基线；`4.4.0 / 99` 至 `4.4.2 / 101` 的第三方玻璃尝试只作为历史版本保留，`4.7.0 / 104` 则是独立的自研 AGSL 条件式玻璃测试门。更早的 BT 版本仍按下表保留，BT-0 的审计、研究、日志和测试准备不单独发版。
 
 | 里程碑 | 计划 versionName | 计划 versionCode | 说明 |
 |---|---:|---:|---|
@@ -182,18 +184,19 @@
 | UI-ERR-001/002 历史 follow-up | 4.4.1 | 100 | `UI_GLASS_VISIBILITY_PERF`：历史记录，不再作为当前生产方案 |
 | UI-ERR-001/002 历史 follow-up | 4.4.2 | 101 | `UI_GLASS_SCROLL_FIX`：历史记录，不再作为当前生产方案 |
 | UI-1 标准 Material 3 surface 基线 | 4.6.0 | 103 | `UI_MATERIAL3_BASELINE`：单一 Material 3 surface、普通壁纸背景、深色模式亮度处理和资源保留 |
-| UI-2 typed State / Event / Navigation | 4.6.1 | 104 | `UI_STATE_EVENT`：页面状态、动作反馈、导航事件和兼容投影 |
-| UI-3 全局外壳与主路由 | 4.6.2 | 105 | `UI_SHELL_ROUTES`：Home/Scan/Permission 以及连接入口收敛 |
-| UI-4 设备功能页面 | 4.6.3 | 106 | `UI_DEVICE_FEATURES`：Device/Gesture/ListeningStats/Terminal 迁移 |
-| UI-5 设置、持久化、更新与无障碍收口 | 4.6.4 | 107 | `UI_SETTINGS_UPDATE`：Settings、更新流程、无障碍和 UI raw property 清零 |
-| UI-RELEASE 最终验收 | 4.6.0 | 103 | 全 route、全状态、全部语言、资源和无障碍矩阵 |
+| UI-1 自研 AGSL 壁纸玻璃测试包 | 4.7.0 | 104 | `UI_AGSL_GLASS_V1`：共享低分辨率壁纸纹理、卡片/顶部栏玻璃、边缘折射泛光和 API 32 MD3 fallback |
+| UI-2 typed State / Event / Navigation | 4.7.1 | 105 | `UI_STATE_EVENT`：页面状态、动作反馈、导航事件和兼容投影 |
+| UI-3 全局外壳与主路由 | 4.7.2 | 106 | `UI_SHELL_ROUTES`：Home/Scan/Permission 以及连接入口收敛 |
+| UI-4 设备功能页面 | 4.7.3 | 107 | `UI_DEVICE_FEATURES`：Device/Gesture/ListeningStats/Terminal 迁移 |
+| UI-5 设置、持久化、更新与无障碍收口 | 4.7.4 | 108 | `UI_SETTINGS_UPDATE`：Settings、更新流程、无障碍和 UI raw property 清零 |
+| UI-RELEASE 最终验收 | 4.8.0 | 109 | 全 route、全状态、全部语言、资源和无障碍矩阵 |
 
 版本规则：
 
 - 只有能独立编译、测试、回归和回退的代码里程碑才提升版本号；只改本文件或只做诊断不提升版本。
-- `versionCode` 每次发布递增 1；BT-1 测试包使用 `88`，BT-1/BT-2 首轮修复包使用 `89`，热重连回归包使用 `90`，ANC 摘戴状态稳定性包使用 `91`，36 项定向回归包使用 `92`，状态/重试 follow-up 使用 `93`，BT-3 连接运行时收敛使用 `94`，BT-4 首轮契约包使用 `95`，状态契约 follow-up 使用 `96`，协议样本 follow-up 使用 `97`，BT-3 收尾/BT-4 follow-up 使用 `98`；UI 阶段除版本号外必须同时使用 `UI_MATERIAL3_BASELINE`、`UI_STATE_EVENT` 等明确构建标签，后续以 `102` 为当前基准顺延。
+- `versionCode` 每次发布递增 1；BT-1 测试包使用 `88`，BT-1/BT-2 首轮修复包使用 `89`，热重连回归包使用 `90`，ANC 摘戴状态稳定性包使用 `91`，36 项定向回归包使用 `92`，状态/重试 follow-up 使用 `93`，BT-3 连接运行时收敛使用 `94`，BT-4 首轮契约包使用 `95`，状态契约 follow-up 使用 `96`，协议样本 follow-up 使用 `97`，BT-3 收尾/BT-4 follow-up 使用 `98`；UI 从正式基线 `103` 和当前 AGSL 测试包 `104` 继续递增，并且必须同时使用 `UI_AGSL_GLASS_V1`、`UI_STATE_EVENT` 等明确构建标签。
 - 统一使用 `python3 scripts/bump_version.py <versionName> <versionCode> "变更说明"` 更新应用版本、资源、README、`VERSION_MANAGEMENT.md` 和 `DEVELOPMENT_LOG.md`。
-- GitHub Actions 的手动构建必须填写或保留阶段标签；当前默认 `UI_MATERIAL3_BASELINE`，产物名、测试报告名和 metadata 都带该标签，避免只看版本号无法区分 UI 测试包。
+- GitHub Actions 的手动构建必须填写或保留阶段标签；当前默认 `UI_AGSL_GLASS_V1`，产物名、测试报告名和 metadata 都带该标签，避免只看版本号无法区分 UI 测试包。
 - 阶段完成时，同时更新本文件的 `[x]`、`VERSION_MANAGEMENT.md` 的历史记录和 `DEVELOPMENT_LOG.md`；版本号不因提前勾选计划项而变更。
 
 本节对应文件：`app/build.gradle.kts`、`app/src/main/res/values/strings.xml`、`VERSION_MANAGEMENT.md`、`scripts/bump_version.py`。
@@ -379,7 +382,7 @@ BT_MANAGER_RUNTIME_20 实机报告
 - `BleGattTransport`、`NativeBridgeTransport`：当前没有目标设备和协议证据，保留接口位置，不实现伪适配。
 - 动态插件加载、多个 Adapter 试探匹配和多 SPP session：等第二个真实 Adapter 或多设备控制需求出现后再设计。
 - 未验证的 Custom EQ payload：继续只读或按已验证能力展示。
-- 玻璃路线已取消：生产代码不再声明或调用第三方 effect；UI-1 只维护标准 Material 3 `Card`/`Surface`/`TopAppBar`、主题 token、资源目录和无障碍契约。历史迁移记录保留在附录，不再作为当前构建门。
+- 第三方玻璃路线已取消：生产代码不声明或调用 Haze 等第三方 effect；当前 UI-1 使用集中式自研 AGSL renderer。有效壁纸且 API 33+ 时，卡片/顶部栏读取共享低分辨率柔化纹理并绘制折射、泛光和轻微扭曲；其余状态使用标准 Material 3 fallback。shader 只允许存在于 `foundation/surface`，页面不得直接创建。
 - 全量 `LogRepository`：现有 `LogBuffer` 和报告导出已经满足诊断需求，避免先做无收益的转发层。
 
 ## 3. 大项一：UI 规范与重构
@@ -629,25 +632,25 @@ ViewModel 负责把事件交给用例；用例再调用协议无关的控制接�
 
 #### 3.5.1 标准 Material 3 surface 契约
 
-`SurfaceRenderer` 是唯一的 production surface adapter，所有页面通过 `Material3Card`、`Material3Panel`、`Material3Banner` 或 Material 3 原生 `Surface`/`Card` 渲染。它只负责统一 shape、tonal elevation、语义色、内边距和内容层，不负责背景采样或视觉特效。
+`SurfaceRenderer` 是唯一的 production surface adapter，所有页面通过 `Material3Card`、`Material3Panel`、`Material3Banner` 或 Material 3 原生 `Surface`/`Card` 渲染。它负责统一 shape、tonal elevation、语义色、内边距和内容层，并根据 `LocalWallpaperGlass` 的有效状态选择标准 Material 3 或集中式自研 AGSL 材料。
 
 ```kotlin
-enum class SurfaceRenderMode { Material3 }
+enum class SurfaceRenderMode { Material3, WallpaperGlass }
 
 data class SurfaceSpec(
     val role: SurfaceRole = SurfaceRole.StandardCard,
     val renderMode: SurfaceRenderMode = SurfaceRenderMode.Material3,
     val tint: Color? = null,
-    val cornerRadius: Dp = UiTokens.ref.radiusLarge,
+    val cornerRadius: Dp? = null,
 )
 ```
 
 固定规则：
 
-1. `SurfaceRenderer.Card` 必须使用 Material 3 `CardDefaults.cardColors`、`CardDefaults.cardElevation` 和主题 shape；不同 Android 版本、壁纸状态和硬件能力不改变 renderer。
-2. `AppScaffold` 先绘制 `MaterialTheme.colorScheme.background`，再按作用域以低透明度绘制可选壁纸；壁纸加载失败、无壁纸或纯色背景都保持相同的 Material 3 内容和对比度。
+1. `SurfaceRenderer.Card` 的 fallback 必须使用 Material 3 `CardDefaults.cardColors`、`CardDefaults.cardElevation`、`surfaceContainerHigh` 和主题 shape；有效壁纸/API 33+ 才可选择 `WallpaperGlass`。
+2. `AppScaffold` 先绘制可选壁纸，并在加载成功后生成共享低分辨率柔化纹理；壁纸加载失败、无壁纸或 Android 12 及以下保持不透明 Material 3 内容和对比度。
 3. `SurfaceRole` 只表达层级，不表达渲染技术：`Hero` 使用较高 tonal elevation，`FeatureCard` 使用中等层级，`StandardCard`/`CompactRow` 使用低层级，`Dialog`/`AppBar` 遵循 Material 3 容器契约。
-4. 长列表使用稳定 key 和生命周期感知收集；列表项不创建背景采样、模糊或独立 effect，滚动性能由普通 Material 3 布局和状态订阅保证。
+4. 长列表使用稳定 key 和生命周期感知收集；列表项只复用共享纹理并更新采样坐标，不创建独立位图或重复模糊任务；展开前后保持同一个玻璃节点。
 5. `UiDisplayMode` 仅保留兼容类型 `MATERIAL3`，设置页不显示“经典/玻璃/显示风格”选择器，也不持久化已删除的渲染参数。
 6. 标准 Material 3 的颜色、shape、padding、elevation、动效和无障碍语义必须由同一套 `UiTokens`/`MaterialTheme` 提供；页面不得复制一套私有卡片样式。
 
@@ -659,9 +662,27 @@ data class SurfaceSpec(
 | `CompactRow` | `Card`/`ListItem` 的低层级容器或父卡片内行 | 设置行、长列表项、开关和选择器 |
 | `Dialog` / `AppBar` | Material 3 `AlertDialog` / `TopAppBar` 的标准容器 | 确认、错误、权限和页面标题 |
 
-视觉验收只记录 Material 3 结果：首屏时间、滚动 P95 帧时间、jank、内存、截图、文字对比度和资源显示；不再记录 source、effect 数量或第三方 renderer。
+视觉验收记录 API 33+ AGSL 和 API 32 MD3 两条结果：首屏时间、滚动 P95 帧时间、jank、内存、截图、文字对比度、资源显示、采样纹理尺寸和 shader fallback 原因；不记录第三方 renderer/source/effect 数量。
 
-#### 3.5.2 统一按钮、选项与异步动作控件
+#### 3.5.2 当前自研 AGSL 壁纸玻璃实现
+
+`v4.7.0 / 104` 的玻璃测试门不改变业务页面 API。`Material3Card` 默认请求 `WallpaperGlass`，由 `SurfaceRenderer` 根据 `LocalWallpaperGlass`、壁纸加载状态和 API 级别决定实际 renderer：
+
+```text
+有效壁纸 + API 33+  -> 共享低分辨率纹理 + WallpaperGlass AGSL
+无壁纸/加载失败/API 26-32 -> surfaceContainerHigh Material 3 Card
+```
+
+- 纹理长边约为原图的 `1/8`，限制为 `128–320px`，构建时执行三次小半径盒式混色；滚动和展开只更新卡片的 crop 矩阵。
+- `WallpaperGlass.kt` 是唯一 shader 入口，使用 `RuntimeShader`、`BitmapShader` 和圆角 SDF；普通卡片折射带 `10dp`、Feature/Hero `12dp`、TopBar `16dp`。
+- shader 只作用于材料背景，不扭曲文字、图标或按钮；边缘包含宽泛光、轻微采样位移、细轮廓和极弱色散。
+- TopBar 使用更明显的主题黑/白偏置，并只在玻璃采样层加入约 `2–3dp` 的低频扭曲；内容层位置保持稳定。
+- Android 12 及以下不做软件折射，直接回退标准 Material 3；无有效纹理时也不显示透明空洞。
+- 可展开卡片保持单一卡片和单一 shader 节点，标题行最小高度 `64dp`，使用 `toggleable` 语义和 `AnimatedVisibility`，不使用 `animateContentSize`。
+
+本轮定向测试标签为 `UI_AGSL_GLASS_V1`，必须分别记录 API 33+ 玻璃效果和 API 32 MD3 fallback；在截图、展开交互、无障碍和滚动性能证据返回前，UI-1/UI-4 维持“目标受阻”。
+
+#### 3.5.3 统一按钮、选项与异步动作控件
 
 所有页面必须使用同一套 typed 控件契约；业务页面只声明语义、状态和事件，不自行复制 Material 3 Button、Switch、Dropdown、Slider 的样式。业务控件统一使用 `Material3Card`/`Surface` 和主题 token。
 
@@ -1473,31 +1494,31 @@ python3 scripts/analyze_connection_timing.py /path/to/fxxkHilife_diagnostic.txt
 
 ## 5. 两项工作的依赖与执行顺序
 
-执行顺序固定为**先完成蓝牙，再开始 UI**；BT-0 至 BT-4 已收口。当前 UI 视觉路线已经从第三方渲染实现切换为标准 Material 3，后续只验证本轮实际变更：
+执行顺序固定为**先完成蓝牙，再开始 UI**；BT-0 至 BT-4 已收口。当前 UI 进入自研 AGSL 玻璃定向验证，第三方玻璃依赖仍保持移除，后续只验证本轮实际变更：
 
 1. **BT-0.1 至 BT-4 `[x]`**：保持既有蓝牙状态、能力、连接生命周期和实机证据边界，不因 UI 重构重跑或改写。
-2. **UI-RESET `[~] 目标受阻：等待 CI 与定向 UI 实测`**：清理旧 effect/source、玻璃配置和显示模式入口，确认标准 Material 3 单一渲染契约。
-3. **UI-FOUNDATION `[~] 目标受阻：等待 CI 与截图`**：确认 `SurfaceRenderer`、公共卡片/横幅、主题 token、壁纸普通背景和资源目录。
+2. **UI-RESET `[x]`**：第三方 effect/source、旧玻璃配置和显示模式入口已清理；Haze 不进入新实现。
+3. **UI-FOUNDATION `[~] 目标受阻：等待 CI 与截图`**：确认 `SurfaceRenderer`、公共卡片/横幅、主题 token、共享壁纸纹理、AGSL renderer 和 MD3 fallback。
 4. **NAV-1 `[ ]`**：用状态驱动导航继续收口自动进入、返回、再次点击和连接会话去重。
 5. **DEVICE-1 `[ ]`**：继续收口 Device/Gesture/ListeningStats/Terminal 页面，保持 typed state/event 和 Material 3 组件。
 6. **SETTINGS-1 `[~] 目标受阻：等待定向 UI 实测`**：验证设置迁移、语言/主题/壁纸、更新能力和无障碍状态。
 7. **LEGACY-CUTOVER `[ ]`**：清理旧页面 facade、无引用资源和历史生产入口；调试 Terminal XML 在迁移前保留。
 8. **UI-RELEASE `[ ]`**：完成 Material 3、导航、无障碍、资源保留和更新流程的最终矩阵。
 
-本轮代码完成后进入 `UI_MATERIAL3_BASELINE` 测试门；测试返回前只保持上述受阻状态，不标记 UI 完成，也不重复 BT A-F/36/100 项矩阵。
+本轮代码完成后进入 `UI_AGSL_GLASS_V1` 测试门；测试返回前只保持上述受阻状态，不标记 UI 完成，也不重复 BT A-F/36/100 项矩阵。
 ## 6. 验收标准
 
 ### UI
 
-- production graph 只允许标准 Material 3 `AppScaffold`、`SurfaceRenderer`、typed route 和统一控件；不得声明或调用第三方玻璃 effect、source、blur 或 refraction API。
-- 所有页面使用同一套 Material 3 主题色、shape、padding、tonal elevation 和交互语义；不得因为 Android 版本、壁纸 URI 或硬件能力产生另一套 surface。
-- 壁纸只作为普通背景图片；无壁纸、加载失败和纯色背景时页面仍保持同样的 Material 3 卡片、文字对比度和布局。
+- production graph 只允许 `AppScaffold`、`SurfaceRenderer`、typed route、统一控件和集中式 `WallpaperGlass.kt`；不得声明或调用第三方玻璃 effect/source/blur/refraction API，页面不得直接创建 AGSL shader。
+- 所有页面使用同一套主题色、shape、padding、tonal elevation 和交互语义；有效壁纸/API 33+ 只增加集中式玻璃材料，不改变业务内容树。
+- 无壁纸、加载失败和 Android 12 及以下使用不透明 Material 3；有效壁纸/API 33+ 使用共享柔化纹理和自研 AGSL，不能出现透明空洞。
 - 页面文件只负责渲染和事件分发，不直接读取/写入 `SharedPreferences`、厂商 raw `group/prop` 或协议命令字节。
 - 所有按钮、开关、选择器、滑块和手势选项继续使用统一组件目录、`UiActionState`/`OptionUiState` 和 `OptionPresenter`；页面不得重复定义 Pending/Failure 逻辑。
 - Home、Scan、Device、Settings、Gesture 的返回、断开、自动连接路径有导航测试；用户点击设备卡片必须产生明确 `OpenDevice(address)` 事件。
 - 连接页面可以分别呈现系统蓝牙已连接、控制通道已建立、核心能力初始化中、Ready 和 Degraded。
-- 长列表使用稳定 key 和生命周期感知收集；标准 Material 3 卡片不创建背景采样，不以视觉特效换取滚动性能。
-- UI 测试报告使用 `UI_MATERIAL3_BASELINE`、`UI_NAVIGATION_SESSION`、`UI_STATE_EVENT_TARGETED`、`UI_SETTINGS_PERSISTENCE`、`UI_ACCESSIBILITY_MATRIX` 和 `UI_RELEASE_AUDIT`；不以版本号单独作为阶段识别。
+- 长列表使用稳定 key 和生命周期感知收集；所有可见卡片复用一张共享纹理，滚动只更新采样坐标，不重复构建纹理或 shader。
+- UI 测试报告使用 `UI_AGSL_GLASS_V1`、`UI_API32_MD3_FALLBACK`、`UI_NAVIGATION_SESSION`、`UI_STATE_EVENT_TARGETED`、`UI_SETTINGS_PERSISTENCE`、`UI_ACCESSIBILITY_MATRIX` 和 `UI_RELEASE_AUDIT`；不以版本号单独作为阶段识别。
 ### 蓝牙指令/连接
 
 - Transport、Framer、CommandClient、Feature、ConnectionManager 可以单独测试。

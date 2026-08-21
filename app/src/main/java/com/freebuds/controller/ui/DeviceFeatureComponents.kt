@@ -1,6 +1,7 @@
 package com.freebuds.controller.ui
 
 import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.tween
 import androidx.compose.animation.expandVertically
 import androidx.compose.animation.fadeIn
@@ -9,6 +10,7 @@ import androidx.compose.animation.shrinkVertically
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.selection.toggleable
 import androidx.compose.foundation.layout.ExperimentalLayoutApi
 import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.*
@@ -25,6 +27,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.rotate
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.unit.dp
@@ -34,6 +37,7 @@ import com.freebuds.controller.data.DualConnectDevice
 import com.freebuds.controller.i18n.I18n
 import com.freebuds.controller.i18n.i18n
 import com.freebuds.controller.ui.foundation.components.Material3Card
+import com.freebuds.controller.ui.foundation.components.CardIconContainer
 import com.freebuds.controller.ui.foundation.surface.SurfaceRole
 
 /** Device feature cards kept separate from route/layout orchestration. */
@@ -275,23 +279,38 @@ internal fun DeviceOptionItem(
     onSelect: (String) -> Unit,
 ) {
     var expanded by remember(title) { mutableStateOf(false) }
+    val arrowRotation by animateFloatAsState(
+        targetValue = if (expanded) 180f else 0f,
+        label = "device-option-arrow",
+    )
     Material3Card(
         displayMode = displayMode,
         modifier = Modifier
             .fillMaxWidth()
-            .padding(horizontal = 16.dp, vertical = 5.dp)
-            .clickable(enabled = options.isNotEmpty()) { expanded = !expanded },
+            .padding(horizontal = 16.dp, vertical = 5.dp),
     ) {
-        Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(14.dp)) {
-            Icon(icon, contentDescription = null)
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .heightIn(min = 64.dp)
+                .toggleable(
+                    value = expanded,
+                    enabled = options.isNotEmpty(),
+                    onValueChange = { expanded = it },
+                ),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(14.dp),
+        ) {
+            CardIconContainer { Icon(icon, contentDescription = null) }
             Column(Modifier.weight(1f)) {
                 Text(title, style = MaterialTheme.typography.titleSmall)
                 if (current != null) Text(current, style = MaterialTheme.typography.bodySmall)
             }
             if (options.isNotEmpty()) {
                 Icon(
-                    if (expanded) Icons.Default.ExpandLess else Icons.Default.ExpandMore,
+                    Icons.Default.ExpandMore,
                     contentDescription = null,
+                    modifier = Modifier.rotate(arrowRotation),
                 )
             }
         }
@@ -341,7 +360,7 @@ internal fun SwitchSettingItem(
             .clickable(enabled = checked != null) { onCheckedChange(!(checked ?: false)) },
     ) {
         Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(14.dp)) {
-            Icon(icon, contentDescription = null)
+            CardIconContainer { Icon(icon, contentDescription = null) }
             Text(title, modifier = Modifier.weight(1f))
             Switch(
                 checked = checked ?: false,
@@ -361,7 +380,7 @@ internal fun InfoItem(displayMode: UiDisplayMode, icon: ImageVector, label: Stri
             .padding(horizontal = 16.dp, vertical = 5.dp),
     ) {
         Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(14.dp)) {
-            Icon(icon, contentDescription = null)
+            CardIconContainer { Icon(icon, contentDescription = null) }
             Column {
                 Text(label)
                 Text(value, style = MaterialTheme.typography.bodySmall)
@@ -382,7 +401,7 @@ internal fun EqualizerStatusCard(
             .padding(horizontal = 16.dp, vertical = 5.dp),
     ) {
         Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(14.dp)) {
-            Icon(Icons.Default.GraphicEq, contentDescription = null)
+            CardIconContainer { Icon(Icons.Default.GraphicEq, contentDescription = null) }
             Column(Modifier.weight(1f)) {
                 Text(i18n("device.option.custom_eq"), style = MaterialTheme.typography.titleSmall)
                 val rows = props.equalizerRows.takeIf { it.isNotEmpty() }?.joinToString(", ") ?: i18n("common.unknown")

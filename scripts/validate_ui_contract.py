@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Validate the standard Material 3 UI boundary without requiring a device."""
+"""Validate the Material 3 fallback and centralized wallpaper glass boundary."""
 
 from __future__ import annotations
 
@@ -31,9 +31,10 @@ def main() -> int:
 
     surface_text = SURFACE_ADAPTER.read_text(encoding="utf-8")
     for required in (
-        "enum class SurfaceRenderMode { Material3 }",
+        "enum class SurfaceRenderMode {",
+        "WallpaperGlass",
         "CardDefaults.cardColors",
-        "MaterialTheme.colorScheme.surfaceVariant",
+        "MaterialTheme.colorScheme.surfaceContainerHigh",
         "SurfaceRole",
         "UiDisplayMode.MATERIAL3",
     ):
@@ -64,6 +65,24 @@ def main() -> int:
     ):
         if forbidden in production_text:
             fail(f"removed rendering path remains in production UI: {forbidden}")
+
+    glass_text = (UI_ROOT / "foundation/surface/WallpaperGlass.kt").read_text(encoding="utf-8")
+    shader_source = ROOT / "app/src/main/res/raw/wallpaper_glass.agsl"
+    for required in (
+        "RuntimeShader",
+        "WallpaperGlassRenderer",
+        "calculateWallpaperTextureSize",
+        "rememberWallpaperTexture",
+        "Build.VERSION_CODES.TIRAMISU",
+    ):
+        if required not in glass_text:
+            fail(f"centralized wallpaper glass boundary is missing {required}")
+    if not shader_source.is_file() or "uniform shader wallpaper" not in shader_source.read_text(encoding="utf-8"):
+        fail("independent AGSL wallpaper shader resource is missing")
+
+    for path in ROUTE_FILES:
+        if "RuntimeShader" in path.read_text(encoding="utf-8"):
+            fail(f"route owns AGSL shader creation: {path.relative_to(ROOT)}")
 
     for path in ROUTE_FILES:
         if not path.is_file():
@@ -110,7 +129,7 @@ def main() -> int:
     if (ROOT / "app/src/main/java/com/freebuds/controller/data/UpdateChecker.kt").exists():
         fail("obsolete UpdateChecker.kt is still present")
 
-    print("ui contract OK: standard Material 3 surface, typed state/events, and route boundaries")
+    print("ui contract OK: Material 3 fallback, centralized AGSL wallpaper glass, typed state/events, and route boundaries")
     return 0
 
 

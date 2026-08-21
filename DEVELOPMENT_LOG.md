@@ -1607,3 +1607,22 @@
 
 ### 验证边界
 - 已通过 UI contract、更新清单和 diff 静态检查；Android 编译、JVM 测试和 Release 资产交由 GitHub Actions。
+
+## v4.7.0 (2026-08-22)
+
+### 发布
+- 自研 AGSL 壁纸柔光玻璃与卡片视觉重构
+- versionCode: 104
+- versionName: 4.7.0
+- tag: v4.7.0
+
+### 本轮实现
+- 新增共享低分辨率壁纸纹理：按原图约 `1/8` 线性尺寸生成，长边限制为 `128–320px`，执行三次小半径盒式混色；滚动时只更新卡片采样矩阵。
+- 新增集中式自研 AGSL wallpaper glass：API 33+ 的有效壁纸卡片/顶部栏绘制宽边缘折射、Fresnel 泛光、细轮廓和低频顶部扭曲；文字、图标和按钮保持原位。
+- 无壁纸、壁纸加载失败和 Android 12 及以下继续使用 `surfaceContainerHigh` Material 3 fallback，不引入 Haze 或其它第三方玻璃依赖。
+- 统一普通卡片、Feature/Hero/Banner、顶部栏和可展开卡片的圆角、层级、留白、边框、图标容器和箭头旋转；展开过程保持单一卡片/单一 shader 节点。
+- 更新 UI contract、AGSL 纹理几何单元测试和重构计划；默认 GitHub Actions 标签切换为 `UI_AGSL_GLASS_V1`。
+
+### 验证边界
+- 已完成源码静态检查准备；按项目约定未执行本地 Gradle，Android 编译与 JVM 测试交由 GitHub Actions。
+- CI 和实机返回前，UI-1/UI-4 保持“目标受阻”；需要分别验证 API 33+ 玻璃效果、API 32 MD3 fallback、展开 10 次和长列表三轮滚动。

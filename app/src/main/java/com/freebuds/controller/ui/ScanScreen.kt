@@ -23,6 +23,7 @@ import com.freebuds.controller.data.ControlChannelStage
 import com.freebuds.controller.data.DeviceViewModel
 import com.freebuds.controller.i18n.i18n
 import com.freebuds.controller.ui.foundation.components.Material3Card
+import com.freebuds.controller.ui.foundation.components.CardIconContainer
 import com.freebuds.controller.ui.foundation.components.Material3Banner
 import com.freebuds.controller.ui.foundation.components.Material3BannerTone
 import com.freebuds.controller.ui.foundation.components.AppTopBar
@@ -165,12 +166,15 @@ private fun DeviceItem(device: ScannedDevice, displayMode: UiDisplayMode, onClic
             .clickable(onClick = onClick),
     ) {
         Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(14.dp)) {
-            Icon(
-                painter = painterResource(UiAssetCatalog.device(UiAssetCatalog.DeviceVisual.EarbudCase)),
-                contentDescription = null,
-                modifier = Modifier.size(30.dp),
-                tint = if (device.isConnected) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant,
-            )
+            CardIconContainer(
+                contentColor = if (device.isConnected) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onPrimaryContainer,
+            ) {
+                Icon(
+                    painter = painterResource(UiAssetCatalog.device(UiAssetCatalog.DeviceVisual.EarbudCase)),
+                    contentDescription = null,
+                    modifier = Modifier.size(30.dp),
+                )
+            }
             Column(Modifier.weight(1f)) {
                 Text(device.displayName, fontWeight = FontWeight.Medium)
                 Text(

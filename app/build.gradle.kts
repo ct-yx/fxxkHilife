@@ -13,8 +13,8 @@ android {
         applicationId = "com.freebuds.controller"
         minSdk = 26
         targetSdk = 35
-        versionCode = 103
-        versionName = "4.6.0"
+        versionCode = 104
+        versionName = "4.7.0"
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
     }
@@ -71,7 +71,7 @@ dependencies {
     implementation("androidx.navigation:navigation-compose:2.9.2")
     debugImplementation("androidx.compose.ui:ui-tooling")
 
-    // UI-MATERIAL3-BASELINE: standard Material 3 is the only production surface renderer.
+    // UI_AGSL_GLASS_V1: centralized AGSL wallpaper glass with Material 3 fallback.
     implementation("io.coil-kt:coil-compose:2.7.0")
 
     implementation("androidx.core:core-ktx:1.15.0")

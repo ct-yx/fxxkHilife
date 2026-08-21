@@ -24,6 +24,7 @@ import com.freebuds.controller.data.SavedDeviceConnection
 import com.freebuds.controller.i18n.i18n
 import com.freebuds.controller.ui.state.ConnectionSummary
 import com.freebuds.controller.ui.foundation.components.Material3Card
+import com.freebuds.controller.ui.foundation.components.CardIconContainer
 import com.freebuds.controller.ui.foundation.components.Material3Banner
 import com.freebuds.controller.ui.foundation.components.Material3BannerTone
 import com.freebuds.controller.ui.foundation.components.ConnectionBanner
@@ -206,21 +207,23 @@ private fun SavedDeviceItem(
 @Composable
 private fun EarbudsListIcon(connected: Boolean) {
     val color = if (connected) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant
-    Box(modifier = Modifier.size(32.dp), contentAlignment = Alignment.Center) {
-        Icon(
-            painter = painterResource(UiAssetCatalog.device(UiAssetCatalog.DeviceVisual.EarbudCase)),
-            contentDescription = null,
-            modifier = Modifier.size(28.dp),
-            tint = color,
-        )
-        if (!connected) {
-            Canvas(modifier = Modifier.matchParentSize()) {
-                drawLine(
-                    color = color,
-                    start = Offset(size.width * 0.18f, size.height * 0.84f),
-                    end = Offset(size.width * 0.84f, size.height * 0.18f),
-                    strokeWidth = 3.2f,
-                )
+    CardIconContainer {
+        Box(modifier = Modifier.size(32.dp), contentAlignment = Alignment.Center) {
+            Icon(
+                painter = painterResource(UiAssetCatalog.device(UiAssetCatalog.DeviceVisual.EarbudCase)),
+                contentDescription = null,
+                modifier = Modifier.size(28.dp),
+                tint = color,
+            )
+            if (!connected) {
+                Canvas(modifier = Modifier.matchParentSize()) {
+                    drawLine(
+                        color = color,
+                        start = Offset(size.width * 0.18f, size.height * 0.84f),
+                        end = Offset(size.width * 0.84f, size.height * 0.18f),
+                        strokeWidth = 3.2f,
+                    )
+                }
             }
         }
     }

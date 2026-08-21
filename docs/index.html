@@ -3,22 +3,22 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
-<title>fxxkHilife v4.6.0 — 标准 Material 3 UI Release</title>
-<meta name="description" content="fxxkHilife v4.6.0 是 HUAWEI FreeBuds / HONOR Earbuds 的标准 Material 3 UI Release：移除第三方渲染路线，保留美术资源，并在深色模式下对壁纸进行 RGB 亮度缩放。">
+<title>fxxkHilife v4.7.0 — AGSL 壁纸柔光玻璃测试版</title>
+<meta name="description" content="fxxkHilife v4.7.0 是 HUAWEI FreeBuds / HONOR Earbuds 的 AGSL 壁纸柔光玻璃测试版：Android 13+ 有壁纸时启用集中式自研渲染，无壁纸或低版本回退到标准 Material 3。">
 <meta name="robots" content="index,follow,max-image-preview:large">
 <link rel="canonical" href="https://ct-yx.github.io/fxxkHilife/">
 <meta property="og:type" content="website">
 <meta property="og:site_name" content="fxxkHilife">
-<meta property="og:title" content="fxxkHilife v4.6.0 — 标准 Material 3 UI Release">
-<meta property="og:description" content="标准 Material 3 UI Release：移除第三方渲染路线，保留美术资源，并在深色模式下对壁纸进行 RGB 亮度缩放。">
+<meta property="og:title" content="fxxkHilife v4.7.0 — AGSL 壁纸柔光玻璃测试版">
+<meta property="og:description" content="AGSL 壁纸柔光玻璃测试版：Android 13+ 有壁纸时条件式启用自研渲染，无壁纸或低版本回退到标准 Material 3。">
 <meta property="og:url" content="https://ct-yx.github.io/fxxkHilife/">
 <meta property="og:image" content="https://ct-yx.github.io/fxxkHilife/icon.png">
 <meta name="twitter:card" content="summary_large_image">
-<meta name="twitter:title" content="fxxkHilife v4.6.0 — 标准 Material 3 UI Release">
-<meta name="twitter:description" content="标准 Material 3 UI Release：通过稳定状态、统一 surface 和连接会话导航继续推进界面重构。">
+<meta name="twitter:title" content="fxxkHilife v4.7.0 — AGSL 壁纸柔光玻璃测试版">
+<meta name="twitter:description" content="AGSL 壁纸柔光玻璃测试版：通过共享壁纸纹理、统一 surface 和连接会话导航继续推进界面重构。">
 <meta name="twitter:image" content="https://ct-yx.github.io/fxxkHilife/icon.png">
 <script type="application/ld+json">
-{"@context":"https://schema.org","@type":"SoftwareApplication","name":"fxxkHilife","applicationCategory":"UtilitiesApplication","operatingSystem":"Android","url":"https://ct-yx.github.io/fxxkHilife/","codeRepository":"https://github.com/ct-yx/fxxkHilife","description":"Open-source offline Android controller for HUAWEI FreeBuds / HONOR Earbuds using Bluetooth SPP; v4.6.0 is the current standard Material 3 UI release.","softwareVersion":"4.6.0","offers":{"@type":"Offer","price":"0","priceCurrency":"USD"}}
+{"@context":"https://schema.org","@type":"SoftwareApplication","name":"fxxkHilife","applicationCategory":"UtilitiesApplication","operatingSystem":"Android","url":"https://ct-yx.github.io/fxxkHilife/","codeRepository":"https://github.com/ct-yx/fxxkHilife","description":"Open-source offline Android controller for HUAWEI FreeBuds / HONOR Earbuds using Bluetooth SPP; v4.7.0 is the current AGSL wallpaper glass test build with a Material 3 fallback.","softwareVersion":"4.7.0","offers":{"@type":"Offer","price":"0","priceCurrency":"USD"}}
 </script>
 <meta name="theme-color" content="#07111f">
 <style>
@@ -49,22 +49,22 @@ body:after{content:"";position:fixed;inset:0;z-index:-3;pointer-events:none;back
 <main id="top">
 <section class="section hero">
   <div class="reveal">
-    <div class="eyebrow"><i class="spark"></i><span>Material 3 UI Release · v4.6.0</span></div>
+    <div class="eyebrow"><i class="spark"></i><span>AGSL 壁纸柔光玻璃测试版 · v4.7.0</span></div>
     <h1><span class="grad">把控制权</span><br>还给耳机主人</h1>
-    <p class="lead">fxxkHilife 是为 HUAWEI FreeBuds / HONOR Earbuds 打造的轻量离线控制 App。v4.6.0 已移除第三方渲染路线，统一标准 Material 3 surface；深色模式下壁纸 RGB 亮度缩放到 75%。</p>
+    <p class="lead">fxxkHilife 是为 HUAWEI FreeBuds / HONOR Earbuds 打造的轻量离线控制 App。v4.7.0 在 Android 13+ 且存在有效壁纸时启用集中式自研 AGSL 柔光玻璃；无壁纸、加载失败或 Android 12 及以下回退到优化后的标准 Material 3。</p>
     <div class="hero-actions"><a id="downloadBtn" class="btn primary" href="https://github.com/ct-yx/fxxkHilife/releases/latest" target="_blank" rel="noopener">⬇ <span id="downloadText">下载最新版</span></a><a class="btn sponsor-btn" href="https://ifdian.net/a/Ct_yx" target="_blank" rel="noopener">♡ 爱发电</a><a class="btn sponsor-btn" href="https://buymeacoffee.com/ctyx" target="_blank" rel="noopener">☕ Buy Me a Coffee</a><a class="btn" href="https://github.com/ct-yx/fxxkHilife" target="_blank" rel="noopener">⌁ 查看源码</a><a class="btn" href="#timeline">✦ 开发日志</a></div>
-    <div class="meta"><span class="pill" id="heroVersion">v4.6.0</span><span class="pill">Kotlin + Compose</span><span class="pill">Bluetooth SPP</span><span class="pill">State contract 5/5</span></div>
+    <div class="meta"><span class="pill" id="heroVersion">v4.7.0</span><span class="pill">Kotlin + Compose</span><span class="pill">Bluetooth SPP</span><span class="pill">State contract 5/5</span></div>
     <div class="versionline" id="versionInfo">正在获取最新发布信息…</div>
   </div>
   <div class="phone-stage reveal"><div class="halo"></div><div class="device"><div class="screen"><div class="mock-ui"><div class="mock-top"><span class="mock-title">FreeBuds</span><span class="mock-chip" style="width:62px"></span></div><div class="mock-battery"><div><b>96%</b><span>左耳</span></div><div><b>94%</b><span>右耳</span></div></div><div class="mock-panel"><span>ANC 模式</span><div class="mock-switch"><i>关闭</i><i class="on">降噪</i><i>透传</i></div></div><div class="mock-list"><div class="mock-row"><span>低延迟</span><b>开启</b></div><div class="mock-row"><span>调音模式</span><b>默认</b></div><div class="mock-row"><span>双设备</span><b>已开启</b></div></div></div></div></div><div class="float-card fc1"><b>ANC / 透传</b><span>核心优先初始化</span></div><div class="float-card fc2"><b>完全离线</b><span>无需登录，无遥测</span></div><div class="float-card fc3"><b>后台连接</b><span>系统蓝牙在线后接管控制</span></div></div>
 </section>
-<section class="section" id="bt-release"><div class="card reveal"><div class="eyebrow"><i class="spark"></i><span>BT-0 → BT-4 · 已收口</span></div><h2 class="title" style="margin-top:20px"><span class="grad">先把连接做稳</span></h2><p class="sub" style="text-align:left;margin:0 0 22px">v4.3.10 将连接、初始化、轮询、指令队列、能力表和状态投影收敛到可验证的边界。FreeBuds 6i 主验证设备的 <code>BT4_STATE_CONTRACT_5</code> 已 5/5 通过；v4.6.0 进入标准 Material 3 UI Release，不重复蓝牙全量矩阵。</p><div class="grid features"><div class="card"><h3>生命周期</h3><p>同一 attempt 管理 session、Job、断开清理和统计 flush，重复入口不会并行建连。</p></div><div class="card"><h3>状态契约</h3><p>能力、控制通道、pending/failed 和兼容投影通过原子快照输出，避免旧状态晚到覆盖新状态。</p></div><div class="card"><h3>UI 定向门</h3><p>标准 Material 3 surface、普通壁纸背景和深色模式亮度处理；后续截图与运行证据继续定向验证。</p></div></div></div></section>
+<section class="section" id="bt-release"><div class="card reveal"><div class="eyebrow"><i class="spark"></i><span>BT-0 → BT-4 · 已收口</span></div><h2 class="title" style="margin-top:20px"><span class="grad">先把连接做稳</span></h2><p class="sub" style="text-align:left;margin:0 0 22px">v4.3.10 将连接、初始化、轮询、指令队列、能力表和状态投影收敛到可验证的边界。FreeBuds 6i 主验证设备的 <code>BT4_STATE_CONTRACT_5</code> 已 5/5 通过；v4.6.0 是 BT 重构后的首个 Material 3 大版本，v4.7.0 在其基础上验证条件式 AGSL UI。</p><div class="grid features"><div class="card"><h3>生命周期</h3><p>同一 attempt 管理 session、Job、断开清理和统计 flush，重复入口不会并行建连。</p></div><div class="card"><h3>状态契约</h3><p>能力、控制通道、pending/failed 和兼容投影通过原子快照输出，避免旧状态晚到覆盖新状态。</p></div><div class="card"><h3>UI 定向门</h3><p>有壁纸且 Android 13+ 使用共享纹理与自研 AGSL 玻璃；无壁纸或低版本使用标准 Material 3，并保留深色壁纸亮度处理。</p></div></div></div></section>
 <section class="section center" id="features"><h2 class="title reveal"><span class="grad">纯粹，但不简陋</span></h2><p class="sub reveal">从 ANC、低延迟、EQ 调音、双设备连接到手势和日志导出——只做耳机控制，但把细节做稳。</p><div class="grid features">
   <article class="card reveal"><div class="ico">🔌</div><h3>离线直连</h3><p>通过唯一生产 SPP 路径与耳机通信，无需账号、云服务或网络权限。</p></article>
   <article class="card reveal"><div class="ico">🎛️</div><h3>ANC 核心控制</h3><p>支持关闭、降噪、透传和子模式映射，修复数字子选项与状态回跳。</p></article>
   <article class="card reveal"><div class="ico">⚡</div><h3>低延迟 / 调音</h3><p>连接后优先读取核心状态，EQ 预设支持回读同步，自定义调音保持保守只读。</p></article>
   <article class="card reveal"><div class="ico">✋</div><h3>手势设置</h3><p>双击、三击、长按、滑动等手势按型号能力表注册，支持日志反馈校准。</p></article>
-  <article class="card reveal"><div class="ico">🔮</div><h3>Material 3 UI 重构</h3><p>v4.6.0 统一标准 Material 3 surface，保留现有美术资源；后续截图、无障碍与交互报告继续作为定向验收证据。</p></article>
+  <article class="card reveal"><div class="ico">🔮</div><h3>AGSL UI 重构</h3><p>v4.7.0 统一卡片、展开交互和顶部栏；有壁纸且 Android 13+ 使用自研柔光玻璃，无壁纸或低版本回退到标准 Material 3，保留现有美术资源。</p></article>
   <article class="card reveal"><div class="ico">🔗</div><h3>双设备 MVP</h3><p>读取耳机侧双连列表和首选/连接/自动连接状态，Android 控制通道保持单 active SPP 降级策略。</p></article>
 </div></section>
 <section class="section" id="devices"><div class="center"><h2 class="title reveal">支持状态</h2><p class="sub reveal">能力表持续校准中。不同固件和 Android 蓝牙栈会影响实际表现，日志非常有价值。</p></div><div class="grid status-grid"><div class="card reveal"><div class="matrix">
@@ -73,10 +73,10 @@ body:after{content:"";position:fixed;inset:0;z-index:-3;pointer-events:none;back
   <div class="row"><strong>FreeBuds 5i / 4i</strong><span class="tag need">待更多日志</span><small>已配置能力表，欢迎提供 ANC、手势、电量、EQ 和双设备日志。</small></div>
   <div class="row"><strong>Pro / SE / FreeClip / FreeLace</strong><span class="tag need">重点招募</span><small>型号差异大，需测试者帮助确认协议行为。</small></div>
 </div></div><div class="card reveal"><h3>测试反馈建议</h3><p>提交 Issue 时请附上耳机型号、固件、手机系统、App 版本和“分享日志”导出的日志文件。</p><p style="margin-top:16px;color:var(--muted)">未知型号不会强行注册全部 handler；如果某项能力被标为待验证，请附上型号识别、endpoint/channel/source 和对应功能日志。</p><div class="hero-actions"><a class="btn" href="https://github.com/ct-yx/fxxkHilife/issues" target="_blank" rel="noopener">提交反馈</a><a class="btn" href="https://github.com/ct-yx/fxxkHilife/releases/latest" target="_blank" rel="noopener">下载 Release</a></div></div></div></section>
-<section class="section" id="shots"><div class="center"><h2 class="title reveal">功能展示</h2><p class="sub reveal">旧版截图暂不冒充新 UI；BT 重构证据与现有演示保留，待 UI-0 完成后再替换为新版截图。</p></div><div class="grid shots"><article class="card shot reveal"><div class="placeholder-shot"><div><b>新版首页截图待补</b><span>UI-0 完成后替换</span></div></div><div class="caption"><b>首页</b> · 等新版状态契约接入后重新截图。</div></article><article class="card shot reveal"><div class="placeholder-shot"><div><b>新版设备页截图待补</b><span>Material 3 实际效果待验收</span></div></div><div class="caption"><b>设备页</b> · ANC / 低延迟 / 调音 / 双设备。</div></article><article class="card shot reveal"><video src="./demo_auto_low_latency.mp4" controls preload="metadata" playsinline muted></video><div class="caption"><b>自动低延迟</b> · 连接后自动应用核心配置。</div></article><article class="card shot reveal"><video src="./demo_anc_without_app.mp4" controls preload="metadata" playsinline muted></video><div class="caption"><b>不打开应用切 ANC</b> · 通知/快捷入口直接控制。</div></article></div></section>
+<section class="section" id="shots"><div class="center"><h2 class="title reveal">功能展示</h2><p class="sub reveal">旧版截图暂不冒充新 UI；BT 重构证据与现有演示保留，待 UI_AGSL_GLASS_V1 实测后再替换为新版截图。</p></div><div class="grid shots"><article class="card shot reveal"><div class="placeholder-shot"><div><b>新版首页截图待补</b><span>UI_AGSL_GLASS_V1 实测后替换</span></div></div><div class="caption"><b>首页</b> · 等 AGSL 玻璃状态契约接入并完成截图验收。</div></article><article class="card shot reveal"><div class="placeholder-shot"><div><b>新版设备页截图待补</b><span>AGSL 实际效果待验收</span></div></div><div class="caption"><b>设备页</b> · ANC / 低延迟 / 调音 / 双设备。</div></article><article class="card shot reveal"><video src="./demo_auto_low_latency.mp4" controls preload="metadata" playsinline muted></video><div class="caption"><b>自动低延迟</b> · 连接后自动应用核心配置。</div></article><article class="card shot reveal"><video src="./demo_anc_without_app.mp4" controls preload="metadata" playsinline muted></video><div class="caption"><b>不打开应用切 ANC</b> · 通知/快捷入口直接控制。</div></article></div></section>
 <section class="section" id="timeline"><div class="timeline-head"><div><h2 class="title reveal">开发日志</h2><p class="sub" style="text-align:left;margin:0">稳定解析 DEVELOPMENT_LOG.md，不依赖外部 Markdown 库。</p></div><div class="log-tools"><button class="tinybtn" id="expandAll">全部展开</button><button class="tinybtn" id="collapseAll">全部收起</button><a class="tinybtn" href="https://github.com/ct-yx/fxxkHilife/blob/refactor/v2-alpha/DEVELOPMENT_LOG.md" target="_blank" rel="noopener">GitHub 查看</a></div></div><div id="timelineBox" class="timeline"><div class="loading">正在加载开发日志…</div></div></section>
 </main>
-<footer class="footer"><p>fxxkHilife v4.6.0 · 标准 Material 3 UI Release · BT 重构首个公开大版本为 v4.3.10 · 基于 OpenFreebuds 相关协议研究 · 仅供学习与个人研究使用</p><p><a href="https://github.com/ct-yx/fxxkHilife" target="_blank" rel="noopener">GitHub</a> · <a href="https://github.com/ct-yx/fxxkHilife/releases" target="_blank" rel="noopener">Releases</a></p></footer>
+<footer class="footer"><p>fxxkHilife v4.7.0 · AGSL 壁纸柔光玻璃测试版 · v4.6.0 为 BT 重构后的首个公开 UI 大版本 · 基于 OpenFreebuds 相关协议研究 · 仅供学习与个人研究使用</p><p><a href="https://github.com/ct-yx/fxxkHilife" target="_blank" rel="noopener">GitHub</a> · <a href="https://github.com/ct-yx/fxxkHilife/releases" target="_blank" rel="noopener">Releases</a></p></footer>
 <script>
 const $=s=>document.querySelector(s);const $$=s=>Array.from(document.querySelectorAll(s));
 const io=new IntersectionObserver(es=>es.forEach(e=>{if(e.isIntersecting)e.target.classList.add('on')}),{threshold:.12,rootMargin:'0px 0px -40px'});$$('.reveal').forEach(e=>io.observe(e));

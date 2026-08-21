@@ -1,0 +1,41 @@
+uniform shader wallpaper;
+uniform float2 resolution;
+uniform float4 cornerRadii;
+uniform float edgeBand;
+uniform float displacement;
+uniform float bodyAlpha;
+uniform float tintStrength;
+uniform float specular;
+uniform float distortion;
+uniform float4 tintColor;
+
+float roundedBoxSdf(float2 point, float2 size, float4 radii) {
+    float2 centered = point - size * 0.5;
+    bool right = centered.x >= 0.0;
+    bool bottom = centered.y >= 0.0;
+    float radius = right
+        ? (bottom ? radii.z : radii.y)
+        : (bottom ? radii.w : radii.x);
+    float2 halfSize = size * 0.5;
+    float2 q = abs(centered) - (halfSize - float2(radius));
+    return length(max(q, 0.0)) + min(max(q.x, q.y), 0.0) - radius;
+}
+
+half4 main(float2 point) {
+    float distance = roundedBoxSdf(point, resolution, cornerRadii);
+    float edge = 1.0 - smoothstep(0.0, edgeBand, -distance);
+    float2 centered = point - resolution * 0.5;
+    float2 direction = centered / max(length(centered), 1.0);
+    float wave = sin((point.x + point.y) * 0.065) * distortion * edge;
+    float2 refractedPoint = point + direction * displacement * edge + float2(wave, -wave * 0.35);
+    half4 base = wallpaper.eval(point);
+    half4 refracted = wallpaper.eval(refractedPoint);
+    float chroma = edge * 0.018;
+    half red = wallpaper.eval(refractedPoint + float2(chroma * 12.0, 0.0)).r;
+    half blue = wallpaper.eval(refractedPoint - float2(chroma * 12.0, 0.0)).b;
+    half3 sampled = half3(red, mix(base.g, refracted.g, edge), blue);
+    half3 tinted = mix(sampled, tintColor.rgb, tintStrength);
+    float glow = pow(edge, 1.35) * specular;
+    tinted += tintColor.rgb * glow * 0.22;
+    return half4(tinted, bodyAlpha + edge * 0.12);
+}

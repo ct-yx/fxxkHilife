@@ -6,6 +6,7 @@ import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.selection.toggleable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.rememberLazyListState
@@ -18,6 +19,7 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.rotate
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.platform.LocalContext
@@ -25,6 +27,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.core.animateFloatAsState
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import coil.compose.AsyncImage
 import com.freebuds.controller.BuildConfig
@@ -34,6 +37,7 @@ import com.freebuds.controller.data.DeviceViewModel
 import com.freebuds.controller.i18n.i18n
 import com.freebuds.controller.i18n.I18nLocale
 import com.freebuds.controller.ui.foundation.components.Material3Card
+import com.freebuds.controller.ui.foundation.components.CardIconContainer
 import com.freebuds.controller.ui.theme.ThemeMode
 import com.freebuds.controller.ui.foundation.components.AppTopBar
 import com.freebuds.controller.ui.foundation.assets.UiAssetCatalog
@@ -252,6 +256,10 @@ fun SettingsScreen(
             item { SettingsHeader(i18n("settings.other_credits")) }
             item {
                 var expanded by remember { mutableStateOf(false) }
+                val arrowRotation by animateFloatAsState(
+                    targetValue = if (expanded) 180f else 0f,
+                    label = "settings-credits-arrow",
+                )
                 Material3Card(
                     displayMode = displayMode,
                                 modifier = Modifier
@@ -259,7 +267,13 @@ fun SettingsScreen(
                         .padding(horizontal = 16.dp, vertical = 6.dp),
                 ) {
                     Row(
-                        modifier = Modifier.clickable { expanded = !expanded },
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .heightIn(min = 64.dp)
+                            .toggleable(
+                                value = expanded,
+                                onValueChange = { expanded = it },
+                            ),
                         verticalAlignment = Alignment.CenterVertically,
                     ) {
                         Icon(
@@ -273,9 +287,19 @@ fun SettingsScreen(
                             Spacer(Modifier.height(3.dp))
                             Text(i18n("settings.third_party_icons_desc"))
                         }
-                        Icon(if (expanded) Icons.Default.ExpandLess else Icons.Default.ExpandMore, contentDescription = null)
+                        Icon(
+                            Icons.Default.ExpandMore,
+                            contentDescription = null,
+                            modifier = Modifier.rotate(arrowRotation),
+                        )
                     }
-                    AnimatedVisibility(visible = expanded) {
+                    AnimatedVisibility(
+                        visible = expanded,
+                        enter = androidx.compose.animation.fadeIn(androidx.compose.animation.core.tween(160)) +
+                            androidx.compose.animation.expandVertically(androidx.compose.animation.core.tween(240)),
+                        exit = androidx.compose.animation.shrinkVertically(androidx.compose.animation.core.tween(180)) +
+                            androidx.compose.animation.fadeOut(androidx.compose.animation.core.tween(120)),
+                    ) {
                         Column(modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp)) {
                             Icon(painter = painterResource(UiAssetCatalog.anc(UiAssetCatalog.AncVisual.Cancellation)),
                                 contentDescription = null,
@@ -347,7 +371,7 @@ private fun SettingsCard(
     ) {
         Row(verticalAlignment = Alignment.CenterVertically) {
             if (leadingContent != null) {
-                Box(modifier = Modifier.size(40.dp), contentAlignment = Alignment.Center) { leadingContent() }
+                CardIconContainer { leadingContent() }
                 Spacer(Modifier.width(12.dp))
             }
             Column(modifier = Modifier.weight(1f)) {

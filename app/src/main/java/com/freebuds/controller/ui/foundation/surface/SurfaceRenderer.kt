@@ -4,6 +4,7 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.ColumnScope
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.BorderStroke
 import androidx.compose.material3.Card as MaterialCard
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.MaterialTheme
@@ -16,42 +17,73 @@ import androidx.compose.ui.unit.dp
 import com.freebuds.controller.ui.UiDisplayMode
 import com.freebuds.controller.ui.foundation.tokens.UiTokens
 
-/** Semantic surface roles. All roles use the same standard Material 3 card contract. */
+/** Semantic surface roles shared by every route. */
 enum class SurfaceRole { Hero, FeatureCard, StandardCard, CompactRow, Dialog, AppBar }
 
-/** Kept as a typed seam for callers; Material 3 is the only production renderer. */
-enum class SurfaceRenderMode { Material3 }
+enum class SurfaceRenderMode {
+    Material3,
+    WallpaperGlass,
+}
 
 @Immutable
 data class SurfaceSpec(
     val role: SurfaceRole = SurfaceRole.StandardCard,
     val renderMode: SurfaceRenderMode = SurfaceRenderMode.Material3,
     val tint: Color? = null,
-    val cornerRadius: Dp = UiTokens.ref.radiusLarge,
+    val cornerRadius: Dp? = null,
 )
 
-/**
- * The single production surface adapter.
- *
- * There is deliberately no captured-background, blur, refraction or translucent fallback here.
- * Every page receives an opaque, theme-aware Material 3 Card with the same shape, padding and
- * elevation rules, so the visual result is predictable on every Android version and device.
- */
+internal fun SurfaceRole.defaultCornerRadius(): Dp = when (this) {
+    SurfaceRole.Hero -> 28.dp
+    SurfaceRole.FeatureCard -> 26.dp
+    SurfaceRole.StandardCard -> 22.dp
+    SurfaceRole.CompactRow -> 20.dp
+    SurfaceRole.Dialog, SurfaceRole.AppBar -> 22.dp
+}
+
+internal fun SurfaceRole.glassProfile(): GlassProfile = when (this) {
+    SurfaceRole.Hero -> GlassProfile.Hero
+    SurfaceRole.FeatureCard -> GlassProfile.Feature
+    SurfaceRole.StandardCard -> GlassProfile.Standard
+    SurfaceRole.CompactRow -> GlassProfile.Compact
+    SurfaceRole.Dialog -> GlassProfile.Feature
+    SurfaceRole.AppBar -> GlassProfile.TopBar
+}
+
+/** The only production surface adapter; wallpaper glass is selected only when it is available. */
 object SurfaceRenderer {
     @Composable
-    @Suppress("UNUSED_PARAMETER")
     fun Card(
         spec: SurfaceSpec,
         displayMode: UiDisplayMode = UiDisplayMode.MATERIAL3,
         modifier: Modifier = Modifier,
         content: @Composable ColumnScope.() -> Unit,
     ) {
-        val shape = RoundedCornerShape(spec.cornerRadius)
-        val containerColor = (spec.tint ?: MaterialTheme.colorScheme.surfaceVariant).copy(alpha = 1f)
+        @Suppress("UNUSED_VARIABLE")
+        val ignoredDisplayMode = displayMode
+        val host = LocalWallpaperGlass.current
+        val resolvedRadius = spec.cornerRadius ?: spec.role.defaultCornerRadius()
+        val shape = RoundedCornerShape(resolvedRadius)
+        val useGlass = spec.renderMode == SurfaceRenderMode.WallpaperGlass &&
+            host != null &&
+            android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.TIRAMISU
+
+        if (useGlass) {
+            WallpaperGlassSurface(
+                modifier = modifier,
+                shape = shape,
+                profile = spec.role.glassProfile(),
+                tint = spec.tint,
+                content = content,
+            )
+            return
+        }
+
+        val containerColor = spec.tint ?: MaterialTheme.colorScheme.surfaceContainerHigh
         val elevation = when (spec.role) {
-            SurfaceRole.Hero -> 3.dp
-            SurfaceRole.FeatureCard -> 2.dp
-            SurfaceRole.StandardCard, SurfaceRole.CompactRow -> 1.dp
+            SurfaceRole.Hero -> 2.dp
+            SurfaceRole.FeatureCard -> 1.dp
+            SurfaceRole.StandardCard, SurfaceRole.CompactRow -> 0.dp
             SurfaceRole.Dialog, SurfaceRole.AppBar -> 2.dp
         }
 
@@ -59,6 +91,7 @@ object SurfaceRenderer {
             modifier = modifier,
             shape = shape,
             colors = CardDefaults.cardColors(containerColor = containerColor),
+            border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.50f)),
             elevation = CardDefaults.cardElevation(defaultElevation = elevation),
         ) {
             Column(Modifier.padding(UiTokens.ref.space4), content = content)

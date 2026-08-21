@@ -1,12 +1,14 @@
 package com.freebuds.controller.ui
 
 import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.tween
 import androidx.compose.animation.expandVertically
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
 import androidx.compose.animation.shrinkVertically
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.selection.toggleable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.rememberLazyListState
@@ -16,6 +18,7 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.rotate
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
@@ -24,6 +27,7 @@ import com.freebuds.controller.data.DeviceViewModel
 import com.freebuds.controller.i18n.I18n
 import com.freebuds.controller.i18n.i18n
 import com.freebuds.controller.ui.foundation.components.Material3Card
+import com.freebuds.controller.ui.foundation.components.CardIconContainer
 import com.freebuds.controller.ui.state.DeviceEvent
 import com.freebuds.controller.ui.state.GestureTarget
 import com.freebuds.controller.ui.foundation.components.AppTopBar
@@ -176,15 +180,28 @@ internal fun OptionSettingItem(
     onSelect: (String) -> Unit,
 ) {
     var expanded by remember(title) { mutableStateOf(false) }
+    val arrowRotation by animateFloatAsState(
+        targetValue = if (expanded) 180f else 0f,
+        label = "gesture-option-arrow",
+    )
     Material3Card(
         displayMode = displayMode,
         modifier = Modifier
             .fillMaxWidth()
-            .padding(horizontal = 16.dp, vertical = 6.dp)
-            .clickable(enabled = options.isNotEmpty()) { expanded = !expanded },
+            .padding(horizontal = 16.dp, vertical = 6.dp),
     ) {
-        Row(verticalAlignment = Alignment.CenterVertically) {
-            Icon(icon, contentDescription = null)
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .heightIn(min = 64.dp)
+                .toggleable(
+                    value = expanded,
+                    enabled = options.isNotEmpty(),
+                    onValueChange = { expanded = it },
+                ),
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            CardIconContainer { Icon(icon, contentDescription = null) }
             Spacer(Modifier.width(16.dp))
             Column(modifier = Modifier.weight(1f)) {
                 Text(title, style = MaterialTheme.typography.titleSmall, fontWeight = FontWeight.SemiBold)
@@ -198,7 +215,11 @@ internal fun OptionSettingItem(
                 }
             }
             if (options.isNotEmpty()) {
-                Icon(if (expanded) Icons.Default.ExpandLess else Icons.Default.ExpandMore, contentDescription = null)
+                Icon(
+                    Icons.Default.ExpandMore,
+                    contentDescription = null,
+                    modifier = Modifier.rotate(arrowRotation),
+                )
             }
         }
         AnimatedVisibility(
