@@ -1624,5 +1624,6 @@
 - 更新 UI contract、AGSL 纹理几何单元测试和重构计划；默认 GitHub Actions 标签切换为 `UI_AGSL_GLASS_V1`。
 
 ### 验证边界
-- 已完成源码静态检查准备；按项目约定未执行本地 Gradle，Android 编译与 JVM 测试交由 GitHub Actions。
-- CI 和实机返回前，UI-1/UI-4 保持“目标受阻”；需要分别验证 API 33+ 玻璃效果、API 32 MD3 fallback、展开 10 次和长列表三轮滚动。
+- GitHub Actions 构建已通过：Run [32528454179](https://github.com/ct-yx/fxxkHilife/actions/runs/32528454179)，Debug/Release 编译、JVM 测试、UI contract 和 diff-check 全部通过；未执行本地 Gradle。
+- 测试包：`fxxkHilife-UI_AGSL_GLASS_V1-v4.7.0-104.apk`；Release SHA-256：`8013981d11ba3dd3ec4f8c09307b6b293830b8b36ac16fd2794ad083e0578910`。
+- CI 后 UI-1/UI-4 仍保持“目标受阻”，等待定向实机验证：API 33+ 玻璃效果、API 32 MD3 fallback、展开 10 次和长列表三轮滚动。

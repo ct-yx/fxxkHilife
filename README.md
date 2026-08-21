@@ -20,7 +20,7 @@
 > BT 重构与标准 Material 3 UI 基线已合并发布；深色模式壁纸会按 RGB 亮度缩放处理，不叠加黑色滤镜。
 >
 > **当前开发测试：v4.7.0（versionCode 104）**
-> 默认构建标签为 `UI_AGSL_GLASS_V1`：有效壁纸且 Android 13+ 启用自研 AGSL 柔光玻璃，其余情况使用 Material 3 fallback；尚待 CI 与实机验收。
+> 默认构建标签为 `UI_AGSL_GLASS_V1`：有效壁纸且 Android 13+ 启用自研 AGSL 柔光玻璃，其余情况使用 Material 3 fallback；CI 已通过，等待定向实机验收。
 
 ---
 

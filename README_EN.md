@@ -20,7 +20,7 @@
 > The BT refactor and the standard Material 3 UI baseline are released; dark-mode wallpapers use RGB brightness scaling instead of a black overlay.
 >
 > **Current development build: v4.7.0 (versionCode 104)**
-> The default build label is `UI_AGSL_GLASS_V1`: self-built AGSL wallpaper glass is enabled on Android 13+ with a valid wallpaper, while other states use the Material 3 fallback; CI and hardware UI validation are pending.
+> The default build label is `UI_AGSL_GLASS_V1`: self-built AGSL wallpaper glass is enabled on Android 13+ with a valid wallpaper, while other states use the Material 3 fallback; CI has passed, and targeted hardware UI validation is pending.
 
 ---
 
