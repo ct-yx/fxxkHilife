@@ -101,6 +101,9 @@ def main() -> int:
         fail("SettingsEvent boundary is missing")
     if "AppScaffold(" not in (UI_ROOT / "AppNavHost.kt").read_text(encoding="utf-8"):
         fail("AppNavHost does not use AppScaffold")
+    scaffold_text = (UI_ROOT / "foundation/components/AppScaffold.kt").read_text(encoding="utf-8")
+    if "toBitmap(config = android.graphics.Bitmap.Config.ARGB_8888)" not in scaffold_text:
+        fail("wallpaper source is not converted to a software-readable ARGB_8888 bitmap")
     nav_text = (UI_ROOT / "AppNavHost.kt").read_text(encoding="utf-8")
     if "DeviceNavigationState" not in nav_text or "navController.navigate(Route.Device)" not in nav_text:
         fail("device navigation intent/session boundary is missing")

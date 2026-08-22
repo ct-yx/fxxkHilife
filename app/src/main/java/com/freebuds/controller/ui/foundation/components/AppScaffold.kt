@@ -74,7 +74,9 @@ fun AppScaffold(
     }
     val wallpaperResult = (wallpaperPainter.state as? AsyncImagePainter.State.Success)?.result
     val sourceBitmap = remember(wallpaperResult) {
-        wallpaperResult?.drawable?.toBitmap()
+        // Coil may decode the wallpaper as a hardware bitmap. The shared texture builder reads
+        // pixels on Dispatchers.Default, so force a software bitmap before CPU sampling.
+        wallpaperResult?.drawable?.toBitmap(config = android.graphics.Bitmap.Config.ARGB_8888)
     }
     val wallpaperReady = showWallpaper && sourceBitmap != null
     val contentBackground = if (showWallpaper && wallpaperError == null) {
