@@ -7,6 +7,7 @@ import android.os.Build
 import com.freebuds.controller.data.DeviceRepository
 import com.freebuds.controller.i18n.I18n
 import com.freebuds.controller.service.BluetoothService
+import com.freebuds.controller.util.CrashReporter
 import com.freebuds.controller.util.LogBuffer
 
 class HilifeApplication : Application() {
@@ -16,6 +17,7 @@ class HilifeApplication : Application() {
     override fun onCreate() {
         super.onCreate()
         instance = this
+        CrashReporter.install(this)
         I18n.setLocale(I18n.loadLocale(this))
         deviceRepository.init(this)
         // 从 SharedPreferences 加载日志诊断设置。
@@ -31,6 +33,9 @@ class HilifeApplication : Application() {
                 "locale" to I18n.currentLocale().tag,
             )
         )
+        if (CrashReporter.latestReport() != null) {
+            LogBuffer.e("Crash", "previous uncaught exception captured; included in this report")
+        }
         createNotificationChannel()
     }
 

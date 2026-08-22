@@ -95,7 +95,7 @@ fun AppScaffold(
     var viewportSize by remember { mutableStateOf(IntSize.Zero) }
     var rootOrigin by remember { mutableStateOf(androidx.compose.ui.geometry.Offset.Zero) }
     val isDarkTheme = MaterialTheme.colorScheme.background.luminance() < 0.5f
-    val wallpaperTexture = rememberWallpaperTexture(sourceBitmap, viewportSize, isDarkTheme)
+    val wallpaperTexture = rememberWallpaperTexture(sourceBitmap, isDarkTheme)
     val wallpaperTransform = wallpaperTexture?.let {
         calculateWallpaperTransform(it.sourceWidth, it.sourceHeight, viewportSize)
     }

@@ -14,7 +14,6 @@ import androidx.compose.foundation.layout.ColumnScope
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -42,6 +41,8 @@ import androidx.compose.ui.unit.IntSize
 import androidx.compose.ui.unit.dp
 import com.freebuds.controller.ui.foundation.tokens.UiTokens
 import com.freebuds.controller.R
+import com.freebuds.controller.util.LogBuffer
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import kotlin.math.max
@@ -168,26 +169,33 @@ private fun boxBlurPass(pixels: IntArray, width: Int, height: Int, radius: Int) 
 @Composable
 internal fun rememberWallpaperTexture(
     source: Bitmap?,
-    viewport: IntSize,
     darkTheme: Boolean,
 ): WallpaperTexture? {
     var texture by remember(source, darkTheme) { mutableStateOf<WallpaperTexture?>(null) }
-    LaunchedEffect(source, darkTheme, viewport) {
-        texture = if (source == null || viewport.width <= 0 || viewport.height <= 0) {
-            null
-        } else {
+    LaunchedEffect(source, darkTheme) {
+        // The texture depends on the image and theme, not on the viewport. Rebuilding it on every
+        // layout change created a race with BitmapShader and made the old texture unsafe to use.
+        texture = null
+        if (source == null) return@LaunchedEffect
+        texture = try {
             withContext(Dispatchers.Default) {
                 buildWallpaperTexture(source, darkTheme)
             }
+        } catch (error: CancellationException) {
+            throw error
+        } catch (error: Throwable) {
+            // A bad/unsupported bitmap must fall back to Material 3 instead of cancelling the
+            // composition and taking down the whole activity.
+            LogBuffer.e(
+                "Wallpaper",
+                "texture build failed type=${error.javaClass.simpleName} message=${error.message}",
+            )
+            null
         }
     }
-    DisposableEffect(texture) {
-        onDispose {
-            texture?.bitmap?.let { bitmap ->
-                if (!bitmap.isRecycled) bitmap.recycle()
-            }
-        }
-    }
+    // BitmapShader keeps a reference to the bitmap. Do not call recycle() here: Compose's draw
+    // cache and RenderThread may still be using the previous texture after recomposition. The
+    // bounded 128-320px texture is small and is reclaimed normally by the bitmap owner/GC.
     return texture
 }
 
@@ -309,68 +317,96 @@ private object WallpaperGlassRenderer {
                 bounds = coordinates.boundsInRoot()
             }
             .drawWithCache {
-                val shader = RuntimeShader(shaderSource)
-            val bitmapShader = BitmapShader(
-                host.texture.bitmap,
-                Shader.TileMode.CLAMP,
-                Shader.TileMode.CLAMP,
-            )
-            shader.setInputShader("wallpaper", bitmapShader)
-            val brush = RuntimeShaderBrush(shader)
-            val matrix = Matrix()
-            val topCornerRadiusPx = with(renderDensity) { visual.topCornerRadius.toPx() }
-            val bottomCornerRadiusPx = with(renderDensity) { visual.bottomCornerRadius.toPx() }
-            val edgeBandPx = with(renderDensity) { visual.edgeBand.toPx() }
-            val displacementPx = with(renderDensity) { visual.displacement.toPx() }
-            val distortionPx = visual.distortion * renderDensity.density
-
-            onDrawBehind {
-                val rootX = bounds.left - host.rootOrigin.x
-                val rootY = bounds.top - host.rootOrigin.y
-                val transform = host.transform
-                val scaleX = host.texture.bitmap.width / (host.texture.sourceWidth * transform.scale)
-                val scaleY = host.texture.bitmap.height / (host.texture.sourceHeight * transform.scale)
-                matrix.setScale(scaleX, scaleY)
-                matrix.postTranslate(
-                    (rootX - transform.offset.x) * scaleX,
-                    (rootY - transform.offset.y) * scaleY,
-                )
-                bitmapShader.setLocalMatrix(matrix)
-
-                shader.setFloatUniform("resolution", size.width, size.height)
-                shader.setFloatUniform(
-                    "cornerRadii",
-                    topCornerRadiusPx,
-                    topCornerRadiusPx,
-                    bottomCornerRadiusPx,
-                    bottomCornerRadiusPx,
-                )
-                shader.setFloatUniform("edgeBand", edgeBandPx)
-                shader.setFloatUniform("displacement", displacementPx)
-                shader.setFloatUniform("bodyAlpha", visual.bodyAlpha)
-                shader.setFloatUniform("tintStrength", visual.tintStrength)
-                shader.setFloatUniform("specular", visual.specular)
-                shader.setFloatUniform("distortion", distortionPx)
-                shader.setFloatUniform(
-                    "tintColor",
-                    floatArrayOf(tintColor.red, tintColor.green, tintColor.blue, 1f),
-                )
-                val glassPath = Path().apply {
-                    addRoundRect(
-                        RoundRect(
-                            rect = Rect(Offset.Zero, size),
-                            topLeft = CornerRadius(topCornerRadiusPx, topCornerRadiusPx),
-                            topRight = CornerRadius(topCornerRadiusPx, topCornerRadiusPx),
-                            bottomRight = CornerRadius(bottomCornerRadiusPx, bottomCornerRadiusPx),
-                            bottomLeft = CornerRadius(bottomCornerRadiusPx, bottomCornerRadiusPx),
-                        ),
+                val prepared = runCatching {
+                    val shader = RuntimeShader(shaderSource)
+                    val bitmapShader = BitmapShader(
+                        host.texture.bitmap,
+                        Shader.TileMode.CLAMP,
+                        Shader.TileMode.CLAMP,
                     )
+                    shader.setInputShader("wallpaper", bitmapShader)
+                    Triple(shader, bitmapShader, RuntimeShaderBrush(shader))
+                }.getOrElse { error ->
+                    LogBuffer.e(
+                        "WallpaperGlass",
+                        "prepare failed type=${error.javaClass.simpleName} message=${error.message}",
+                    )
+                    null
                 }
-                drawPath(
-                    path = glassPath,
-                    brush = brush,
-                )
-            }
+
+                if (prepared == null) {
+                    onDrawBehind {
+                        drawRect(tintColor.copy(alpha = if (host.isDark) 0.72f else 0.66f))
+                    }
+                } else {
+                    val (shader, bitmapShader, brush) = prepared
+                    val matrix = Matrix()
+                    val topCornerRadiusPx = with(renderDensity) { visual.topCornerRadius.toPx() }
+                    val bottomCornerRadiusPx = with(renderDensity) { visual.bottomCornerRadius.toPx() }
+                    val edgeBandPx = with(renderDensity) { visual.edgeBand.toPx() }
+                    val displacementPx = with(renderDensity) { visual.displacement.toPx() }
+                    val distortionPx = visual.distortion * renderDensity.density
+                    var renderFailureLogged = false
+
+                    onDrawBehind {
+                        try {
+                        val rootX = bounds.left - host.rootOrigin.x
+                        val rootY = bounds.top - host.rootOrigin.y
+                        val transform = host.transform
+                        val scaleX = host.texture.bitmap.width / (host.texture.sourceWidth * transform.scale)
+                        val scaleY = host.texture.bitmap.height / (host.texture.sourceHeight * transform.scale)
+                        matrix.setScale(scaleX, scaleY)
+                        matrix.postTranslate(
+                            (rootX - transform.offset.x) * scaleX,
+                            (rootY - transform.offset.y) * scaleY,
+                        )
+                        bitmapShader.setLocalMatrix(matrix)
+
+                        shader.setFloatUniform("resolution", size.width, size.height)
+                        shader.setFloatUniform(
+                            "cornerRadii",
+                            topCornerRadiusPx,
+                            topCornerRadiusPx,
+                            bottomCornerRadiusPx,
+                            bottomCornerRadiusPx,
+                        )
+                        shader.setFloatUniform("edgeBand", edgeBandPx)
+                        shader.setFloatUniform("displacement", displacementPx)
+                        shader.setFloatUniform("bodyAlpha", visual.bodyAlpha)
+                        shader.setFloatUniform("tintStrength", visual.tintStrength)
+                        shader.setFloatUniform("specular", visual.specular)
+                        shader.setFloatUniform("distortion", distortionPx)
+                        shader.setFloatUniform(
+                            "tintColor",
+                            floatArrayOf(tintColor.red, tintColor.green, tintColor.blue, 1f),
+                        )
+                        val glassPath = Path().apply {
+                            addRoundRect(
+                                RoundRect(
+                                    rect = Rect(Offset.Zero, size),
+                                    topLeft = CornerRadius(topCornerRadiusPx, topCornerRadiusPx),
+                                    topRight = CornerRadius(topCornerRadiusPx, topCornerRadiusPx),
+                                    bottomRight = CornerRadius(bottomCornerRadiusPx, bottomCornerRadiusPx),
+                                    bottomLeft = CornerRadius(bottomCornerRadiusPx, bottomCornerRadiusPx),
+                                ),
+                            )
+                        }
+                        drawPath(
+                            path = glassPath,
+                            brush = brush,
+                        )
+                        } catch (error: Throwable) {
+                            if (!renderFailureLogged) {
+                                renderFailureLogged = true
+                                LogBuffer.e(
+                                    "WallpaperGlass",
+                                    "render failed type=${error.javaClass.simpleName} message=${error.message}",
+                                )
+                            }
+                            drawRect(tintColor.copy(alpha = if (host.isDark) 0.72f else 0.66f))
+                        }
+                    }
+                }
             }
     }
 }

@@ -179,6 +179,11 @@ object LogBuffer {
             metadataSnapshot.forEach { (key, value) -> appendLine("meta.$key=$value") }
             appendLine("--- logs ---")
             appendEntries(entries)
+            CrashReporter.latestReport()?.let { crash ->
+                appendLine()
+                appendLine("--- last uncaught exception ---")
+                append(crash.trimEnd())
+            }
         }
     }
 

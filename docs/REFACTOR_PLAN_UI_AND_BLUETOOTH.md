@@ -1524,6 +1524,8 @@ python3 scripts/analyze_connection_timing.py /path/to/fxxkHilife_diagnostic.txt
 - 2026-08-22 定向修复：壁纸范围固定为全部页面；旧版本保存的 `HOME`/`SETTINGS` 范围只保留作兼容数据，不再阻止其他页面绘制壁纸。
 - 2026-08-22 定向修复：Home 连接状态卡片与顶部栏之间增加 8dp 间距，并统一 16dp 横向边距，避免圆角边框相互重叠。
 - 2026-08-22 定向修复：控制通道回到 `Idle` 时显示本地化“未连接”，不再将内部阶段名 `Idle` 直接暴露到首页状态卡片。
+- 2026-08-22 定向修复：壁纸纹理不再跟随视口变化重复重建，也不再手动 `recycle()` 仍可能被 Compose/RenderThread 使用的 BitmapShader 纹理；纹理构建和 AGSL 准备/绘制异常统一回退到 Material 3 并写入 `Wallpaper`/`WallpaperGlass` 日志，避免壁纸首帧出现后闪退。
+- 2026-08-22 定向诊断：新增应用私有 `files/crash/latest.txt` 未捕获异常快照，并在下次导出的诊断报告中附带最近一次崩溃堆栈；系统 `logcat` 仍作为 Android 原生日志来源。
 ### 蓝牙指令/连接
 
 - Transport、Framer、CommandClient、Feature、ConnectionManager 可以单独测试。
