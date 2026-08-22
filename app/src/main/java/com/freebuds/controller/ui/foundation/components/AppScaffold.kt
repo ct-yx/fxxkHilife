@@ -77,7 +77,11 @@ fun AppScaffold(
         wallpaperResult?.drawable?.toBitmap()
     }
     val wallpaperReady = showWallpaper && sourceBitmap != null
-    val contentBackground = if (wallpaperReady) Color.Transparent else MaterialTheme.colorScheme.background
+    val contentBackground = if (showWallpaper && wallpaperError == null) {
+        Color.Transparent
+    } else {
+        MaterialTheme.colorScheme.background
+    }
     val wallpaperColorFilter = if (showWallpaper && MaterialTheme.colorScheme.background.luminance() < 0.5f) {
         ColorFilter.colorMatrix(
             ColorMatrix().apply {
@@ -121,7 +125,7 @@ fun AppScaffold(
                 .onGloballyPositioned { rootOrigin = it.positionInRoot() }
                 .then(Modifier.background(contentBackground)),
         ) {
-            if (wallpaperReady) {
+            if (showWallpaper) {
                 Image(
                     painter = wallpaperPainter,
                     contentDescription = null,

@@ -1520,7 +1520,7 @@ python3 scripts/analyze_connection_timing.py /path/to/fxxkHilife_diagnostic.txt
 - 长列表使用稳定 key 和生命周期感知收集；所有可见卡片复用一张共享纹理，滚动只更新采样坐标，不重复构建纹理或 shader。
 - UI 测试报告使用 `UI_AGSL_GLASS_V1`、`UI_API32_MD3_FALLBACK`、`UI_NAVIGATION_SESSION`、`UI_STATE_EVENT_TARGETED`、`UI_SETTINGS_PERSISTENCE`、`UI_ACCESSIBILITY_MATRIX` 和 `UI_RELEASE_AUDIT`；不以版本号单独作为阶段识别。
 - 2026-08-22 定向修复：`CoreReady`/`Degraded` 不再映射为 connection error；`Degraded` 显示为“已连接，部分功能未完成”，只有 `Failed` 显示连接错误。
-- 2026-08-22 定向修复：壁纸导入后复制到应用私有文件 `files/wallpapers/current`，预览和全局外壳使用稳定的本地文件 URI，不再依赖图库临时 URI 授权；加载失败写入 `Wallpaper` 诊断日志。
+- 2026-08-22 定向修复：壁纸导入后复制到应用私有文件 `files/wallpapers/wallpaper-*`，每次导入使用新 URI 避免 Coil 缓存旧失败结果；预览和全局外壳使用同一本地文件引用，加载失败写入 `Wallpaper` 诊断日志。
 - 2026-08-22 定向修复：壁纸范围固定为全部页面；旧版本保存的 `HOME`/`SETTINGS` 范围只保留作兼容数据，不再阻止其他页面绘制壁纸。
 - 2026-08-22 定向修复：Home 连接状态卡片与顶部栏之间增加 8dp 间距，并统一 16dp 横向边距，避免圆角边框相互重叠。
 - 2026-08-22 定向修复：控制通道回到 `Idle` 时显示本地化“未连接”，不再将内部阶段名 `Idle` 直接暴露到首页状态卡片。
