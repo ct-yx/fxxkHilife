@@ -19,8 +19,8 @@
 > **Current release: v4.6.0 (versionCode 103)**
 > The BT refactor and the standard Material 3 UI baseline are released; dark-mode wallpapers use RGB brightness scaling instead of a black overlay.
 >
-> **Current development build: v4.7.0 (versionCode 104)**
-> The default build label is `UI_AGSL_GLASS_V1`: self-built AGSL wallpaper glass is enabled on Android 13+ with a valid wallpaper, while other states use the Material 3 fallback; CI has passed, and targeted hardware UI validation is pending.
+> **Current development build: v4.7.1 (versionCode 105)**
+> The default build label is `UI_LIGHT_FIELD_GLASS_V2`: shared light-field, adaptive transparency and self-built AGSL wallpaper glass are enabled on Android 13+ with a valid wallpaper, while other states use the Material 3 fallback; targeted hardware UI validation is pending.
 
 ---
 
@@ -43,11 +43,13 @@ This release does not change BT-0 through BT-4. It removes the previous third-pa
 
 The Release build label is `UI_MATERIAL3_BASELINE`. Testing covers the changed UI surface, settings migration, route boundaries, wallpaper display and asset rendering—not the BT A-F/36/100-round matrices.
 
-## v4.7.0: self-built AGSL wallpaper glass test build
+## v4.7.1: Light Field self-built AGSL wallpaper glass test build
 
-- Cards, expandable cards and the top bar use a shared low-resolution wallpaper texture for live regional color sampling; Android 13+ adds wide edge glow, refraction and mild top-bar distortion through the self-built AGSL shader.
+- Cards, expandable cards and the top bar use a shared low-resolution wallpaper texture for live regional color sampling; Android 13+ adds directional light, wide edge glow, refraction and mild top-bar distortion through the self-built AGSL shader.
+- A page-level Light Field follows touch position, while material alpha and tint adapt to wallpaper brightness, local complexity and text contrast risk.
+- Default rectangular glass borders are removed, and the top bar is detached from the page edge as a floating surface.
 - Android 12 and below, missing wallpapers and failed wallpaper loads use the optimized opaque Material 3 fallback without software refraction.
-- The test build label is `UI_AGSL_GLASS_V1`; this build enters targeted UI screenshots, scrolling, accessibility and expandable-card validation only, not the BT matrix.
+- The test build label is `UI_LIGHT_FIELD_GLASS_V2`; this build enters targeted UI screenshots, touch-light behavior, scrolling, accessibility and expandable-card validation only, not the BT matrix.
 
 ---
 

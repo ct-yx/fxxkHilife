@@ -23,6 +23,11 @@ import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.layout.onSizeChanged
 import androidx.compose.ui.layout.onGloballyPositioned
 import androidx.compose.ui.layout.positionInRoot
+import androidx.compose.ui.input.pointer.PointerEventPass
+import androidx.compose.ui.input.pointer.PointerEventType
+import androidx.compose.ui.input.pointer.awaitPointerEvent
+import androidx.compose.ui.input.pointer.awaitPointerEventScope
+import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.IntSize
@@ -40,6 +45,7 @@ import com.freebuds.controller.ui.WallpaperScope
 import com.freebuds.controller.ui.foundation.surface.LocalWallpaperGlass
 import com.freebuds.controller.ui.foundation.surface.WallpaperGlassContext
 import com.freebuds.controller.ui.foundation.surface.GlassProfile
+import com.freebuds.controller.ui.foundation.surface.LightFieldState
 import com.freebuds.controller.ui.foundation.surface.calculateWallpaperTransform
 import com.freebuds.controller.ui.foundation.surface.rememberWallpaperTexture
 import com.freebuds.controller.ui.foundation.surface.wallpaperGlassModifier
@@ -96,6 +102,7 @@ fun AppScaffold(
 
     var viewportSize by remember { mutableStateOf(IntSize.Zero) }
     var rootOrigin by remember { mutableStateOf(androidx.compose.ui.geometry.Offset.Zero) }
+    val lightField = remember { LightFieldState() }
     val isDarkTheme = MaterialTheme.colorScheme.background.luminance() < 0.5f
     val wallpaperTexture = rememberWallpaperTexture(sourceBitmap, isDarkTheme)
     val wallpaperTransform = wallpaperTexture?.let {
@@ -113,6 +120,7 @@ fun AppScaffold(
                 transform = wallpaperTransform,
                 rootOrigin = rootOrigin,
                 isDark = isDarkTheme,
+                lightField = lightField,
             )
         }
     } else {
@@ -125,6 +133,27 @@ fun AppScaffold(
                 .fillMaxSize()
                 .onSizeChanged { viewportSize = it }
                 .onGloballyPositioned { rootOrigin = it.positionInRoot() }
+                .pointerInput(lightField, rootOrigin, viewportSize) {
+                    awaitPointerEventScope {
+                        while (true) {
+                            val event = awaitPointerEvent(PointerEventPass.Initial)
+                            val change = event.changes.firstOrNull() ?: continue
+                            when {
+                                change.pressed -> lightField.updateFromPointer(
+                                    positionInRoot = rootOrigin + change.position,
+                                    viewport = viewportSize,
+                                    isPressed = true,
+                                )
+                                event.type == PointerEventType.Move -> lightField.updateFromPointer(
+                                    positionInRoot = rootOrigin + change.position,
+                                    viewport = viewportSize,
+                                    isPressed = false,
+                                )
+                                event.type == PointerEventType.Release -> lightField.release()
+                            }
+                        }
+                    }
+                }
                 .then(Modifier.background(contentBackground)),
         ) {
             if (showWallpaper) {
@@ -151,15 +180,13 @@ fun AppTopBar(
 ) {
     val wallpaperContext = LocalWallpaperGlass.current
     val topBarGlass = wallpaperGlassModifier(GlassProfile.TopBar)
-    val topBarShape = RoundedCornerShape(
-        topStart = 0.dp,
-        topEnd = 0.dp,
-        bottomStart = 22.dp,
-        bottomEnd = 22.dp,
-    )
+    val topBarShape = RoundedCornerShape(26.dp)
     val hasGlass = wallpaperContext != null && android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.TIRAMISU
     androidx.compose.material3.TopAppBar(
-        modifier = topBarGlass.clip(topBarShape),
+        modifier = Modifier
+            .padding(horizontal = 12.dp, vertical = 8.dp)
+            .clip(topBarShape)
+            .then(topBarGlass),
         title = { androidx.compose.material3.Text(title) },
         navigationIcon = {
             onBack?.let {

@@ -4,7 +4,7 @@
 
 ## 当前版本
 - **当前正式发布：v4.6.0** (versionCode=103, 2026-08-18；标准 Material 3 UI、普通壁纸背景和深色模式亮度处理已发布)
-- **当前开发测试：v4.7.0** (versionCode=104, 2026-08-22；自研 AGSL 壁纸柔光玻璃与卡片视觉重构，默认标签 `UI_AGSL_GLASS_V1`，CI 已通过，尚待定向实机验收)
+- **当前开发测试：v4.7.1** (versionCode=105, 2026-08-26；Light Field、自适应透明度、无边框柔光材质与悬浮顶部栏，默认标签 `UI_LIGHT_FIELD_GLASS_V2`，尚待定向实机验收)
 - **上一公开版本：v4.3.10** (versionCode=98, 2026-08-14；BT 重构后的首个大版本，BT-0 至 BT-4 已完成，BT-4 定向实机门已通过)
 
 ## v4.3.10 发布基线
@@ -12,7 +12,7 @@
 - 发布定位：BT 重构后的首个公开大版本；UI 全量重构不包含在本版本内。
 - 发布触发：推送与应用版本一致的 `v4.3.10` 标签，由 CI 负责重新执行自动化检查、构建 APK 和更新 Release 资产。
 - 实机门：`BT4_STATE_CONTRACT_5`，5/5 PASS；只覆盖 HUAWEI FreeBuds 6i / Android API 36 / 固件 `HarmonyOS 6.0.0.292(F001H003C00)` 及该 profile。
-- 当前开发方向：v4.7.0 进行 API 33+ AGSL 玻璃、API 32 MD3 fallback、截图、滚动、无障碍和展开交互定向验收；不重复 BT 全量矩阵。
+- 当前开发方向：v4.7.1 进行 API 33+ Light Field AGSL 玻璃、API 32 MD3 fallback、截图、触摸受光、滚动、无障碍和展开交互定向验收；不重复 BT 全量矩阵。
 
 ## 文档同步记录
 
@@ -33,11 +33,11 @@
 
 | 位置 | 当前值 |
 |------|--------|
-| `app/build.gradle.kts` | versionCode=104, versionName="4.7.0" |
-| `app/src/main/res/values/strings.xml` | version_name=4.7.0 |
-| `README.md` | v4.7.0 |
-| `README_EN.md` | v4.7.0 |
-| `DEVELOPMENT_LOG.md` | v4.7.0 (末尾) |
+| `app/build.gradle.kts` | versionCode=105, versionName="4.7.1" |
+| `app/src/main/res/values/strings.xml` | version_name=4.7.1 |
+| `README.md` | v4.7.1 |
+| `README_EN.md` | v4.7.1 |
+| `DEVELOPMENT_LOG.md` | v4.7.1 (末尾) |
 
 ## 一键版本更新脚本
 
@@ -61,6 +61,7 @@ python3 scripts/bump_version.py <versionName> <versionCode> "修复说明"
 
 | 版本 | Code | 日期 | 主要变更 |
 |------|------|------|---------|
+| v4.7.1 | 105 | 2026-08-26 | UI Light Field V2 glass material, adaptive transparency and floating top bar |
 | v4.7.0 | 104 | 2026-08-22 | 自研 AGSL 壁纸柔光玻璃与卡片视觉重构 |
 | v4.6.0 | 103 | 2026-08-18 | 发布标准 Material 3 UI 与深色模式壁纸亮度优化 |
 | v4.5.0 | 102 | 2026-08-16 | 移除玻璃渲染依赖，统一为标准 Material 3 UI 基线 |

@@ -4,7 +4,6 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.ColumnScope
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.foundation.BorderStroke
 import androidx.compose.material3.Card as MaterialCard
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.MaterialTheme
@@ -91,7 +90,6 @@ object SurfaceRenderer {
             modifier = modifier,
             shape = shape,
             colors = CardDefaults.cardColors(containerColor = containerColor),
-            border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.50f)),
             elevation = CardDefaults.cardElevation(defaultElevation = elevation),
         ) {
             Column(Modifier.padding(UiTokens.ref.space4), content = content)

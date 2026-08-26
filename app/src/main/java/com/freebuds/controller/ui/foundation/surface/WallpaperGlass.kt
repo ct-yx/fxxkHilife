@@ -7,7 +7,6 @@ import android.graphics.RuntimeShader
 import android.graphics.Shader
 import android.os.Build
 import androidx.annotation.RequiresApi
-import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.ColumnScope
@@ -72,6 +71,7 @@ internal class WallpaperGlassContext(
     val transform: WallpaperCropTransform,
     val rootOrigin: Offset,
     val isDark: Boolean,
+    val lightField: LightFieldState,
 )
 
 internal val LocalWallpaperGlass = androidx.compose.runtime.staticCompositionLocalOf<WallpaperGlassContext?> { null }
@@ -245,16 +245,7 @@ internal fun WallpaperGlassSurface(
     val visual = profile.visual()
     val density = LocalDensity.current
     val canUseAgsl = host != null && Build.VERSION.SDK_INT >= 33
-    val resolvedShape = if (profile == GlassProfile.TopBar) {
-        RoundedCornerShape(
-            topStart = 0.dp,
-            topEnd = 0.dp,
-            bottomStart = visual.cornerRadius,
-            bottomEnd = visual.cornerRadius,
-        )
-    } else {
-        shape
-    }
+    val resolvedShape = if (profile == GlassProfile.TopBar) RoundedCornerShape(26.dp) else shape
 
     val effectModifier = if (canUseAgsl) {
         val fallbackTint = if (host!!.isDark) Color.Black else Color.White
@@ -264,16 +255,7 @@ internal fun WallpaperGlassSurface(
     Box(
         modifier = modifier
             .clip(resolvedShape)
-            .then(effectModifier)
-            .border(
-                width = if (canUseAgsl) 1.dp else 1.dp,
-                color = if (canUseAgsl) {
-                    Color.White.copy(alpha = if (host!!.isDark) 0.18f else 0.34f)
-                } else {
-                    androidx.compose.material3.MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.50f)
-                },
-                shape = resolvedShape,
-            ),
+            .then(effectModifier),
     ) {
         Column(Modifier.padding(UiTokens.ref.space4), content = content)
     }
@@ -350,51 +332,66 @@ private object WallpaperGlassRenderer {
 
                     onDrawBehind {
                         try {
-                        val rootX = bounds.left - host.rootOrigin.x
-                        val rootY = bounds.top - host.rootOrigin.y
-                        val transform = host.transform
-                        val scaleX = host.texture.bitmap.width / (host.texture.sourceWidth * transform.scale)
-                        val scaleY = host.texture.bitmap.height / (host.texture.sourceHeight * transform.scale)
-                        matrix.setScale(scaleX, scaleY)
-                        matrix.postTranslate(
-                            (rootX - transform.offset.x) * scaleX,
-                            (rootY - transform.offset.y) * scaleY,
-                        )
-                        bitmapShader.setLocalMatrix(matrix)
-
-                        shader.setFloatUniform("resolution", size.width, size.height)
-                        shader.setFloatUniform(
-                            "cornerRadii",
-                            topCornerRadiusPx,
-                            topCornerRadiusPx,
-                            bottomCornerRadiusPx,
-                            bottomCornerRadiusPx,
-                        )
-                        shader.setFloatUniform("edgeBand", edgeBandPx)
-                        shader.setFloatUniform("displacement", displacementPx)
-                        shader.setFloatUniform("bodyAlpha", visual.bodyAlpha)
-                        shader.setFloatUniform("tintStrength", visual.tintStrength)
-                        shader.setFloatUniform("specular", visual.specular)
-                        shader.setFloatUniform("distortion", distortionPx)
-                        shader.setFloatUniform(
-                            "tintColor",
-                            floatArrayOf(tintColor.red, tintColor.green, tintColor.blue, 1f),
-                        )
-                        val glassPath = Path().apply {
-                            addRoundRect(
-                                RoundRect(
-                                    rect = Rect(Offset.Zero, size),
-                                    topLeft = CornerRadius(topCornerRadiusPx, topCornerRadiusPx),
-                                    topRight = CornerRadius(topCornerRadiusPx, topCornerRadiusPx),
-                                    bottomRight = CornerRadius(bottomCornerRadiusPx, bottomCornerRadiusPx),
-                                    bottomLeft = CornerRadius(bottomCornerRadiusPx, bottomCornerRadiusPx),
-                                ),
+                            val rootX = bounds.left - host.rootOrigin.x
+                            val rootY = bounds.top - host.rootOrigin.y
+                            val transform = host.transform
+                            val scaleX = host.texture.bitmap.width / (host.texture.sourceWidth * transform.scale)
+                            val scaleY = host.texture.bitmap.height / (host.texture.sourceHeight * transform.scale)
+                            val lightPosition = host.lightField.positionInRoot
+                            val hasPointerLight = lightPosition.x.isFinite() && lightPosition.y.isFinite()
+                            val localLightPosition = if (hasPointerLight) {
+                                Offset(lightPosition.x - bounds.left, lightPosition.y - bounds.top)
+                            } else {
+                                Offset(size.width * 0.18f, size.height * 0.10f)
+                            }
+                            matrix.setScale(scaleX, scaleY)
+                            matrix.postTranslate(
+                                (rootX - transform.offset.x) * scaleX,
+                                (rootY - transform.offset.y) * scaleY,
                             )
-                        }
-                        drawPath(
-                            path = glassPath,
-                            brush = brush,
-                        )
+                            bitmapShader.setLocalMatrix(matrix)
+
+                            shader.setFloatUniform("resolution", size.width, size.height)
+                            shader.setFloatUniform(
+                                "cornerRadii",
+                                topCornerRadiusPx,
+                                topCornerRadiusPx,
+                                bottomCornerRadiusPx,
+                                bottomCornerRadiusPx,
+                            )
+                            shader.setFloatUniform("edgeBand", edgeBandPx)
+                            shader.setFloatUniform("displacement", displacementPx)
+                            shader.setFloatUniform("bodyAlpha", visual.bodyAlpha)
+                            shader.setFloatUniform("tintStrength", visual.tintStrength)
+                            shader.setFloatUniform("specular", visual.specular)
+                            shader.setFloatUniform("distortion", distortionPx)
+                            shader.setFloatUniform(
+                                "lightPosition",
+                                localLightPosition.x,
+                                localLightPosition.y,
+                            )
+                            shader.setFloatUniform("lightIntensity", host.lightField.intensity)
+                            shader.setFloatUniform("lightRadius", host.lightField.radiusPx)
+                            shader.setFloatUniform("textLuma", if (host.isDark) 1f else 0f)
+                            shader.setFloatUniform(
+                                "tintColor",
+                                floatArrayOf(tintColor.red, tintColor.green, tintColor.blue, 1f),
+                            )
+                            val glassPath = Path().apply {
+                                addRoundRect(
+                                    RoundRect(
+                                        rect = Rect(Offset.Zero, size),
+                                        topLeft = CornerRadius(topCornerRadiusPx, topCornerRadiusPx),
+                                        topRight = CornerRadius(topCornerRadiusPx, topCornerRadiusPx),
+                                        bottomRight = CornerRadius(bottomCornerRadiusPx, bottomCornerRadiusPx),
+                                        bottomLeft = CornerRadius(bottomCornerRadiusPx, bottomCornerRadiusPx),
+                                    ),
+                                )
+                            }
+                            drawPath(
+                                path = glassPath,
+                                brush = brush,
+                            )
                         } catch (error: Throwable) {
                             if (!renderFailureLogged) {
                                 renderFailureLogged = true

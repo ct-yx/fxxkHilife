@@ -1627,3 +1627,21 @@
 - GitHub Actions 构建已通过：Run [32528882581](https://github.com/ct-yx/fxxkHilife/actions/runs/32528882581)，Debug/Release 编译、JVM 测试、UI contract 和 diff-check 全部通过；未执行本地 Gradle。
 - 测试包：`fxxkHilife-UI_AGSL_GLASS_V1-v4.7.0-104.apk`；Release SHA-256：`e7d9d25017a81267ec0bd463026f1b54e9c205ea6ffc26adfcadb66d828c7be6`。
 - CI 后 UI-1/UI-4 仍保持“目标受阻”，等待定向实机验证：API 33+ 玻璃效果、API 32 MD3 fallback、展开 10 次和长列表三轮滚动。
+
+## v4.7.1 (2026-08-26)
+
+### 发布
+- UI Light Field V2：自适应透明度、方向性光场、无边框柔光材质和悬浮顶部栏
+- versionCode: 105
+- versionName: 4.7.1
+
+### 本轮实现
+- 新增页面级 `LightFieldState`：根容器在 Initial pointer pass 读取触摸位置，卡片和顶部栏只接收光场 uniform 更新，不重建业务内容、纹理或 shader 节点。
+- AGSL 继续复用共享低分辨率壁纸纹理，并以圆角 SDF 法线计算方向性受光、弱暗部、宽边缘泛光和折射；普通玻璃不再绘制矩形 border。
+- 依据局部壁纸复杂度和文字对比风险调整材质 tint/alpha；TopBar 改为带内缩间距的悬浮圆角容器，并保留主题黑/白偏置和低频扭曲。
+- API 33+ 且壁纸有效时使用 `UI_LIGHT_FIELD_GLASS_V2`；无壁纸、加载失败和 API 32 及以下继续使用标准 Material 3 fallback。
+- 增加 `LightFieldContractTest`，并同步 UI contract、版本清单、README、网页和重构计划；未重新引入 Haze。
+
+### 验证边界
+- 本轮不执行本地 Gradle，等待 GitHub Actions 完成 Debug/Release、JVM、UI contract 和 diff-check。
+- CI 通过后进入定向实机门：API 33+ 浅/深色壁纸、触摸光场、卡片展开/滚动、API 32 MD3 fallback；UI-1/UI-4 在报告返回前保持“目标受阻”。

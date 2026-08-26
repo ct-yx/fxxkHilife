@@ -74,11 +74,19 @@ def main() -> int:
         "calculateWallpaperTextureSize",
         "rememberWallpaperTexture",
         "Build.VERSION_CODES.TIRAMISU",
+        "LightFieldState",
+        "lightPosition",
     ):
         if required not in glass_text:
             fail(f"centralized wallpaper glass boundary is missing {required}")
+    if ".border(" in glass_text:
+        fail("wallpaper glass still uses a default rectangular border")
     if not shader_source.is_file() or "uniform shader wallpaper" not in shader_source.read_text(encoding="utf-8"):
         fail("independent AGSL wallpaper shader resource is missing")
+    shader_text = shader_source.read_text(encoding="utf-8")
+    for required in ("lightPosition", "lightIntensity", "textLuma", "sampleLuma"):
+        if required not in shader_text:
+            fail(f"wallpaper glass shader is missing {required}")
 
     for path in ROUTE_FILES:
         if "RuntimeShader" in path.read_text(encoding="utf-8"):

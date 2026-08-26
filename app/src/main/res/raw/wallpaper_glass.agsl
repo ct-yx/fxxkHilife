@@ -8,6 +8,10 @@ uniform float tintStrength;
 uniform float specular;
 uniform float distortion;
 uniform float4 tintColor;
+uniform float2 lightPosition;
+uniform float lightIntensity;
+uniform float lightRadius;
+uniform float textLuma;
 
 float roundedBoxSdf(float2 point, float2 size, float4 radii) {
     float2 centered = point - size * 0.5;
@@ -21,21 +25,62 @@ float roundedBoxSdf(float2 point, float2 size, float4 radii) {
     return length(max(q, 0.0)) + min(max(q.x, q.y), 0.0) - radius;
 }
 
+float sampleLuma(half4 color) {
+    return dot(float3(color.rgb), float3(0.2126, 0.7152, 0.0722));
+}
+
+float2 sdfNormal(float2 point, float2 size, float4 radii) {
+    float epsilon = 1.0;
+    float dx = roundedBoxSdf(point + float2(epsilon, 0.0), size, radii) -
+        roundedBoxSdf(point - float2(epsilon, 0.0), size, radii);
+    float dy = roundedBoxSdf(point + float2(0.0, epsilon), size, radii) -
+        roundedBoxSdf(point - float2(0.0, epsilon), size, radii);
+    float2 gradient = float2(dx, dy);
+    return length(gradient) > 0.001 ? normalize(gradient) : normalize(float2(-0.45, -0.85));
+}
+
 half4 main(float2 point) {
     float distance = roundedBoxSdf(point, resolution, cornerRadii);
     float edge = 1.0 - smoothstep(0.0, edgeBand, -distance);
-    float2 centered = point - resolution * 0.5;
-    float2 direction = centered / max(length(centered), 1.0);
-    float wave = sin((point.x + point.y) * 0.065) * distortion * edge;
-    float2 refractedPoint = point + direction * displacement * edge + float2(wave, -wave * 0.35);
-    half4 base = wallpaper.eval(point);
-    half4 refracted = wallpaper.eval(refractedPoint);
-    float chroma = edge * 0.018;
-    half red = wallpaper.eval(refractedPoint + float2(chroma * 12.0, 0.0)).r;
-    half blue = wallpaper.eval(refractedPoint - float2(chroma * 12.0, 0.0)).b;
-    half3 sampled = half3(red, mix(base.g, refracted.g, edge), blue);
-    half3 tinted = mix(sampled, tintColor.rgb, tintStrength);
-    float glow = pow(edge, 1.35) * specular;
-    tinted += tintColor.rgb * glow * 0.22;
-    return half4(tinted, bodyAlpha + edge * 0.12);
+    float2 normal = sdfNormal(point, resolution, cornerRadii);
+    float wave = sin((point.x + point.y) / 96.0) * distortion * edge;
+    float2 refractedPoint = point + normal * displacement * edge + float2(wave, -wave * 0.35);
+
+    // The texture is already low-resolution and blurred. Five nearby samples add a broad,
+    // low-cost color mix without creating a blur pass for every card.
+    float sampleStep = max(edgeBand * 0.9, 10.0);
+    half4 center = wallpaper.eval(refractedPoint);
+    half4 sampleLeft = wallpaper.eval(refractedPoint - float2(sampleStep, 0.0));
+    half4 sampleRight = wallpaper.eval(refractedPoint + float2(sampleStep, 0.0));
+    half4 sampleTop = wallpaper.eval(refractedPoint - float2(0.0, sampleStep));
+    half4 sampleBottom = wallpaper.eval(refractedPoint + float2(0.0, sampleStep));
+    half3 sampled = (center.rgb + sampleLeft.rgb + sampleRight.rgb + sampleTop.rgb + sampleBottom.rgb) * 0.2;
+
+    float centerLuma = sampleLuma(center);
+    float complexity = max(
+        max(abs(centerLuma - sampleLuma(sampleLeft)), abs(centerLuma - sampleLuma(sampleRight))),
+        max(abs(centerLuma - sampleLuma(sampleTop)), abs(centerLuma - sampleLuma(sampleBottom)))
+    );
+    float contrastRisk = 1.0 - smoothstep(0.20, 0.50, abs(centerLuma - textLuma));
+    float adaptiveTint = clamp(tintStrength + complexity * 0.24 + contrastRisk * 0.16, 0.0, 0.58);
+    float adaptiveAlpha = clamp(bodyAlpha + complexity * 0.16 + contrastRisk * 0.12, 0.66, 0.94);
+    half3 tinted = mix(sampled, tintColor.rgb, adaptiveTint);
+
+    // A shared point light makes the rim directional. An upper-left ambient source keeps the
+    // material legible when the user is not touching the screen.
+    float2 toLight = lightPosition - point;
+    float lightDistance = length(toLight);
+    float2 lightDirection = normalize(toLight + float2(0.001, 0.001));
+    float lightFalloff = 1.0 - smoothstep(lightRadius * 0.12, lightRadius, lightDistance);
+    float facingLight = max(dot(normal, lightDirection), 0.0);
+    float facingAway = max(dot(-normal, lightDirection), 0.0);
+    float ambientLight = max(dot(normal, normalize(float2(-0.45, -0.85))), 0.0) * 0.28;
+    float highlight = edge * (ambientLight + facingLight * lightFalloff * lightIntensity);
+    float shadow = edge * facingAway * lightFalloff * lightIntensity;
+
+    float glow = pow(highlight, 1.25) * specular;
+    tinted += tintColor.rgb * glow * 0.24;
+    tinted = mix(tinted, tinted * 0.78, shadow * 0.14);
+    tinted += tintColor.rgb * ((point.y / max(resolution.y, 1.0)) - 0.5) * 0.018;
+    return half4(tinted, adaptiveAlpha);
 }
