@@ -1643,5 +1643,7 @@
 - 增加 `LightFieldContractTest`，并同步 UI contract、版本清单、README、网页和重构计划；未重新引入 Haze。
 
 ### 验证边界
-- 本轮不执行本地 Gradle，等待 GitHub Actions 完成 Debug/Release、JVM、UI contract 和 diff-check。
+- 本轮不执行本地 Gradle；GitHub Actions Run [32979795933](https://github.com/ct-yx/fxxkHilife/actions/runs/32979795933) 已通过 Debug/Release、JVM、UI contract 和 diff-check。
+- Release APK 工件：`fxxkHilife-UI_LIGHT_FIELD_GLASS_V2-v4.7.1-105.apk`，SHA-256：`63a6ebbb0af42ac37232eea54a16e51b451e89795dbf3d9da5a4a8cc6af3a72a`；Debug APK 也已上传到同一 Run。
+- 本次为 `refactor/v2-alpha` 测试构建，尚未创建 `v4.7.1` Release；下载入口使用上述 Actions Run 的 Artifacts。
 - CI 通过后进入定向实机门：API 33+ 浅/深色壁纸、触摸光场、卡片展开/滚动、API 32 MD3 fallback；UI-1/UI-4 在报告返回前保持“目标受阻”。
