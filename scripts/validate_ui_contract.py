@@ -112,6 +112,11 @@ def main() -> int:
     scaffold_text = (UI_ROOT / "foundation/components/AppScaffold.kt").read_text(encoding="utf-8")
     if "toBitmap(config = android.graphics.Bitmap.Config.ARGB_8888)" not in scaffold_text:
         fail("wallpaper source is not converted to a software-readable ARGB_8888 bitmap")
+    if "isWallpaperGlassSafeMode" not in scaffold_text or "!glassSafeMode" not in scaffold_text:
+        fail("wallpaper glass startup safe-mode gate is missing")
+    crash_reporter = ROOT / "app/src/main/java/com/freebuds/controller/util/CrashReporter.kt"
+    if not crash_reporter.is_file() or "wallpaper_glass_safe_mode" not in crash_reporter.read_text(encoding="utf-8"):
+        fail("crash reporter does not persist the wallpaper glass safe-mode marker")
     nav_text = (UI_ROOT / "AppNavHost.kt").read_text(encoding="utf-8")
     if "DeviceNavigationState" not in nav_text or "navController.navigate(Route.Device)" not in nav_text:
         fail("device navigation intent/session boundary is missing")

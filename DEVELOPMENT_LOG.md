@@ -1647,3 +1647,20 @@
 - Release APK 工件：`fxxkHilife-UI_LIGHT_FIELD_GLASS_V2-v4.7.1-105.apk`，SHA-256：`63a6ebbb0af42ac37232eea54a16e51b451e89795dbf3d9da5a4a8cc6af3a72a`；Debug APK 也已上传到同一 Run。
 - 本次为 `refactor/v2-alpha` 测试构建，尚未创建 `v4.7.1` Release；下载入口使用上述 Actions Run 的 Artifacts。
 - CI 通过后进入定向实机门：API 33+ 浅/深色壁纸、触摸光场、卡片展开/滚动、API 32 MD3 fallback；UI-1/UI-4 在报告返回前保持“目标受阻”。
+
+## v4.7.2 (2026-08-27)
+
+### 发布
+- 壁纸/AGSL 启动崩溃恢复测试包
+- versionCode: 106
+- versionName: 4.7.2
+- build label: `UI_GLASS_CRASH_RECOVERY_V1`
+
+### 本轮实现
+- `CrashReporter` 在未捕获异常交给 Android 前同步记录当前版本、线程、异常和堆栈，并写入当前版本的 wallpaper-glass safe mode。
+- 下一次启动检测到未消费的崩溃报告时，`AppScaffold` 暂时跳过壁纸解码、共享纹理和 AGSL，直接使用标准 Material 3，避免重复启动闪退并进入诊断导出页面。
+- 安全模式按报告指纹和 versionCode 隔离；升级到后续修复版本后自动重新尝试 Light Field，BT 连接流程保持不变。
+
+### 验证边界
+- 本轮仍不执行本地 Gradle；提交后由 GitHub Actions 验证 Debug/Release、JVM、UI contract 和 diff-check。
+- 定向实机第一步是：安装 4.7.2 后启动、确认可进入首页、分享包含 `last uncaught exception` 的诊断报告；随后再验证 Light Field 玻璃。

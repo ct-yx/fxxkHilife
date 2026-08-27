@@ -27,6 +27,7 @@ import androidx.compose.ui.layout.positionInRoot
 import androidx.compose.ui.input.pointer.PointerEventPass
 import androidx.compose.ui.input.pointer.PointerEventType
 import androidx.compose.ui.input.pointer.pointerInput
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.IntSize
@@ -48,6 +49,7 @@ import com.freebuds.controller.ui.foundation.surface.LightFieldState
 import com.freebuds.controller.ui.foundation.surface.calculateWallpaperTransform
 import com.freebuds.controller.ui.foundation.surface.rememberWallpaperTexture
 import com.freebuds.controller.ui.foundation.surface.wallpaperGlassModifier
+import com.freebuds.controller.util.CrashReporter
 import com.freebuds.controller.util.LogBuffer
 
 /** App-level shell for the conditional wallpaper-glass / Material 3 surface tree. */
@@ -60,10 +62,14 @@ fun AppScaffold(
     modifier: Modifier = Modifier,
     content: @Composable BoxScope.() -> Unit,
 ) {
+    val context = LocalContext.current
+    val glassSafeMode = remember(context) { CrashReporter.isWallpaperGlassSafeMode(context) }
     val hasWallpaperUri = !wallpaperUri.isNullOrBlank()
     // Wallpaper is an app-wide visual layer. Keep the legacy scope arguments in the API for
     // settings migration, but do not let an old persisted scope hide it on another route.
-    val showWallpaper = hasWallpaperUri
+    // A previous uncaught exception disables wallpaper decoding and AGSL for this build so the
+    // next launch reaches the diagnostic UI instead of repeating the startup crash.
+    val showWallpaper = hasWallpaperUri && !glassSafeMode
     val wallpaperPainter = rememberAsyncImagePainter(
         model = if (showWallpaper) Uri.parse(wallpaperUri) else null,
     )
@@ -108,6 +114,7 @@ fun AppScaffold(
         calculateWallpaperTransform(it.sourceWidth, it.sourceHeight, viewportSize)
     }
     val glassContext = if (
+        !glassSafeMode &&
         wallpaperReady &&
             wallpaperTexture != null &&
             wallpaperTransform != null &&
@@ -124,6 +131,15 @@ fun AppScaffold(
         }
     } else {
         null
+    }
+
+    LaunchedEffect(glassSafeMode) {
+        if (glassSafeMode) {
+            LogBuffer.w(
+                "WallpaperGlass",
+                "safe mode active after a previous crash; using Material 3 surfaces",
+            )
+        }
     }
 
     CompositionLocalProvider(LocalWallpaperGlass provides glassContext) {

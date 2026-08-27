@@ -13,8 +13,8 @@ android {
         applicationId = "com.freebuds.controller"
         minSdk = 26
         targetSdk = 35
-        versionCode = 105
-        versionName = "4.7.1"
+        versionCode = 106
+        versionName = "4.7.2"
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
     }
@@ -71,7 +71,7 @@ dependencies {
     implementation("androidx.navigation:navigation-compose:2.9.2")
     debugImplementation("androidx.compose.ui:ui-tooling")
 
-    // UI_LIGHT_FIELD_GLASS_V2: shared light-field AGSL wallpaper glass with Material 3 fallback.
+    // UI_GLASS_CRASH_RECOVERY_V1: previous-crash safe mode for Light Field glass with Material 3 fallback.
     implementation("io.coil-kt:coil-compose:2.7.0")
 
     implementation("androidx.core:core-ktx:1.15.0")

@@ -12,7 +12,7 @@ on:
       build_label:
         description: "用于区分本次测试包的阶段标签"
         required: false
-        default: "UI_LIGHT_FIELD_GLASS_V2"
+        default: "UI_GLASS_CRASH_RECOVERY_V1"
         type: string
 
 permissions:
@@ -27,7 +27,7 @@ jobs:
     name: Build release APK
     runs-on: ubuntu-latest
     env:
-      BUILD_LABEL: ${{ github.event.inputs.build_label || 'UI_LIGHT_FIELD_GLASS_V2' }}
+      BUILD_LABEL: ${{ github.event.inputs.build_label || 'UI_GLASS_CRASH_RECOVERY_V1' }}
     permissions:
       contents: write
 

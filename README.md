@@ -19,8 +19,8 @@
 > **当前正式发布：v4.6.0（versionCode 103）**
 > BT 重构与标准 Material 3 UI 基线已合并发布；深色模式壁纸会按 RGB 亮度缩放处理，不叠加黑色滤镜。
 >
-> **当前开发测试：v4.7.1（versionCode 105）**
-> 默认构建标签为 `UI_LIGHT_FIELD_GLASS_V2`：有效壁纸且 Android 13+ 启用共享光场、自适应透明度和自研 AGSL 柔光玻璃，其余情况使用 Material 3 fallback；等待定向实机验收。
+> **当前开发测试：v4.7.2（versionCode 106）**
+> 默认构建标签为 `UI_GLASS_CRASH_RECOVERY_V1`：保留 Light Field AGSL；检测到上次启动异常时自动进入标准 Material 3 安全模式，保证可进入应用导出诊断报告。
 
 ---
 
@@ -50,6 +50,12 @@ Release 构建标签为 `UI_MATERIAL3_BASELINE`，覆盖本轮 UI surface、设�
 - 普通玻璃表面移除默认矩形描边，顶部栏改为脱离页面边缘的悬浮容器。
 - Android 12 及以下、无壁纸或壁纸加载失败时回退为优化后的标准 Material 3，不使用软件折射。
 - 测试构建标签为 `UI_LIGHT_FIELD_GLASS_V2`；本包只进入 UI 定向截图、触摸光场、滚动、无障碍和展开交互验收，不重复 BT 矩阵。
+
+## v4.7.2：壁纸玻璃崩溃恢复测试包
+
+- CrashReporter 在未捕获异常发生前同步记录当前版本并标记玻璃安全模式；下一次启动自动跳过壁纸解码和 AGSL，使用标准 Material 3，避免重复启动闪退。
+- 安全模式只针对当前版本和当前崩溃报告生效；升级到后续修复版本后自动重新尝试 Light Field，原崩溃报告仍会随诊断导出。
+- 测试构建标签为 `UI_GLASS_CRASH_RECOVERY_V1`；本包首先验证“闪退后仍可启动并导出日志”，再验证 Android 13+ 玻璃效果。
 
 ---
 

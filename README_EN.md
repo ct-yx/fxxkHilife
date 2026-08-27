@@ -19,8 +19,8 @@
 > **Current release: v4.6.0 (versionCode 103)**
 > The BT refactor and the standard Material 3 UI baseline are released; dark-mode wallpapers use RGB brightness scaling instead of a black overlay.
 >
-> **Current development build: v4.7.1 (versionCode 105)**
-> The default build label is `UI_LIGHT_FIELD_GLASS_V2`: shared light-field, adaptive transparency and self-built AGSL wallpaper glass are enabled on Android 13+ with a valid wallpaper, while other states use the Material 3 fallback; targeted hardware UI validation is pending.
+> **Current development build: v4.7.2 (versionCode 106)**
+> The default build label is `UI_GLASS_CRASH_RECOVERY_V1`: Light Field AGSL remains available, while a previous startup exception automatically enables a standard Material 3 safe mode so the app can open and export diagnostics.
 
 ---
 
@@ -50,6 +50,12 @@ The Release build label is `UI_MATERIAL3_BASELINE`. Testing covers the changed U
 - Default rectangular glass borders are removed, and the top bar is detached from the page edge as a floating surface.
 - Android 12 and below, missing wallpapers and failed wallpaper loads use the optimized opaque Material 3 fallback without software refraction.
 - The test build label is `UI_LIGHT_FIELD_GLASS_V2`; this build enters targeted UI screenshots, touch-light behavior, scrolling, accessibility and expandable-card validation only, not the BT matrix.
+
+## v4.7.2: wallpaper glass crash-recovery test build
+
+- CrashReporter synchronously records the current version and marks glass safe mode before an uncaught exception is handed to Android; the next launch skips wallpaper decoding and AGSL and uses standard Material 3 instead of repeating the startup crash.
+- Safe mode is scoped to the current version and crash report; a later fix build automatically retries Light Field, while the previous stack remains available in diagnostics.
+- The test build label is `UI_GLASS_CRASH_RECOVERY_V1`; first verify that a crashed install can reopen and export diagnostics, then verify Android 13+ glass behavior.
 
 ---
 
