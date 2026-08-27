@@ -112,6 +112,8 @@ def main() -> int:
     scaffold_text = (UI_ROOT / "foundation/components/AppScaffold.kt").read_text(encoding="utf-8")
     if "toBitmap(config = android.graphics.Bitmap.Config.ARGB_8888)" not in scaffold_text:
         fail("wallpaper source is not converted to a software-readable ARGB_8888 bitmap")
+    if ".allowHardware(false)" not in scaffold_text or "bitmap = sourceBitmap.asImageBitmap()" not in scaffold_text:
+        fail("wallpaper display must use a software bitmap instead of a hardware BitmapDrawable")
     if "isWallpaperGlassSafeMode" not in scaffold_text or "!glassSafeMode" not in scaffold_text:
         fail("wallpaper glass startup safe-mode gate is missing")
     crash_reporter = ROOT / "app/src/main/java/com/freebuds/controller/util/CrashReporter.kt"

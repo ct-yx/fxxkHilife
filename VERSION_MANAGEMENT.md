@@ -4,7 +4,7 @@
 
 ## 当前版本
 - **当前正式发布：v4.6.0** (versionCode=103, 2026-08-18；标准 Material 3 UI、普通壁纸背景和深色模式亮度处理已发布)
-- **当前开发测试：v4.7.2** (versionCode=106, 2026-08-27；壁纸/AGSL 崩溃恢复安全模式，默认标签 `UI_GLASS_CRASH_RECOVERY_V1`，等待启动恢复和定向实机验收)
+- **当前开发测试：v4.7.3** (versionCode=107, 2026-08-27；修复壁纸硬件位图与软件 Canvas 冲突，默认标签 `UI_GLASS_BITMAP_FIX_V1`，等待启动和壁纸显示定向实机验收)
 - **上一公开版本：v4.3.10** (versionCode=98, 2026-08-14；BT 重构后的首个大版本，BT-0 至 BT-4 已完成，BT-4 定向实机门已通过)
 
 ## v4.3.10 发布基线
@@ -12,7 +12,7 @@
 - 发布定位：BT 重构后的首个公开大版本；UI 全量重构不包含在本版本内。
 - 发布触发：推送与应用版本一致的 `v4.3.10` 标签，由 CI 负责重新执行自动化检查、构建 APK 和更新 Release 资产。
 - 实机门：`BT4_STATE_CONTRACT_5`，5/5 PASS；只覆盖 HUAWEI FreeBuds 6i / Android API 36 / 固件 `HarmonyOS 6.0.0.292(F001H003C00)` 及该 profile。
-- 当前开发方向：v4.7.2 先验证闪退后的安全启动与诊断导出，再进行 API 33+ Light Field AGSL 玻璃、API 32 MD3 fallback、截图、触摸受光、滚动、无障碍和展开交互定向验收；不重复 BT 全量矩阵。
+- 当前开发方向：v4.7.3 先验证软件位图壁纸能稳定显示、闪退后可启动并导出诊断，再进行 API 33+ Light Field AGSL 玻璃、API 32 MD3 fallback、截图、触摸受光、滚动、无障碍和展开交互定向验收；不重复 BT 全量矩阵。
 
 ## 文档同步记录
 
@@ -33,11 +33,11 @@
 
 | 位置 | 当前值 |
 |------|--------|
-| `app/build.gradle.kts` | versionCode=106, versionName="4.7.2" |
-| `app/src/main/res/values/strings.xml` | version_name=4.7.2 |
-| `README.md` | v4.7.2 |
-| `README_EN.md` | v4.7.2 |
-| `DEVELOPMENT_LOG.md` | v4.7.2 (末尾) |
+| `app/build.gradle.kts` | versionCode=107, versionName="4.7.3" |
+| `app/src/main/res/values/strings.xml` | version_name=4.7.3 |
+| `README.md` | v4.7.3 |
+| `README_EN.md` | v4.7.3 |
+| `DEVELOPMENT_LOG.md` | v4.7.3 (末尾) |
 
 ## 一键版本更新脚本
 
@@ -62,6 +62,7 @@ python3 scripts/bump_version.py <versionName> <versionCode> "修复说明"
 | 版本 | Code | 日期 | 主要变更 |
 |------|------|------|---------|
 | v4.7.2 | 106 | 2026-08-27 | 壁纸/AGSL 崩溃恢复安全模式与诊断导出保护 |
+| v4.7.3 | 107 | 2026-08-27 | 修复壁纸硬件位图在软件 Canvas 下崩溃，统一软件位图绘制路径 |
 | v4.7.1 | 105 | 2026-08-26 | UI Light Field V2 glass material, adaptive transparency and floating top bar |
 | v4.7.0 | 104 | 2026-08-22 | 自研 AGSL 壁纸柔光玻璃与卡片视觉重构 |
 | v4.6.0 | 103 | 2026-08-18 | 发布标准 Material 3 UI 与深色模式壁纸亮度优化 |

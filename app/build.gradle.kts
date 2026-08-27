@@ -13,8 +13,8 @@ android {
         applicationId = "com.freebuds.controller"
         minSdk = 26
         targetSdk = 35
-        versionCode = 106
-        versionName = "4.7.2"
+        versionCode = 107
+        versionName = "4.7.3"
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
     }
@@ -71,7 +71,7 @@ dependencies {
     implementation("androidx.navigation:navigation-compose:2.9.2")
     debugImplementation("androidx.compose.ui:ui-tooling")
 
-    // UI_GLASS_CRASH_RECOVERY_V1: previous-crash safe mode for Light Field glass with Material 3 fallback.
+    // UI_GLASS_BITMAP_FIX_V1: software wallpaper bitmap path plus previous-crash safe mode.
     implementation("io.coil-kt:coil-compose:2.7.0")
 
     implementation("androidx.core:core-ktx:1.15.0")

@@ -1665,3 +1665,20 @@
 - 本轮仍不执行本地 Gradle；GitHub Actions Run [33035722677](https://github.com/ct-yx/fxxkHilife/actions/runs/33035722677) 已通过 Debug/Release、JVM、UI contract 和 diff-check。
 - Release APK 工件：`fxxkHilife-UI_GLASS_CRASH_RECOVERY_V1-v4.7.2-106.apk`，SHA-256：`33a4ef06f33beb9997f59b7c894af2854ebcd732d6cdb726f97ae13e7d8287a7`；Debug APK 与自动化报告也已上传到同一 Run。
 - 定向实机第一步是：安装 4.7.2 后启动、确认可进入首页、分享包含 `last uncaught exception` 的诊断报告；随后再验证 Light Field 玻璃。
+
+## v4.7.3 (2026-08-27)
+
+### 实机崩溃根因
+- 从 `/Users/chenhong/Downloads/20260827_143202.zip` 的 MIUI 备份中提取 `files/crash/latest.txt`；报告对应内置 APK `4.7.1`，并非 v4.7.2。
+- 关键异常为 `java.lang.IllegalArgumentException: Software rendering doesn't support hardware bitmaps`，堆栈落在 `BitmapDrawable.draw`；问题来自壁纸显示仍直接使用 Coil 返回的硬件位图。此前仅将副本转换为软件位图用于 AGSL 采样，显示路径仍可能触发同一异常。
+
+### 修复
+- versionCode: 107
+- versionName: 4.7.3
+- build label: `UI_GLASS_BITMAP_FIX_V1`
+- Coil 壁纸请求显式使用 `.allowHardware(false)`；实际 `Image` 改为绘制转换后的 `ARGB_8888` 软件位图，不再把硬件 `BitmapDrawable` 交给 Compose Canvas。
+- 壁纸转换完成前继续显示 Material 3 背景；共享纹理和壁纸显示复用同一软件位图，保留 v4.7.2 的异常安全启动与诊断导出。
+
+### 验证边界
+- 本轮不执行本地 Gradle；代码和文档提交后由 GitHub Actions 构建 Debug/Release、JVM、UI contract 和 diff-check。
+- 定向实机只需先验证：安装 v4.7.3 后能启动、壁纸能显示且连续进入/退出不闪退；随后导出诊断报告，再恢复 `UI_LIGHT_FIELD_GLASS_V2` 的玻璃效果测试。

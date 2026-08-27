@@ -19,8 +19,8 @@
 > **当前正式发布：v4.6.0（versionCode 103）**
 > BT 重构与标准 Material 3 UI 基线已合并发布；深色模式壁纸会按 RGB 亮度缩放处理，不叠加黑色滤镜。
 >
-> **当前开发测试：v4.7.2（versionCode 106）**
-> 默认构建标签为 `UI_GLASS_CRASH_RECOVERY_V1`：保留 Light Field AGSL；检测到上次启动异常时自动进入标准 Material 3 安全模式，保证可进入应用导出诊断报告。
+> **当前开发测试：v4.7.3（versionCode 107）**
+> 默认构建标签为 `UI_GLASS_BITMAP_FIX_V1`：壁纸统一使用软件位图路径，避免硬件位图在软件 Canvas 下触发启动崩溃；检测到上次异常时仍自动进入标准 Material 3 安全模式。
 
 ---
 
@@ -56,6 +56,12 @@ Release 构建标签为 `UI_MATERIAL3_BASELINE`，覆盖本轮 UI surface、设�
 - CrashReporter 在未捕获异常发生前同步记录当前版本并标记玻璃安全模式；下一次启动自动跳过壁纸解码和 AGSL，使用标准 Material 3，避免重复启动闪退。
 - 安全模式只针对当前版本和当前崩溃报告生效；升级到后续修复版本后自动重新尝试 Light Field，原崩溃报告仍会随诊断导出。
 - 测试构建标签为 `UI_GLASS_CRASH_RECOVERY_V1`；本包首先验证“闪退后仍可启动并导出日志”，再验证 Android 13+ 玻璃效果。
+
+## v4.7.3：壁纸软件位图修复测试包
+
+- 根据实机诊断报告修复 `Software rendering doesn't support hardware bitmaps`：Coil 请求关闭硬件位图，壁纸实际绘制改用 `ARGB_8888` 软件位图。
+- 壁纸加载完成前保持 Material 3 背景，避免空白透明层；共享纹理采样继续使用同一份软件位图。
+- 保留上一次异常自动安全启动和诊断导出；构建标签为 `UI_GLASS_BITMAP_FIX_V1`，先验证启动、壁纸显示和诊断导出，再恢复 AGSL 定向验收。
 
 ---
 

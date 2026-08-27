@@ -19,8 +19,8 @@
 > **Current release: v4.6.0 (versionCode 103)**
 > The BT refactor and the standard Material 3 UI baseline are released; dark-mode wallpapers use RGB brightness scaling instead of a black overlay.
 >
-> **Current development build: v4.7.2 (versionCode 106)**
-> The default build label is `UI_GLASS_CRASH_RECOVERY_V1`: Light Field AGSL remains available, while a previous startup exception automatically enables a standard Material 3 safe mode so the app can open and export diagnostics.
+> **Current development build: v4.7.3 (versionCode 107)**
+> The default build label is `UI_GLASS_BITMAP_FIX_V1`: wallpapers use a software bitmap path to avoid hardware-bitmap crashes on a software Canvas; a previous startup exception still enables the standard Material 3 safe mode.
 
 ---
 
@@ -56,6 +56,12 @@ The Release build label is `UI_MATERIAL3_BASELINE`. Testing covers the changed U
 - CrashReporter synchronously records the current version and marks glass safe mode before an uncaught exception is handed to Android; the next launch skips wallpaper decoding and AGSL and uses standard Material 3 instead of repeating the startup crash.
 - Safe mode is scoped to the current version and crash report; a later fix build automatically retries Light Field, while the previous stack remains available in diagnostics.
 - The test build label is `UI_GLASS_CRASH_RECOVERY_V1`; first verify that a crashed install can reopen and export diagnostics, then verify Android 13+ glass behavior.
+
+## v4.7.3: software-wallpaper-bitmap fix test build
+
+- The device report identified `Software rendering doesn't support hardware bitmaps`. Coil requests now disable hardware bitmaps, and the wallpaper is drawn from the converted `ARGB_8888` software bitmap.
+- Material 3 remains visible until the wallpaper is ready, avoiding a transparent empty layer; the shared glass texture samples the same software bitmap.
+- Previous-crash safe mode and diagnostic export remain in place. The build label is `UI_GLASS_BITMAP_FIX_V1`; verify startup, wallpaper display, and diagnostics before resuming targeted AGSL validation.
 
 ---
 

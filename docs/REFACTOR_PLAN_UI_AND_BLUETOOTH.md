@@ -8,7 +8,7 @@
 >
 > 当前发布版本：v4.6.0 / versionCode 103，2026-08-18（统一标准 Material 3 surface；深色模式壁纸 RGB 亮度缩放到 75%，不叠加黑色滤镜）
 >
-> 当前开发测试版本：v4.7.2 / versionCode 106，2026-08-27（在 Light Field AGSL 之上加入上次异常自动安全启动；安全模式跳过壁纸解码和 AGSL，使用标准 Material 3 并保留诊断导出）
+> 当前开发测试版本：v4.7.3 / versionCode 107，2026-08-27（修复硬件位图在软件 Canvas 下导致的壁纸启动崩溃；壁纸绘制统一使用 ARGB_8888 软件位图，并保留异常自动安全启动）
 >
 > 目标：把当前“能工作但边界偏大”的 UI、蓝牙连接和 SPP 指令实现整理成可持续迭代的结构。蓝牙阶段先稳定现有 HUAWEI / HONOR + RFCOMM SPP 路线；当前转入 UI 基本全量重构，统一视觉、交互、状态和导航，同时保留已经验证可用的美术资源。
 
@@ -36,7 +36,7 @@
 - 关键日志或耗时结论。
 - 回退方式。
 
-当前 **BT-0 至 BT-4 已完成**：`v4.3.10 / 98` 是 BT 重构后的首个公开大版本，主验证设备的蓝牙状态契约门已通过，但结论仍限定在已有型号/固件/系统证据范围内，不外推为所有型号和所有指令均已实机验证。旧第三方渲染路线已撤销；`v4.6.0 / 103` 保留为标准 Material 3 和深色模式壁纸亮度正式基线，`v4.7.0 / 104` 为第一版集中式 AGSL 玻璃历史测试包，`v4.7.1 / 105` 加入共享光场、自适应透明度、无边框受光和悬浮顶部栏，`v4.7.2 / 106` 加入启动崩溃恢复安全模式。正常状态下玻璃只在有效壁纸且 Android 13+ 时启用；安全模式、低版本和无效壁纸保持 MD3 fallback。UI 仍需通过设备截图/交互和无障碍定向门后再标记完成，不重复蓝牙全量矩阵。
+当前 **BT-0 至 BT-4 已完成**：`v4.3.10 / 98` 是 BT 重构后的首个公开大版本，主验证设备的蓝牙状态契约门已通过，但结论仍限定在已有型号/固件/系统证据范围内，不外推为所有型号和所有指令均已实机验证。旧第三方渲染路线已撤销；`v4.6.0 / 103` 保留为标准 Material 3 和深色模式壁纸亮度正式基线，`v4.7.0 / 104` 为第一版集中式 AGSL 玻璃历史测试包，`v4.7.1 / 105` 加入共享光场、自适应透明度、无边框受光和悬浮顶部栏，`v4.7.2 / 106` 加入启动崩溃恢复安全模式，`v4.7.3 / 107` 修复壁纸硬件位图与软件 Canvas 冲突。正常状态下玻璃只在有效壁纸且 Android 13+ 时启用；安全模式、低版本和无效壁纸保持 MD3 fallback。UI 仍需通过设备截图/交互和无障碍定向门后再标记完成，不重复蓝牙全量矩阵。
 
 ### 0.1.1 定向实机测试规则
 
@@ -155,15 +155,15 @@
 | BT-3 ConnectionManager 收敛入口 | [x] 已完成 | 2026-08-14；`ConnectionLifecycle`、session/attempt/Job 所有权收敛，并由 `BT_MANAGER_RUNTIME_20` F10+初始化10 实机确认；`4.3.10 / 98` 补齐统计 flush、失败 session 断开、command 串行边界和同 attempt 状态映射收尾 |
 | BT-4 通用蓝牙状态输出 | [x] 已完成 | `4.3.10 / 98` 完成原子快照投影、canonical channel、pending/failed 语义收敛、空值规范化、metadata-only core readiness 防误报、严格 PASS 报告校验和 5A 协议边界修复；94/94 Debug、94/94 Release 单元测试、`git diff --check`、Debug/Release 构建通过；同一主验证设备 `BT4_STATE_CONTRACT_5` 实机 5/5 通过。页面尚未迁移消费 |
 | UI-0 UI 基线与资源清点 | [~] 目标受阻：等待标准 Material 3 实测报告 | 2026-08-15；静态路由/状态/设置 key/资源基线已写入 `docs/UI_BASELINE.md`，新增更新 manifest 契约；等待标准 Material 3 截图和运行诊断门 |
-| UI-1 设计令牌与渲染基础 | [~] 目标受阻：等待启动恢复与 Light Field AGSL 定向实测 | 2026-08-27；v4.7.2 在 v4.7.1 基础上增加异常后自动跳过壁纸/AGSL 的恢复路径，仍等待启动恢复日志、API 33+ 截图、API 32 fallback 与滚动性能证据 |
+| UI-1 设计令牌与渲染基础 | [~] 目标受阻：等待软件位图修复后的启动/壁纸实测 | 2026-08-27；v4.7.3 针对实机报告的硬件位图软件 Canvas 崩溃改用 ARGB_8888 绘制，并保留异常后自动跳过壁纸/AGSL 的恢复路径，仍等待启动恢复日志、壁纸显示、API 33+ 截图、API 32 fallback 与滚动性能证据 |
 | UI-2 typed State / Event / Navigation | [~] 目标受阻：等待实测报告 | 2026-08-15；`AppUiState`/`DeviceUiState`/`SettingsUiState`、typed `DeviceEvent`/`SettingsEvent` 已接入核心页面，保留兼容层；等待动作状态矩阵 |
 | UI-3 全局外壳与主路由 | [~] 目标受阻：等待 GitHub CI 与定向实测 | 2026-08-15；背景/外壳归属、稳定 key 和连接会话导航已收敛，仍需导航会话和外壳截图验证 |
-| UI-4 设备功能页面 | [~] 目标受阻：等待定向卡片/展开交互实测 | 2026-08-27；v4.7.2 先确保玻璃异常后仍可进入设备页，再验证同一 shader 节点、设备卡片、展开选项卡、箭头旋转、触摸光场和内容对比度自适应；只需验证本页滑动、展开 10 次、状态更新和资源显示，不复跑 BT 矩阵 |
+| UI-4 设备功能页面 | [~] 目标受阻：等待定向卡片/展开交互实测 | 2026-08-27；v4.7.3 先确保软件位图修复后仍可进入设备页，再验证同一 shader 节点、设备卡片、展开选项卡、箭头旋转、触摸光场和内容对比度自适应；只需验证本页滑动、展开 10 次、状态更新和资源显示，不复跑 BT 矩阵 |
 | UI-5 设置、持久化与兼容层收口 | [~] 目标受阻：等待实测报告 | 2026-08-15；SettingsRepository、更新检查/下载/安装状态和 UpdateCard 已接入，仍需持久化、无障碍和更新流程验证 |
 
 ### 0.4 应用版本号方案
 
-当前正式发布版本为 **versionName `4.6.0` / versionCode `103`**；当前开发测试版本为 **`4.7.2 / 106`**。`4.6.0 / 103` 是标准 Material 3 与深色模式壁纸亮度正式基线；`4.4.0 / 99` 至 `4.4.2 / 101` 的第三方玻璃尝试只作为历史版本保留，`4.7.0 / 104` 是第一版集中式 AGSL 玻璃测试门，`4.7.1 / 105` 是 Light Field V2 定向测试门，`4.7.2 / 106` 是启动崩溃恢复定向测试门。更早的 BT 版本仍按下表保留，BT-0 的审计、研究、日志和测试准备不单独发版。
+当前正式发布版本为 **versionName `4.6.0` / versionCode `103`**；当前开发测试版本为 **`4.7.3 / 107`**。`4.6.0 / 103` 是标准 Material 3 与深色模式壁纸亮度正式基线；`4.4.0 / 99` 至 `4.4.2 / 101` 的第三方玻璃尝试只作为历史版本保留，`4.7.0 / 104` 是第一版集中式 AGSL 玻璃测试门，`4.7.1 / 105` 是 Light Field V2 定向测试门，`4.7.2 / 106` 是启动崩溃恢复定向测试门，`4.7.3 / 107` 是硬件位图绘制修复定向测试门。更早的 BT 版本仍按下表保留，BT-0 的审计、研究、日志和测试准备不单独发版。
 
 | 里程碑 | 计划 versionName | 计划 versionCode | 说明 |
 |---|---:|---:|---|
@@ -187,18 +187,19 @@
 | UI-1 自研 AGSL 壁纸玻璃测试包 | 4.7.0 | 104 | `UI_AGSL_GLASS_V1`：共享低分辨率壁纸纹理、卡片/顶部栏玻璃、边缘折射泛光和 API 32 MD3 fallback |
 | UI-1 Light Field AGSL 玻璃 follow-up | 4.7.1 | 105 | `UI_LIGHT_FIELD_GLASS_V2`：触摸光场、自适应透明度、无边框受光、悬浮顶部栏和 MD3 fallback |
 | UI-1 启动崩溃恢复 follow-up | 4.7.2 | 106 | `UI_GLASS_CRASH_RECOVERY_V1`：异常后自动跳过壁纸/AGSL，进入标准 Material 3 并保留崩溃诊断 |
-| UI-2 typed State / Event / Navigation | 4.7.3 | 107 | `UI_STATE_EVENT`：页面状态、动作反馈、导航事件和兼容投影 |
-| UI-3 全局外壳与主路由 | 4.7.4 | 108 | `UI_SHELL_ROUTES`：Home/Scan/Permission 以及连接入口收敛 |
-| UI-4 设备功能页面 | 4.7.5 | 109 | `UI_DEVICE_FEATURES`：Device/Gesture/ListeningStats/Terminal 迁移 |
-| UI-5 设置、持久化、更新与无障碍收口 | 4.7.6 | 110 | `UI_SETTINGS_UPDATE`：Settings、更新流程、无障碍和 UI raw property 清零 |
-| UI-RELEASE 最终验收 | 4.8.0 | 111 | 全 route、全状态、全部语言、资源和无障碍矩阵 |
+| UI-1 壁纸软件位图修复 follow-up | 4.7.3 | 107 | `UI_GLASS_BITMAP_FIX_V1`：关闭 Coil 硬件位图并统一 ARGB_8888 绘制，修复软件 Canvas 启动崩溃 |
+| UI-2 typed State / Event / Navigation | 4.7.4 | 108 | `UI_STATE_EVENT`：页面状态、动作反馈、导航事件和兼容投影 |
+| UI-3 全局外壳与主路由 | 4.7.5 | 109 | `UI_SHELL_ROUTES`：Home/Scan/Permission 以及连接入口收敛 |
+| UI-4 设备功能页面 | 4.7.6 | 110 | `UI_DEVICE_FEATURES`：Device/Gesture/ListeningStats/Terminal 迁移 |
+| UI-5 设置、持久化、更新与无障碍收口 | 4.7.7 | 111 | `UI_SETTINGS_UPDATE`：Settings、更新流程、无障碍和 UI raw property 清零 |
+| UI-RELEASE 最终验收 | 4.8.0 | 112 | 全 route、全状态、全部语言、资源和无障碍矩阵 |
 
 版本规则：
 
 - 只有能独立编译、测试、回归和回退的代码里程碑才提升版本号；只改本文件或只做诊断不提升版本。
-- `versionCode` 每次发布递增 1；BT-1 测试包使用 `88`，BT-1/BT-2 首轮修复包使用 `89`，热重连回归包使用 `90`，ANC 摘戴状态稳定性包使用 `91`，36 项定向回归包使用 `92`，状态/重试 follow-up 使用 `93`，BT-3 连接运行时收敛使用 `94`，BT-4 首轮契约包使用 `95`，状态契约 follow-up 使用 `96`，协议样本 follow-up 使用 `97`，BT-3 收尾/BT-4 follow-up 使用 `98`；UI 从正式基线 `103`、AGSL V1 测试包 `104`、Light Field V2 测试包 `105` 和崩溃恢复测试包 `106` 继续递增，并且必须同时使用明确构建标签。
+- `versionCode` 每次发布递增 1；BT-1 测试包使用 `88`，BT-1/BT-2 首轮修复包使用 `89`，热重连回归包使用 `90`，ANC 摘戴状态稳定性包使用 `91`，36 项定向回归包使用 `92`，状态/重试 follow-up 使用 `93`，BT-3 连接运行时收敛使用 `94`，BT-4 首轮契约包使用 `95`，状态契约 follow-up 使用 `96`，协议样本 follow-up 使用 `97`，BT-3 收尾/BT-4 follow-up 使用 `98`；UI 从正式基线 `103`、AGSL V1 测试包 `104`、Light Field V2 测试包 `105`、崩溃恢复测试包 `106` 和壁纸软件位图修复包 `107` 继续递增，并且必须同时使用明确构建标签。
 - 统一使用 `python3 scripts/bump_version.py <versionName> <versionCode> "变更说明"` 更新应用版本、资源、README、`VERSION_MANAGEMENT.md` 和 `DEVELOPMENT_LOG.md`。
-- GitHub Actions 的手动构建必须填写或保留阶段标签；当前默认 `UI_GLASS_CRASH_RECOVERY_V1`，产物名、测试报告名和 metadata 都带该标签，避免只看版本号无法区分 UI 测试包。
+- GitHub Actions 的手动构建必须填写或保留阶段标签；当前默认 `UI_GLASS_BITMAP_FIX_V1`，产物名、测试报告名和 metadata 都带该标签，避免只看版本号区分 UI 测试包。
 - 阶段完成时，同时更新本文件的 `[x]`、`VERSION_MANAGEMENT.md` 的历史记录和 `DEVELOPMENT_LOG.md`；版本号不因提前勾选计划项而变更。
 
 本节对应文件：`app/build.gradle.kts`、`app/src/main/res/values/strings.xml`、`VERSION_MANAGEMENT.md`、`scripts/bump_version.py`。
@@ -668,7 +669,7 @@ data class SurfaceSpec(
 
 #### 3.5.2 当前自研 AGSL 壁纸玻璃实现
 
-`v4.7.1 / 105` 的 Light Field 玻璃测试门不改变业务页面 API。`Material3Card` 默认请求 `WallpaperGlass`，由 `SurfaceRenderer` 根据 `LocalWallpaperGlass`、壁纸加载状态和 API 级别决定实际 renderer；`v4.7.2 / 106` 在同一边界上增加崩溃恢复门：
+`v4.7.1 / 105` 的 Light Field 玻璃测试门不改变业务页面 API。`Material3Card` 默认请求 `WallpaperGlass`，由 `SurfaceRenderer` 根据 `LocalWallpaperGlass`、壁纸加载状态和 API 级别决定实际 renderer；`v4.7.2 / 106` 在同一边界上增加崩溃恢复门，`v4.7.3 / 107` 修正壁纸实际绘制的位图类型：
 
 ```text
 有效壁纸 + API 33+  -> 共享低分辨率纹理 + WallpaperGlass AGSL
@@ -683,14 +684,14 @@ data class SurfaceSpec(
 - Android 12 及以下不做软件折射，直接回退标准 Material 3；无有效纹理时也不显示透明空洞。
 - 可展开卡片保持单一卡片和单一 shader 节点，标题行最小高度 `64dp`，使用 `toggleable` 语义和 `AnimatedVisibility`，不使用 `animateContentSize`。
 
-本轮定向测试标签为 `UI_LIGHT_FIELD_GLASS_V2`，必须分别记录 API 33+ 玻璃效果、触摸光场和 API 32 MD3 fallback；在截图、展开交互、无障碍和滚动性能证据返回前，UI-1/UI-4 维持“目标受阻”。
+本轮定向测试标签为 `UI_GLASS_BITMAP_FIX_V1`，先记录启动、壁纸显示、诊断导出和 API 32 MD3 fallback；通过后再使用 `UI_LIGHT_FIELD_GLASS_V2` 分别记录 API 33+ 玻璃效果、触摸光场、展开交互、无障碍和滚动性能，UI-1/UI-4 维持“目标受阻”。
 
 #### 3.5.2.1 启动崩溃恢复
 
 - `CrashReporter` 在未捕获异常交给 Android 处理前同步写入版本、线程和堆栈，并记录当前版本的 wallpaper-glass safe mode。
 - 下次启动检测到未消费的崩溃报告时，`AppScaffold` 暂时跳过壁纸解码、共享纹理和 AGSL，只渲染标准 Material 3；报告仍由诊断导出入口附带。
 - 安全模式按崩溃报告指纹和版本隔离；后续修复版本会自动重新尝试 Light Field，不改变 BT 状态或连接流程。
-- `v4.7.2 / 106` 的定向门先验证“闪退后可启动并导出报告”，再验证 `UI_LIGHT_FIELD_GLASS_V2` 的玻璃效果。
+- `v4.7.2 / 106` 的定向门先验证“闪退后可启动并导出报告”；`v4.7.3 / 107` 先验证软件位图壁纸路径，确认启动和壁纸显示稳定后再验证 `UI_LIGHT_FIELD_GLASS_V2` 的玻璃效果。
 
 #### 3.5.3 统一按钮、选项与异步动作控件
 
@@ -1515,7 +1516,7 @@ python3 scripts/analyze_connection_timing.py /path/to/fxxkHilife_diagnostic.txt
 7. **LEGACY-CUTOVER `[ ]`**：清理旧页面 facade、无引用资源和历史生产入口；调试 Terminal XML 在迁移前保留。
 8. **UI-RELEASE `[ ]`**：完成 Material 3、导航、无障碍、资源保留和更新流程的最终矩阵。
 
-本轮代码完成后进入 `UI_GLASS_CRASH_RECOVERY_V1` 测试门；先验证闪退后可启动并导出报告，再继续 `UI_LIGHT_FIELD_GLASS_V2` 的玻璃验收。测试返回前只保持上述受阻状态，不标记 UI 完成，也不重复 BT A-F/36/100 项矩阵。
+本轮代码完成后进入 `UI_GLASS_BITMAP_FIX_V1` 测试门；先验证启动、壁纸显示和诊断导出，再继续 `UI_LIGHT_FIELD_GLASS_V2` 的玻璃验收。测试返回前只保持上述受阻状态，不标记 UI 完成，也不重复 BT A-F/36/100 项矩阵。
 ## 6. 验收标准
 
 ### UI
@@ -1528,7 +1529,7 @@ python3 scripts/analyze_connection_timing.py /path/to/fxxkHilife_diagnostic.txt
 - Home、Scan、Device、Settings、Gesture 的返回、断开、自动连接路径有导航测试；用户点击设备卡片必须产生明确 `OpenDevice(address)` 事件。
 - 连接页面可以分别呈现系统蓝牙已连接、控制通道已建立、核心能力初始化中、Ready 和 Degraded。
 - 长列表使用稳定 key 和生命周期感知收集；所有可见卡片复用一张共享纹理，滚动只更新采样坐标，不重复构建纹理或 shader。
-- UI 测试报告使用 `UI_GLASS_CRASH_RECOVERY_V1`、`UI_LIGHT_FIELD_GLASS_V2`、`UI_API32_MD3_FALLBACK`、`UI_LIGHT_FIELD_TOUCH`、`UI_NAVIGATION_SESSION`、`UI_STATE_EVENT_TARGETED`、`UI_SETTINGS_PERSISTENCE`、`UI_ACCESSIBILITY_MATRIX` 和 `UI_RELEASE_AUDIT`；不以版本号单独作为阶段识别。
+- UI 测试报告使用 `UI_GLASS_BITMAP_FIX_V1`、`UI_GLASS_CRASH_RECOVERY_V1`、`UI_LIGHT_FIELD_GLASS_V2`、`UI_API32_MD3_FALLBACK`、`UI_LIGHT_FIELD_TOUCH`、`UI_NAVIGATION_SESSION`、`UI_STATE_EVENT_TARGETED`、`UI_SETTINGS_PERSISTENCE`、`UI_ACCESSIBILITY_MATRIX` 和 `UI_RELEASE_AUDIT`；不以版本号单独作为阶段识别。
 - 2026-08-22 定向修复：`CoreReady`/`Degraded` 不再映射为 connection error；`Degraded` 显示为“已连接，部分功能未完成”，只有 `Failed` 显示连接错误。
 - 2026-08-22 定向修复：壁纸导入后复制到应用私有文件 `files/wallpapers/wallpaper-*`，每次导入使用新 URI 避免 Coil 缓存旧失败结果；预览和全局外壳使用同一本地文件引用，加载失败写入 `Wallpaper` 诊断日志。
 - 2026-08-22 定向修复：壁纸范围固定为全部页面；旧版本保存的 `HOME`/`SETTINGS` 范围只保留作兼容数据，不再阻止其他页面绘制壁纸。
@@ -1538,6 +1539,7 @@ python3 scripts/analyze_connection_timing.py /path/to/fxxkHilife_diagnostic.txt
 - 2026-08-22 定向修复：诊断报告确认 Coil 返回 `Config#HARDWARE` 位图，CPU `getPixels()` 失败后触发了 Material 3 fallback；导入后的壁纸现在先转换为软件 `ARGB_8888` 位图，再生成共享 AGSL 纹理。
 - 2026-08-22 定向诊断：新增应用私有 `files/crash/latest.txt` 未捕获异常快照，并在下次导出的诊断报告中附带最近一次崩溃堆栈；系统 `logcat` 仍作为 Android 原生日志来源。
 - 2026-08-27 定向修复：`CrashReporter` 在异常交给 Android 前同步标记当前版本的 wallpaper-glass safe mode；下一次启动自动跳过壁纸解码和 AGSL，进入标准 Material 3，方便导出本次崩溃报告；后续版本按报告指纹自动重新尝试玻璃。
+- 2026-08-27 定向修复：实机报告确认 `Software rendering doesn't support hardware bitmaps` 发生在壁纸 `BitmapDrawable.draw`；壁纸请求现在显式 `.allowHardware(false)`，实际显示和共享纹理统一使用转换后的 `ARGB_8888` 软件位图，避免软件 Canvas 再次接收硬件位图。
 ### 蓝牙指令/连接
 
 - Transport、Framer、CommandClient、Feature、ConnectionManager 可以单独测试。

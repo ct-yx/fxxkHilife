@@ -19,6 +19,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.ColorFilter
 import androidx.compose.ui.graphics.ColorMatrix
 import androidx.compose.ui.graphics.luminance
+import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.layout.onSizeChanged
@@ -38,6 +39,7 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.ArrowBack
 import coil.compose.AsyncImagePainter
 import coil.compose.rememberAsyncImagePainter
+import coil.request.ImageRequest
 import androidx.core.graphics.drawable.toBitmap
 import com.freebuds.controller.i18n.i18n
 import com.freebuds.controller.ui.UiDisplayMode
@@ -70,8 +72,20 @@ fun AppScaffold(
     // A previous uncaught exception disables wallpaper decoding and AGSL for this build so the
     // next launch reaches the diagnostic UI instead of repeating the startup crash.
     val showWallpaper = hasWallpaperUri && !glassSafeMode
+    val wallpaperRequest = remember(context, wallpaperUri, showWallpaper) {
+        if (showWallpaper && !wallpaperUri.isNullOrBlank()) {
+            ImageRequest.Builder(context)
+                .data(Uri.parse(wallpaperUri))
+                // The wallpaper is also drawn by Compose's software-compatible bitmap path. A
+                // hardware BitmapDrawable crashes when the window falls back to a software Canvas.
+                .allowHardware(false)
+                .build()
+        } else {
+            null
+        }
+    }
     val wallpaperPainter = rememberAsyncImagePainter(
-        model = if (showWallpaper) Uri.parse(wallpaperUri) else null,
+        model = wallpaperRequest,
     )
     val wallpaperError = wallpaperPainter.state as? AsyncImagePainter.State.Error
     LaunchedEffect(showWallpaper, wallpaperUri, wallpaperError) {
@@ -90,7 +104,7 @@ fun AppScaffold(
         wallpaperResult?.drawable?.toBitmap(config = android.graphics.Bitmap.Config.ARGB_8888)
     }
     val wallpaperReady = showWallpaper && sourceBitmap != null
-    val contentBackground = if (showWallpaper && wallpaperError == null) {
+    val contentBackground = if (showWallpaper && sourceBitmap != null && wallpaperError == null) {
         Color.Transparent
     } else {
         MaterialTheme.colorScheme.background
@@ -171,9 +185,9 @@ fun AppScaffold(
                 }
                 .then(Modifier.background(contentBackground)),
         ) {
-            if (showWallpaper) {
+            if (showWallpaper && sourceBitmap != null) {
                 Image(
-                    painter = wallpaperPainter,
+                    bitmap = sourceBitmap.asImageBitmap(),
                     contentDescription = null,
                     modifier = Modifier.fillMaxSize(),
                     contentScale = ContentScale.Crop,
