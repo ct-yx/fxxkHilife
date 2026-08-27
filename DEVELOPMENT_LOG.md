@@ -1680,5 +1680,6 @@
 - 壁纸转换完成前继续显示 Material 3 背景；共享纹理和壁纸显示复用同一软件位图，保留 v4.7.2 的异常安全启动与诊断导出。
 
 ### 验证边界
-- 本轮不执行本地 Gradle；代码和文档提交后由 GitHub Actions 构建 Debug/Release、JVM、UI contract 和 diff-check。
+- 本轮不执行本地 Gradle；GitHub Actions Run [33046701861](https://github.com/ct-yx/fxxkHilife/actions/runs/33046701861) 已通过 Debug/Release、JVM、UI contract 和 diff-check。
+- Release APK 工件：`fxxkHilife-UI_GLASS_BITMAP_FIX_V1-v4.7.3-107.apk`，SHA-256：`3fe208ca78f53936dd3ef4c624a6a6759cdce784aaf0aafe9e993a85f40cb9d8`；Debug APK 与自动化报告也已上传到同一 Run。
 - 定向实机只需先验证：安装 v4.7.3 后能启动、壁纸能显示且连续进入/退出不闪退；随后导出诊断报告，再恢复 `UI_LIGHT_FIELD_GLASS_V2` 的玻璃效果测试。
