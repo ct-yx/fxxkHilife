@@ -1662,5 +1662,6 @@
 - 安全模式按报告指纹和 versionCode 隔离；升级到后续修复版本后自动重新尝试 Light Field，BT 连接流程保持不变。
 
 ### 验证边界
-- 本轮仍不执行本地 Gradle；提交后由 GitHub Actions 验证 Debug/Release、JVM、UI contract 和 diff-check。
+- 本轮仍不执行本地 Gradle；GitHub Actions Run [33035722677](https://github.com/ct-yx/fxxkHilife/actions/runs/33035722677) 已通过 Debug/Release、JVM、UI contract 和 diff-check。
+- Release APK 工件：`fxxkHilife-UI_GLASS_CRASH_RECOVERY_V1-v4.7.2-106.apk`，SHA-256：`33a4ef06f33beb9997f59b7c894af2854ebcd732d6cdb726f97ae13e7d8287a7`；Debug APK 与自动化报告也已上传到同一 Run。
 - 定向实机第一步是：安装 4.7.2 后启动、确认可进入首页、分享包含 `last uncaught exception` 的诊断报告；随后再验证 Light Field 玻璃。
