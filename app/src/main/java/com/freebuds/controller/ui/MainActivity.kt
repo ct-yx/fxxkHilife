@@ -5,84 +5,69 @@ import android.content.Intent
 import android.content.pm.PackageManager
 import android.os.Build
 import android.os.Bundle
-import androidx.activity.ComponentActivity
-import androidx.activity.compose.setContent
-import androidx.activity.result.contract.ActivityResultContracts
-import androidx.activity.viewModels
-import androidx.compose.runtime.*
 import androidx.core.content.ContextCompat
-import androidx.lifecycle.Lifecycle
-import androidx.lifecycle.LifecycleEventObserver
-import com.freebuds.controller.data.DeviceViewModel
-import com.freebuds.controller.i18n.I18n
+import com.freebuds.controller.nativeui.NativeUiBridge
 import com.freebuds.controller.service.BluetoothService
-import com.freebuds.controller.ui.theme.AppTheme
-import com.freebuds.controller.ui.theme.ThemeMode
+import io.flutter.embedding.android.FlutterActivity
+import io.flutter.embedding.engine.FlutterEngine
 
-class MainActivity : ComponentActivity() {
-
-    val viewModel: DeviceViewModel by viewModels()
-    private var themeMode by mutableStateOf(ThemeMode.SYSTEM)
-
-    private val notificationPermissionLauncher = registerForActivityResult(
-        ActivityResultContracts.RequestPermission()
-    ) { /* granted or not, proceed */ }
+/** Flutter host for the new presentation layer. */
+class MainActivity : FlutterActivity() {
+    private var nativeUiBridge: NativeUiBridge? = null
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
-
-        // 所有设置从 ViewModel 持有的统一仓库读取；旧 key 由仓库一次性迁移。
-        themeMode = viewModel.settingsRepository.themeMode()
-        I18n.setLocale(viewModel.settingsRepository.locale())
-
-        // 请求通知权限（Android 13+）
-        if (Build.VERSION.SDK_INT >= 33) {
-            if (ContextCompat.checkSelfPermission(this, Manifest.permission.POST_NOTIFICATIONS)
-                != PackageManager.PERMISSION_GRANTED
-            ) {
-                notificationPermissionLauncher.launch(Manifest.permission.POST_NOTIFICATIONS)
-            }
-        }
-
-        // 打开应用即启动常驻通知服务，并通过服务尝试连接上次保存的耳机
+        requestRuntimePermissions()
         startBluetoothForegroundServiceIfAllowed(autoConnect = true)
+    }
 
-        // 前后台感知
-        lifecycle.addObserver(LifecycleEventObserver { _, event ->
-            when (event) {
-                Lifecycle.Event.ON_RESUME -> {
-                    viewModel.setAppInForeground(true)
-                    viewModel.maybeCheckForUpdate()
-                    startBluetoothForegroundServiceIfAllowed(autoConnect = true)
-                }
-                Lifecycle.Event.ON_PAUSE -> viewModel.setAppInForeground(false)
-                else -> {}
-            }
-        })
+    override fun configureFlutterEngine(flutterEngine: FlutterEngine) {
+        super.configureFlutterEngine(flutterEngine)
+        nativeUiBridge = NativeUiBridge(this, flutterEngine)
+    }
 
-        setContent {
-            AppTheme(mode = themeMode) {
-                AppNavHost(
-                    viewModel = viewModel,
-                    onOpenTerminal = {
-                        startActivity(Intent(this, TerminalActivity::class.java))
-                    },
-                    onThemeChange = { mode ->
-                        themeMode = mode
-                        viewModel.settingsRepository.setThemeMode(mode)
-                    },
-                )
+    override fun onResume() {
+        super.onResume()
+        nativeUiBridge?.nativeController?.setAppInForeground(true)
+        startBluetoothForegroundServiceIfAllowed(autoConnect = true)
+    }
+
+    override fun onPause() {
+        nativeUiBridge?.nativeController?.setAppInForeground(false)
+        super.onPause()
+    }
+
+    override fun onDestroy() {
+        nativeUiBridge?.close()
+        nativeUiBridge = null
+        super.onDestroy()
+    }
+
+    private fun requestRuntimePermissions() {
+        val permissions = buildList {
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
+                add(Manifest.permission.BLUETOOTH_SCAN)
+                add(Manifest.permission.BLUETOOTH_CONNECT)
             }
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+                add(Manifest.permission.POST_NOTIFICATIONS)
+            }
+        }.filter {
+            ContextCompat.checkSelfPermission(this, it) != PackageManager.PERMISSION_GRANTED
+        }
+        if (permissions.isNotEmpty()) {
+            requestPermissions(permissions.toTypedArray(), REQUEST_PERMISSIONS)
         }
     }
 
-    private fun hasBluetoothConnectPermission(): Boolean {
-        return Build.VERSION.SDK_INT < Build.VERSION_CODES.S ||
-            ContextCompat.checkSelfPermission(this, Manifest.permission.BLUETOOTH_CONNECT) ==
-            PackageManager.PERMISSION_GRANTED
-    }
+    private fun hasBluetoothConnectPermission(): Boolean =
+        Build.VERSION.SDK_INT < Build.VERSION_CODES.S ||
+            ContextCompat.checkSelfPermission(
+                this,
+                Manifest.permission.BLUETOOTH_CONNECT,
+            ) == PackageManager.PERMISSION_GRANTED
 
-    private fun startBluetoothForegroundServiceIfAllowed(autoConnect: Boolean = false) {
+    private fun startBluetoothForegroundServiceIfAllowed(autoConnect: Boolean) {
         if (!hasBluetoothConnectPermission()) return
         val intent = Intent(this, BluetoothService::class.java).apply {
             if (autoConnect) action = BluetoothService.ACTION_AUTO_CONNECT_LAST
@@ -94,8 +79,7 @@ class MainActivity : ComponentActivity() {
         }
     }
 
-    override fun onDestroy() {
-        viewModel.stopScan()
-        super.onDestroy()
+    companion object {
+        private const val REQUEST_PERMISSIONS = 1001
     }
 }

@@ -64,6 +64,8 @@ run_step() {
 
 chmod +x ./gradlew 2>/dev/null || true
 run_step "diff-check" git diff --check
+run_step "flutter-pub-get" bash -c 'cd flutter_ui && flutter pub get'
+run_step "flutter-analyze" bash -c 'cd flutter_ui && flutter analyze'
 run_step "ui-contract" python3 scripts/validate_ui_contract.py
 run_step "gradle" ./gradlew --no-daemon clean test assembleDebug assembleRelease --stacktrace
 

@@ -1,0 +1,8 @@
+# This file tracks properties of this Flutter project.
+# It is used by the Flutter tool for module upgrades.
+
+version:
+  revision: unknown
+  channel: stable
+
+project_type: module

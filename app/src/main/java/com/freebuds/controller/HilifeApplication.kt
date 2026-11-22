@@ -5,6 +5,7 @@ import android.app.NotificationChannel
 import android.app.NotificationManager
 import android.os.Build
 import com.freebuds.controller.data.DeviceRepository
+import com.freebuds.controller.data.SettingsRepository
 import com.freebuds.controller.i18n.I18n
 import com.freebuds.controller.service.BluetoothService
 import com.freebuds.controller.util.CrashReporter
@@ -12,19 +13,18 @@ import com.freebuds.controller.util.LogBuffer
 
 class HilifeApplication : Application() {
 
+    val settingsRepository by lazy { SettingsRepository(this) }
     val deviceRepository by lazy { DeviceRepository() }
 
     override fun onCreate() {
         super.onCreate()
         instance = this
         CrashReporter.install(this)
-        I18n.setLocale(I18n.loadLocale(this))
-        deviceRepository.init(this)
-        // 从 SharedPreferences 加载日志诊断设置。
-        val logPrefs = getSharedPreferences("fxxk_theme", MODE_PRIVATE)
-        val maxLines = logPrefs.getInt("log_max_lines", 2000)
-        LogBuffer.setMaxLines(maxLines)
-        LogBuffer.setProtocolFrameLogging(logPrefs.getBoolean("log_protocol_frames", false))
+        I18n.setLocale(settingsRepository.locale())
+        deviceRepository.init(this, settingsRepository)
+        // SettingsRepository 已完成旧设置迁移，并统一应用日志诊断配置。
+        LogBuffer.setMaxLines(settingsRepository.state.value.logMaxLines)
+        LogBuffer.setProtocolFrameLogging(settingsRepository.state.value.protocolFrameLogging)
         LogBuffer.startSession(
             mapOf(
                 "appVersion" to "${BuildConfig.VERSION_NAME} (${BuildConfig.VERSION_CODE})",

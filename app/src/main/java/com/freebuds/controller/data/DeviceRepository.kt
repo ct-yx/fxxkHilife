@@ -125,7 +125,7 @@ data class DeviceProps(
 
 /**
  * 连接与属性的单一数据源。
- * 由 HilifeApplication 持有单例，ViewModel 注入使用。
+ * 由 HilifeApplication 持有单例，连接服务和 Flutter API 共用。
  */
 class DeviceRepository : ConnectionManagerHost {
 
@@ -165,6 +165,7 @@ class DeviceRepository : ConnectionManagerHost {
         get() = connectionManager.currentSession
     private var prefs: SharedPreferences? = null
     private var appContext: Context? = null
+    private var settingsRepository: SettingsRepository? = null
     private val failedHandlers = ConcurrentHashMap.newKeySet<String>()
     // A failed optional probe is not equivalent to a probe that is still running.  Keeping these
     // states separate prevents the details screen from showing "background sync" forever.
@@ -200,8 +201,9 @@ class DeviceRepository : ConnectionManagerHost {
 
     // ── 初始化 SharedPreferences ─────────────────────────────────────────
 
-    fun init(context: Context) {
+    fun init(context: Context, settings: SettingsRepository? = null) {
         appContext = context.applicationContext
+        settingsRepository = settings ?: SettingsRepository(context)
         prefs = context.getSharedPreferences("fxxk_device", Context.MODE_PRIVATE)
         listeningStatsRepository.initialize(SharedPreferencesListeningStatsStorage(prefs!!))
         deviceInfoFetched = false // 每次进程启动重置
@@ -839,9 +841,7 @@ class DeviceRepository : ConnectionManagerHost {
         return ConnectionRequestResult(accepted = false)
     }
 
-    private fun isAutoLowLatencyEnabled(): Boolean = appContext
-        ?.getSharedPreferences("settings", Context.MODE_PRIVATE)
-        ?.getBoolean("auto_low_latency", true) ?: true
+    private fun isAutoLowLatencyEnabled(): Boolean = settingsRepository?.autoLowLatency() ?: true
 
     /**
      * The automatic mode is a connection action, not a consequence of a successful state read.

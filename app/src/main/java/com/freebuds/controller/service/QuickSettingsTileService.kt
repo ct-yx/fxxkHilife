@@ -12,6 +12,7 @@ import com.freebuds.controller.data.ConnectionCommand
 import com.freebuds.controller.data.ConnectionCommandResult
 import com.freebuds.controller.data.ConnectionState
 import com.freebuds.controller.data.ConnectionTrigger
+import com.freebuds.controller.data.DeviceControlApi
 import com.freebuds.controller.i18n.I18n
 import com.freebuds.controller.ui.MainActivity
 import kotlinx.coroutines.MainScope
@@ -91,7 +92,7 @@ class QuickSettingsTileService : TileService() {
         }
 
         scope.launch {
-            repo.setProperty("anc", "mode", nextMode)
+            DeviceControlApi(repo).setAncMode(nextMode)
             delay(300)
             updateTileState()
         }

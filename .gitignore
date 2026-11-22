@@ -17,3 +17,6 @@ reference/openfreebuds/.flatpak-pip-generator
 # Generated local build and one-click test reports.
 /app/build/
 /ci-output/
+/flutter_ui/.android/
+/flutter_ui/.dart_tool/
+/flutter_ui/.pub/

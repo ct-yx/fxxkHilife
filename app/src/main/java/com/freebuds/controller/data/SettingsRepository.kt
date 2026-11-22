@@ -1,8 +1,6 @@
 package com.freebuds.controller.data
 
 import android.content.Context
-import com.freebuds.controller.ui.WallpaperScope
-import com.freebuds.controller.ui.theme.ThemeMode
 import com.freebuds.controller.i18n.I18nLocale
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -12,8 +10,8 @@ import kotlinx.coroutines.flow.asStateFlow
  * Single persistence boundary for app-facing preferences.
  *
  * The old preference files remain readable so an upgrade does not reset the user's theme,
- * wallpaper or diagnostics settings. Composables only receive values and callbacks; they do not
- * own a SharedPreferences instance.
+ * wallpaper or diagnostics settings. Presentation code only receives values and callbacks; it
+ * does not own a SharedPreferences instance.
  */
 class SettingsRepository(context: Context) {
     private val appContext = context.applicationContext

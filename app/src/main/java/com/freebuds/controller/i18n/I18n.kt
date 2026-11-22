@@ -1,9 +1,6 @@
 package com.freebuds.controller.i18n
 
 import android.content.Context
-import androidx.compose.runtime.Composable
-import androidx.compose.runtime.Immutable
-import androidx.compose.runtime.staticCompositionLocalOf
 
 enum class I18nLocale(
     val tag: String,
@@ -70,7 +67,6 @@ interface I18nProvider {
     fun t(key: String, vararg args: Any?): String
 }
 
-@Immutable
 private object SimplifiedChineseProvider : I18nProvider {
     override val localeTag: String = I18nLocale.ZH_CN.tag
 
@@ -387,7 +383,6 @@ private object SimplifiedChineseProvider : I18nProvider {
     fun entries(): Map<String, String> = strings
 }
 
-@Immutable
 private object EnglishProvider : I18nProvider {
     override val localeTag: String = I18nLocale.EN.tag
 
@@ -687,7 +682,6 @@ private object EnglishProvider : I18nProvider {
     fun entries(): Map<String, String> = strings
 }
 
-@Immutable
 private object TraditionalChineseProvider : I18nProvider {
     override val localeTag: String = I18nLocale.ZH_TW.tag
     private val strings = SimplifiedChineseProvider.entries().mapValues { (_, value) -> toTraditional(value) }
@@ -747,7 +741,5 @@ private fun toTraditional(value: String): String {
     return phraseConverted.map { characterReplacements[it] ?: it }.joinToString("")
 }
 
-val LocalI18n = staticCompositionLocalOf<I18nProvider> { SimplifiedChineseProvider }
-
-@Composable
-fun i18n(key: String, vararg args: Any?): String = LocalI18n.current.t(key, *args)
+/** Compatibility helper for native callers; the Flutter UI owns presentation. */
+fun i18n(key: String, vararg args: Any?): String = I18n.t(key, *args)

@@ -10,7 +10,7 @@ import kotlinx.coroutines.flow.StateFlow
  * Typed commands accepted by every Android connection entry point.
  *
  * The repository remains the compatibility implementation for this migration step, but Service,
- * Tile, ViewModel and the regression runner no longer need to know which repository method owns
+ * Tile, UI bridge and the regression runner no longer need to know which repository method owns
  * a particular trigger.  The transport/session implementation can move behind this boundary in
  * the next BT-3 step without changing those callers.
  */
