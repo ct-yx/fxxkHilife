@@ -1,5 +1,29 @@
 import 'package:flutter/widgets.dart';
 import 'package:prism_ui/prism_ui.dart';
+export 'package:prism_ui/icons/icons.dart';
+
+class PrismAppBar extends StatelessWidget implements PreferredSizeWidget {
+  const PrismAppBar({
+    super.key,
+    this.leading,
+    this.title,
+    this.actions = const <Widget>[],
+  });
+
+  final Widget? leading;
+  final Widget? title;
+  final List<Widget> actions;
+
+  @override
+  Size get preferredSize => const Size.fromHeight(72);
+
+  @override
+  Widget build(BuildContext context) => AppBar(
+        leading: leading,
+        title: title,
+        actions: actions,
+      );
+}
 
 class PageScroll extends StatelessWidget {
   const PageScroll({super.key, required this.children});

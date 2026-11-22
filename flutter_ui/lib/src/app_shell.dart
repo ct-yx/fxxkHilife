@@ -7,6 +7,7 @@ import 'pages/home_page.dart';
 import 'pages/listening_page.dart';
 import 'pages/scan_page.dart';
 import 'pages/settings_page.dart';
+import 'widgets/ui.dart';
 
 class AppShell extends StatefulWidget {
   const AppShell({super.key, required this.appState});
@@ -45,7 +46,7 @@ class _AppShellState extends State<AppShell> {
         ];
         final titles = <String>['设备', '控制', '统计', '设置'];
         return PrismScaffold(
-          bar: AppBar(title: Text(titles[selectedIndex])),
+          bar: PrismAppBar(title: Text(titles[selectedIndex])),
           body: IndexedStack(index: selectedIndex, children: pages),
           foot: NavigationBar(
             selectedIndex: selectedIndex,

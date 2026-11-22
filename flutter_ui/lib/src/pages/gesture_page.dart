@@ -21,7 +21,7 @@ class GesturePage extends StatelessWidget {
       builder: (context, _) {
         final current = appState.snapshot.device;
         return PrismScaffold(
-          bar: AppBar(
+          bar: PrismAppBar(
             leading: IconButton(
               tooltip: '返回',
               onPressed: () => Navigator.of(context).pop(),

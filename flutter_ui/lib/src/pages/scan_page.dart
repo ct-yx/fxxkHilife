@@ -42,7 +42,7 @@ class _ScanPageState extends State<ScanPage> {
             return b.rssi.compareTo(a.rssi);
           });
         return PrismScaffold(
-          bar: AppBar(
+          bar: PrismAppBar(
             leading: IconButton(
               tooltip: '返回',
               onPressed: () => Navigator.of(context).pop(),

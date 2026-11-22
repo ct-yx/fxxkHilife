@@ -1,5 +1,7 @@
 import 'dart:async';
 
+import 'package:flutter/foundation.dart';
+
 import 'native_bridge.dart';
 
 Map<String, dynamic> asMap(Object? value) {

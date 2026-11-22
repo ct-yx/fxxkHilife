@@ -13,7 +13,10 @@ pluginManagement {
 }
 
 dependencyResolutionManagement {
-    repositoriesMode.set(RepositoriesMode.FAIL_ON_PROJECT_REPOS)
+    // Flutter's Add-to-App Gradle plugin adds its engine Maven repository to the
+    // project. Allow that repository while retaining the shared Google/Maven Central
+    // declarations above.
+    repositoriesMode.set(RepositoriesMode.PREFER_PROJECT)
     repositories {
         google()
         mavenCentral()

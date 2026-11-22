@@ -237,7 +237,7 @@ class _DiagnosticsPageState extends State<DiagnosticsPage> {
   @override
   Widget build(BuildContext context) {
     return PrismScaffold(
-      bar: AppBar(
+      bar: PrismAppBar(
         leading: IconButton(
           tooltip: '返回',
           onPressed: () => Navigator.of(context).pop(),
