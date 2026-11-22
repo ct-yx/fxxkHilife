@@ -12,6 +12,12 @@ pluginManagement {
     }
 }
 
+plugins {
+    // Flutter 3.47 rejects the Kotlin Gradle Plugin versions used by older
+    // generated module templates. Keep the host and Add-to-App toolchain aligned.
+    id("org.jetbrains.kotlin.android") version "2.2.20" apply false
+}
+
 dependencyResolutionManagement {
     // Flutter's Add-to-App Gradle plugin adds its engine Maven repository to the
     // project. Allow that repository while retaining the shared Google/Maven Central

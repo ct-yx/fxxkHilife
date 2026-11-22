@@ -81,7 +81,7 @@ class HomePage extends StatelessWidget {
                     const SizedBox(width: 10),
                     IconButton.filled(
                       tooltip: '断开连接',
-                      onPressed: () => appState.run(appState.bridge.invoke('disconnect')),
+                      onPressed: () => appState.run(appState.bridge.disconnect()),
                       icon: const Text('×'),
                     ),
                   ],

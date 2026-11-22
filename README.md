@@ -16,11 +16,9 @@
   <a href="https://github.com/ct-yx/fxxkHilife/issues">反馈问题 / 参与测试</a>
 </p>
 
-> **当前正式发布：v4.6.0（versionCode 103）**
-> BT 重构与标准 Material 3 UI 基线已合并发布；深色模式壁纸会按 RGB 亮度缩放处理，不叠加黑色滤镜。
->
-> **当前开发测试：v4.7.3（versionCode 107）**
-> 默认构建标签为 `UI_GLASS_BITMAP_FIX_V1`：壁纸统一使用软件位图路径，避免硬件位图在软件 Canvas 下触发启动崩溃；检测到上次异常时仍自动进入标准 Material 3 安全模式。
+> **当前开发分支：`codex/prism-ui-rewrite`**
+> 旧 Compose 页面已从生产代码删除，新的界面使用 Flutter Add-to-App + `prism_ui` 完全重写。
+> 连接服务、RFCOMM/SPP 协议和型号适配器保留在原生层，并通过类型化快照与语义命令提供给新 UI。
 
 ---
 
@@ -32,60 +30,13 @@
 
 ---
 
-## v4.6.0：标准 Material 3 UI 与深色模式壁纸
+## 当前开发阶段
 
-本版本不修改 BT-0 至 BT-4，撤销上一轮未达到预期的第三方渲染路线，建立可预测的标准 Material 3 UI 基线：
-
-- 生产代码不再声明或调用第三方玻璃渲染依赖；所有页面统一使用 Material 3 `Card`、`Surface`、`TopAppBar` 和主题色板。
-- 删除玻璃模式切换、玻璃参数持久化、effect/source 宿主和滚动期特效分支，避免“配置存在但没有效果”或滚动卡顿。
-- 保留现有 ANC、耳机、Tile 图标和壁纸资源；壁纸作为普通背景图片，不参与控件渲染。深色模式下仅将壁纸 RGB 亮度缩放到 75%，浅色模式保持原图。
-- 蓝牙连接、指令、状态契约和自动实机测试入口不在本包修改范围内。
-
-Release 构建标签为 `UI_MATERIAL3_BASELINE`，覆盖本轮 UI surface、设置迁移、路由边界、壁纸显示和资源显示，不重复 BT A-F/36/100 项矩阵。
-
-## v4.7.1：Light Field 自研 AGSL 壁纸柔光玻璃测试包
-
-- 卡片、可展开卡片和顶部栏通过共享低分辨率壁纸纹理获得实时区域取色；API 33+ 使用自研 AGSL 绘制方向性受光、宽边缘泛光、折射和顶部轻微扭曲。
-- 页面级 Light Field 跟随触摸位置变化；材质根据背景亮度、局部复杂度和文字对比风险自适应透明度与融色强度。
-- 普通玻璃表面移除默认矩形描边，顶部栏改为脱离页面边缘的悬浮容器。
-- Android 12 及以下、无壁纸或壁纸加载失败时回退为优化后的标准 Material 3，不使用软件折射。
-- 测试构建标签为 `UI_LIGHT_FIELD_GLASS_V2`；本包只进入 UI 定向截图、触摸光场、滚动、无障碍和展开交互验收，不重复 BT 矩阵。
-
-## v4.7.2：壁纸玻璃崩溃恢复测试包
-
-- CrashReporter 在未捕获异常发生前同步记录当前版本并标记玻璃安全模式；下一次启动自动跳过壁纸解码和 AGSL，使用标准 Material 3，避免重复启动闪退。
-- 安全模式只针对当前版本和当前崩溃报告生效；升级到后续修复版本后自动重新尝试 Light Field，原崩溃报告仍会随诊断导出。
-- 测试构建标签为 `UI_GLASS_CRASH_RECOVERY_V1`；本包首先验证“闪退后仍可启动并导出日志”，再验证 Android 13+ 玻璃效果。
-
-## v4.7.3：壁纸软件位图修复测试包
-
-- 根据实机诊断报告修复 `Software rendering doesn't support hardware bitmaps`：Coil 请求关闭硬件位图，壁纸实际绘制改用 `ARGB_8888` 软件位图。
-- 壁纸加载完成前保持 Material 3 背景，避免空白透明层；共享纹理采样继续使用同一份软件位图。
-- 保留上一次异常自动安全启动和诊断导出；构建标签为 `UI_GLASS_BITMAP_FIX_V1`，先验证启动、壁纸显示和诊断导出，再恢复 AGSL 定向验收。
-
----
-
-## v4.3.10：BT 重构首个大版本
-
-这次发布先收口蓝牙，不把尚未开始的 UI-0/UI-1 混入版本承诺。BT-0 至 BT-4 已完成，应用继续使用经典蓝牙 SPP / RFCOMM，页面只消费稳定的状态与能力边界。
-
-### 本版本完成
-
-- 统一 `RfcommSppTransport`、`ProtocolSession`、`CommandClient/Scheduler` 与 `EarbudConnectionManager` 的生产路径，避免多个入口重复建连。
-- 按同一 `attempt` 管理连接、初始化、轮询和状态投影；失败连接主动清理 session，手动断开、ACL 断开会先取消工作并 flush 听音统计。
-- 固定 endpoint/channel/source 的来源记录，收紧型号能力表和 Handler 注册；未知型号不再强行注册全部 Handler。
-- ANC 以权威读回为状态来源，低延迟使用写入、ACK/读回和最终状态同步；通用 `EarbudSnapshot` 同时提供能力、控制通道、pending/failed 和兼容 `DeviceProps` 投影。
-- 修复 Huawei 5A 双字节长度、完整帧边界、payload 参数边界和可选 CRC 校验，避免大帧或粘包被错误截断。
-
-### 验证证据
-
-- Debug/Release 各 94 个 JVM 测试通过，均为 `0 failures / 0 errors / 0 skipped`；Debug/Release 构建和 `diff-check` 通过。
-- `BT4_STATE_CONTRACT_5` 在 HUAWEI FreeBuds 6i、Android API 36、固件 `HarmonyOS 6.0.0.292(F001H003C00)` 上 5/5 通过：`reportValid=true`、`overall=PASS`，endpoint=`rfcomm-channel=1`，source=`VerifiedModelConfig`，契约检查 P50/P95=`2549/3573ms`。
-- 上述实机证据只覆盖该设备、系统、固件和测试 profile；其他型号仍需各自的定向日志，不能把 5 轮状态契约结果扩展为所有指令已验证。
-
-### 下一阶段
-
-UI-0 将先建立页面、状态、交互、设置 key 和美术资源基线，再按 UI-1 至 UI-5 重构。现有美术资源保留；当前 UI 只接受标准 Material 3 surface，后续视觉改动必须先有截图和交互证据。
+- Flutter 页面、原生 UI 接口和 `DeviceControlApi` 已建立。
+- GitHub Actions 已通过 `flutter pub get`、`flutter analyze` 和 UI contract。
+- 当前云端构建阻断在 Kotlin Gradle Plugin 版本门；修复后再生成 Debug/Release APK。
+- 真机启动、扫描、连接、设置读回和后台重连仍需用新包重新验收。
+- 云端构建和真机验收完成后，`codex/prism-ui-rewrite` 将设为 GitHub 默认分支；旧分支保留。
 
 ---
 
@@ -93,7 +44,7 @@ UI-0 将先建立页面、状态、交互、设置 key 和美术资源基线，�
 
 fxxkHilife 是一个第三方、开源、离线的耳机控制面板，目标是让 HUAWEI FreeBuds / HONOR Earbuds 用户在不登录账号、不接入厂商生态、不上传数据的情况下，依然能控制耳机的常用功能。
 
-它直接使用经典蓝牙 **SPP / RFCOMM** 与耳机通信，协议实现参考了 [OpenFreebuds](https://github.com/melianmiko/OpenFreebuds) 的逆向工作，并在 Android / Jetpack Compose 上实现了完整的移动端界面。
+它直接使用经典蓝牙 **SPP / RFCOMM** 与耳机通信，协议实现参考了 [OpenFreebuds](https://github.com/melianmiko/OpenFreebuds) 的逆向工作。界面由 Flutter `prism_ui` 独立实现，原生层只负责连接、设备状态和系统服务。
 
 这个项目仍在快速迭代中。现在我正在招募更多型号的测试者，帮助确认不同耳机型号上的协议兼容性。
 
@@ -101,7 +52,7 @@ fxxkHilife 是一个第三方、开源、离线的耳机控制面板，目标是
 
 ## 主要能力
 
-- **UI 重构 Release**：v4.6.0 使用 `UI_MATERIAL3_BASELINE` 统一单一 Material 3 surface、路由边界、设置迁移、壁纸显示和现有美术资源；后续截图、无障碍和交互报告继续作为定向验收证据。
+- **UI 重构**：Flutter `prism_ui` 新界面将连接状态、设备控制、手势、听音统计、设置和诊断日志分区展示。
 
 - **设备连接与自动连接**：扫描 HUAWEI / HONOR 耳机，自动保存设备；常驻服务检测到已保存耳机与手机系统蓝牙连接后，会按退避策略自动建立 App SPP 控制连接。
 - **ANC / 透传 / 关闭**：应用内长条胶囊滑块、Quick Settings Tile、常驻通知三按钮均可切换 ANC 模式；在第三方 Android 手机上也可以不打开应用，通过系统快捷开关直接循环切换 ANC。
@@ -110,7 +61,7 @@ fxxkHilife 是一个第三方、开源、离线的耳机控制面板，目标是
 - **手势与音频偏好**：双击、三击、长按、滑动手势配置；音质优先 / 连接优先；EQ 调音预设读取、展示、写入和回读同步；语音提示语言读取与写入能力。
 - **双设备连接 MVP**：读取耳机侧双连开关与已配对设备列表，展示首选、播放中、连接和自动连接状态；支持切换双连开关、首选设备、连接/断开与自动连接标记。Android 侧仍保持单 SPP 控制通道，并在 UI 中清晰显示系统蓝牙连接与控制通道连接状态。
 - **常驻通知与日志**：通知显示 ANC、低延迟、音质、电量、听音时长；调试终端可查看 SPP 原始日志、导出日志、写入属性。
-- **界面体验**：Material3 + Jetpack Compose，深色/浅色/跟随系统，全局壁纸与作用域控制，统一 i18n 文案入口与中文选项映射。
+- **界面体验**：Flutter `prism_ui` 页面与原生连接运行时分离，主题和导航由新 UI 自己管理。
 
 ---
 

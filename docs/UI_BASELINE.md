@@ -1,4 +1,6 @@
-# UI-0 基线与资源清点
+# UI-0 基线与资源清点（历史记录）
+
+> 本文件记录旧 Android UI 路线的历史证据，不是当前实现计划，也不代表生产代码仍使用 Compose、Material3 surface adapter 或旧页面。当前方案见 [新 UI 与连接 API 重构计划](./REFACTOR_PLAN_UI_AND_BLUETOOTH.md)。
 
 > 建立日期：2026-08-14
 >

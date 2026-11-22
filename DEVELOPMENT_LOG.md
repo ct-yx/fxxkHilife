@@ -1,6 +1,6 @@
 # Development History
 
-> 当前生产 UI 基线：v4.6.0 / versionCode 103 只使用标准 Material 3；早期日志中的第三方玻璃路线仅用于历史追溯，不代表当前依赖、代码或测试要求。
+> 历史记录中的 Compose、Material 3 和玻璃路线不代表当前生产 UI。当前开发分支 `codex/prism-ui-rewrite` 使用 Flutter Add-to-App + `prism_ui` 重写页面；RFCOMM/SPP 连接运行时保留在原生层，通过类型化快照和语义命令供新 UI 使用。
 
 ---
 

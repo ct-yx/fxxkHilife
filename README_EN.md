@@ -16,11 +16,9 @@
   <a href="https://github.com/ct-yx/fxxkHilife/issues">Report / Join testing</a>
 </p>
 
-> **Current release: v4.6.0 (versionCode 103)**
-> The BT refactor and the standard Material 3 UI baseline are released; dark-mode wallpapers use RGB brightness scaling instead of a black overlay.
->
-> **Current development build: v4.7.3 (versionCode 107)**
-> The default build label is `UI_GLASS_BITMAP_FIX_V1`: wallpapers use a software bitmap path to avoid hardware-bitmap crashes on a software Canvas; a previous startup exception still enables the standard Material 3 safe mode.
+> **Current development branch: `codex/prism-ui-rewrite`**
+> The old Compose pages were removed from the production graph. The new presentation layer is rebuilt with Flutter Add-to-App and `prism_ui`.
+> RFCOMM/SPP, model adapters, the foreground connection service and system tile remain native and are exposed through typed snapshots and semantic commands.
 
 ---
 
@@ -32,60 +30,13 @@ Full introduction, download links, demos, and development logs are available on 
 
 ---
 
-## v4.6.0: standard Material 3 UI and dark-mode wallpaper brightness
+## Current development stage
 
-This release does not change BT-0 through BT-4. It removes the previous third-party rendering route and establishes a predictable standard Material 3 baseline:
-
-- The production graph no longer declares or calls a third-party glass-rendering dependency; every route uses Material 3 `Card`, `Surface`, `TopAppBar` and theme roles.
-- Display-mode switching, glass-parameter persistence, effect/source hosts and scroll-time effect branches are removed, avoiding invisible configuration and scroll jank.
-- Existing ANC, earbud, Tile and wallpaper assets remain; wallpaper is an ordinary background image and is not a rendering input. In dark mode, its RGB brightness is scaled to 75%; light mode keeps the original image.
-- Bluetooth connection, command, state-contract and hardware-test code are outside this build's change scope.
-
-The Release build label is `UI_MATERIAL3_BASELINE`. Testing covers the changed UI surface, settings migration, route boundaries, wallpaper display and asset rendering—not the BT A-F/36/100-round matrices.
-
-## v4.7.1: Light Field self-built AGSL wallpaper glass test build
-
-- Cards, expandable cards and the top bar use a shared low-resolution wallpaper texture for live regional color sampling; Android 13+ adds directional light, wide edge glow, refraction and mild top-bar distortion through the self-built AGSL shader.
-- A page-level Light Field follows touch position, while material alpha and tint adapt to wallpaper brightness, local complexity and text contrast risk.
-- Default rectangular glass borders are removed, and the top bar is detached from the page edge as a floating surface.
-- Android 12 and below, missing wallpapers and failed wallpaper loads use the optimized opaque Material 3 fallback without software refraction.
-- The test build label is `UI_LIGHT_FIELD_GLASS_V2`; this build enters targeted UI screenshots, touch-light behavior, scrolling, accessibility and expandable-card validation only, not the BT matrix.
-
-## v4.7.2: wallpaper glass crash-recovery test build
-
-- CrashReporter synchronously records the current version and marks glass safe mode before an uncaught exception is handed to Android; the next launch skips wallpaper decoding and AGSL and uses standard Material 3 instead of repeating the startup crash.
-- Safe mode is scoped to the current version and crash report; a later fix build automatically retries Light Field, while the previous stack remains available in diagnostics.
-- The test build label is `UI_GLASS_CRASH_RECOVERY_V1`; first verify that a crashed install can reopen and export diagnostics, then verify Android 13+ glass behavior.
-
-## v4.7.3: software-wallpaper-bitmap fix test build
-
-- The device report identified `Software rendering doesn't support hardware bitmaps`. Coil requests now disable hardware bitmaps, and the wallpaper is drawn from the converted `ARGB_8888` software bitmap.
-- Material 3 remains visible until the wallpaper is ready, avoiding a transparent empty layer; the shared glass texture samples the same software bitmap.
-- Previous-crash safe mode and diagnostic export remain in place. The build label is `UI_GLASS_BITMAP_FIX_V1`; verify startup, wallpaper display, and diagnostics before resuming targeted AGSL validation.
-
----
-
-## v4.3.10: first major BT-refactor release
-
-This release closes the Bluetooth work first. It does not include the not-yet-started UI-0/UI-1 implementation. BT-0 through BT-4 are complete; the app continues to use classic Bluetooth SPP / RFCOMM while screens consume the stabilized state and capability boundaries.
-
-### Included in this release
-
-- One production path for `RfcommSppTransport`, `ProtocolSession`, `CommandClient/Scheduler`, and `EarbudConnectionManager`, avoiding duplicate connection attempts from different entry points.
-- One `attempt` owns connection, initialization, polling, and state projection; failed sessions are cleaned up, while manual, ACL, and SPP disconnects cancel work and flush listening statistics before publishing the final state.
-- Explicit endpoint/channel/source evidence, stricter model capability tables, and bounded Handler registration; unknown models are no longer forced through every Handler.
-- ANC uses authoritative read-back as its state source. Low latency uses write, ACK/read-back, and final-state synchronization. `EarbudSnapshot` exposes capabilities, control-channel state, pending/failed state, and the compatible `DeviceProps` projection atomically.
-- Correct Huawei 5A double-byte length, complete-frame, payload-parameter, and optional CRC boundaries so large or concatenated frames are not truncated incorrectly.
-
-### Verification evidence
-
-- 94 JVM tests passed in both Debug and Release, with `0 failures / 0 errors / 0 skipped`; `diff-check` and both APK builds passed.
-- `BT4_STATE_CONTRACT_5` passed 5/5 on HUAWEI FreeBuds 6i, Android API 36, firmware `HarmonyOS 6.0.0.292(F001H003C00)`: `reportValid=true`, `overall=PASS`, endpoint=`rfcomm-channel=1`, source=`VerifiedModelConfig`, contract-check P50/P95=`2549/3573ms`.
-- This hardware evidence is limited to that device, system, firmware, and profile. Other models still need their own targeted logs; five state-contract rounds do not prove every command on every model.
-
-### Next phase
-
-UI-0 will first establish page, state, interaction, settings-key, and art-asset baselines, followed by the UI-1 through UI-5 migration. Existing art assets are retained. The current UI accepts only standard Material 3 surfaces; future visual changes require screenshot and interaction evidence.
+- The Flutter pages, native UI interface and `DeviceControlApi` are in place.
+- GitHub Actions passes `flutter pub get`, `flutter analyze` and the UI contract.
+- The cloud build is currently blocked by the Kotlin Gradle Plugin version gate; APK generation follows that fix.
+- Startup, scan, connection, read-back and background reconnect still need verification with the new APK.
+- After cloud and device acceptance, `codex/prism-ui-rewrite` will become the GitHub default branch; old branches remain available.
 
 ---
 
@@ -93,7 +44,7 @@ UI-0 will first establish page, state, interaction, settings-key, and art-asset 
 
 fxxkHilife is a third-party, open-source, offline control panel for HUAWEI FreeBuds / HONOR Earbuds. It aims to restore everyday earbud controls without requiring account login, vendor ecosystem services, network access, ads, or data upload.
 
-It communicates with earbuds directly through classic Bluetooth **SPP / RFCOMM**. The protocol work is based on [OpenFreebuds](https://github.com/melianmiko/OpenFreebuds), with an Android / Jetpack Compose interface built on top.
+It communicates with earbuds directly through classic Bluetooth **SPP / RFCOMM**. The protocol work is based on [OpenFreebuds](https://github.com/melianmiko/OpenFreebuds). The presentation layer is rebuilt independently in Flutter `prism_ui`; native code owns connection, device state and system services.
 
 The project is still evolving quickly. Testers with more earbud models are very welcome to help verify protocol compatibility.
 
@@ -101,7 +52,7 @@ The project is still evolving quickly. Testers with more earbud models are very 
 
 ## Key features
 
-- **UI refactor release**: v4.6.0 uses `UI_MATERIAL3_BASELINE` for the single Material 3 surface, route boundaries, settings migration, wallpaper display and existing art assets; screenshots, accessibility and interaction reports remain the targeted acceptance evidence.
+- **UI refactor**: a new Flutter `prism_ui` presentation layer separates device status, controls, gestures, listening statistics, settings and diagnostics from the native connection runtime.
 
 - **Connection and auto-connect**: scan HUAWEI / HONOR earbuds and save known devices; the foreground service detects saved earbuds already connected by Android Bluetooth and opens the app SPP control channel with backoff.
 - **ANC / Awareness / Off**: switch ANC modes from the in-app pill slider, Quick Settings Tile, or persistent notification actions; on third-party Android phones, you can cycle ANC directly from the system quick settings panel without opening the app.
@@ -110,7 +61,7 @@ The project is still evolving quickly. Testers with more earbud models are very 
 - **Gestures and audio preferences**: double tap, triple tap, long press, swipe gestures, sound quality vs connectivity preference, EQ preset read/display/write/read-back sync, and voice prompt language read/write.
 - **Dual Connect MVP**: reads the earbud-side dual-connect toggle and paired-device list, displays preferred/playing/connected/auto-connect states, and supports toggling the dual-connect switch, preferred device, connect/disconnect, and auto-connect flags. Android-side control remains a single active SPP session, with UI showing both system Bluetooth state and control-channel state.
 - **Persistent notification and logs**: notification shows ANC, low-latency, sound quality, battery, and listening duration; debug terminal can inspect raw SPP logs, export logs, and write properties.
-- **UI experience**: Material3 + Jetpack Compose, dark/light/system themes, wallpaper scope, unified i18n text entry points, Chinese option mapping, and multi-screen navigation.
+- **UI experience**: Flutter `prism_ui` owns theme and navigation while the native layer exposes typed snapshots and semantic commands.
 
 ---
 

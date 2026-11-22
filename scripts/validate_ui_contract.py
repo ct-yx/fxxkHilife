@@ -48,6 +48,7 @@ def main() -> int:
     bridge = require_file(NATIVE_ROOT / "nativeui/NativeUiBridge.kt")
     controller = require_file(NATIVE_ROOT / "nativeui/NativeUiController.kt")
     api = require_file(NATIVE_ROOT / "data/DeviceControlApi.kt")
+    dart_bridge = require_file(FLUTTER_ROOT / "lib/src/native_bridge.dart")
     if 'fxxkhilife/native_ui' not in bridge or 'fxxkhilife/native_ui_state' not in bridge:
         fail("native channel names are missing")
     for semantic_command in (
@@ -61,6 +62,9 @@ def main() -> int:
             fail(f"native controller command is missing: {semantic_command}")
     if "repository.setProperty(" in controller or "setProperty(" in bridge:
         fail("raw property writes crossed the UI bridge")
+    for typed_method in ("disconnect", "startScan", "stopScan"):
+        if f"Future<void> {typed_method}" not in dart_bridge:
+            fail(f"typed Flutter native method is missing: {typed_method}")
     for semantic_command in ("setAncMode", "setLowLatency", "setGesture"):
         if semantic_command not in api:
             fail(f"semantic device API is missing: {semantic_command}")
@@ -69,6 +73,8 @@ def main() -> int:
         path.read_text(encoding="utf-8")
         for path in (FLUTTER_ROOT / "lib").rglob("*.dart")
     )
+    if ".bridge.invoke(" in flutter_sources:
+        fail("Flutter pages must use typed native methods instead of raw channel names")
     for required in (
         "PrismApp(",
         "PrismScaffold(",
@@ -90,6 +96,9 @@ def main() -> int:
         "PermissionGuideScreen.kt",
         "DeviceViewModel.kt",
     }
+    stale_test_root = ROOT / "app/src/test/java/com/freebuds/controller/ui"
+    if stale_test_root.exists():
+        fail("old Compose UI tests remain under app/src/test/java/com/freebuds/controller/ui")
     for path in UI_ROOT.rglob("*.kt"):
         if path.name in old_ui_files:
             fail(f"old Compose UI file remains: {path.relative_to(ROOT)}")

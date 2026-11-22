@@ -19,12 +19,12 @@ class _ScanPageState extends State<ScanPage> {
   @override
   void initState() {
     super.initState();
-    unawaited(widget.appState.run(widget.appState.bridge.invoke('start_scan')));
+    unawaited(widget.appState.run(widget.appState.bridge.startScan()));
   }
 
   @override
   void dispose() {
-    unawaited(widget.appState.run(widget.appState.bridge.invoke('stop_scan')));
+    unawaited(widget.appState.run(widget.appState.bridge.stopScan()));
     super.dispose();
   }
 
@@ -54,10 +54,10 @@ class _ScanPageState extends State<ScanPage> {
                 tooltip: snapshot.scanning ? '停止扫描' : '重新扫描',
                 onPressed: snapshot.scanning
                     ? () => widget.appState.run(
-                          widget.appState.bridge.invoke('stop_scan'),
+                          widget.appState.bridge.stopScan(),
                         )
                     : () => widget.appState.run(
-                          widget.appState.bridge.invoke('start_scan'),
+                          widget.appState.bridge.startScan(),
                         ),
                 icon: Text(snapshot.scanning ? '×' : '↻'),
               ),
@@ -104,7 +104,7 @@ class _ScanPageState extends State<ScanPage> {
               if (!snapshot.scanning && devices.isEmpty)
                 Panel(
                   onPressed: () => widget.appState.run(
-                    widget.appState.bridge.invoke('start_scan'),
+                    widget.appState.bridge.startScan(),
                   ),
                   child: const ListRow(
                     leading: Text('⌁'),
