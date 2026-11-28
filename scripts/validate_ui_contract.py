@@ -37,16 +37,23 @@ def main() -> int:
     build = require_file(ROOT / "app/build.gradle.kts")
     if 'implementation(project(":flutter"))' not in build:
         fail("Android host does not depend on the Flutter module")
+    if 'id("org.jetbrains.kotlin.android")' not in build:
+        fail("Android host must apply the Kotlin Android plugin in the app module")
     for forbidden in ("androidx.compose", "org.jetbrains.kotlin.plugin.compose", "coil-compose"):
         if forbidden in build:
             fail(f"old Compose UI dependency remains: {forbidden}")
 
-    root_build = require_file(ROOT / "build.gradle.kts")
-    if 'id("com.android.application") version "8.11.1"' not in root_build:
-        fail("host AGP must stay on Flutter 3.47 compatible 8.11.1")
+    if 'id("com.android.application") version "9.1.0" apply false' not in settings:
+        fail("host AGP must stay on the Flutter 3.47 template version 9.1.0")
+    if 'id("org.jetbrains.kotlin.android") version "2.4.0" apply false' not in settings:
+        fail("host Kotlin Gradle Plugin must stay on the Flutter 3.47 template version 2.4.0")
     wrapper = require_file(ROOT / "gradle/wrapper/gradle-wrapper.properties")
-    if "gradle-8.14-bin.zip" not in wrapper:
-        fail("Gradle wrapper must stay on the AGP 8.11 toolchain")
+    if "gradle-9.3.1-all.zip" not in wrapper:
+        fail("Gradle wrapper must stay on the Flutter 3.47 template version 9.3.1")
+    properties = require_file(ROOT / "gradle.properties")
+    for flag in ("android.newDsl=false", "android.builtInKotlin=false"):
+        if flag not in properties:
+            fail(f"Flutter Android template flag is missing: {flag}")
 
     main_activity = require_file(UI_ROOT / "MainActivity.kt")
     if "FlutterActivity" not in main_activity or "NativeUiBridge" not in main_activity:

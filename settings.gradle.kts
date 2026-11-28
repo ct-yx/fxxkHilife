@@ -13,9 +13,10 @@ pluginManagement {
 }
 
 plugins {
-    // Flutter 3.47 rejects the Kotlin Gradle Plugin versions used by older
-    // generated module templates. Keep the host and Add-to-App toolchain aligned.
-    id("org.jetbrains.kotlin.android") version "2.2.20" apply false
+    // Match the Flutter 3.47.0 template so the generated Add-to-App module and
+    // the native host resolve one compatible Android/Kotlin plugin classpath.
+    id("com.android.application") version "9.1.0" apply false
+    id("org.jetbrains.kotlin.android") version "2.4.0" apply false
 }
 
 dependencyResolutionManagement {

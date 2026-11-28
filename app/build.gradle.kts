@@ -2,6 +2,9 @@ import org.jetbrains.kotlin.gradle.dsl.JvmTarget
 
 plugins {
     id("com.android.application")
+    // Apply after Android so Kotlin resolves the AGP variant API from the same
+    // plugin classpath used by the host module.
+    id("org.jetbrains.kotlin.android")
 }
 
 android {

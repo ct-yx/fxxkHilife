@@ -41,7 +41,7 @@ RFCOMM/SPP 协议与型号 Adapter
 | P1 删除旧 UI 生产图 | [x] | Compose 页面、主题、基础组件、XML 页面和 AGSL 资源已删除；旧 UI 测试已删除 |
 | P2 原生语义接口 | [x] | `EarbudRuntime`、`RuntimeCommand`、`NativeUiController`、设置/更新接口已建立；仍需云端编译和接口回归 |
 | P3 Flutter prism_ui 页面 | [~] | 首页、扫描、设备控制、手势、听音统计、设置/日志已写入；仍需设备运行验收 |
-| P4 云端构建 | [~] | Flutter pub/analyze/UI contract 已通过；已切换到 Flutter 3.47 支持的 AGP 8.11.1、Gradle 8.14、Kotlin 2.2.20，等待新 Actions |
+| P4 云端构建 | [~] | Flutter pub/analyze/UI contract 已通过；已切换到 Flutter 3.47.0 官方模板的 AGP 9.1.0、Gradle 9.3.1、Kotlin 2.4.0，等待新 Actions |
 | P5 默认分支切换 | [ ] | 仅在 P4 成功后把 `codex/prism-ui-rewrite` 设为 GitHub 默认分支 |
 | P6 真机验收 | [ ] | 启动、扫描、连接、断开、后台重连、能力写入和日志导出尚未由本轮包重新验证 |
 
@@ -105,10 +105,10 @@ fxxkhilife/native_ui_state
 
 ### P4.1 修复云端工具链
 
-1. 使用 AGP `8.11.1` 和 Gradle `8.14`，避开 Flutter 3.47 仍依赖的旧 Variant API。
-2. 在 `settings.gradle.kts` 声明 Kotlin Gradle Plugin `2.2.20`。
+1. 使用 Flutter 3.47.0 官方模板的 AGP `9.1.0`、Gradle `9.3.1` 和 Kotlin Gradle Plugin `2.4.0`。
+2. 在 `gradle.properties` 保留模板要求的 `android.newDsl=false` 与 `android.builtInKotlin=false`，并在 `app` 模块显式应用 Kotlin Android 插件。
 3. 保持 Flutter 3.47.0、Android API 37、JDK 17。
-3. 重新运行 GitHub Actions，必须看到：
+4. 重新运行 GitHub Actions，必须看到：
    - `flutter pub get` 通过；
    - `flutter analyze` 为 `No issues found`；
    - `ui-contract` 通过；
@@ -162,4 +162,4 @@ ui-contract
 ./gradlew --no-daemon clean test assembleDebug assembleRelease
 ```
 
-当前证据边界：Actions 45002552667 的 Flutter 分析和 UI contract 已通过，Gradle 因 AGP 9.1 与 Flutter 3.47 的 `BaseVariant` 不兼容失败；本轮已切换至 AGP 8.11.1/Gradle 8.14，在新 Actions 成功前不宣称 APK 已构建或 UI 已通过真机验收。
+当前证据边界：Actions 46105565318 的 Flutter 分析和 UI contract 已通过，Gradle 在 AGP 8.11.1/Kotlin 2.2.20 组合下因 `BaseVariant` 类加载冲突失败；本轮已切换至 Flutter 3.47.0 官方模板的 AGP 9.1.0/Gradle 9.3.1/Kotlin 2.4.0，在新 Actions 成功前不宣称 APK 已构建或 UI 已通过真机验收。
