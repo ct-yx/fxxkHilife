@@ -48,6 +48,7 @@ class _AppShellState extends State<AppShell> {
         return PrismScaffold(
           bar: PrismAppBar(title: Text(titles[selectedIndex])),
           body: IndexedStack(index: selectedIndex, children: pages),
+          footInset: NavigationBar.height,
           foot: NavigationBar(
             selectedIndex: selectedIndex,
             onDestinationSelected: (index) => setState(() => selectedIndex = index),

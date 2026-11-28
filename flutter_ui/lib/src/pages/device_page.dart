@@ -52,6 +52,8 @@ class DevicePage extends StatelessWidget {
         Panel(
           child: Row(
             children: [
+              EarbudIcon(size: 30, color: context.colorScheme.primary),
+              const SizedBox(width: 12),
               Expanded(
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
@@ -74,7 +76,10 @@ class DevicePage extends StatelessWidget {
             ],
           ),
         ),
-        SectionHeader('电量'),
+        SectionHeader(
+          '电量',
+          leading: EarbudIcon(size: 26, color: context.colorScheme.primary),
+        ),
         Panel(
           child: Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,

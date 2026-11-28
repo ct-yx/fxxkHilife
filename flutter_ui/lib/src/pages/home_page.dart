@@ -32,6 +32,11 @@ class HomePage extends StatelessWidget {
               Row(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
+                  EarbudIcon(
+                    size: 30,
+                    color: context.colorScheme.primary,
+                  ),
+                  const SizedBox(width: 12),
                   Expanded(
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
@@ -118,7 +123,12 @@ class HomePage extends StatelessWidget {
                     : saved.systemConnected
                         ? '系统蓝牙已连接'
                         : saved.address,
-                leading: Text(saved.controlConnected ? '●' : '○'),
+                leading: EarbudIcon(
+                  size: 28,
+                  color: saved.controlConnected
+                      ? context.colorScheme.primary
+                      : context.colorScheme.onSurfaceVariant,
+                ),
                 trailing: StatusBadge(
                   saved.controlConnected
                       ? '已连接'

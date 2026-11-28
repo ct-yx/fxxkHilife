@@ -27,12 +27,19 @@ class NavigationBar extends StatelessWidget {
 
   static const _height = 80.0;
 
+  /// Height of the navigation content before the system bottom inset.
+  ///
+  /// A scaffold adds this value to its body inset. The [SafeArea] below then
+  /// adds the device's bottom gesture or navigation area to the bar itself.
+  static const height = _height;
+
   @override
   Widget build(BuildContext context) {
     final colorScheme = context.colorScheme;
     return Surface(
       color: SurfaceLevel.floatingOf(colorScheme).colorOf(colorScheme),
       child: SafeArea(
+        top: false,
         child: SizedBox(
           height: _height,
           child: Row(

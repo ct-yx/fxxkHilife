@@ -157,16 +157,24 @@ class SettingsPage extends StatelessWidget {
         ),
         const SizedBox(height: 8),
         Panel(
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
+          child: Row(
             children: [
-              Text('fxxkHilife', style: AppTextStyle.title3.of(context, emphasized: true)),
-              const SizedBox(height: 4),
-              Text(
-                '原生连接服务 + Flutter prism_ui 新界面',
-                style: AppTextStyle.subheadline.of(context).copyWith(
-                      color: context.colorScheme.onSurfaceVariant,
+              EarbudIcon(size: 30, color: context.colorScheme.primary),
+              const SizedBox(width: 12),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text('fxxkHilife', style: AppTextStyle.title3.of(context, emphasized: true)),
+                    const SizedBox(height: 4),
+                    Text(
+                      '原生连接服务 + Flutter prism_ui 新界面',
+                      style: AppTextStyle.subheadline.of(context).copyWith(
+                            color: context.colorScheme.onSurfaceVariant,
+                          ),
                     ),
+                  ],
+                ),
               ),
             ],
           ),

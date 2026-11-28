@@ -70,7 +70,7 @@ class _ScanPageState extends State<ScanPage> {
                 Panel(
                   child: Row(
                     children: [
-                      const Text('●'),
+                      EarbudIcon(size: 28, color: context.colorScheme.primary),
                       const SizedBox(width: 10),
                       Expanded(
                         child: Text(
@@ -119,7 +119,12 @@ class _ScanPageState extends State<ScanPage> {
                   child: ActionRow(
                     title: device.name,
                     subtitle: '${device.address} · RSSI ${device.rssi}',
-                    leading: Text(device.huaweiOrHonor ? '◆' : '◇'),
+                    leading: EarbudIcon(
+                      size: 28,
+                      color: device.huaweiOrHonor
+                          ? context.colorScheme.primary
+                          : context.colorScheme.onSurfaceVariant,
+                    ),
                     trailing: StatusBadge(
                       device.connected
                           ? '系统已连接'
