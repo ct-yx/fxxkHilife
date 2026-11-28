@@ -41,7 +41,7 @@ RFCOMM/SPP 协议与型号 Adapter
 | P1 删除旧 UI 生产图 | [x] | Compose 页面、主题、基础组件、XML 页面和 AGSL 资源已删除；旧 UI 测试已删除 |
 | P2 原生语义接口 | [x] | `EarbudRuntime`、`RuntimeCommand`、`NativeUiController`、设置/更新接口已建立；仍需云端编译和接口回归 |
 | P3 Flutter prism_ui 页面 | [~] | 首页、扫描、设备控制、手势、听音统计、设置/日志已写入；仍需设备运行验收 |
-| P4 云端构建 | [x] | Actions [46111128101](https://github.com/ct-yx/fxxkHilife/actions/runs/46111128101) 已通过 Flutter 分析、UI contract、Gradle 测试和 Debug/Release APK 构建；artifact SHA-256 已记录在 README |
+| P4 云端构建 | [x] | Actions [46112142881](https://github.com/ct-yx/fxxkHilife/actions/runs/46112142881) 已通过 Flutter 分析、UI contract、Gradle 测试和 Debug/Release APK 构建；artifact SHA-256 已记录在 README |
 | P5 默认分支切换 | [ ] | 等 P6 真机验收后，把 `codex/prism-ui-rewrite` 设为 GitHub 默认分支；当前默认分支仍是 `refactor/v2-alpha` |
 | P6 真机验收 | [ ] | 本机未发现 Android 设备；启动、扫描、连接、断开、后台重连、能力写入和日志导出仍需用 Actions artifact 验证 |
 
@@ -164,4 +164,4 @@ ui-contract
 ./gradlew --no-daemon clean test assembleDebug assembleRelease
 ```
 
-当前证据边界：Actions 46111128101 已在提交 `0d73797` 上通过 Flutter 分析、UI contract、Gradle 测试并产出 Debug/Release APK；这证明云端构建链路和静态门禁通过，不证明真实 Android 设备上的 UI、蓝牙连接或后台重连已验收。本机当前没有可用 `adb` 设备。
+当前证据边界：Actions 46112142881 已在提交 `d4af17a` 上通过 Flutter 分析、UI contract、Gradle 测试并产出 Debug/Release APK；这证明云端构建链路和静态门禁通过，不证明真实 Android 设备上的 UI、蓝牙连接或后台重连已验收。本机当前没有可用 `adb` 设备。

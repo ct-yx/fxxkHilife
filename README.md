@@ -33,8 +33,8 @@
 ## 当前开发阶段
 
 - Flutter 页面、原生 UI 接口和统一 `EarbudRuntime` 命令入口已建立。
-- GitHub Actions [46111128101](https://github.com/ct-yx/fxxkHilife/actions/runs/46111128101) 已通过 `flutter pub get`、`flutter analyze`、UI contract、Gradle 测试和 Debug/Release APK 构建。
-- 当前工具链对齐 Flutter 3.47.0 官方模板：AGP 9.1.0、Gradle 9.3.1、Kotlin 2.4.0；`prism_ui v0.1.3` 已固定到仓库内并补齐 Flutter 3.47 导入。Debug APK SHA-256 为 `783da981c083b0b85fe31785aaec4938b9ccf11d2fd5d4333f409a66a2f1d3d0`，Release APK SHA-256 为 `7bcc42b47f9ee70183ff7a6dea809f7512cc6b1ddedb3241cf699bdb4d7a511e`。
+- GitHub Actions [46112142881](https://github.com/ct-yx/fxxkHilife/actions/runs/46112142881) 已通过 `flutter pub get`、`flutter analyze`、UI contract、Gradle 测试和 Debug/Release APK 构建。
+- 当前工具链对齐 Flutter 3.47.0 官方模板：AGP 9.1.0、Gradle 9.3.1、Kotlin 2.4.0；`prism_ui v0.1.3` 已固定到仓库内并补齐 Flutter 3.47 导入。Debug APK SHA-256 为 `783da981c083b0b85fe31785aaec4938b9ccf11d2fd5d4333f409a66a2f1d3d0`，Release APK SHA-256 为 `8995d233972714d27b0e85561f4eec22ccfad290597083967be5c984549b6526`。
 - 真机启动、扫描、连接、设置读回和后台重连仍需用 Actions artifact 在 Android 设备上验收；当前本机没有连接设备。
 - 云端构建和真机验收完成后，`codex/prism-ui-rewrite` 将设为 GitHub 默认分支；旧分支保留。
 
