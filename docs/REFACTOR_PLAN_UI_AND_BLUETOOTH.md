@@ -137,7 +137,7 @@ fxxkhilife/native_ui_state
 
 ### P5 默认分支切换
 
-只有 P4 云端构建成功且没有未提交代码时执行：
+只有 P4 云端构建和 P6 真机验收都成功，且没有未提交代码时执行：
 
 ```bash
 gh api --method PATCH repos/ct-yx/fxxkHilife \
