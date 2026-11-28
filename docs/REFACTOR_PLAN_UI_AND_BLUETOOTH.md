@@ -2,7 +2,7 @@
 
 > 当前分支：`codex/prism-ui-rewrite`
 > 目标分支：`codex/prism-ui-rewrite` 成功验收后设为仓库默认分支
-> UI 框架：Flutter Add-to-App + `prism_ui: 0.1.3`
+> UI 框架：Flutter Add-to-App + 仓库内固定的 `prism_ui v0.1.3`
 > 底层通信：保留现有 RFCOMM/SPP、型号适配器、协议和后台连接服务
 
 ## 1. 这次重构解决什么问题
@@ -41,7 +41,7 @@ RFCOMM/SPP 协议与型号 Adapter
 | P1 删除旧 UI 生产图 | [x] | Compose 页面、主题、基础组件、XML 页面和 AGSL 资源已删除；旧 UI 测试已删除 |
 | P2 原生语义接口 | [x] | `EarbudRuntime`、`RuntimeCommand`、`NativeUiController`、设置/更新接口已建立；仍需云端编译和接口回归 |
 | P3 Flutter prism_ui 页面 | [~] | 首页、扫描、设备控制、手势、听音统计、设置/日志已写入；仍需设备运行验收 |
-| P4 云端构建 | [~] | Flutter pub/analyze/UI contract 已通过；已切换到 Flutter 3.47.0 官方模板的 AGP 9.1.0、Gradle 9.3.1、Kotlin 2.4.0，等待新 Actions |
+| P4 云端构建 | [~] | Flutter pub/analyze/UI contract 已通过；已切换到 Flutter 3.47.0 官方模板并固定 prism_ui 源码，等待新 Actions |
 | P5 默认分支切换 | [ ] | 仅在 P4 成功后把 `codex/prism-ui-rewrite` 设为 GitHub 默认分支 |
 | P6 真机验收 | [ ] | 启动、扫描、连接、断开、后台重连、能力写入和日志导出尚未由本轮包重新验证 |
 
@@ -109,7 +109,8 @@ fxxkhilife/native_ui_state
 2. 在 `gradle.properties` 保留模板要求的 `android.newDsl=false` 与 `android.builtInKotlin=false`，并在 `app` 模块显式应用 Kotlin Android 插件。
 3. 保持 Flutter 3.47.0、Android API 37、JDK 17。
 4. 根项目对 Flutter 注入的 `download.flutter.io` 之外，显式提供 Google 和 Maven Central 仓库，保证原生依赖可解析。
-5. 重新运行 GitHub Actions，必须看到：
+5. 固定上游 `prism_ui v0.1.3` 到 `flutter_ui/vendor/prism_ui`，只保留 Flutter 3.47 所需的显式导入兼容修复。
+6. 重新运行 GitHub Actions，必须看到：
    - `flutter pub get` 通过；
    - `flutter analyze` 为 `No issues found`；
    - `ui-contract` 通过；

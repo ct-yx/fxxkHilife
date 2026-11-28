@@ -25,8 +25,13 @@ def require_file(path: Path) -> str:
 
 def main() -> int:
     pubspec = require_file(FLUTTER_ROOT / "pubspec.yaml")
-    if "prism_ui: 0.1.3" not in pubspec:
-        fail("Flutter module must pin prism_ui to 0.1.3")
+    if "path: vendor/prism_ui" not in pubspec:
+        fail("Flutter module must use the vendored prism_ui compatibility source")
+    prism_source = require_file(FLUTTER_ROOT / "vendor/prism_ui/lib/prism_list.dart")
+    route_source = require_file(FLUTTER_ROOT / "vendor/prism_ui/lib/route_motion_hold.dart")
+    require_file(FLUTTER_ROOT / "vendor/prism_ui/UPSTREAM.md")
+    if "package:flutter/rendering.dart" not in prism_source or "package:flutter/rendering.dart" not in route_source:
+        fail("vendored prism_ui must import ScrollCacheExtent from flutter/rendering.dart")
     if "project_type: module" not in require_file(FLUTTER_ROOT / ".metadata"):
         fail("Flutter module metadata is missing")
 
