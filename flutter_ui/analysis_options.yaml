@@ -5,3 +5,4 @@ analyzer:
     - build/**
     - .android/**
     - .ios/**
+    - vendor/prism_ui/test/**

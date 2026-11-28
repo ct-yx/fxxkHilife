@@ -12,3 +12,6 @@ Flutter 3.47 已通过 `flutter/widgets.dart` 导出 `ScrollCacheExtent`，但�
 `flutter/rendering.dart`。本地只补充这两个导入，框架行为和 API 保持不变。
 
 上游的 `LICENSE` 和 `NOTICE` 随源码保留。
+
+上游测试源码也随依赖保留，但由宿主模块的 analyzer 排除；本次构建只把
+`prism_ui` 的 `lib/` 和 shader 资源作为运行时依赖。
