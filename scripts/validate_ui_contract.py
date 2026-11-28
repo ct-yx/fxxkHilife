@@ -54,6 +54,10 @@ def main() -> int:
     for flag in ("android.newDsl=false", "android.builtInKotlin=false"):
         if flag not in properties:
             fail(f"Flutter Android template flag is missing: {flag}")
+    root_build = require_file(ROOT / "build.gradle.kts")
+    for repository in ("google()", "mavenCentral()"):
+        if repository not in root_build:
+            fail(f"root Gradle project must expose {repository} to native dependencies")
 
     main_activity = require_file(UI_ROOT / "MainActivity.kt")
     if "FlutterActivity" not in main_activity or "NativeUiBridge" not in main_activity:

@@ -108,7 +108,8 @@ fxxkhilife/native_ui_state
 1. 使用 Flutter 3.47.0 官方模板的 AGP `9.1.0`、Gradle `9.3.1` 和 Kotlin Gradle Plugin `2.4.0`。
 2. 在 `gradle.properties` 保留模板要求的 `android.newDsl=false` 与 `android.builtInKotlin=false`，并在 `app` 模块显式应用 Kotlin Android 插件。
 3. 保持 Flutter 3.47.0、Android API 37、JDK 17。
-4. 重新运行 GitHub Actions，必须看到：
+4. 根项目对 Flutter 注入的 `download.flutter.io` 之外，显式提供 Google 和 Maven Central 仓库，保证原生依赖可解析。
+5. 重新运行 GitHub Actions，必须看到：
    - `flutter pub get` 通过；
    - `flutter analyze` 为 `No issues found`；
    - `ui-contract` 通过；
