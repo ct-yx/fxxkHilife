@@ -2,6 +2,14 @@
 
 > 历史记录中的 Compose、Material 3 和玻璃路线不代表当前生产 UI。当前开发分支 `codex/prism-ui-rewrite` 使用 Flutter Add-to-App + `prism_ui` 重写页面；RFCOMM/SPP 连接运行时保留在原生层，通过类型化快照和语义命令供新 UI 使用。
 
+## 2026-11-28
+
+### prism_ui 重构工具链与运行时契约
+
+- 删除旧 Compose 页面后，新增 `EarbudRuntime` / `RuntimeCommand` 作为 Flutter、前台服务和 Quick Settings Tile 共用的原生命令与快照入口；页面层不再直接持有 `EarbudConnectionManager` 或 `DeviceControlApi` 实例。
+- 将宿主工具链对齐 Flutter 3.47 的兼容范围：AGP 8.11.1、Gradle 8.14、Kotlin 2.2.20；Actions 继续负责云端编译。
+- Actions `45002552667` 的 Flutter 分析和 UI contract 已通过，Gradle 因 AGP 9.1 使用已移除的 `BaseVariant` 失败；新版本修复后必须重新验证 Debug/Release APK。
+
 ---
 
 ## 2026-06-26

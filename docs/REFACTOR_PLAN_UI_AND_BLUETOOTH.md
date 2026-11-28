@@ -16,6 +16,8 @@ NativeUiBridge（Flutter channel 适配器）
     ↓
 NativeUiController（应用级 UI 接口）
     ↓
+EarbudRuntime（统一命令与快照入口）
+    ↓
 DeviceControlApi / SettingsRepository / UpdateRepository
     ↓
 EarbudConnectionManager / DeviceRepository
@@ -37,9 +39,9 @@ RFCOMM/SPP 协议与型号 Adapter
 | --- | --- | --- |
 | P0 盘点与切分 | [x] | 已确认旧 UI 与连接底层耦合点，保留底层运行时 |
 | P1 删除旧 UI 生产图 | [x] | Compose 页面、主题、基础组件、XML 页面和 AGSL 资源已删除；旧 UI 测试已删除 |
-| P2 原生语义接口 | [~] | `NativeUiController`、`DeviceControlApi`、设置/更新接口已建立；仍需云端编译和接口回归 |
+| P2 原生语义接口 | [x] | `EarbudRuntime`、`RuntimeCommand`、`NativeUiController`、设置/更新接口已建立；仍需云端编译和接口回归 |
 | P3 Flutter prism_ui 页面 | [~] | 首页、扫描、设备控制、手势、听音统计、设置/日志已写入；仍需设备运行验收 |
-| P4 云端构建 | [~] | Flutter pub/analyze/UI contract 已通过；当前阻断是 Kotlin Gradle Plugin 2.2.10 低于 Flutter 3.47 要求的 2.2.20 |
+| P4 云端构建 | [~] | Flutter pub/analyze/UI contract 已通过；已切换到 Flutter 3.47 支持的 AGP 8.11.1、Gradle 8.14、Kotlin 2.2.20，等待新 Actions |
 | P5 默认分支切换 | [ ] | 仅在 P4 成功后把 `codex/prism-ui-rewrite` 设为 GitHub 默认分支 |
 | P6 真机验收 | [ ] | 启动、扫描、连接、断开、后台重连、能力写入和日志导出尚未由本轮包重新验证 |
 
@@ -64,6 +66,7 @@ RFCOMM/SPP 协议与型号 Adapter
 
 - `NativeUiController`：应用级深模块。把连接状态、设备状态、扫描结果、设置、更新和诊断日志组合成一个 `NativeUiSnapshot`。
 - `NativeUiBridge`：只做 channel 方法分发、参数校验、快照序列化和事件推送，不写协议逻辑。
+- `runtime/EarbudRuntime`：原生运行时唯一的设备命令和连接快照接缝；Flutter、前台服务和 Quick Settings Tile 共用它。
 - 通道固定为：
 
 ```text
@@ -85,6 +88,8 @@ fxxkhilife/native_ui_state
 
 厂商 property group/key 只允许留在 `DeviceControlApi` 与 Repository 内部。新增能力必须先增加枚举/方法，再由页面调用。
 
+`NativeUiController` 不直接创建 `DeviceControlApi`，而是提交 `RuntimeCommand`；这样 UI、服务和 Tile 对连接生命周期拥有同一条命令路径。
+
 ### 3.4 蓝牙底层
 
 保留并继续规范化：
@@ -100,8 +105,9 @@ fxxkhilife/native_ui_state
 
 ### P4.1 修复云端工具链
 
-1. 在 `settings.gradle.kts` 声明 Kotlin Gradle Plugin `2.2.20`。
-2. 保持 Flutter 3.47.0、Android API 37、JDK 17。
+1. 使用 AGP `8.11.1` 和 Gradle `8.14`，避开 Flutter 3.47 仍依赖的旧 Variant API。
+2. 在 `settings.gradle.kts` 声明 Kotlin Gradle Plugin `2.2.20`。
+3. 保持 Flutter 3.47.0、Android API 37、JDK 17。
 3. 重新运行 GitHub Actions，必须看到：
    - `flutter pub get` 通过；
    - `flutter analyze` 为 `No issues found`；
@@ -112,7 +118,7 @@ fxxkhilife/native_ui_state
 
 1. 所有 Flutter 页面只调用 `NativeBridge` 的类型化方法。
 2. 静态脚本阻止旧 UI 文件、Compose import、raw channel 调用和旧 UI 测试目录回流。
-3. 任何新设备能力先进入 `DeviceControlApi`，再进入页面。
+3. 任何新设备能力先进入 `RuntimeCommand` 和 `DeviceControlApi`，再进入页面、服务或 Tile。
 
 ### P4.3 真机验收
 
@@ -156,4 +162,4 @@ ui-contract
 ./gradlew --no-daemon clean test assembleDebug assembleRelease
 ```
 
-当前证据边界：Actions 44999786373 的 Flutter 分析和 UI contract 已通过，Gradle 因 Kotlin 2.2.10 版本门失败；在新一轮 Actions 成功前，不宣称 APK 已构建或 UI 已通过真机验收。
+当前证据边界：Actions 45002552667 的 Flutter 分析和 UI contract 已通过，Gradle 因 AGP 9.1 与 Flutter 3.47 的 `BaseVariant` 不兼容失败；本轮已切换至 AGP 8.11.1/Gradle 8.14，在新 Actions 成功前不宣称 APK 已构建或 UI 已通过真机验收。

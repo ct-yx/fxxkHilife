@@ -14,8 +14,8 @@ import com.freebuds.controller.HilifeApplication
 import com.freebuds.controller.data.ConnectionCommand
 import com.freebuds.controller.data.ConnectionState
 import com.freebuds.controller.data.ConnectionTrigger
-import com.freebuds.controller.data.DeviceControlApi
 import com.freebuds.controller.i18n.I18n
+import com.freebuds.controller.runtime.RuntimeCommand
 import com.freebuds.controller.ui.MainActivity
 import com.freebuds.controller.util.LogBuffer
 import kotlinx.coroutines.Job
@@ -132,9 +132,7 @@ class BluetoothService : Service() {
     private fun setAncMode(mode: String) {
         val repo = HilifeApplication.instance.deviceRepository
         if (repo.connectionState.value is ConnectionState.Connected) {
-            scope.launch {
-                DeviceControlApi(repo).setAncMode(mode)
-            }
+            HilifeApplication.instance.earbudRuntime.submit(RuntimeCommand.SetAncMode(mode))
         }
     }
 

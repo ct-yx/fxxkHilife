@@ -32,9 +32,9 @@
 
 ## 当前开发阶段
 
-- Flutter 页面、原生 UI 接口和 `DeviceControlApi` 已建立。
+- Flutter 页面、原生 UI 接口和统一 `EarbudRuntime` 命令入口已建立。
 - GitHub Actions 已通过 `flutter pub get`、`flutter analyze` 和 UI contract。
-- 当前云端构建阻断在 Kotlin Gradle Plugin 版本门；修复后再生成 Debug/Release APK。
+- 当前已将工具链对齐 Flutter 3.47：AGP 8.11.1、Gradle 8.14、Kotlin 2.2.20；等待新一轮 Actions 验证 Debug/Release APK。
 - 真机启动、扫描、连接、设置读回和后台重连仍需用新包重新验收。
 - 云端构建和真机验收完成后，`codex/prism-ui-rewrite` 将设为 GitHub 默认分支；旧分支保留。
 

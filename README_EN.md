@@ -32,9 +32,9 @@ Full introduction, download links, demos, and development logs are available on 
 
 ## Current development stage
 
-- The Flutter pages, native UI interface and `DeviceControlApi` are in place.
+- The Flutter pages, native UI interface and unified `EarbudRuntime` command seam are in place.
 - GitHub Actions passes `flutter pub get`, `flutter analyze` and the UI contract.
-- The cloud build is currently blocked by the Kotlin Gradle Plugin version gate; APK generation follows that fix.
+- The toolchain is now aligned with Flutter 3.47: AGP 8.11.1, Gradle 8.14 and Kotlin 2.2.20; a new Actions run must verify both APK variants.
 - Startup, scan, connection, read-back and background reconnect still need verification with the new APK.
 - After cloud and device acceptance, `codex/prism-ui-rewrite` will become the GitHub default branch; old branches remain available.
 

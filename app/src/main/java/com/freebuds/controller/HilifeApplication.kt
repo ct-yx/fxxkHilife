@@ -7,6 +7,8 @@ import android.os.Build
 import com.freebuds.controller.data.DeviceRepository
 import com.freebuds.controller.data.SettingsRepository
 import com.freebuds.controller.i18n.I18n
+import com.freebuds.controller.runtime.EarbudRuntime
+import com.freebuds.controller.runtime.RepositoryEarbudRuntime
 import com.freebuds.controller.service.BluetoothService
 import com.freebuds.controller.util.CrashReporter
 import com.freebuds.controller.util.LogBuffer
@@ -15,6 +17,8 @@ class HilifeApplication : Application() {
 
     val settingsRepository by lazy { SettingsRepository(this) }
     val deviceRepository by lazy { DeviceRepository() }
+    /** Single command/state seam shared by the new UI and system entry points. */
+    val earbudRuntime: EarbudRuntime by lazy { RepositoryEarbudRuntime(deviceRepository) }
 
     override fun onCreate() {
         super.onCreate()

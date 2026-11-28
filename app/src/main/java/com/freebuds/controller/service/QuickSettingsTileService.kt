@@ -12,8 +12,8 @@ import com.freebuds.controller.data.ConnectionCommand
 import com.freebuds.controller.data.ConnectionCommandResult
 import com.freebuds.controller.data.ConnectionState
 import com.freebuds.controller.data.ConnectionTrigger
-import com.freebuds.controller.data.DeviceControlApi
 import com.freebuds.controller.i18n.I18n
+import com.freebuds.controller.runtime.RuntimeCommand
 import com.freebuds.controller.ui.MainActivity
 import kotlinx.coroutines.MainScope
 import kotlinx.coroutines.launch
@@ -92,7 +92,7 @@ class QuickSettingsTileService : TileService() {
         }
 
         scope.launch {
-            DeviceControlApi(repo).setAncMode(nextMode)
+            HilifeApplication.instance.earbudRuntime.submit(RuntimeCommand.SetAncMode(nextMode))
             delay(300)
             updateTileState()
         }

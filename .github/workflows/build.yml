@@ -111,10 +111,10 @@ jobs:
 
       - name: Locate APK
         id: apk
-        if: always()
+        if: steps.checks.outcome == 'success'
         shell: bash
         run: |
-          APK=$(find app/build/outputs/apk/release -name '*.apk' -type f | head -1)
+          APK=$(find app/build/outputs/apk/release -name '*.apk' -type f 2>/dev/null | head -1 || true)
           if [ -z "$APK" ]; then
             echo "No release APK found; test report will still be uploaded."
             echo "available=false" >> "$GITHUB_OUTPUT"
@@ -127,10 +127,10 @@ jobs:
 
       - name: Locate debug APK
         id: debug_apk
-        if: always()
+        if: steps.checks.outcome == 'success'
         shell: bash
         run: |
-          APK=$(find app/build/outputs/apk/debug -name '*.apk' -type f | head -1)
+          APK=$(find app/build/outputs/apk/debug -name '*.apk' -type f 2>/dev/null | head -1 || true)
           if [ -z "$APK" ]; then
             echo "No debug APK found."
             echo "available=false" >> "$GITHUB_OUTPUT"

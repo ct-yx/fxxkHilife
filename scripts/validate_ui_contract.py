@@ -41,6 +41,13 @@ def main() -> int:
         if forbidden in build:
             fail(f"old Compose UI dependency remains: {forbidden}")
 
+    root_build = require_file(ROOT / "build.gradle.kts")
+    if 'id("com.android.application") version "8.11.1"' not in root_build:
+        fail("host AGP must stay on Flutter 3.47 compatible 8.11.1")
+    wrapper = require_file(ROOT / "gradle/wrapper/gradle-wrapper.properties")
+    if "gradle-8.14-bin.zip" not in wrapper:
+        fail("Gradle wrapper must stay on the AGP 8.11 toolchain")
+
     main_activity = require_file(UI_ROOT / "MainActivity.kt")
     if "FlutterActivity" not in main_activity or "NativeUiBridge" not in main_activity:
         fail("MainActivity is not a Flutter host with the native bridge")
@@ -48,6 +55,8 @@ def main() -> int:
     bridge = require_file(NATIVE_ROOT / "nativeui/NativeUiBridge.kt")
     controller = require_file(NATIVE_ROOT / "nativeui/NativeUiController.kt")
     api = require_file(NATIVE_ROOT / "data/DeviceControlApi.kt")
+    runtime = require_file(NATIVE_ROOT / "runtime/EarbudRuntime.kt")
+    runtime_adapter = require_file(NATIVE_ROOT / "runtime/RepositoryEarbudRuntime.kt")
     dart_bridge = require_file(FLUTTER_ROOT / "lib/src/native_bridge.dart")
     if 'fxxkhilife/native_ui' not in bridge or 'fxxkhilife/native_ui_state' not in bridge:
         fail("native channel names are missing")
@@ -68,6 +77,13 @@ def main() -> int:
     for semantic_command in ("setAncMode", "setLowLatency", "setGesture"):
         if semantic_command not in api:
             fail(f"semantic device API is missing: {semantic_command}")
+    for required in ("sealed interface RuntimeCommand", "interface EarbudRuntime", "RuntimeSnapshot"):
+        if required not in runtime:
+            fail(f"runtime command seam is missing {required}")
+    if "DeviceControlApi(repository)" in controller:
+        fail("native UI controller must dispatch through EarbudRuntime")
+    if "RuntimeCommand.SetAncMode" not in runtime_adapter:
+        fail("runtime adapter does not expose semantic device commands")
 
     flutter_sources = "\n".join(
         path.read_text(encoding="utf-8")

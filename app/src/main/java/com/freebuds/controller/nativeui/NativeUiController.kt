@@ -1,6 +1,5 @@
 package com.freebuds.controller.nativeui
 
-import android.bluetooth.BluetoothAdapter
 import android.content.Context
 import android.content.Intent
 import com.freebuds.controller.HilifeApplication
@@ -8,12 +7,9 @@ import com.freebuds.controller.bluetooth.BluetoothScanner
 import com.freebuds.controller.bluetooth.ScannedDevice
 import com.freebuds.controller.core.capability.EarbudCapability
 import com.freebuds.controller.core.state.EarbudState
-import com.freebuds.controller.data.ConnectionCommand
-import com.freebuds.controller.data.ConnectionCommandResult
 import com.freebuds.controller.data.ControlChannelState
 import com.freebuds.controller.data.DeviceControlApi
 import com.freebuds.controller.data.DeviceRepository
-import com.freebuds.controller.data.EarbudConnectionManager
 import com.freebuds.controller.data.SettingsRepository
 import com.freebuds.controller.data.SettingsSnapshot
 import com.freebuds.controller.data.ThemeMode
@@ -23,6 +19,9 @@ import com.freebuds.controller.data.UpdateUiState
 import com.freebuds.controller.data.WallpaperScope
 import com.freebuds.controller.i18n.I18n
 import com.freebuds.controller.i18n.I18nLocale
+import com.freebuds.controller.runtime.EarbudRuntime
+import com.freebuds.controller.runtime.RuntimeCommand
+import com.freebuds.controller.runtime.RuntimeCommandResult
 import com.freebuds.controller.util.LogBuffer
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
@@ -44,8 +43,7 @@ import kotlinx.coroutines.launch
 class NativeUiController(private val context: Context) {
     private val appContext = context.applicationContext
     private val repository: DeviceRepository = HilifeApplication.instance.deviceRepository
-    private val connectionManager: EarbudConnectionManager = repository.connectionManager
-    private val controls = DeviceControlApi(repository)
+    private val runtime: EarbudRuntime = HilifeApplication.instance.earbudRuntime
     private val settingsRepository = HilifeApplication.instance.settingsRepository
     private val updateRepository = UpdateRepository(appContext, settingsRepository)
     private val scope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
@@ -58,11 +56,7 @@ class NativeUiController(private val context: Context) {
     private val observers = mutableListOf<Job>()
 
     init {
-        observe(repository.controlChannelState)
-        observe(repository.earbudState)
-        observe(repository.capabilities)
-        observe(repository.savedDeviceConnections)
-        observe(repository.listeningStats)
+        observe(runtime.snapshot)
         observe(settingsRepository.state)
         observe(updateRepository.state)
         observe(_scan)
@@ -79,39 +73,36 @@ class NativeUiController(private val context: Context) {
     }
 
     private fun buildSnapshot(): NativeUiSnapshot = NativeUiSnapshot(
-        connection = NativeConnectionSnapshot.from(repository.controlChannelState.value),
+        connection = NativeConnectionSnapshot.from(runtime.snapshot.value.connection),
         device = NativeDeviceSnapshot.from(
-            state = repository.earbudState.value,
-            capabilities = repository.capabilities.value,
+            state = runtime.snapshot.value.device,
+            capabilities = runtime.snapshot.value.capabilities,
         ),
         scan = _scan.value,
-        savedDevices = repository.savedDeviceConnections.value.map(NativeSavedDeviceSnapshot::from),
+        savedDevices = runtime.snapshot.value.savedDevices.map(NativeSavedDeviceSnapshot::from),
         listening = NativeListeningSnapshot(
-            totalMs = repository.listeningStats.value.totalMs,
-            todayMs = repository.listeningStats.value.todayMs,
-            activeDays = repository.listeningStats.value.activeDays,
-            streakDays = repository.listeningStats.value.streakDays,
+            totalMs = runtime.snapshot.value.listening.totalMs,
+            todayMs = runtime.snapshot.value.listening.todayMs,
+            activeDays = runtime.snapshot.value.listening.activeDays,
+            streakDays = runtime.snapshot.value.listening.streakDays,
         ),
         settings = NativeSettingsSnapshot.from(settingsRepository.state.value),
         update = NativeUpdateSnapshot.from(updateRepository.state.value),
     )
 
     fun connect(address: String): String? {
-        val device = runCatching { BluetoothAdapter.getDefaultAdapter()?.getRemoteDevice(address) }
-            .getOrNull()
-            ?: return null
-        return when (val result = connectionManager.submit(ConnectionCommand.Connect(device))) {
-            is ConnectionCommandResult.Attempt -> result.attemptId
+        return when (val result = runtime.submit(RuntimeCommand.Connect(address))) {
+            is RuntimeCommandResult.Attempt -> result.attemptId
             else -> null
         }
     }
 
     fun disconnect() {
-        connectionManager.submit(ConnectionCommand.Disconnect)
+        runtime.submit(RuntimeCommand.Disconnect)
     }
 
     fun refreshSavedDevices() {
-        connectionManager.submit(ConnectionCommand.RefreshSavedDeviceConnections)
+        runtime.submit(RuntimeCommand.RefreshSavedDevices)
     }
 
     fun startScan() {
@@ -137,30 +128,32 @@ class NativeUiController(private val context: Context) {
         _scan.value = _scan.value.copy(isScanning = false)
     }
 
-    fun setAncMode(value: String) = scope.launch { controls.setAncMode(value) }
+    fun setAncMode(value: String) = runtime.submit(RuntimeCommand.SetAncMode(value))
 
-    fun setAncLevel(value: String) = scope.launch { controls.setAncLevel(value) }
+    fun setAncLevel(value: String) = runtime.submit(RuntimeCommand.SetAncLevel(value))
 
-    fun setSoundQuality(value: String) = scope.launch { controls.setSoundQuality(value) }
+    fun setSoundQuality(value: String) = runtime.submit(RuntimeCommand.SetSoundQuality(value))
 
-    fun setEqualizerPreset(value: String) = scope.launch { controls.setEqualizerPreset(value) }
+    fun setEqualizerPreset(value: String) =
+        runtime.submit(RuntimeCommand.SetEqualizerPreset(value))
 
-    fun setAutoPause(enabled: Boolean) = scope.launch { controls.setAutoPause(enabled) }
+    fun setAutoPause(enabled: Boolean) = runtime.submit(RuntimeCommand.SetAutoPause(enabled))
 
-    fun setLowLatency(enabled: Boolean) = scope.launch { controls.setLowLatency(enabled) }
+    fun setLowLatency(enabled: Boolean) = runtime.submit(RuntimeCommand.SetLowLatency(enabled))
 
-    fun setDualConnect(enabled: Boolean) = scope.launch { controls.setDualConnect(enabled) }
+    fun setDualConnect(enabled: Boolean) = runtime.submit(RuntimeCommand.SetDualConnect(enabled))
 
-    fun setPreferredDevice(address: String) = scope.launch { controls.setPreferredDevice(address) }
+    fun setPreferredDevice(address: String) =
+        runtime.submit(RuntimeCommand.SetPreferredDevice(address))
 
     fun setDualDeviceOption(address: String, option: String, enabled: Boolean) {
         val target = DeviceControlApi.DualDeviceOption.fromApi(option)
-        scope.launch { controls.setDualDeviceOption(address, target, enabled) }
+        runtime.submit(RuntimeCommand.SetDualDeviceOption(address, target, enabled))
     }
 
     fun setGesture(target: String, value: String) {
         val gesture = DeviceControlApi.GestureTarget.fromApi(target)
-        scope.launch { controls.setGesture(gesture, value) }
+        runtime.submit(RuntimeCommand.SetGesture(gesture, value))
     }
 
     fun setThemeMode(value: String) = settingsRepository.setThemeMode(ThemeMode.fromApi(value))
@@ -207,7 +200,7 @@ class NativeUiController(private val context: Context) {
     fun clearLogs() = LogBuffer.clear()
 
     fun setAppInForeground(foreground: Boolean) {
-        repository.setAppInForeground(foreground)
+        runtime.setForeground(foreground)
         if (foreground) updateRepository.check(force = false)
     }
 
