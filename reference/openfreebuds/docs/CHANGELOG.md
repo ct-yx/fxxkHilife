@@ -1,3 +1,9 @@
+# 0.18.1
+- [Device compatibility] Initial Freebuds 3 support (thx @qiushixiang)
+- [Feature] Configurable per-earbud and case battery tray indicators (thx @sinanakyazici)
+- [Fix] Crash for unknown ANC level option
+- [Platform] Initial macOS packaing config and UX enhancements (not ready for production)
+
 # 0.18.0
 - [Platform] Initial macOS compatibility (thx @IAL32)
 - [Device compatibility] HUAWEI FreeBuds Pro 5 (thx @JehuAlv)
@@ -27,11 +33,11 @@
 
 # 0.16.0
 -  [Device compatibility] HUAWEI FreeBuds SE 2
--  [Feature] Self-repair if config file is broken 
+-  [Feature] Self-repair if config file is broken
 -  [Feature] Automation on device connect
--  [Feature] Add long-tap in-call gesture setting field 
--  [Feature] win32 portable build 
--  [Dep] Add py3.13 to supported 
+-  [Feature] Add long-tap in-call gesture setting field
+-  [Feature] win32 portable build
+-  [Dep] Add py3.13 to supported
 
 # 0.15.1
 - [Fix] Rework Flatpak autostart management mechanism

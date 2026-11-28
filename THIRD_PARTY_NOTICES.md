@@ -2,7 +2,7 @@
 
 ## OpenFreebuds
 
-This repository contains a versioned reference snapshot of the upstream [OpenFreebuds](https://github.com/melianmiko/OpenFreebuds) project at commit `035bf2a87cdda9e9c8e8e90c662b7fa61270c6ee`:
+This repository contains a versioned reference snapshot of the upstream [OpenFreebuds](https://github.com/melianmiko/OpenFreebuds) project at commit `249cf68a0fe46431bcccd6a7432c44db3649942c`:
 
 ```text
 reference/openfreebuds/

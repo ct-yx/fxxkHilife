@@ -10,6 +10,12 @@
 - 将宿主工具链对齐 Flutter 3.47 的兼容范围：AGP 8.11.1、Gradle 8.14、Kotlin 2.2.20；Actions 继续负责云端编译。
 - Actions `45002552667` 的 Flutter 分析和 UI contract 已通过，Gradle 因 AGP 9.1 使用已移除的 `BaseVariant` 失败；新版本修复后必须重新验证 Debug/Release APK。
 
+### OpenFreebuds 新型号能力迁移
+
+- 上游参考快照更新到 `249cf68a0fe4`，纳入 FreeBuds 3、HONOR Earbuds S2、FreeBuds Pro 5、FreeClip 2 的型号资料、端口和 Handler 组合。
+- Android 适配器新增独立型号能力表：FreeBuds 3 使用上游专用双击动作码，HONOR Earbuds S2 使用 RFCOMM channel 1 且不注册手势/自动暂停，FreeClip 2 不注册 ANC 并启用额外长按动作，Pro 5 复用 Pro 3 能力组合。
+- 型号识别和能力注册已接入原生 API；这些型号仍只有协议迁移证据，尚未升级为 Android 真机验证通过。
+
 ---
 
 ## 2026-06-26

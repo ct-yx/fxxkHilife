@@ -64,7 +64,12 @@ class AncHandler(
     override val commandIds = command.incomingCommandIds
     override val ignoreCommandIds = listOf(command.writeCommand!!)
     override val properties = listOf("anc" to "mode", "anc" to "level")
-    override val capabilities = listOf(HuaweiCapability.ANC, HuaweiCapability.ANC_LEVEL, HuaweiCapability.ANC_DYNAMIC, HuaweiCapability.VOICE_BOOST)
+    override val capabilities = buildList {
+        add(HuaweiCapability.ANC)
+        if (wCancelLevel) add(HuaweiCapability.ANC_LEVEL)
+        if (wCancelDynamic) add(HuaweiCapability.ANC_DYNAMIC)
+        if (wVoiceBoost) add(HuaweiCapability.VOICE_BOOST)
+    }
 
     private var activeMode = 0
     private var pendingMode: Int? = null
@@ -74,7 +79,12 @@ class AncHandler(
     private var pendingLevelUntil: Long = 0L
     private var notificationRefreshJob: Job? = null
     private val modeOptions = mapOf(0 to "normal", 1 to "cancellation", 2 to "awareness")
-    private val cancelOptions = linkedMapOf(1 to "comfort", 0 to "normal", 2 to "ultra", 3 to "dynamic")
+    private val cancelOptions = buildMap {
+        put(1, "comfort")
+        put(0, "normal")
+        put(2, "ultra")
+        if (wCancelDynamic) put(3, "dynamic")
+    }
     private val awarenessOptions = mapOf(1 to "voice_boost", 2 to "normal")
 
     override suspend fun onInit(driver: SppDriver) {

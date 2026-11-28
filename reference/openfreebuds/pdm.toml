@@ -1,2 +1,2 @@
 [venv]
-in_project = false
+with_pip = true

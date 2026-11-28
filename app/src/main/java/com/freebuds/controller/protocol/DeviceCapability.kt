@@ -42,6 +42,7 @@ enum class HuaweiModel(
     val sppPort: Int = 16,
     val hasTwsBattery: Boolean = true,
 ) {
+    BUDS_3("HUAWEI FreeBuds 3", sppPort = 1),
     BUDS_4I("HUAWEI FreeBuds 4i / HONOR Earbuds 2/2 Lite/SE"),
     BUDS_5I("HUAWEI FreeBuds 5i"),
     BUDS_6I("HUAWEI FreeBuds 6i", sppPort = 1),
@@ -49,6 +50,9 @@ enum class HuaweiModel(
     BUDS_PRO("HUAWEI FreeBuds Pro", sppPort = 1),
     BUDS_PRO_2("HUAWEI FreeBuds Pro 2", sppPort = 1),
     BUDS_PRO_3("HUAWEI FreeBuds Pro 3 / Pro 4 / FreeClip", sppPort = 1),
+    BUDS_PRO_5("HUAWEI FreeBuds Pro 5", sppPort = 1),
+    FREECLIP_2("HUAWEI FreeClip 2", sppPort = 1),
+    HONOR_EARBUDS_S2("HONOR Earbuds S2 / 荣耀Earbuds S2", sppPort = 1),
     BUDS_SE("HUAWEI FreeBuds SE"),
     BUDS_SE_2("HUAWEI FreeBuds SE 2", sppPort = 1),
     BUDS_SE_4("HUAWEI FreeBuds SE 4", sppPort = 1),
@@ -58,6 +62,17 @@ enum class HuaweiModel(
 }
 
 val modelCapabilities: Map<HuaweiModel, List<HuaweiCapability>> = mapOf(
+    // OpenFreebuds main: OfbDriverHuawei3. FreeBuds 3 uses a model-specific
+    // double-tap option map and does not expose the generic in-call tap field.
+    HuaweiModel.BUDS_3 to listOf(
+        HuaweiCapability.LOGS,
+        HuaweiCapability.INFO,
+        HuaweiCapability.WEAR_DETECT,
+        HuaweiCapability.BATTERY,
+        HuaweiCapability.BATTERY_TWS,
+        HuaweiCapability.ACTION_DOUBLE_TAP,
+        HuaweiCapability.VOICE_LANGUAGE,
+    ),
     HuaweiModel.BUDS_4I to listOf(
         HuaweiCapability.LOGS,
         HuaweiCapability.INFO,
@@ -180,6 +195,59 @@ val modelCapabilities: Map<HuaweiModel, List<HuaweiCapability>> = mapOf(
         HuaweiCapability.ACTION_LONG_TAP_RIGHT,
         HuaweiCapability.ACTION_SWIPE,
         HuaweiCapability.LOW_LATENCY,
+    ),
+    // OpenFreebuds main maps Pro 5 to the same handler set as Pro 3.
+    HuaweiModel.BUDS_PRO_5 to listOf(
+        HuaweiCapability.INFO,
+        HuaweiCapability.ANC,
+        HuaweiCapability.ANC_LEVEL,
+        HuaweiCapability.ANC_DYNAMIC,
+        HuaweiCapability.VOICE_BOOST,
+        HuaweiCapability.BATTERY,
+        HuaweiCapability.BATTERY_TWS,
+        HuaweiCapability.SOUND_QUALITY,
+        HuaweiCapability.EQ_PRESET,
+        HuaweiCapability.EQ_CUSTOM,
+        HuaweiCapability.AUTO_PAUSE,
+        HuaweiCapability.DUAL_CONNECT,
+        HuaweiCapability.WEAR_DETECT,
+        HuaweiCapability.VOICE_LANGUAGE,
+        HuaweiCapability.ACTION_DOUBLE_TAP,
+        HuaweiCapability.ACTION_LONG_TAP_SPLIT,
+        HuaweiCapability.ACTION_LONG_TAP_RIGHT,
+        HuaweiCapability.ACTION_SWIPE,
+        HuaweiCapability.LOW_LATENCY,
+    ),
+    // FreeClip 2 has no traditional ANC. Its upstream profile uses extra
+    // long-tap actions for assistant and volume control.
+    HuaweiModel.FREECLIP_2 to listOf(
+        HuaweiCapability.INFO,
+        HuaweiCapability.BATTERY,
+        HuaweiCapability.BATTERY_TWS,
+        HuaweiCapability.AUTO_PAUSE,
+        HuaweiCapability.ACTION_DOUBLE_TAP,
+        HuaweiCapability.ACTION_TRIPLE_TAP,
+        HuaweiCapability.ACTION_LONG_TAP_SPLIT,
+        HuaweiCapability.ACTION_LONG_TAP_EXTRA,
+        HuaweiCapability.ACTION_SWIPE,
+        HuaweiCapability.EQ_PRESET,
+        HuaweiCapability.SOUND_QUALITY,
+        HuaweiCapability.LOW_LATENCY,
+        HuaweiCapability.WEAR_DETECT,
+        HuaweiCapability.VOICE_LANGUAGE,
+        HuaweiCapability.DUAL_CONNECT,
+    ),
+    // HONOR Earbuds S2 answers ANC, battery, in-ear, info and language
+    // commands. It does not answer gesture or auto-pause configuration.
+    HuaweiModel.HONOR_EARBUDS_S2 to listOf(
+        HuaweiCapability.LOGS,
+        HuaweiCapability.INFO,
+        HuaweiCapability.WEAR_DETECT,
+        HuaweiCapability.ANC,
+        HuaweiCapability.ANC_LEVEL,
+        HuaweiCapability.BATTERY,
+        HuaweiCapability.BATTERY_TWS,
+        HuaweiCapability.VOICE_LANGUAGE,
     ),
     HuaweiModel.BUDS_SE to listOf(
         HuaweiCapability.LOGS,

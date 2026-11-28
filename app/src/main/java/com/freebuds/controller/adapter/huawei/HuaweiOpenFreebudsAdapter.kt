@@ -64,11 +64,36 @@ object HuaweiOpenFreebudsAdapter : EarbudAdapter, RfcommTransportConfigProvider 
             driver.registerHandler(bh)
         }
         if (has(HuaweiCapability.ANC_LEGACY)) driver.registerHandler(AncLegacyChangeHandler())
-        if (has(HuaweiCapability.ANC)) driver.registerHandler(AncHandler())
-        if (has(HuaweiCapability.ACTION_DOUBLE_TAP)) driver.registerHandler(DoubleTapHandler())
-        if (has(HuaweiCapability.ACTION_TRIPLE_TAP)) driver.registerHandler(TripleTapHandler())
+        if (has(HuaweiCapability.ANC)) {
+            driver.registerHandler(
+                AncHandler(
+                    wCancelLevel = has(HuaweiCapability.ANC_LEVEL),
+                    wCancelDynamic = has(HuaweiCapability.ANC_DYNAMIC),
+                    wVoiceBoost = has(HuaweiCapability.VOICE_BOOST),
+                )
+            )
+        }
+        if (has(HuaweiCapability.ACTION_DOUBLE_TAP)) {
+            driver.registerHandler(
+                DoubleTapHandler(
+                    wInCall = has(HuaweiCapability.ACTION_DOUBLE_TAP_IN_CALL),
+                    optionsMap = if (model == HuaweiModel.BUDS_3) FREEBUDS_3_DOUBLE_TAP_OPTIONS else null,
+                )
+            )
+        }
+        if (has(HuaweiCapability.ACTION_TRIPLE_TAP)) {
+            driver.registerHandler(
+                TripleTapHandler(
+                    wInCall = has(HuaweiCapability.ACTION_DOUBLE_TAP_IN_CALL),
+                )
+            )
+        }
         if (has(HuaweiCapability.ACTION_LONG_TAP) || has(HuaweiCapability.ACTION_LONG_TAP_SPLIT)) {
-            driver.registerHandler(LongTapHandler())
+            driver.registerHandler(
+                LongTapHandler(
+                    extraOptions = has(HuaweiCapability.ACTION_LONG_TAP_EXTRA),
+                )
+            )
         }
         if (has(HuaweiCapability.ACTION_SWIPE)) driver.registerHandler(SwipeGestureHandler())
         if (has(HuaweiCapability.ACTION_POWER_BUTTON)) driver.registerHandler(PowerButtonHandler())
@@ -115,8 +140,11 @@ object HuaweiOpenFreebudsAdapter : EarbudAdapter, RfcommTransportConfigProvider 
     fun isKnownModelName(name: String?): Boolean = detectModel(name.orEmpty()) != null
 
     fun detectModel(name: String): HuaweiModel? = when {
-        name.contains("FreeBuds 7i", true)    -> HuaweiModel.BUDS_7I
-        name.contains("FreeBuds 6i", true)    -> HuaweiModel.BUDS_6I
+        name.contains("FreeBuds 7i", true)     -> HuaweiModel.BUDS_7I
+        name.contains("FreeBuds 6i", true)     -> HuaweiModel.BUDS_6I
+        name.contains("FreeBuds Pro 5", true)  -> HuaweiModel.BUDS_PRO_5
+        name.contains("FreeClip 2", true)      -> HuaweiModel.FREECLIP_2
+        name.contains("FreeBuds 3", true)      -> HuaweiModel.BUDS_3
         name.contains("FreeBuds Pro 4", true) ||
         name.contains("FreeBuds Pro 3", true) ||
         name.contains("FreeClip", true)        -> HuaweiModel.BUDS_PRO_3
@@ -130,6 +158,9 @@ object HuaweiOpenFreebudsAdapter : EarbudAdapter, RfcommTransportConfigProvider 
         name.contains("FreeBuds 4i", true)     -> HuaweiModel.BUDS_4I
         name.contains("FreeLace Pro 2", true)  -> HuaweiModel.LACE_PRO_2
         name.contains("FreeLace Pro", true)    -> HuaweiModel.LACE_PRO
+        name.contains("HONOR Earbuds S2", true) ||
+        name.contains("荣耀Earbuds S2", true) ||
+        name.contains("SCT-T10", true)         -> HuaweiModel.HONOR_EARBUDS_S2
         name.contains("HONOR Earbuds 2 SE", true) ||
         name.contains("HONOR Earbuds 2 Lite", true) ||
         name.contains("HONOR Earbuds 2", true)    -> HuaweiModel.BUDS_4I
@@ -138,6 +169,14 @@ object HuaweiOpenFreebudsAdapter : EarbudAdapter, RfcommTransportConfigProvider 
 
     private val HUAWEI_PREFIXES = listOf(
         "HUAWEI", "HONOR", "FreeBuds", "Freebuds", "freebuds", "华为", "荣耀", "Honor"
+    )
+
+    private val FREEBUDS_3_DOUBLE_TAP_OPTIONS = mapOf(
+        -1 to "tap_action_off",
+        0 to "tap_action_assistant",
+        1 to "tap_action_pause",
+        3 to "tap_action_switch_anc",
+        4 to "tap_action_next",
     )
 
     private fun HuaweiCapability.toGenericCapability(): EarbudCapability? = when (this) {

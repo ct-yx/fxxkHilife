@@ -7,14 +7,14 @@
 | 项目 | OpenFreebuds |
 | URL | <https://github.com/melianmiko/OpenFreebuds> |
 | 分支 | `main` |
-| 固定 commit | `035bf2a87cdda9e9c8e8e90c662b7fa61270c6ee` |
-| commit 日期 | 2026-08-10 |
-| commit 摘要 | `[packaging] Use precompiled winsdk to drop VisualStudio dependency (#124)` |
+| 固定 commit | `249cf68a0fe46431bcccd6a7432c44db3649942c` |
+| commit 日期 | 2026-11-21 |
+| commit 摘要 | `[macOS] Fix Apple Silicon packaging, login startup and FreeClip 2 wear detection` |
 | 许可证 | GPL-3.0，见 `reference/openfreebuds/LICENSE` |
 | 本地路径 | `reference/openfreebuds/` |
 | 用途 | 协议、型号能力和 Handler 行为的可追溯参考资料 |
 
-该 commit 是本项目当前固定的上游研究基线。快照包含该 commit 的 Git 跟踪源文件，但不包含 `.git` 对象；构建缓存、虚拟环境、`build`、`dist`、`__pycache__` 等生成物不纳入版本控制。
+该 commit 是本项目当前固定的上游研究基线。快照包含该 commit 的 Git 跟踪源文件，但不包含 `.git` 对象；构建缓存、虚拟环境、`build`、`dist`、`__pycache__` 等生成物不纳入版本控制。该版本新增 FreeBuds 3、HONOR Earbuds S2、FreeBuds Pro 5、FreeClip 2 的型号资料和驱动，并修复 FreeClip 2 佩戴检测。
 
 ## 与当前 Android 实现的路径映射
 

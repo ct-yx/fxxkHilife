@@ -10,10 +10,21 @@ open class AbstractTapHandler(
     private val command: com.freebuds.controller.adapter.huawei.protocol.HuaweiCommandSpec,
     private val wInCall: Boolean,
     override val capabilities: List<HuaweiCapability>,
+    optionsMap: Map<Int, String>? = null,
 ) : HuaweiDeviceHandler {
     override val commandIds = command.incomingCommandIds + listOf(command.writeCommand!!)
-    override val properties = listOf("action" to "${propPrefix}_left", "action" to "${propPrefix}_right", "action" to "${propPrefix}_in_call")
-    private val opts = mapOf(-1 to "tap_action_off", 1 to "tap_action_pause", 2 to "tap_action_next", 7 to "tap_action_prev", 0 to "tap_action_assistant")
+    override val properties = buildList {
+        add("action" to "${propPrefix}_left")
+        add("action" to "${propPrefix}_right")
+        if (wInCall) add("action" to "${propPrefix}_in_call")
+    }
+    private val opts = optionsMap ?: mapOf(
+        -1 to "tap_action_off",
+        1 to "tap_action_pause",
+        2 to "tap_action_next",
+        7 to "tap_action_prev",
+        0 to "tap_action_assistant",
+    )
     private val callOpts = mapOf(-1 to "tap_action_off", 0 to "tap_action_answer")
 
     override suspend fun onInit(driver: SppDriver) {
@@ -30,7 +41,10 @@ open class AbstractTapHandler(
         readSide(driver, "${propPrefix}_right", pkg.findParam(2), opts)
         val available = pkg.findParam(3)
         if (available.isNotEmpty()) {
-            val out = available.map { opts[it.toInt()] ?: it.toInt().toString() }.joinToString(",")
+            val out = available.map { raw ->
+                val code = raw.toInt().let { if (it > 127) it - 256 else it }
+                opts[code] ?: code.toString()
+            }.joinToString(",")
             driver.putProperty("action", "${propPrefix}_options", out)
         }
         val inCall = pkg.findParam(4)
@@ -48,7 +62,10 @@ open class AbstractTapHandler(
         val (type, opts) = when (prop) {
             "${propPrefix}_left" -> 1 to opts
             "${propPrefix}_right" -> 2 to opts
-            "${propPrefix}_in_call" -> 4 to callOpts
+            "${propPrefix}_in_call" -> {
+                if (!wInCall) return
+                4 to callOpts
+            }
             else -> return
         }
         driver.sendPackage(
@@ -59,8 +76,33 @@ open class AbstractTapHandler(
     }
 }
 
-class DoubleTapHandler : AbstractTapHandler("gesture_double", "double_tap", HuaweiCommandCatalog.doubleTap, true, listOf(HuaweiCapability.ACTION_DOUBLE_TAP, HuaweiCapability.ACTION_DOUBLE_TAP_IN_CALL))
-class TripleTapHandler : AbstractTapHandler("gesture_triple", "triple_tap", HuaweiCommandCatalog.tripleTap, true, listOf(HuaweiCapability.ACTION_TRIPLE_TAP, HuaweiCapability.ACTION_DOUBLE_TAP_IN_CALL))
+class DoubleTapHandler(
+    wInCall: Boolean = true,
+    optionsMap: Map<Int, String>? = null,
+) : AbstractTapHandler(
+    id = "gesture_double",
+    propPrefix = "double_tap",
+    command = HuaweiCommandCatalog.doubleTap,
+    wInCall = wInCall,
+    capabilities = buildList {
+        add(HuaweiCapability.ACTION_DOUBLE_TAP)
+        if (wInCall) add(HuaweiCapability.ACTION_DOUBLE_TAP_IN_CALL)
+    },
+    optionsMap = optionsMap,
+)
+
+class TripleTapHandler(
+    wInCall: Boolean = true,
+) : AbstractTapHandler(
+    id = "gesture_triple",
+    propPrefix = "triple_tap",
+    command = HuaweiCommandCatalog.tripleTap,
+    wInCall = wInCall,
+    capabilities = buildList {
+        add(HuaweiCapability.ACTION_TRIPLE_TAP)
+        if (wInCall) add(HuaweiCapability.ACTION_DOUBLE_TAP_IN_CALL)
+    },
+)
 
 class SwipeGestureHandler : HuaweiDeviceHandler {
     private val command = HuaweiCommandCatalog.swipe
@@ -95,14 +137,31 @@ class SwipeGestureHandler : HuaweiDeviceHandler {
     }
 }
 
-class LongTapHandler : HuaweiDeviceHandler {
+class LongTapHandler(
+    extraOptions: Boolean = false,
+) : HuaweiDeviceHandler {
     private val command = HuaweiCommandCatalog.longTap
     override val id = "gesture_long"
     override val commandIds = command.incomingCommandIds
     override val ignoreCommandIds = listOf(command.writeCommand!!)
     override val properties = listOf("action" to "long_tap")
-    override val capabilities = listOf(HuaweiCapability.ACTION_LONG_TAP, HuaweiCapability.ACTION_LONG_TAP_SPLIT)
-    private val opts = mapOf(-1 to "noise_control_disabled", 3 to "noise_control_off_on", 5 to "noise_control_off_on_aw", 6 to "noise_control_on_aw", 9 to "noise_control_off_an")
+    override val capabilities = buildList {
+        add(HuaweiCapability.ACTION_LONG_TAP)
+        add(HuaweiCapability.ACTION_LONG_TAP_SPLIT)
+        if (extraOptions) add(HuaweiCapability.ACTION_LONG_TAP_EXTRA)
+    }
+    private val opts = buildMap {
+        put(-1, "noise_control_disabled")
+        put(3, "noise_control_off_on")
+        put(5, "noise_control_off_on_aw")
+        put(6, "noise_control_on_aw")
+        put(9, "noise_control_off_an")
+        if (extraOptions) {
+            put(0, "tap_action_assistant")
+            put(18, "tap_action_vol_up")
+            put(19, "tap_action_vol_down")
+        }
+    }
 
     override suspend fun onInit(driver: SppDriver) {
         driver.sendPackage(command.readRequest(), operation = "gesture_long.read")?.let { onPackage(it, driver) }

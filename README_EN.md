@@ -88,6 +88,10 @@ The project is still evolving quickly. Testers with more earbud models are very 
 | HUAWEI FreeBuds 6i | Tested | Main development device; ANC, gestures, battery, low-latency, and sound preference are being continuously tuned |
 | HUAWEI FreeBuds 7i | Temporary conservative profile, full adaptation pending | A reduced capability table lowers initialization pressure and hides the unverified auto-pause option; full adaptation needs more hardware logs |
 | HUAWEI FreeBuds 5i | Capability table ready, needs testing | ANC, ANC level, gestures, sound preference, low-latency |
+| HUAWEI FreeBuds 3 | Upstream profile migrated, Android testing pending | Battery, wear detection, double-tap actions, voice language; SPP channel 1 |
+| HONOR Earbuds S2 | Upstream profile migrated, Android testing pending | Device info, battery, wear detection, ANC level, voice language; no gesture/auto-pause configuration |
+| HUAWEI FreeBuds Pro 5 | Upstream profile migrated, Android testing pending | Reuses the Pro 3 ANC, EQ, dual-connect, wear, gesture, and low-latency profile |
+| HUAWEI FreeClip 2 | Upstream profile migrated, Android testing pending | No traditional ANC; gestures, EQ, dual-connect, low-latency, auto-pause, and wear detection |
 | HUAWEI FreeBuds 4i / HONOR Earbuds 2 / 2 Lite / SE | Capability table ready, needs testing | Basic ANC, battery, wear detection, double/long tap, auto-pause |
 | HUAWEI FreeBuds Pro | Capability table ready, needs testing | ANC, voice boost, swipe/long press, dual-connect capabilities may vary |
 | HUAWEI FreeBuds Pro 2 | Capability table ready, needs testing | ANC, gestures, sound preference, EQ, dual-connect need verification |

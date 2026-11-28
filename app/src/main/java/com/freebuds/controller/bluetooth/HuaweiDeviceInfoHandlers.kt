@@ -66,6 +66,18 @@ class InEarHandler : HuaweiDeviceHandler {
     }
 
     override suspend fun onDriverPackage(driver: SppDriver, pkg: HuaweiSppPackage) {
+        if (pkg.commandId.contentEquals(byteArrayOf(0x2b, 0x25))) {
+            val left = pkg.findParam(1)
+            val right = pkg.findParam(2)
+            if (left.size == 1 && right.size == 1) {
+                driver.putProperty(
+                    "state",
+                    "in_ear",
+                    (left[0].toInt() == 1 && right[0].toInt() == 1).asString(),
+                )
+            }
+            return
+        }
         val value = pkg.findParam(8, 9)
         if (value.size == 1) {
             driver.putProperty("state", "in_ear", (value[0].toInt() == 1).asString())

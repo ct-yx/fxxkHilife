@@ -6,11 +6,13 @@ import subprocess
 import sys
 from pathlib import Path
 
+from ApplicationServices import AXIsProcessTrustedWithOptions, kAXTrustedCheckOptionPrompt
+
 log = logging.getLogger("OfbDarwinBackend")
 
 AUTOSTART_AVAILABLE = True
 AUTOUPDATE_AVAILABLE = False  # Defer to Homebrew or DMG-based updates
-GLOBAL_HOTKEYS_AVAILABLE = True  # pynput supports macOS (requires Accessibility permission)
+GLOBAL_HOTKEYS_AVAILABLE = False  # pynput conflicts with pyqt, need refactor
 
 _LAUNCH_AGENT_LABEL = "pw.mmk.OpenFreebuds"
 
@@ -27,18 +29,24 @@ def is_run_at_boot():
     return _launch_agent_path().is_file()
 
 
+def trigger_hotkeys_permission():
+    return AXIsProcessTrustedWithOptions({kAXTrustedCheckOptionPrompt: True})
+
+
 async def set_run_at_boot(val):
     path = _launch_agent_path()
+    domain = f"gui/{os.getuid()}"
     if val:
         path.parent.mkdir(parents=True, exist_ok=True)
         with open(path, "wb") as f:
             plistlib.dump(_build_launch_agent_plist(), f)
         log.debug(f"Wrote LaunchAgent: {path}")
-        _launchctl("load", "-w", str(path))
+        _launchctl("enable", f"{domain}/{_LAUNCH_AGENT_LABEL}")
     else:
         if path.is_file():
-            _launchctl("unload", "-w", str(path))
             path.unlink()
+            # Unloading the job would terminate an app started at login.
+            _launchctl("disable", f"{domain}/{_LAUNCH_AGENT_LABEL}")
             log.debug(f"Removed LaunchAgent: {path}")
 
 
@@ -61,6 +69,8 @@ def _launch_agent_path() -> Path:
 
 def _program_arguments() -> list[str]:
     """Best-effort reconstruction of the command launchd should invoke."""
+    if getattr(sys, "frozen", False):
+        return [sys.executable]
     cli = shutil.which("openfreebuds_qt")
     if cli:
         return [cli]

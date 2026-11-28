@@ -88,6 +88,10 @@ fxxkHilife 是一个第三方、开源、离线的耳机控制面板，目标是
 | HUAWEI FreeBuds 6i | 已实测 | 主要开发与验证设备，ANC/手势/电量/低延迟/音质偏好等功能持续调优中 |
 | HUAWEI FreeBuds 7i | 临时保守适配，待完整适配 | 保留保守能力表以降低初始化压力，并隐藏未确认可用的自动暂停选项；完整适配需要更多实机日志 |
 | HUAWEI FreeBuds 5i | 已适配能力表，待更多实测 | 支持 ANC、ANC 强度、手势、音质偏好、低延迟等能力 |
+| HUAWEI FreeBuds 3 | 已迁移上游能力表，待 Android 实测 | 电量、佩戴状态、双击动作、语音语言；SPP channel 1 |
+| HONOR Earbuds S2 | 已迁移上游能力表，待 Android 实测 | 设备信息、电量、佩戴状态、ANC 强度、语音语言；不支持手势/自动暂停配置 |
+| HUAWEI FreeBuds Pro 5 | 已迁移上游能力表，待 Android 实测 | 复用 Pro 3 的 ANC、EQ、双设备、佩戴、手势和低延迟组合 |
+| HUAWEI FreeClip 2 | 已迁移上游能力表，待 Android 实测 | 无传统 ANC；支持手势、EQ、双设备、低延迟、自动暂停和佩戴检测 |
 | HUAWEI FreeBuds 4i / HONOR Earbuds 2 / 2 Lite / SE | 已适配能力表，待更多实测 | 偏基础能力：ANC、电量、佩戴检测、双击/长按、自动暂停等 |
 | HUAWEI FreeBuds Pro | 已适配能力表，待更多实测 | ANC、语音增强、滑动/长按、双设备等能力存在型号差异 |
 | HUAWEI FreeBuds Pro 2 | 已适配能力表，待更多实测 | ANC、手势、音质偏好、EQ、双设备等能力待验证 |

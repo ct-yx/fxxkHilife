@@ -72,6 +72,7 @@ object HuaweiCommandCatalog {
     val inEar = HuaweiCommandSpec(
         key = "in_ear",
         readCommand = cmd(0x2b, 0x03),
+        notificationCommands = listOf(cmd(0x2b, 0x25)),
     )
 
     val autoPause = HuaweiCommandSpec(
